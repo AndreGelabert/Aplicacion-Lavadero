@@ -27,46 +27,7 @@ const app = initializeApp(firebaseConfig);
 const provider = new GoogleAuthProvider();
 const auth = getAuth();
 const analytics = getAnalytics(app);
-function signin() {
-signInWithPopup(auth, provider)
-    .then((result) => {
-        // This gives you a Google Access Token. You can use it to access the Google API.
-        const credential = GoogleAuthProvider.credentialFromResult(result);
-        const token = credential.accessToken;
-        // The signed-in user info.
-        const user = result.user;
-        // IdP data available using getAdditionalUserInfo(result)
-        // ...
-        callLogin(user);
-    }).catch((error) => {
-        // Handle Errors here.
-        const errorCode = error.code;
-        const errorMessage = error.message;
-        // The email of the user's account used.
-        const email = error.customData.email;
-        // The AuthCredential type that was used.
-        const credential = GoogleAuthProvider.credentialFromError(error);
-        // ...
-    });
-}
-function callLogin(user) {
-    console.log(user)
-    $.ajax({
-        url: "/Login/Login",
-        dataType: "json",
-        method: "post",
-        traditional: true,
-        data:
-        {
-            user: JSON.stringify(user)
-        }
-    }).done(function (response) {
-        window.location.href = response.data;
-    });
-}
-document.getElementById("mi-boton").onclick = function () {
-    signin();
-};
+
 
 
 

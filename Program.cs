@@ -1,18 +1,8 @@
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
-using Microsoft.AspNetCore.Authentication.Cookies;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-})
-.AddCookie(options =>
-{
-    options.LoginPath = "/Login/Index";
-    options.LogoutPath = "/Home/Logout";
-});
+
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
@@ -31,13 +21,15 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseAuthentication();
-
 app.UseAuthorization();
 
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Login}/{action=Index}");
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapControllerRoute(
+        name: "default",
+        pattern: "{controller=Auth}/{action=Login}/{id?}");
+});
+
 
 
 FirebaseApp.Create(new AppOptions()
