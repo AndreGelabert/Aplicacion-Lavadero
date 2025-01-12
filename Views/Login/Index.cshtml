@@ -15,14 +15,9 @@
             <h1 class="text-2xl font-bold sm:text-3xl">@ViewData["Title"]</h1>
 
             <p class="mt-4 text-gray-500">
-                Lorem ipsum dolor sit amet consectetur adipisicing elit. Et libero nulla eaque error neque
-                ipsa culpa autem, at itaque nostrum!
+                Por favor, ingrese sus credenciales para acceder a su cuenta. Si no tiene una cuenta, puede registrarse haciendo clic en el enlace de abajo.
             </p>
         </div>
-        @if (ViewBag.Error != null)
-        {
-            <p class="text-red-600">@ViewBag.Error</p>
-        }
         <form method="post" class="mx-auto mb-0 mt-8 max-w-md space-y-4">
             <div>
                 <label for="email" class="sr-only">Email</label>
@@ -73,11 +68,14 @@
                     </span>
                 </div>
             </div>
-
+            @if (ViewBag.Error != null)
+            {
+                <p class="text-center text-red-600 bg-red-100 border border-red-400 rounded p-4 mt-4">@ViewBag.Error</p>
+            }
             <div class="flex items-center justify-between">
                 <p class="text-sm text-gray-500">
-                    No account?
-                    <a class="underline" href="#">Sign up</a>
+                    ¿No tiene cuenta?
+                    <a class="underline" href="#">Registrese</a>
                 </p>
 
                 <button type="submit"
