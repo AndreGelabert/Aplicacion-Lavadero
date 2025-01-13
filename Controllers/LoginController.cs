@@ -1,92 +1,74 @@
-﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Builder.Extensions;
-using Firebase.Auth;
-using Firebase.Auth.Providers;
+﻿using Firebase.Auth;
+using Firebase.Models;
 using FirebaseAdmin.Auth;
-using FirebaseAdmin;
-using Google.Apis.Auth.OAuth2;
-using System.Net;
-using Firebase.Utils;
-using System.Text.Json.Nodes;
-using System;
-// Configura Firebase con tus credenciales de Google
+using Google.Cloud.Firestore;
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
-
-namespace FirebaseLoginCustom.Controllers
+public class LoginController : Controller
 {
+    private readonly FirestoreDb _firestore;
 
-    public class LoginController : Controller
+    public LoginController()
     {
+        string path = AppDomain.CurrentDomain.BaseDirectory + @"Utils\loginmvc.json";
+        Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", path);
+        _firestore = FirestoreDb.Create("aplicacion-lavadero");
+    }
 
-        public IActionResult Index()
+    public IActionResult Index()
+    {
+        return View();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> LoginWithGoogle([FromBody] GoogleLoginRequest request)
+    {
+        try
         {
+            var decodedToken = await FirebaseAdmin.Auth.FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(request.IdToken);
+            var email = decodedToken.Claims["email"].ToString();
+            var displayName = decodedToken.Claims["name"].ToString();
 
-            return View();
+            var employeesCollection = _firestore.Collection("empleados");
+            var query = employeesCollection.WhereEqualTo("Email", email);
+            var snapshot = await query.GetSnapshotAsync();
+
+            if (snapshot.Count == 0)
+            {
+                var newEmployee = new
+                {
+                    Nombre = displayName,
+                    Email = email,
+                    Rol = "empleado"
+                };
+                await employeesCollection.AddAsync(newEmployee);
+            }
+
+            TempData["UserEmail"] = email;
+            TempData["UserName"] = displayName;
+
+            return Ok();
         }
-        [HttpPost]
-        public async Task<IActionResult> Index(string username, string password)
+        catch (Firebase.Auth.FirebaseAuthException ex)
         {
-
-            FirebaseAuthConfig config = new FirebaseAuthConfig();
-            config.AuthDomain = "aplicacion-lavadero.firebaseapp.com";
-            config.ApiKey = "AIzaSyBubyUIDmvFmRIvQ--pvnw9wnQcAulJJy8";
-            config.Providers = new FirebaseAuthProvider[]
-                {
-                    new GoogleProvider().AddScopes("email"),
-                    new EmailProvider()
-                };
-            Firebase.Auth.FirebaseAuthClient authClient = new FirebaseAuthClient(config);
-
-            try
-            {
-                var user = await authClient.SignInWithEmailAndPasswordAsync(username, password);
-                var claims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.Name, username),
-                    new Claim(ClaimTypes.Role, "Usuario")
-                };
-                var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                var principal = new ClaimsPrincipal(identity);
-                HttpContext.SignInAsync(principal);
-                return RedirectToAction("Index", "Home");
-            }
-            catch (Firebase.Auth.FirebaseAuthException ex)
-            {
-                ViewBag.Error = "Credenciales inválidas";
-                return View();
-
-            }
-        }
-        public async Task<IActionResult> Login(string user)
-        {
-            try
-            {
-                GoogleLoginObject googleLoginObject= Newtonsoft.Json.JsonConvert.DeserializeObject < GoogleLoginObject > (user);
-                // Verifica las credenciales de autenticación con Firebase
-                var firebaseToken = await FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(googleLoginObject.stsTokenManager.accessToken);
-
-                // Maneja el inicio de sesión exitoso
-                var userId = firebaseToken.Uid;
-                // Hacer algo aquí con el ID del usuario autenticado
-                var claims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.Name, googleLoginObject.displayName),
-                    new Claim(ClaimTypes.Role, "Usuario")
-                };
-                var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                var principal = new ClaimsPrincipal(identity);
-                HttpContext.SignInAsync(principal);
-                string url = Url.Action("Index", "Home");
-                return Json(new { data = url });
-            }
-            catch (Firebase.Auth.FirebaseAuthException e)
-            {
-               return Json(new { data = "Credenciales inválidas" });
-            }
-
+            return BadRequest(new { error = "Error de autenticación: " + ex.Message });
         }
     }
+
+    public IActionResult Dashboard()
+    {
+        if (TempData["UserEmail"] == null)
+        {
+            return RedirectToAction("Index");
+        }
+
+        ViewBag.UserName = TempData["UserName"];
+        return View();
+    }
+}
+
+public class GoogleLoginRequest
+{
+    public string IdToken { get; set; }
 }
