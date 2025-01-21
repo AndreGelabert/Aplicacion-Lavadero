@@ -27,7 +27,12 @@ document.getElementById('google-login-button').addEventListener('click', async (
             body: JSON.stringify({ idToken })
         });
         if (response.ok) {
-            window.location.href = '/Home/Index';
+            const data = await response.json();
+            if (data.redirectUrl) {
+                window.location.href = data.redirectUrl;
+            } else {
+                console.error('No se recibió la URL de redirección');
+            }
         } else {
             console.error('Error al iniciar sesión con Google');
         }

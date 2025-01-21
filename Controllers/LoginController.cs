@@ -2,7 +2,10 @@
 using Firebase.Models;
 using FirebaseAdmin.Auth;
 using Google.Cloud.Firestore;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 public class LoginController : Controller
@@ -45,26 +48,26 @@ public class LoginController : Controller
                 await employeesCollection.AddAsync(newEmployee);
             }
 
-            TempData["UserEmail"] = email;
-            TempData["UserName"] = displayName;
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, displayName),
+                new Claim(ClaimTypes.Email, email)
+            };
 
-            return Ok();
+            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = true
+            };
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
+
+            return Json(new { redirectUrl = Url.Action("Index", "Home") });
         }
         catch (Firebase.Auth.FirebaseAuthException ex)
         {
             return BadRequest(new { error = "Error de autenticación: " + ex.Message });
         }
-    }
-
-    public IActionResult Dashboard()
-    {
-        if (TempData["UserEmail"] == null)
-        {
-            return RedirectToAction("Index");
-        }
-
-        ViewBag.UserName = TempData["UserName"];
-        return View();
     }
 }
 
