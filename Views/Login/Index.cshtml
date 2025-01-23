@@ -17,15 +17,17 @@
                 Por favor, ingrese sus credenciales para acceder a su cuenta. Si no tiene una cuenta, puede registrarse haciendo clic en el enlace de abajo.
             </p>
         </div>
-        <form method="post" class="mx-auto mb-0 mt-8 max-w-md space-y-4">
+        <form method="post" action="/Login/Login" class="mx-auto mb-0 mt-8 max-w-md space-y-4">
             <div>
                 <label for="email" class="sr-only">Email</label>
-
                 <div class="relative">
-                    <input type="email" id="username" name="username"
+                    <input type="email" id="email" name="email"
                            class="w-full rounded-lg border-gray-200 p-4 pe-12 text-sm shadow-sm"
-                           placeholder="Enter email" />
-
+                           placeholder="Enter email" required />
+                    @if (ViewData.ModelState.ContainsKey("email") && ViewData.ModelState["email"].Errors.Count > 0)
+                    {
+                        <span class="text-red-500 text-sm">@ViewData.ModelState["email"].Errors[0].ErrorMessage</span>
+                    }
                     <span class="absolute inset-y-0 end-0 grid place-content-center px-4">
                         <svg xmlns="http://www.w3.org/2000/svg"
                              class="size-4 text-gray-400"
@@ -43,12 +45,14 @@
 
             <div>
                 <label for="password" class="sr-only">Password</label>
-
                 <div class="relative">
                     <input type="password" id="password" name="password"
                            class="w-full rounded-lg border-gray-200 p-4 pe-12 text-sm shadow-sm"
-                           placeholder="Enter password" />
-
+                           placeholder="Enter password" required />
+                    @if (ViewData.ModelState.ContainsKey("password") && ViewData.ModelState["password"].Errors.Count > 0)
+                    {
+                        <span class="text-red-500 text-sm">@ViewData.ModelState["password"].Errors[0].ErrorMessage</span>
+                    }
                     <span class="absolute inset-y-0 end-0 grid place-content-center px-4">
                         <svg xmlns="http://www.w3.org/2000/svg"
                              class="size-4 text-gray-400"
@@ -74,12 +78,12 @@
             <div class="flex items-center justify-between">
                 <p class="text-sm text-gray-500">
                     ¿No tiene cuenta?
-                    <button class="underline">Registrese</button>
+                    <button type="button" class="underline" onclick="document.getElementById('registerModal').classList.remove('hidden');">Registrese</button>
                 </p>
 
                 <button type="submit"
                         class="inline-block rounded-lg bg-blue-500 px-5 py-3 text-sm font-medium text-white">
-                    Sign in
+                    Inicia Sesión
                 </button>
             </div>
         </form>
@@ -99,6 +103,48 @@
              src="https://images.unsplash.com/photo-1630450202872-e0829c9d6172?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=774&q=80"
              class="absolute inset-0 h-full w-full object-cover" />
     </div>
+    <!-- Agregar el modal de registro -->
+    <div id="registerModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Registro de Usuario</h3>
+                <div class="mt-2 px-7 py-3">
+                    <form id="registerForm" method="post" action="/Login/RegisterUser">
+                        <div class="mb-4">
+                            <label for="nombreCompleto" class="block text-sm font-medium text-gray-700">Nombre Completo</label>
+                            <input type="text" id="nombreCompleto" name="nombreCompleto" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                            @if (ViewData.ModelState.ContainsKey("nombreCompleto") && ViewData.ModelState["nombreCompleto"].Errors.Count > 0)
+                            {
+                                <span class="text-red-500 text-sm">@ViewData.ModelState["nombreCompleto"].Errors[0].ErrorMessage</span>
+                            }
+                        </div>
+                        <div class="mb-4">
+                            <label for="email" class="block text-sm font-medium text-gray-700">Correo Electrónico</label>
+                            <input type="email" id="email" name="email" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                            @if (ViewData.ModelState.ContainsKey("email") && ViewData.ModelState["email"].Errors.Count > 0)
+                            {
+                                <span class="text-red-500 text-sm">@ViewData.ModelState["email"].Errors[0].ErrorMessage</span>
+                            }
+                        </div>
+                        <div class="mb-4">
+                            <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                            <input type="password" id="password" name="password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                            @if (ViewData.ModelState.ContainsKey("password") && ViewData.ModelState["password"].Errors.Count > 0)
+                            {
+                                <span class="text-red-500 text-sm">@ViewData.ModelState["password"].Errors[0].ErrorMessage</span>
+                            }
+                        </div>
+                        <div class="mt-4">
+                            <button type="submit" class="inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-500 text-base font-medium text-white hover:bg-blue-700">Registrar</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="items-center px-4 py-3">
+                    <button id="closeModal" class="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-700">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
@@ -110,4 +156,20 @@
     document.getElementById('google-login-button').addEventListener('click', function () {
         google.accounts.id.prompt();
     });
+    document.querySelector('button.underline').addEventListener('click', function () {
+        document.getElementById('registerModal').classList.remove('hidden');
+    });
+
+    document.getElementById('closeModal').addEventListener('click', function () {
+        document.getElementById('registerModal').classList.add('hidden');
+    });
+    // Abrir el modal si hay errores de validación
+    @if (ViewData.ModelState.ContainsKey("nombreCompleto") && ViewData.ModelState["nombreCompleto"].Errors.Count > 0 ||
+        ViewData.ModelState.ContainsKey("email") && ViewData.ModelState["email"].Errors.Count > 0 ||
+        ViewData.ModelState.ContainsKey("password") && ViewData.ModelState["password"].Errors.Count > 0)
+    {
+        <text>
+                document.getElementById('registerModal').classList.remove('hidden');
+        </text>
+    }
 </script>

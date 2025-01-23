@@ -5,6 +5,7 @@ using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -22,6 +23,77 @@ public class LoginController : Controller
     public IActionResult Index()
     {
         return View();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Login(LoginRequest request)
+    {
+        var employeesCollection = _firestore.Collection("empleados");
+        var query = employeesCollection.WhereEqualTo("Email", request.Email);
+        var snapshot = await query.GetSnapshotAsync();
+
+        if (snapshot.Count == 0)
+        {
+            ViewBag.Error = "Correo electrónico o contraseña incorrectos.";
+            return View("Index");
+        }
+
+        var employee = snapshot.Documents[0];
+        var storedPassword = employee.GetValue<string>("Password");
+
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, storedPassword))
+        {
+            ViewBag.Error = "Correo electrónico o contraseña incorrectos.";
+            return View("Index");
+        }
+
+        var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.Name, employee.GetValue<string>("Nombre")),
+        new Claim(ClaimTypes.Email, request.Email)
+    };
+
+        var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var authProperties = new AuthenticationProperties
+        {
+            IsPersistent = true
+        };
+
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
+
+        return RedirectToAction("Index", "Home");
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> RegisterUser([FromForm] AuthModels.RegisterRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            // Devuelve la vista con el estado del modelo para mostrar los errores en el modal
+            return View("Index");
+        }
+
+        var employeesCollection = _firestore.Collection("empleados");
+        var query = employeesCollection.WhereEqualTo("Email", request.Email);
+        var snapshot = await query.GetSnapshotAsync();
+
+        if (snapshot.Count == 0)
+        {
+            var newEmployee = new
+            {
+                Nombre = request.NombreCompleto,
+                Email = request.Email,
+                Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                Rol = "empleado"
+            };
+            await employeesCollection.AddAsync(newEmployee);
+            return RedirectToAction("Index", "Home");
+        }
+        else
+        {
+            ModelState.AddModelError("email", "El correo electrónico ya está registrado.");
+            return View("Index");
+        }
     }
 
     [HttpPost]
@@ -75,3 +147,13 @@ public class GoogleLoginRequest
 {
     public string IdToken { get; set; }
 }
+
+public class LoginRequest
+{
+    [Required]
+    public string Email { get; set; }
+
+    [Required]
+    public string Password { get; set; }
+}
+
