@@ -87,6 +87,22 @@ public class LoginController : Controller
                 Rol = "empleado"
             };
             await employeesCollection.AddAsync(newEmployee);
+
+            // Iniciar sesión automáticamente después del registro
+            var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, request.NombreCompleto),
+            new Claim(ClaimTypes.Email, request.Email)
+        };
+
+            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = true
+            };
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
+
             return RedirectToAction("Index", "Home");
         }
         else
