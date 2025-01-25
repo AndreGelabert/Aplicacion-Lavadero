@@ -50,7 +50,8 @@ public class LoginController : Controller
         var claims = new List<Claim>
     {
         new Claim(ClaimTypes.Name, employee.GetValue<string>("Nombre")),
-        new Claim(ClaimTypes.Email, request.Email)
+        new Claim(ClaimTypes.Email, request.Email),
+        new Claim(ClaimTypes.Role, employee.GetValue<string>("Rol"))
     };
 
         var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -84,7 +85,7 @@ public class LoginController : Controller
                 Nombre = request.NombreCompleto,
                 Email = request.Email,
                 Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                Rol = "empleado"
+                Rol = "Empleado"
             };
             await employeesCollection.AddAsync(newEmployee);
 
@@ -92,7 +93,8 @@ public class LoginController : Controller
             var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Name, request.NombreCompleto),
-            new Claim(ClaimTypes.Email, request.Email)
+            new Claim(ClaimTypes.Email, request.Email),
+            new Claim(ClaimTypes.Role, "Empleado")
         };
 
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -125,22 +127,29 @@ public class LoginController : Controller
             var query = employeesCollection.WhereEqualTo("Email", email);
             var snapshot = await query.GetSnapshotAsync();
 
+            string role;
             if (snapshot.Count == 0)
             {
+                role = "Empleado";
                 var newEmployee = new
                 {
                     Nombre = displayName,
                     Email = email,
-                    Rol = "empleado"
+                    Rol = role
                 };
                 await employeesCollection.AddAsync(newEmployee);
             }
+            else
+            {
+                role = snapshot.Documents[0].GetValue<string>("Rol");
+            }
 
             var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, displayName),
-                new Claim(ClaimTypes.Email, email)
-            };
+        {
+            new Claim(ClaimTypes.Name, displayName),
+            new Claim(ClaimTypes.Email, email),
+            new Claim(ClaimTypes.Role, role)
+        };
 
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var authProperties = new AuthenticationProperties
@@ -157,6 +166,7 @@ public class LoginController : Controller
             return BadRequest(new { error = "Error de autenticación: " + ex.Message });
         }
     }
+
 }
 
 public class GoogleLoginRequest
