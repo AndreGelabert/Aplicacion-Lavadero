@@ -62,7 +62,7 @@ public class LoginController : Controller
 
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
 
-        return RedirectToAction("Index", "Home");
+        return RedirectToAction("Index", "Lavados");
     }
 
     [HttpPost]
@@ -105,7 +105,7 @@ public class LoginController : Controller
 
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
 
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction("Index", "Lavados");
         }
         else
         {
@@ -159,7 +159,7 @@ public class LoginController : Controller
 
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
 
-            return Json(new { redirectUrl = Url.Action("Index", "Home") });
+            return Json(new { redirectUrl = Url.Action("Index", "Lavados") });
         }
         catch (Firebase.Auth.FirebaseAuthException ex)
         {

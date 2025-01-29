@@ -8,11 +8,11 @@ using System.Diagnostics;
 namespace FirebaseLoginCustom.Controllers
 {
     [AutorizacionRequerida]
-    public class HomeController : Controller
+    public class LavadosController : Controller
     {
-        private readonly ILogger<HomeController> _logger;
+        private readonly ILogger<LavadosController> _logger;
 
-        public HomeController(ILogger<HomeController> logger)
+        public LavadosController(ILogger<LavadosController> logger)
         {
             _logger = logger;
         }
