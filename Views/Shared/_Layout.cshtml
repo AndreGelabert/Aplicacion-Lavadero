@@ -17,6 +17,7 @@
 </head>
 <body>
     <div class="antialiased bg-gray-50 dark:bg-gray-900">
+        <!-- Barra de navegación -->
         <nav class="bg-white border-b border-gray-200 px-4 py-2.5 dark:bg-gray-800 dark:border-gray-700 fixed left-0 right-0 top-0 z-50">
             <div class="flex flex-wrap justify-between items-center">
                 <div class="flex justify-start items-center">
@@ -71,6 +72,7 @@
                         </div>
                     </form>
                 </div>
+                <!-- Menu del usuario -->
                 <div class="flex items-center lg:order-2">
                     <button type="button"
                             class="flex mx-3 text-sm bg-transparent rounded-full md:mr-0 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
@@ -82,7 +84,6 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                         </svg>
                     </button>
-                    <!-- Menu del usuario -->
                     <div class="hidden z-50 my-4 w-56 text-base list-none bg-white rounded divide-y divide-gray-100 shadow dark:bg-gray-700 dark:divide-gray-600 rounded-xl"
                          id="dropdown">
                         <div class="py-3 px-4">
@@ -102,9 +103,7 @@
                 </div>
             </div>
         </nav>
-
-        <!-- Sidebar -->
-
+        <!-- Barra Lateral -->
         <aside class="fixed top-0 left-0 z-40 w-64 h-screen pt-14 transition-transform -translate-x-full bg-white border-r border-gray-200 md:translate-x-0 dark:bg-gray-800 dark:border-gray-700"
                aria-label="Sidenav"
                id="drawer-navigation">
@@ -161,6 +160,7 @@
                         </a>
                     </li>
                 </ul>
+                <!-- Barra Lateral - Seccion para los Administradores -->
                 @if (userRole == "Administrador")
                 {
                     <ul class="pt-5 mt-5 space-y-2 border-t border-gray-200 dark:border-gray-700">
@@ -212,6 +212,7 @@
                     </ul>
                 }
             </div>
+            <!-- Menu de idioma -->
             <div class="hidden absolute bottom-0 left-0 justify-center p-4 space-x-4 w-full sm:flex md:flex lg:flex bg-white dark:bg-gray-800 z-20">
                 <button type="button"
                         data-dropdown-toggle="language-dropdown"
@@ -249,7 +250,7 @@
                         </g>
                     </svg>
                 </button>
-                <!-- Dropdown -->
+                <!-- Selector de idioma -->
                 <div class="hidden z-50 my-4 text-base list-none bg-white rounded divide-y divide-gray-100 shadow dark:bg-gray-700"
                      id="language-dropdown">
                     <ul class="py-1" role="none">
@@ -326,11 +327,9 @@
                 </div>
             </div>
         </aside>
-
-        <main role="main" class="p-4 md:ml-64 min-h-[calc(100vh-5rem)] pt-20">
-            <div class="border-2 border-dashed rounded-lg border-gray-300 dark:border-gray-600 h-full mb-4">
-                @RenderBody()
-            </div>
+        <!-- Vista -->
+        <main role="main" class="p-4 md:ml-64 h-auto pt-20">
+            @RenderBody()
         </main>
     </div>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
