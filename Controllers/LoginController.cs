@@ -85,7 +85,8 @@ public class LoginController : Controller
                 Nombre = request.NombreCompleto,
                 Email = request.Email,
                 Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                Rol = "Empleado"
+                Rol = "Empleado", // Valor por defecto
+                Estado = "Activo" // Valor por defecto
             };
             await employeesCollection.AddAsync(newEmployee);
 
@@ -128,14 +129,17 @@ public class LoginController : Controller
             var snapshot = await query.GetSnapshotAsync();
 
             string role;
+            string estado;
             if (snapshot.Count == 0)
             {
                 role = "Empleado";
+                estado = "Activo";
                 var newEmployee = new
                 {
                     Nombre = displayName,
                     Email = email,
-                    Rol = role
+                    Rol = role,
+                    Estado = estado
                 };
                 await employeesCollection.AddAsync(newEmployee);
             }
