@@ -45,55 +45,41 @@
             </div>
             <div class="w-full md:w-auto flex flex-col md:flex-row space-y-2 md:space-y-0 items-stretch md:items-center justify-end md:space-x-3 flex-shrink-0">
                 <div class="flex items-center space-x-3 w-full md:w-auto">
-                    <button id="actionsDropdownButton" data-dropdown-toggle="actionsDropdown" class="w-full md:w-auto flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700" type="button">
-                        <svg class="-ml-1 mr-1.5 w-5 h-5" fill="currentColor" viewbox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <path clip-rule="evenodd" fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                        </svg>
-                        Acciones
-                    </button>
-                    <div id="actionsDropdown" class="hidden z-10 w-44 bg-white rounded divide-y divide-gray-100 shadow dark:bg-gray-700 dark:divide-gray-600">
-                        <ul class="py-1 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="actionsDropdownButton">
-                            <li>
-                                <a href="#" class="block py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Edición en Masa</a>
-                            </li>
-                        </ul>
-                        <div class="py-1">
-                            <a href="#" class="block py-2 px-4 text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:text-gray-200 dark:hover:text-white">Eliminación en masa</a>
-                        </div>
-                    </div>
+                    <!-- Botón de Filtro -->
                     <button id="filterDropdownButton" data-dropdown-toggle="filterDropdown" class="w-full md:w-auto flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700" type="button">
                         <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="h-4 w-4 mr-2 text-gray-400" viewbox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
                         </svg>
-                        Filter
+                        Filtro
                         <svg class="-mr-1 ml-1.5 w-5 h-5" fill="currentColor" viewbox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <path clip-rule="evenodd" fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
                         </svg>
                     </button>
+                    <!-- Dropdown de Filtro -->
                     <div id="filterDropdown" class="z-10 hidden w-48 p-3 bg-white rounded-lg shadow dark:bg-gray-700">
-                        <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white">Choose brand</h6>
-                        <ul class="space-y-2 text-sm" aria-labelledby="filterDropdownButton">
-                            <li class="flex items-center">
-                                <input id="apple" type="checkbox" value="" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                <label for="apple" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">Apple (56)</label>
-                            </li>
-                            <li class="flex items-center">
-                                <input id="fitbit" type="checkbox" value="" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                <label for="fitbit" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">Microsoft (16)</label>
-                            </li>
-                            <li class="flex items-center">
-                                <input id="razor" type="checkbox" value="" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                <label for="razor" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">Razor (49)</label>
-                            </li>
-                            <li class="flex items-center">
-                                <input id="nikon" type="checkbox" value="" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                <label for="nikon" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">Nikon (12)</label>
-                            </li>
-                            <li class="flex items-center">
-                                <input id="benq" type="checkbox" value="" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                <label for="benq" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">BenQ (74)</label>
-                            </li>
-                        </ul>
+                        <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white">Filtrar por Estado</h6>
+                        <form method="post" asp-action="Index">
+                            <!-- Asegurar que use POST -->
+                            <ul class="space-y-2 text-sm" aria-labelledby="filterDropdownButton">
+                                <!-- Checkbox Activo -->
+                                <li class="flex items-center">
+                                    <input id="activoCheckbox" type="checkbox" name="estados" value="Activo"
+                                    @(ViewBag.Estados?.Contains("Activo") == true ? "checked" : "")
+                                           class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
+                                    <label for="activoCheckbox" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">Activo</label>
+                                </li>
+                                <!-- Checkbox Inactivo -->
+                                <li class="flex items-center">
+                                    <input id="inactivoCheckbox" type="checkbox" name="estados" value="Inactivo"
+                                    @(ViewBag.Estados?.Contains("Inactivo") == true ? "checked" : "")
+                                           class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
+                                    <label for="inactivoCheckbox" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">Inactivo</label>
+                                </li>
+                            </ul>
+                            <button type="submit" class="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                Aplicar
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -111,67 +97,78 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var empleado in Model)
+                    @if (Model.Any())
                     {
-                        <tr class="border-b dark:border-gray-700">
-                            <th scope="row" class="px-4 py-3 w-1/2 font-medium text-gray-900 whitespace-nowrap dark:text-white">@empleado.NombreCompleto</th>
-                            <td class="px-4 py-3 w-3/5">@empleado.Email</td>
-                            <td class="px-4 py-3 w-full">
-                                <span id="rol-text-@empleado.Id">@empleado.Rol</span>
-                                <form id="rol-form-@empleado.Id" method="post" asp-action="UpdateRole" class="hidden">
-                                    <input type="hidden" name="id" value="@empleado.Id" />
-                                    <select name="newRole" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" onchange="submitForm('@empleado.Id')">
-                                        <option value="Empleado" selected="@(empleado.Rol == "Empleado")">Empleado</option>
-                                        <option value="Administrador" selected="@(empleado.Rol == "Administrador")">Administrador</option>
-                                    </select>
-                                </form>
-                            </td>
-                            <td class="px-4 py-3 w-1/6">@empleado.Estado</td>
-                            <td class="px-4 py-3 w-1/6 whitespace-nowrap text-center">
-                                <div class="flex items-center justify-center gap-2">
-                                    @if (empleado.Email != currentUserEmail)
-                                    {
-                                        <!-- Botón Editar -->
-                                        <button onclick="toggleEdit('@empleado.Id')" class="p-1.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"></path>
-                                            </svg>
-                                        </button>
-                                        <!-- Botón Eliminar -->
-                                        <button id="deleteButton-@empleado.Id" data-modal-target="deleteModal-@empleado.Id" data-modal-toggle="deleteModal-@empleado.Id" class="p-1.5 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path>
-                                            </svg>
-                                        </button>
-                                    }
-                                </div>
-                            </td>
-                        </tr>
-                        <!-- Modal de Confirmacion -->
-                        <div id="deleteModal-@empleado.Id" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-modal md:h-full">
-                            <div class="relative p-4 w-full max-w-md h-full md:h-auto">
-                                <!-- Contenido del modal -->
-                                <div class="relative p-4 text-center bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
-                                    <button type="button" class="text-gray-400 absolute top-2.5 right-2.5 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-toggle="deleteModal-@empleado.Id">
-                                        <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
-                                        <span class="sr-only">Close modal</span>
-                                    </button>
-                                    <svg class="text-gray-400 dark:text-gray-500 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
-                                    <p class="mb-4 text-gray-500 dark:text-gray-300">¿Está seguro que desea eliminar a este usuario?</p>
-                                    <div class="flex justify-center items-center space-x-4">
-                                        <button data-modal-toggle="deleteModal-@empleado.Id" type="button" class="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-primary-300 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">
-                                            No, cancelar
-                                        </button>
-                                        <form method="post" asp-action="DeactivateEmployee">
-                                            <input type="hidden" name="id" value="@empleado.Id" />
-                                            <button type="submit" class="py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900">
-                                                Sí, estoy seguro
+                        @foreach (var empleado in Model)
+                        {
+                            <tr class="border-b dark:border-gray-700">
+                                <th scope="row" class="px-4 py-3 w-1/2 font-medium text-gray-900 whitespace-nowrap dark:text-white">@empleado.NombreCompleto</th>
+                                <td class="px-4 py-3 w-3/5">@empleado.Email</td>
+                                <td class="px-4 py-3 w-full">
+                                    <span id="rol-text-@empleado.Id">@empleado.Rol</span>
+                                    <form id="rol-form-@empleado.Id" method="post" asp-action="UpdateRole" class="hidden">
+                                        <input type="hidden" name="id" value="@empleado.Id" />
+                                        <select name="newRole" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" onchange="submitForm('@empleado.Id')">
+                                            <option value="Empleado" selected="@(empleado.Rol == "Empleado")">Empleado</option>
+                                            <option value="Administrador" selected="@(empleado.Rol == "Administrador")">Administrador</option>
+                                        </select>
+                                    </form>
+                                </td>
+                                <td class="px-4 py-3 w-1/6">@empleado.Estado</td>
+                                <td class="px-4 py-3 w-1/6 whitespace-nowrap text-center">
+                                    <div class="flex items-center justify-center gap-2">
+                                        @if (empleado.Email != currentUserEmail)
+                                        {
+                                            <!-- Botón Editar -->
+                                            <button onclick="toggleEdit('@empleado.Id')" class="p-1.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"></path>
+                                                </svg>
                                             </button>
-                                        </form>
+                                            <!-- Botón Eliminar -->
+                                            <button id="deleteButton-@empleado.Id" data-modal-target="deleteModal-@empleado.Id" data-modal-toggle="deleteModal-@empleado.Id" class="p-1.5 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path>
+                                                </svg>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                            <!-- Modal de Confirmacion -->
+                            <div id="deleteModal-@empleado.Id" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-modal md:h-full">
+                                <div class="relative p-4 w-full max-w-md h-full md:h-auto">
+                                    <!-- Contenido del modal -->
+                                    <div class="relative p-4 text-center bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
+                                        <button type="button" class="text-gray-400 absolute top-2.5 right-2.5 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-toggle="deleteModal-@empleado.Id">
+                                            <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                            <span class="sr-only">Close modal</span>
+                                        </button>
+                                        <svg class="text-gray-400 dark:text-gray-500 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                                        <p class="mb-4 text-gray-500 dark:text-gray-300">¿Está seguro que desea eliminar a este usuario?</p>
+                                        <div class="flex justify-center items-center space-x-4">
+                                            <button data-modal-toggle="deleteModal-@empleado.Id" type="button" class="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-primary-300 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">
+                                                No, cancelar
+                                            </button>
+                                            <form method="post" asp-action="DeactivateEmployee">
+                                                <input type="hidden" name="id" value="@empleado.Id" />
+                                                <button type="submit" class="py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900">
+                                                    Sí, estoy seguro
+                                                </button>
+                                            </form>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-gray-500 dark:text-gray-400">
+                                No hay datos para mostrar.
+                            </td>
+                        </tr>
                     }
                 </tbody>
             </table>
@@ -220,39 +217,3 @@
         </nav>
     </div>
 </section>
-<script>
-    var isEditing = false;
-
-    function toggleEdit(id) {
-        var rolText = document.getElementById('rol-text-' + id);
-        var rolForm = document.getElementById('rol-form-' + id);
-        if (rolText.classList.contains('hidden')) {
-            rolText.classList.remove('hidden');
-            rolForm.classList.add('hidden');
-            isEditing = false;
-        } else {
-            rolText.classList.add('hidden');
-            rolForm.classList.remove('hidden');
-            isEditing = true;
-        }
-    }
-
-    function submitForm(id) {
-        var form = document.getElementById('rol-form-' + id);
-        form.submit();
-    }
-
-    document.addEventListener('click', function(event) {
-        var isClickInside = false;
-        var forms = document.querySelectorAll('form[id^="rol-form-"]');
-        forms.forEach(function(form) {
-            if (form.contains(event.target) || event.target.closest('button[onclick^="toggleEdit"]')) {
-                isClickInside = true;
-            }
-        });
-
-        if (!isClickInside && isEditing) {
-            location.reload(); // Refrescar la página para cancelar la edición
-        }
-    });
-</script>

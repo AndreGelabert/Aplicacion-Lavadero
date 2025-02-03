@@ -15,6 +15,8 @@ public class PersonalController : Controller
         _firestore = FirestoreDb.Create("aplicacion-lavadero");
     }
 
+    // GET: Carga inicial con empleados activos
+    [HttpGet]
     public async Task<IActionResult> Index()
     {
         var empleadosCollection = _firestore.Collection("empleados");
@@ -30,6 +32,39 @@ public class PersonalController : Controller
             Estado = doc.GetValue<string>("Estado")
         }).ToList();
 
+        ViewBag.Estados = new List<string> { "Activo" }; // Estado inicial del filtro
+        return View(empleados);
+    }
+
+    // POST: Maneja el filtrado
+    [HttpPost]
+    public async Task<IActionResult> Index(List<string> estados)
+    {
+        var empleadosCollection = _firestore.Collection("empleados");
+        Query query;
+
+        if (estados == null || !estados.Any())
+        {
+            // Si no hay filtros, no mostrar nada
+            ViewBag.Estados = new List<string>();
+            return View(new List<Empleado>());
+        }
+        else
+        {
+            query = empleadosCollection.WhereIn("Estado", estados);
+        }
+
+        var snapshot = await query.GetSnapshotAsync();
+        var empleados = snapshot.Documents.Select(doc => new Empleado
+        {
+            Id = doc.Id,
+            NombreCompleto = doc.GetValue<string>("Nombre"),
+            Email = doc.GetValue<string>("Email"),
+            Rol = doc.GetValue<string>("Rol"),
+            Estado = doc.GetValue<string>("Estado")
+        }).ToList();
+
+        ViewBag.Estados = estados; // Mantener el estado de los checkboxes
         return View(empleados);
     }
 
