@@ -83,4 +83,11 @@ public class PersonalController : Controller
         await employeeRef.UpdateAsync("Estado", "Inactivo");
         return RedirectToAction("Index");
     }
+    [HttpPost]
+    public async Task<IActionResult> ReactivateEmployee(string id)
+    {
+        var employeeRef = _firestore.Collection("empleados").Document(id);
+        await employeeRef.UpdateAsync("Estado", "Activo");
+        return RedirectToAction("Index");
+    }
 }

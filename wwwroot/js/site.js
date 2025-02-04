@@ -40,3 +40,18 @@ document.addEventListener('DOMContentLoaded', function () {
         filterDropdown.classList.add('hidden'); // Cerrar el dropdown
     });
 });
+// Manejar envío del formulario de reactivación
+document.querySelectorAll('form[asp-action="ReactivateEmployee"]').forEach(form => {
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        fetch(this.action, {
+            method: 'POST',
+            body: new FormData(this)
+        }).then(response => {
+            if (response.ok) {
+                location.reload(); // Recargar para ver cambios
+            }
+        });
+    });
+});
