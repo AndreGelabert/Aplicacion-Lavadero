@@ -14,15 +14,41 @@ public class PersonalController : Controller
         Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", path);
         _firestore = FirestoreDb.Create("aplicacion-lavadero");
     }
-
-    // GET: Carga inicial con empleados activos
     [HttpGet]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(
+    List<string> estados,
+    string firstDocId = null,
+    string lastDocId = null,
+    int pageNumber = 1,
+    int pageSize = 10)
     {
-        var empleadosCollection = _firestore.Collection("empleados");
-        var query = empleadosCollection.WhereEqualTo("Estado", "Activo");
-        var snapshot = await query.GetSnapshotAsync();
+        // Si no hay filtros aplicados, mostrar solo "Activo" por defecto
+        if (estados == null || !estados.Any())
+        {
+            estados = new List<string> { "Activo" };
+        }
+        Query query = _firestore.Collection("empleados");
 
+        // Aplicar filtros
+        if (estados.Any()) query = query.WhereIn("Estado", estados);
+        else query = query.WhereEqualTo("Estado", "Activo");
+
+        // Configurar consulta con índice compuesto
+        query = query.OrderBy("Estado").OrderBy("Nombre").Limit(pageSize);
+
+        // Manejo de cursores para paginación
+        if (!string.IsNullOrEmpty(lastDocId) && pageNumber > 1)
+        {
+            var lastDoc = await _firestore.Collection("empleados").Document(lastDocId).GetSnapshotAsync();
+            query = query.StartAfter(lastDoc);
+        }
+        else if (!string.IsNullOrEmpty(firstDocId) && pageNumber > 1)
+        {
+            var firstDoc = await _firestore.Collection("empleados").Document(firstDocId).GetSnapshotAsync();
+            query = query.StartAt(firstDoc);
+        }
+
+        var snapshot = await query.GetSnapshotAsync();
         var empleados = snapshot.Documents.Select(doc => new Empleado
         {
             Id = doc.Id,
@@ -32,27 +58,53 @@ public class PersonalController : Controller
             Estado = doc.GetValue<string>("Estado")
         }).ToList();
 
-        ViewBag.Estados = new List<string> { "Activo" }; // Estado inicial del filtro
+        // Calcular páginas
+        var totalPages = await GetTotalPages(estados, pageSize);
+        var currentPage = Math.Clamp(pageNumber, 1, totalPages);
+        var visiblePages = GetVisiblePages(currentPage, totalPages);
+
+        ViewBag.TotalPages = totalPages;
+        ViewBag.VisiblePages = visiblePages;
+        ViewBag.CurrentPage = currentPage;
+        ViewBag.Estados = estados;
+        ViewBag.PageSize = pageSize;
+        ViewBag.FirstDocId = snapshot.Documents.FirstOrDefault()?.Id;
+        ViewBag.LastDocId = snapshot.Documents.LastOrDefault()?.Id;
+
         return View(empleados);
     }
 
+    private async Task<int> GetTotalPages(List<string> estados, int pageSize)
+    {
+        Query query = _firestore.Collection("empleados");
+        if (estados.Any()) query = query.WhereIn("Estado", estados);
+
+        var countQuery = query.Select("__name__");
+        var snapshot = await countQuery.GetSnapshotAsync();
+        return (int)Math.Ceiling(snapshot.Count / (double)pageSize);
+    }
+
+    private List<int> GetVisiblePages(int currentPage, int totalPages, int range = 2)
+    {
+        var start = Math.Max(1, currentPage - range);
+        var end = Math.Min(totalPages, currentPage + range);
+        return Enumerable.Range(start, end - start + 1).ToList();
+    }
     // POST: Maneja el filtrado
     [HttpPost]
     public async Task<IActionResult> Index(List<string> estados)
     {
-        var empleadosCollection = _firestore.Collection("empleados");
-        Query query;
-
+        // Si no hay filtros aplicados, mostrar solo "Activo" por defecto
         if (estados == null || !estados.Any())
         {
-            // Si no hay filtros, no mostrar nada
-            ViewBag.Estados = new List<string>();
-            return View(new List<Empleado>());
+            estados = new List<string> { "Activo" };
         }
-        else
-        {
-            query = empleadosCollection.WhereIn("Estado", estados);
-        }
+
+        Query query = _firestore.Collection("empleados");
+
+        // Aplicar filtros
+        if (estados.Any()) query = query.WhereIn("Estado", estados);
+        else query = query.WhereEqualTo("Estado", "Activo");
 
         var snapshot = await query.GetSnapshotAsync();
         var empleados = snapshot.Documents.Select(doc => new Empleado
@@ -64,7 +116,19 @@ public class PersonalController : Controller
             Estado = doc.GetValue<string>("Estado")
         }).ToList();
 
+        // Calcular páginas
+        var totalPages = await GetTotalPages(estados, 10); // Usar pageSize = 10 por defecto
+        var currentPage = 1; // Siempre mostrar la primera página al aplicar filtros
+        var visiblePages = GetVisiblePages(currentPage, totalPages);
+
+        ViewBag.TotalPages = totalPages;
+        ViewBag.VisiblePages = visiblePages;
+        ViewBag.CurrentPage = currentPage;
         ViewBag.Estados = estados; // Mantener el estado de los checkboxes
+        ViewBag.PageSize = 10; // Usar pageSize = 10 por defecto
+        ViewBag.FirstDocId = snapshot.Documents.FirstOrDefault()?.Id;
+        ViewBag.LastDocId = snapshot.Documents.LastOrDefault()?.Id;
+
         return View(empleados);
     }
 

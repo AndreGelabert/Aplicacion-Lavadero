@@ -32,14 +32,6 @@ document.addEventListener('click', function (event) {
         location.reload(); // Refrescar la página para cancelar la edición
     }
 });
-document.addEventListener('DOMContentLoaded', function () {
-    const filterForm = document.getElementById('filterForm');
-    const filterDropdown = document.getElementById('filterDropdown');
-
-    filterForm.addEventListener('submit', function () {
-        filterDropdown.classList.add('hidden'); // Cerrar el dropdown
-    });
-});
 // Manejar envío del formulario de reactivación
 document.querySelectorAll('form[asp-action="ReactivateEmployee"]').forEach(form => {
     form.addEventListener('submit', function (e) {
@@ -54,4 +46,21 @@ document.querySelectorAll('form[asp-action="ReactivateEmployee"]').forEach(form 
             }
         });
     });
+});
+document.addEventListener('DOMContentLoaded', function () {
+    const filterForm = document.getElementById('filterForm');
+
+    if (filterForm) {
+        filterForm.addEventListener('submit', function (e) {
+            const checkboxes = Array.from(this.querySelectorAll('input[name="estados"]:checked'));
+
+            // Si no hay checkboxes marcados, forzar "Activo"
+            if (checkboxes.length === 0) {
+                e.preventDefault();
+                const activoCheckbox = this.querySelector('input[name="estados"][value="Activo"]');
+                activoCheckbox.checked = true;
+                this.submit();
+            }
+        });
+    }
 });
