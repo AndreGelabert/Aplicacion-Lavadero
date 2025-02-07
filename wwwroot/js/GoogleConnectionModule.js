@@ -34,9 +34,11 @@ document.getElementById('google-login-button').addEventListener('click', async (
                 console.error('No se recibió la URL de redirección');
             }
         } else {
-            console.error('Error al iniciar sesión con Google');
+            const errorData = await response.json();
+            alert(errorData.error || 'Error al iniciar sesión con Google');
         }
     } catch (error) {
         console.error('Error al iniciar sesión con Google', error);
     }
 });
+

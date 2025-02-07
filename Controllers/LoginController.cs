@@ -40,6 +40,13 @@ public class LoginController : Controller
 
         var employee = snapshot.Documents[0];
         var storedPassword = employee.GetValue<string>("Password");
+        var estado = employee.GetValue<string>("Estado");
+
+        if (estado != "Activo")
+        {
+            ViewBag.Error = "Su cuenta está inactiva. Por favor, contacte al administrador.";
+            return View("Index");
+        }
 
         if (!BCrypt.Net.BCrypt.Verify(request.Password, storedPassword))
         {
@@ -146,6 +153,12 @@ public class LoginController : Controller
             else
             {
                 role = snapshot.Documents[0].GetValue<string>("Rol");
+                estado = snapshot.Documents[0].GetValue<string>("Estado");
+
+                if (estado != "Activo")
+                {
+                    return BadRequest(new { error = "Su cuenta está inactiva. Por favor, contacte al administrador." });
+                }
             }
 
             var claims = new List<Claim>
