@@ -9,7 +9,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     .AddCookie(options =>
     {
         options.LoginPath = "/Login/Index";
-        options.LogoutPath = "/Home/Logout";
+        options.LogoutPath = "/Lavados/Logout";
     });
 
 var app = builder.Build();

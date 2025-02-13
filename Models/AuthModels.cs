@@ -17,8 +17,8 @@ namespace Firebase.Models
             [Required(ErrorMessage = "La contraseña es obligatoria.")]
             [MinLength(6, ErrorMessage = "La contraseña debe contener al menos 6 caracteres.")]
             public string Password { get; set; }
-            public string Estado { get; set; } = "Activo"; // Valor por defecto
         }
+
 
         public class LoginRequest
         {

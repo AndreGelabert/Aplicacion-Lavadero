@@ -1,4 +1,4 @@
-﻿using Firebase.Auth;
+﻿using FirebaseAdmin;
 using Firebase.Models;
 using FirebaseAdmin.Auth;
 using Google.Cloud.Firestore;
@@ -8,6 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using static Firebase.Models.AuthModels;
+using Newtonsoft.Json;
+using System.Text;
 
 public class LoginController : Controller
 {
@@ -28,96 +31,147 @@ public class LoginController : Controller
     [HttpPost]
     public async Task<IActionResult> Login(LoginRequest request)
     {
-        var employeesCollection = _firestore.Collection("empleados");
-        var query = employeesCollection.WhereEqualTo("Email", request.Email);
-        var snapshot = await query.GetSnapshotAsync();
-
-        if (snapshot.Count == 0)
-        {
-            ViewBag.Error = "Correo electrónico o contraseña incorrectos.";
-            return View("Index");
-        }
-
-        var employee = snapshot.Documents[0];
-        var storedPassword = employee.GetValue<string>("Password");
-        var estado = employee.GetValue<string>("Estado");
-
-        if (estado != "Activo")
-        {
-            ViewBag.Error = "Su cuenta está inactiva. Por favor, contacte al administrador.";
-            return View("Index");
-        }
-
-        if (!BCrypt.Net.BCrypt.Verify(request.Password, storedPassword))
-        {
-            ViewBag.Error = "Correo electrónico o contraseña incorrectos.";
-            return View("Index");
-        }
-
-        var claims = new List<Claim>
-    {
-        new Claim(ClaimTypes.Name, employee.GetValue<string>("Nombre")),
-        new Claim(ClaimTypes.Email, request.Email),
-        new Claim(ClaimTypes.Role, employee.GetValue<string>("Rol"))
-    };
-
-        var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-        var authProperties = new AuthenticationProperties
-        {
-            IsPersistent = true
-        };
-
-        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
-
-        return RedirectToAction("Index", "Lavados");
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> RegisterUser([FromForm] AuthModels.RegisterRequest request)
-    {
         if (!ModelState.IsValid)
         {
-            // Devuelve la vista con el estado del modelo para mostrar los errores en el modal
+            ViewBag.Error = "Por favor, complete todos los campos correctamente.";
             return View("Index");
         }
 
-        var employeesCollection = _firestore.Collection("empleados");
-        var query = employeesCollection.WhereEqualTo("Email", request.Email);
-        var snapshot = await query.GetSnapshotAsync();
-
-        if (snapshot.Count == 0)
+        try
         {
-            var newEmployee = new
-            {
-                Nombre = request.NombreCompleto,
-                Email = request.Email,
-                Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                Rol = "Empleado", // Valor por defecto
-                Estado = "Activo" // Valor por defecto
-            };
-            await employeesCollection.AddAsync(newEmployee);
+            var firebaseApiKey = "AIzaSyBubyUIDmvFmRIvQ--pvnw9wnQcAulJJy8"; // Reemplaza con tu API Key de Firebase
+            var client = new HttpClient();
+            var uri = $"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={firebaseApiKey}";
 
-            // Iniciar sesión automáticamente después del registro
+            var loginInfo = new
+            {
+                email = request.Email,
+                password = request.Password,
+                returnSecureToken = true
+            };
+
+            var content = new StringContent(JsonConvert.SerializeObject(loginInfo), Encoding.UTF8, "application/json");
+            var response = await client.PostAsync(uri, content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorResponse = await response.Content.ReadAsStringAsync();
+                var firebaseError = JsonConvert.DeserializeObject<FirebaseErrorResponse>(errorResponse);
+                ViewBag.Error = $"Error: {firebaseError.error.message}";
+                return View("Index");
+            }
+
+            var responseData = await response.Content.ReadAsStringAsync();
+            var loginResponse = JsonConvert.DeserializeObject<FirebaseLoginResponse>(responseData);
+
+            // Obtener el UID del usuario desde la respuesta
+            var uid = loginResponse.localId;
+
+            // Obtener datos adicionales desde Firestore
+            var employeeDoc = await _firestore.Collection("empleados").Document(uid).GetSnapshotAsync();
+
+            if (!employeeDoc.Exists || employeeDoc.GetValue<string>("Estado") != "Activo")
+            {
+                ViewBag.Error = "Cuenta inactiva o no existe.";
+                return View("Index");
+            }
+
+            // Crear claims y autenticar
             var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Name, request.NombreCompleto),
+            new Claim(ClaimTypes.NameIdentifier, uid),
+            new Claim(ClaimTypes.Name, employeeDoc.GetValue<string>("Nombre")),
             new Claim(ClaimTypes.Email, request.Email),
-            new Claim(ClaimTypes.Role, "Empleado")
+            new Claim(ClaimTypes.Role, employeeDoc.GetValue<string>("Rol"))
         };
 
-            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-            var authProperties = new AuthenticationProperties
-            {
-                IsPersistent = true
-            };
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
 
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
             return RedirectToAction("Index", "Lavados");
         }
-        else
+        catch (Exception)
         {
-            ModelState.AddModelError("email", "El correo electrónico ya está registrado.");
+            ViewBag.Error = "Error al iniciar sesión. Por favor, intente de nuevo.";
+            return View("Index");
+        }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> RegisterUser(RegisterRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            ViewBag.Error = "Por favor, complete todos los campos del registro correctamente.";
+            return View("Index");
+        }
+
+        try
+        {
+            // Crear usuario en Firebase Authentication
+            var userRecordArgs = new UserRecordArgs
+            {
+                Email = request.Email,
+                Password = request.Password,
+                DisplayName = request.NombreCompleto
+            };
+
+            var userRecord = await FirebaseAuth.DefaultInstance.CreateUserAsync(userRecordArgs);
+
+            // Guardar datos adicionales en Firestore sin la contraseña
+            var employeeData = new Dictionary<string, object>
+        {
+            { "Uid", userRecord.Uid },
+            { "Nombre", request.NombreCompleto },
+            { "Email", request.Email },
+            { "Rol", "Empleado" },
+            { "Estado", "Activo" }
+        };
+
+            await _firestore.Collection("empleados").Document(userRecord.Uid).SetAsync(employeeData);
+
+            // *** Autenticar al usuario con Firebase Authentication ***
+
+            var firebaseApiKey = "AIzaSyBubyUIDmvFmRIvQ--pvnw9wnQcAulJJy8"; // Reemplaza con tu API Key de Firebase
+            var client = new HttpClient();
+            var uri = $"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={firebaseApiKey}";
+
+            var loginInfo = new
+            {
+                email = request.Email,
+                password = request.Password,
+                returnSecureToken = true
+            };
+
+            var content = new StringContent(JsonConvert.SerializeObject(loginInfo), Encoding.UTF8, "application/json");
+            var response = await client.PostAsync(uri, content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorResponse = await response.Content.ReadAsStringAsync();
+                var firebaseError = JsonConvert.DeserializeObject<FirebaseErrorResponse>(errorResponse);
+                ViewBag.Error = $"Error al autenticar el usuario: {firebaseError.error.message}";
+                return View("Index");
+            }
+
+            var responseData = await response.Content.ReadAsStringAsync();
+            var loginResponse = JsonConvert.DeserializeObject<FirebaseLoginResponse>(responseData);
+
+            // Autenticar al usuario en tu aplicación
+            await SignInUser(userRecord.Uid, request.Email, "Empleado", request.NombreCompleto);
+
+            return RedirectToAction("Index", "Lavados");
+        }
+        catch (FirebaseAuthException ex)
+        {
+            ViewBag.Error = $"Error al registrar el usuario: {ex.Message}";
+            return View("Index");
+        }
+        catch (Exception)
+        {
+            ViewBag.Error = "Error al registrar el usuario. Por favor, intente de nuevo.";
             return View("Index");
         }
     }
@@ -183,20 +237,25 @@ public class LoginController : Controller
             return BadRequest(new { error = "Error de autenticación: " + ex.Message });
         }
     }
+    private async Task SignInUser(string uid, string email, string role, string nombre)
+    {
+        var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.NameIdentifier, uid),
+        new Claim(ClaimTypes.Name, nombre),
+        new Claim(ClaimTypes.Email, email),
+        new Claim(ClaimTypes.Role, role)
+    };
 
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+    }
 }
 
 public class GoogleLoginRequest
 {
     public string IdToken { get; set; }
-}
-
-public class LoginRequest
-{
-    [Required]
-    public string Email { get; set; }
-
-    [Required]
-    public string Password { get; set; }
 }
 
