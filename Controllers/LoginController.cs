@@ -57,7 +57,10 @@ public class LoginController : Controller
             {
                 var errorResponse = await response.Content.ReadAsStringAsync();
                 var firebaseError = JsonConvert.DeserializeObject<FirebaseErrorResponse>(errorResponse);
-                ViewBag.Error = $"Error: {firebaseError.error.message}";
+                // Obtener el código de error
+                var errorCode = firebaseError.error.message.Split(' ').FirstOrDefault(); ;
+                // Traducir el código de error al mensaje en español
+                ViewBag.Error = GetFirebaseErrorMessage(errorCode);
                 return View("Index");
             }
 
@@ -72,7 +75,7 @@ public class LoginController : Controller
 
             if (!employeeDoc.Exists || employeeDoc.GetValue<string>("Estado") != "Activo")
             {
-                ViewBag.Error = "Cuenta inactiva o no existe.";
+                ViewBag.Error = "Cuenta inactiva, contacte con el administrador.";
                 return View("Index");
             }
 
@@ -152,7 +155,10 @@ public class LoginController : Controller
             {
                 var errorResponse = await response.Content.ReadAsStringAsync();
                 var firebaseError = JsonConvert.DeserializeObject<FirebaseErrorResponse>(errorResponse);
-                ViewBag.Error = $"Error al autenticar el usuario: {firebaseError.error.message}";
+                // Obtener el código de error
+                var errorCode = firebaseError.error.message.Split(' ').FirstOrDefault(); ;
+                // Traducir el código de error al mensaje en español
+                ViewBag.Error = GetFirebaseErrorMessage(errorCode);
                 return View("Index");
             }
 
@@ -166,7 +172,10 @@ public class LoginController : Controller
         }
         catch (FirebaseAuthException ex)
         {
-            ViewBag.Error = $"Error al registrar el usuario: {ex.Message}";
+            // Obtener el código de error
+            var errorCode = ex.AuthErrorCode.ToString();
+            // Traducir el código de error al mensaje en español
+            ViewBag.Error = $"Error al registrar el usuario: {GetFirebaseErrorMessage(errorCode)}";
             return View("Index");
         }
         catch (Exception)
@@ -252,6 +261,22 @@ public class LoginController : Controller
 
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
     }
+    private string GetFirebaseErrorMessage(string errorCode)
+    {
+        return errorCode switch
+        {
+            "EMAIL_EXISTS" => "El correo electrónico ya está registrado.",
+            "INVALID_PASSWORD" => "La contraseña es incorrecta.",
+            "INVALID_EMAIL" => "El correo electrónico no es válido.",
+            "USER_DISABLED" => "La cuenta ha sido deshabilitada por un administrador.",
+            "EMAIL_NOT_FOUND" => "No existe ninguna cuenta con este correo electrónico.",
+            "OPERATION_NOT_ALLOWED" => "Operación no permitida.",
+            "TOO_MANY_ATTEMPTS_TRY_LATER" => "Demasiados intentos fallidos. Inténtalo más tarde.",
+            "INVALID_LOGIN_CREDENTIALS" => "Credenciales de inicio de sesión inválidas.",
+            _ => "Se ha producido un error al procesar la solicitud."
+        };
+    }
+
 }
 
 public class GoogleLoginRequest
