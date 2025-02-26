@@ -60,6 +60,7 @@ public class PersonalController : Controller
 
         // Calcular páginas
         var totalPages = await GetTotalPages(estados, pageSize);
+        totalPages = Math.Max(totalPages, 1); // Asegurarse de que totalPages sea al menos 1
         var currentPage = Math.Clamp(pageNumber, 1, totalPages);
         var visiblePages = GetVisiblePages(currentPage, totalPages);
 
@@ -73,6 +74,7 @@ public class PersonalController : Controller
 
         return View(empleados);
     }
+
 
     private async Task<int> GetTotalPages(List<string> estados, int pageSize)
     {
