@@ -2,17 +2,18 @@ using Firebase.Models;
 using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 [Authorize(Roles = "Administrador")]
 public class PersonalController : Controller
 {
     private readonly FirestoreDb _firestore;
+    private readonly AuditService _auditService;
 
-    public PersonalController()
+    public PersonalController(FirestoreDb firestore, AuditService auditService)
     {
-        string path = AppDomain.CurrentDomain.BaseDirectory + @"Utils\loginmvc.json";
-        Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", path);
-        _firestore = FirestoreDb.Create("aplicacion-lavadero");
+        _firestore = firestore;
+        _auditService = auditService;
     }
     [HttpGet]
     public async Task<IActionResult> Index(
@@ -139,6 +140,13 @@ public class PersonalController : Controller
     {
         var employeeRef = _firestore.Collection("empleados").Document(id);
         await employeeRef.UpdateAsync("Rol", newRole);
+        // Registrar evento de cambio de rol en Google Analytics
+        TempData["RoleChangeEvent_UserId"] = id;
+        TempData["RoleChangeEvent_NewRole"] = newRole;
+        // Registrar evento de auditoría
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userEmail = User.FindFirstValue(ClaimTypes.Email);
+        await _auditService.LogEvent(userId, userEmail, "Modificación de rol", id, "Empleado");
         return RedirectToAction("Index");
     }
 
@@ -147,6 +155,13 @@ public class PersonalController : Controller
     {
         var employeeRef = _firestore.Collection("empleados").Document(id);
         await employeeRef.UpdateAsync("Estado", "Inactivo");
+        // Registrar evento de cambio de estado en Google Analytics
+        TempData["StateChangeEvent_UserId"] = id;
+        TempData["StateChangeEvent_NewState"] = "Inactivo";
+        // Registrar evento de auditoría
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userEmail = User.FindFirstValue(ClaimTypes.Email);
+        await _auditService.LogEvent(userId, userEmail, "Desactivación de empleado", id, "Empleado");
         return RedirectToAction("Index");
     }
     [HttpPost]
@@ -154,6 +169,13 @@ public class PersonalController : Controller
     {
         var employeeRef = _firestore.Collection("empleados").Document(id);
         await employeeRef.UpdateAsync("Estado", "Activo");
+        // Registrar evento de cambio de estado en Google Analytics
+        TempData["StateChangeEvent_UserId"] = id;
+        TempData["StateChangeEvent_NewState"] = "Activo";
+        // Registrar evento de auditoría
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userEmail = User.FindFirstValue(ClaimTypes.Email);
+        await _auditService.LogEvent(userId, userEmail, "Reactivación de empleado", id, "Empleado");
         return RedirectToAction("Index");
     }
 }

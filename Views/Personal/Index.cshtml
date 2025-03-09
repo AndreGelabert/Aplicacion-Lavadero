@@ -3,6 +3,28 @@
     ViewData["Title"] = "Personal";
     var user = User as ClaimsPrincipal;
     var currentUserEmail = user?.FindFirst(ClaimTypes.Email)?.Value; // Obtener el email del usuario actual
+    if (TempData["RoleChangeEvent_UserId"] != null && TempData["RoleChangeEvent_NewRole"] != null)
+    {
+        var userId = TempData["RoleChangeEvent_UserId"].ToString();
+        var newRole = TempData["RoleChangeEvent_NewRole"].ToString();
+        <script>
+            gtag('event', 'role_change', {
+            'user_id': '@userId',
+            'new_role': '@newRole'
+            });
+        </script>
+    }
+    if (TempData["RoleChangeEvent_UserId"] != null && TempData["StateChangeEvent_NewState"] != null)
+    {
+        var userId = TempData["RoleChangeEvent_UserId"].ToString();
+        var newState = TempData["StateChangeEvent_NewState"];
+        <script>
+            gtag('event', 'state_change', {
+                'user_id': '@userId',
+                'new_state': '@newState'
+            });
+        </script>
+    }
 }
 <section class="bg-gray-50 dark:bg-gray-900">
     <div class="mx-auto bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-hidden">

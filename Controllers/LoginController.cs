@@ -15,12 +15,12 @@ using System.Text;
 public class LoginController : Controller
 {
     private readonly FirestoreDb _firestore;
+    private readonly AuditService _auditService;
 
-    public LoginController()
+    public LoginController(FirestoreDb firestore, AuditService auditService)
     {
-        string path = AppDomain.CurrentDomain.BaseDirectory + @"Utils\loginmvc.json";
-        Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", path);
-        _firestore = FirestoreDb.Create("aplicacion-lavadero");
+        _firestore = firestore;
+        _auditService = auditService;
     }
 
     public IActionResult Index()
@@ -93,6 +93,10 @@ public class LoginController : Controller
 
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
+            // Registrar evento de inicio de sesión en Google Analytics
+            TempData["LoginEvent"] = true;
+            // Registrar evento de auditoría
+            await _auditService.LogEvent(uid, request.Email, "Inicio de sesión", null, null);
             return RedirectToAction("Index", "Lavados");
         }
         catch (Exception)
@@ -167,7 +171,8 @@ public class LoginController : Controller
 
             // Autenticar al usuario en tu aplicación
             await SignInUser(userRecord.Uid, request.Email, "Empleado", request.NombreCompleto);
-
+            // Registrar evento de auditoría
+            await _auditService.LogEvent(userRecord.Uid, request.Email, "Inicio de sesión", null, null);
             return RedirectToAction("Index", "Lavados");
         }
         catch (FirebaseAuthException ex)

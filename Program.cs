@@ -1,5 +1,6 @@
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
+using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,7 +12,14 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.LoginPath = "/Login/Index";
         options.LogoutPath = "/Lavados/Logout";
     });
-
+// Registrar FirestoreDb como un servicio singleton
+builder.Services.AddSingleton(provider =>
+{
+    string path = AppDomain.CurrentDomain.BaseDirectory + @"Utils\loginmvc.json";
+    Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", path);
+    return FirestoreDb.Create("aplicacion-lavadero");
+});
+builder.Services.AddScoped<AuditService>();
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
