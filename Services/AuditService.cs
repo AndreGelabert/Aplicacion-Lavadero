@@ -21,6 +21,6 @@ public class AuditService
             Timestamp = DateTime.UtcNow
         };
 
-        await _firestore.Collection("audit_logs").AddAsync(auditLog);
+        await _firestore.Collection("registros_auditoria").AddAsync(auditLog);
     }
 }
