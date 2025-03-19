@@ -20,6 +20,7 @@ builder.Services.AddSingleton(provider =>
     return FirestoreDb.Create("aplicacion-lavadero");
 });
 builder.Services.AddScoped<AuditService>();
+builder.Services.AddScoped<PersonalService>();
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
