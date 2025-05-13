@@ -1,55 +1,39 @@
-﻿//JavaScript para la página de Personal
-var isEditing = false;
-function toggleEdit(id) {
-    var rolText = document.getElementById('rol-text-' + id);
-    var rolForm = document.getElementById('rol-form-' + id);
-    if (rolText.classList.contains('hidden')) {
-        rolText.classList.remove('hidden');
-        rolForm.classList.add('hidden');
-        isEditing = false;
-    } else {
-        rolText.classList.add('hidden');
-        rolForm.classList.remove('hidden');
-        isEditing = true;
-    }
-}
-
-function submitForm(id) {
-    var form = document.getElementById('rol-form-' + id);
-    form.submit();
-}
-
-document.addEventListener('click', function (event) {
-    var isClickInside = false;
-    var forms = document.querySelectorAll('form[id^="rol-form-"]');
-    forms.forEach(function (form) {
-        if (form.contains(event.target) || event.target.closest('button[onclick^="toggleEdit"]')) {
-            isClickInside = true;
-        }
-    });
-
-    if (!isClickInside && isEditing) {
-        location.reload(); // Refrescar la página para cancelar la edición
-    }
-});
-// Manejar envío del formulario de reactivación
-document.querySelectorAll('form[asp-action="ReactivateEmployee"]').forEach(form => {
-    form.addEventListener('submit', function (e) {
-        e.preventDefault();
-
-        fetch(this.action, {
-            method: 'POST',
-            body: new FormData(this)
-        }).then(response => {
-            if (response.ok) {
-                location.reload(); // Recargar para ver cambios
-            }
-        });
-    });
-});
+﻿// Funciones de utilidad generales
 document.addEventListener('DOMContentLoaded', function () {
-    const filterForm = document.getElementById('filterForm');
+    // Inicializar funcionalidades basadas en la presencia de elementos específicos
+    initializeByPage();
 
+    // Inicializar el formulario de filtro (común en varias páginas)
+    initializeFilterForm();
+
+    // Inicializar autoGrow para el campo de descripción si existe
+    const descripcionField = document.getElementById('Descripcion');
+    if (descripcionField) {
+        autoGrow(descripcionField);
+    }
+});
+
+// Inicializa las funcionalidades específicas de cada página
+function initializeByPage() {
+    // Para la página de Personal
+    if (document.querySelector('form[id^="rol-form-"]')) {
+        initializePersonalPage();
+    }
+
+    // Para la página de Servicios
+    if (document.getElementById('servicio-form')) {
+        initializeServiciosPage();
+    }
+
+    // Funcionalidad común de filtrado de tablas (si existe la tabla)
+    if (document.querySelector('table')) {
+        setupTableFilter();
+    }
+}
+
+// Inicializa el formulario de filtro común
+function initializeFilterForm() {
+    const filterForm = document.getElementById('filterForm');
     if (filterForm) {
         filterForm.addEventListener('submit', function (e) {
             const checkboxes = Array.from(this.querySelectorAll('input[name="estados"]:checked'));
@@ -58,17 +42,32 @@ document.addEventListener('DOMContentLoaded', function () {
             if (checkboxes.length === 0) {
                 e.preventDefault();
                 const activoCheckbox = this.querySelector('input[name="estados"][value="Activo"]');
-                activoCheckbox.checked = true;
-                this.submit();
+                if (activoCheckbox) {
+                    activoCheckbox.checked = true;
+                    this.submit();
+                }
             }
         });
     }
-});
+}
+
+// Función para filtrar tablas por texto
+function setupTableFilter() {
+    const searchInput = document.getElementById('simple-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', filterTable);
+    }
+}
+
 function filterTable() {
     var input, filter, table, tr, td, i, j, txtValue;
     input = document.getElementById("simple-search");
+    if (!input) return;
+
     filter = input.value.toUpperCase();
     table = document.querySelector("table");
+    if (!table) return;
+
     tr = table.getElementsByTagName("tr");
 
     for (i = 1; i < tr.length; i++) {
@@ -85,3 +84,144 @@ function filterTable() {
         }
     }
 }
+
+// Funcionalidades específicas para la página de Personal
+function initializePersonalPage() {
+    // Configurar toggleEdit y escucha de clics fuera de los formularios
+    setupRoleEditing();
+
+    // Configurar formularios de reactivación
+    document.querySelectorAll('form[asp-action="ReactivateEmployee"]').forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            fetch(this.action, {
+                method: 'POST',
+                body: new FormData(this)
+            }).then(response => {
+                if (response.ok) {
+                    location.reload(); // Recargar para ver cambios
+                }
+            });
+        });
+    });
+}
+
+var isEditing = false;
+function setupRoleEditing() {
+    // Configurar detección de clics fuera de los formularios de edición
+    document.addEventListener('click', function (event) {
+        var isClickInside = false;
+        var forms = document.querySelectorAll('form[id^="rol-form-"]');
+        forms.forEach(function (form) {
+            if (form.contains(event.target) || event.target.closest('button[onclick^="toggleEdit"]')) {
+                isClickInside = true;
+            }
+        });
+
+        if (!isClickInside && isEditing) {
+            location.reload(); // Refrescar la página para cancelar la edición
+        }
+    });
+}
+
+function toggleEdit(id) {
+    var rolText = document.getElementById('rol-text-' + id);
+    var rolForm = document.getElementById('rol-form-' + id);
+    if (!rolText || !rolForm) return;
+
+    if (rolText.classList.contains('hidden')) {
+        rolText.classList.remove('hidden');
+        rolForm.classList.add('hidden');
+        isEditing = false;
+    } else {
+        rolText.classList.add('hidden');
+        rolForm.classList.remove('hidden');
+        isEditing = true;
+    }
+}
+
+function submitForm(id) {
+    var form = document.getElementById('rol-form-' + id);
+    if (form) form.submit();
+}
+
+// Funcionalidades específicas para la página de Servicios
+function initializeServiciosPage() {
+    // Verificar si estamos editando para abrir el acordeón
+    if (document.getElementById('form-title').textContent.includes('Editando')) {
+        var accordion = document.getElementById('accordion-flush-body-1');
+        if (accordion) accordion.classList.remove('hidden');
+    }
+}
+function autoGrow(element) {
+    element.style.height = '2.5rem'; // Altura inicial
+    element.style.height = (element.scrollHeight) + 'px'; // Ajustar a contenido
+}
+
+function clearForm() {
+    const idField = document.getElementById('Id');
+    const nombreField = document.getElementById('Nombre');
+    const precioField = document.getElementById('Precio');
+    const tipoField = document.getElementById('Tipo');
+    const descripcionField = document.getElementById('Descripcion');
+
+    if (idField) idField.value = '';
+    if (nombreField) nombreField.value = '';
+    if (precioField) precioField.value = '';
+    if (tipoField) tipoField.selectedIndex = 0;
+    if (descripcionField) descripcionField.value = '';
+}
+function initializeFilterForm() {
+    const filterForm = document.getElementById('filterForm');
+    if (filterForm) {
+        filterForm.addEventListener('submit', function (e) {
+            // Verificar checkboxes de estados
+            const estadosCheckboxes = Array.from(this.querySelectorAll('input[name="estados"]:checked'));
+
+            // Si no hay checkboxes de estados marcados, forzar "Activo"
+            if (estadosCheckboxes.length === 0) {
+                const activoCheckbox = this.querySelector('input[name="estados"][value="Activo"]');
+                if (activoCheckbox) {
+                    activoCheckbox.checked = true;
+                }
+            }
+
+            // No se necesita preventDefault() ni manual submit ya que queremos que el formulario se envíe normalmente
+        });
+    }
+}
+// Función para limpiar y cerrar el modal de tipo de servicio
+function limpiarModalTipoServicio() {
+    document.getElementById('nombreTipo').value = '';
+    // Cerrar el modal
+    document.querySelector('[data-modal-toggle="defaultModal"]').click();
+}
+
+// Funciones para gestionar el modal de eliminación de tipo de servicio
+document.addEventListener('DOMContentLoaded', function () {
+    // Setup para el formulario de eliminación de tipo
+    const btnEliminarTipo = document.querySelector('[data-modal-toggle="eliminarTipoModal"]');
+    if (btnEliminarTipo) {
+        btnEliminarTipo.addEventListener('click', function () {
+            const tipoSeleccionado = document.getElementById('Tipo').value;
+            document.getElementById('nombreTipoEliminar').value = tipoSeleccionado;
+        });
+    }
+
+    // Auto-ocultar alertas después de 5 segundos
+    setTimeout(function () {
+        const errorAlert = document.getElementById('error-alert');
+        const successAlert = document.getElementById('success-alert');
+        if (errorAlert) errorAlert.style.display = 'none';
+        if (successAlert) successAlert.style.display = 'none';
+    }, 5000);
+
+    // Asegurar que el botón de cancelar del modal de tipo servicio funcione
+    const cancelarTipoBtn = document.querySelector('#defaultModal button[type="button"]');
+    if (cancelarTipoBtn) {
+        cancelarTipoBtn.addEventListener('click', function () {
+            limpiarModalTipoServicio();
+        });
+    }
+});

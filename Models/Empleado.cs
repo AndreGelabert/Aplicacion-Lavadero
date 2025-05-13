@@ -2,10 +2,10 @@ namespace Firebase.Models
 {
     public class Empleado
     {
-        public string Id { get; set; }
-        public string NombreCompleto { get; set; }
-        public string Email { get; set; }
-        public string Rol { get; set; }
-        public string Estado { get; set; }
+        public required string Id { get; set; }
+        public required string NombreCompleto { get; set; }
+        public required string Email { get; set; }
+        public required string Rol { get; set; }
+        public required string Estado { get; set; }
     }
 }

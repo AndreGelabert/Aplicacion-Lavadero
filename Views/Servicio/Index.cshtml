@@ -1,0 +1,487 @@
+﻿@model List<Firebase.Models.Servicio>
+@{
+    ViewData["Title"] = "Servicios";
+    var user = User as ClaimsPrincipal;
+    var currentUserEmail = user?.FindFirst(ClaimTypes.Email)?.Value; // Obtener el email del usuario actual
+    if (TempData["StateChangeEvent_UserId"] != null && TempData["StateChangeEvent_NewState"] != null)
+    {
+        var userId = TempData["StateChangeEvent_UserId"].ToString();
+        var newState = TempData["StateChangeEvent_NewState"];
+        <script>
+            gtag('event', 'state_change', {
+                'user_id': '@userId',
+                'new_state': '@newState'
+            });
+        </script>
+    }
+}
+<section class="bg-gray-50 dark:bg-gray-900">
+    <div class="mx-auto bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-hidden">
+        <!-- Encabezado -->
+        <div class="p-2 flex justify-between items-center rounded-t border-b dark:border-gray-600">
+            <h1 class="text-2xl md:block font-semibold text-gray-900 dark:text-white">
+                Servicios
+            </h1>
+            <!-- Botón de ayuda -->
+            <button data-popover-target="popover-click" data-popover-trigger="click" type="button" class="text-white ml-auto inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-2 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"></path>
+                </svg>
+            </button>
+            <div data-popover id="popover-click" role="tooltip" class="absolute z-10 invisible inline-block w-64 text-sm text-gray-500 transition-opacity duration-300 bg-white border border-gray-200 rounded-lg shadow-xs opacity-0 dark:text-gray-400 dark:border-gray-600 dark:bg-gray-800">
+                <div class="px-3 py-2 bg-gray-100 border-b border-gray-200 rounded-t-lg dark:border-gray-600 dark:bg-gray-700">
+                    <h3 class="font-semibold text-gray-900 dark:text-white">Ayuda</h3>
+                </div>
+                <div class="px-3 py-2">
+                    <p>En esta pagina puedes ver, crear, modificar y eliminar los servicios que ofrece el lavadero. Un servicio es esencial a la hora de registrar un lavado.</p>
+                </div>
+                <div data-popper-arrow></div>
+            </div>
+
+        </div>
+        <!-- Formulario de Registro/Edicion -->
+        <div id="accordion-flush" data-accordion="collapse" data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white" data-inactive-classes="text-gray-500 dark:text-gray-400">
+            <h2 id="accordion-flush-heading-1">
+                <button type="button" class="flex items-center justify-between w-full py-5 font-medium rtl:text-right text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400 gap-3" data-accordion-target="#accordion-flush-body-1" aria-expanded="true" aria-controls="accordion-flush-body-1">
+                    <span id="form-title">@ViewBag.FormTitle</span>
+                    <svg data-accordion-icon class="w-3 h-3 rotate-180 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5" />
+                    </svg>
+                </button>
+            </h2>
+            <div id="accordion-flush-body-1" class="hidden" aria-labelledby="accordion-flush-heading-1">
+                <div class="py-5 border-b border-gray-200 dark:border-gray-700">
+                    <!-- Modal body -->
+                    <form id="servicio-form" method="post" asp-action="@ViewBag.FormAction">
+                        <input type="hidden" id="Id" name="Id" value="@(ViewBag.EditServicio?.Id)" />
+                        <div class="grid gap-4 mb-4 sm:grid-cols-3">
+                            <div>
+                                <label for="Nombre" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre</label>
+                                <input type="text" name="Nombre" id="Nombre" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Nombre del servicio" value="@(ViewBag.EditServicio?.Nombre)" required>
+                            </div>
+                            <div>
+                                <label for="Precio" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Precio</label>
+                                <input type="number" name="Precio" id="Precio" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Precio del servicio" value="@(ViewBag.EditServicio?.Precio)" required>
+                            </div>
+                            <div>
+                                <label for="Tipo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo</label>
+                                <div class="flex">
+                                    <select name="Tipo" id="Tipo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" required>
+                                        @if (ViewBag.TiposServicio != null)
+                                        {
+                                            foreach (var tipo in ViewBag.TiposServicio as List<string>)
+                                            {
+                                                <option value="@tipo">@tipo</option>
+                                            }
+                                        }
+                                    </select>
+                                    <button type="button" data-modal-target="defaultModal" data-modal-toggle="defaultModal" class="ml-2 px-1 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button" data-modal-target="eliminarTipoModal" data-modal-toggle="eliminarTipoModal" class="ml-2 px-1 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="sm:col-span-3">
+                                <label for="Descripcion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Descripción</label>
+                                <textarea id="Descripcion" name="Descripcion" rows="1" style="min-height: 2.5rem; overflow-y: hidden;" oninput="autoGrow(this)" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Descripción del servicio" required>@(ViewBag.EditServicio?.Descripcion)</textarea>
+                            </div>
+                            <!-- El campo Estado se elimina ya que se maneja con los botones de activar/desactivar -->
+                            <input type="hidden" name="Estado" value="@(ViewBag.EditServicio?.Estado ?? "Activo")" />
+                        </div>
+                        <div class="flex justify-end gap-2">
+                            <button type="submit" id="submit-button" class="text-white inline-flex items-center bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
+                                    <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                                </svg>
+                                @ViewBag.SubmitButtonText
+                            </button>
+                            <button type="button" id="clear-button" class="text-white inline-flex items-center bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900 font-medium rounded-lg text-sm px-2 py-1 text-center" onclick="@(ViewBag.EditServicio != null ? "location.href='" + Url.Action("Index") + "'" : "clearForm()")">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
+                                    <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
+                                </svg>
+                                @ViewBag.ClearButtonText
+                            </button>
+                        </div>
+                        <!-- Notificaciones para mostrar mensajes de error/éxito -->
+                        @if (TempData["Error"] != null)
+                        {
+                            <div id="error-alert" class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400" role="alert">
+                                <span class="font-medium">¡Error!</span> @TempData["Error"]
+                            </div>
+                        }
+
+                        @if (TempData["Success"] != null)
+                        {
+                            <div id="success-alert" class="p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400" role="alert">
+                                <span class="font-medium">¡Éxito!</span> @TempData["Success"]
+                            </div>
+                        }
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- Modal de Tipo de Servicio -->
+        <div id="defaultModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-modal md:h-full">
+            <div class="relative p-4 w-full max-w-2xl h-full md:h-auto">
+                <!-- Modal content -->
+                <div class="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
+                    <!-- Modal header -->
+                    <div class="flex justify-between items-center pb-4 mb-4 rounded-t border-b sm:mb-5 dark:border-gray-600">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            Registrar un Tipo de Servicio
+                        </h3>
+                        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-toggle="defaultModal">
+                            <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                            <span class="sr-only">Close modal</span>
+                        </button>
+                    </div>
+                    <!-- Modal body -->
+                    <form asp-action="CrearTipoServicio" id="formCrearTipoServicio">
+                        <div class="grid gap-4 mb-4 sm:grid-cols-1">
+                            <div>
+                                <label for="nombreTipo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre</label>
+                                <input type="text" name="nombreTipo" id="nombreTipo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Ingrese el nombre del tipo de servicio" required="">
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-2">
+                            <button type="submit" class="text-white inline-flex items-center bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
+                                    <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                                </svg>
+                                Registrar Tipo de Servicio
+                            </button>
+                            <button type="button" onclick="limpiarModalTipoServicio()" class="text-white inline-flex items-center bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
+                                    <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
+                                </svg>
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- Modal de Confirmación para Eliminar Tipo de Servicio -->
+        <div id="eliminarTipoModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-modal md:h-full">
+            <div class="relative p-4 w-full max-w-md h-full md:h-auto">
+                <!-- Contenido del modal -->
+                <div class="relative p-4 text-center bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
+                    <button type="button" class="text-gray-400 absolute top-2.5 right-2.5 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-toggle="eliminarTipoModal">
+                        <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                        <span class="sr-only">Cerrar modal</span>
+                    </button>
+                    <svg class="text-gray-400 dark:text-gray-500 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                    <p class="mb-4 text-gray-500 dark:text-gray-300">¿Está seguro que desea eliminar este tipo de servicio?</p>
+                    <form method="post" asp-action="EliminarTipoServicio" id="formEliminarTipo">
+                        <input type="hidden" id="nombreTipoEliminar" name="nombreTipo" />
+                        <div class="flex justify-center items-center space-x-4">
+                            <button data-modal-toggle="eliminarTipoModal" type="button" class="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-primary-300 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">
+                                No, cancelar
+                            </button>
+                            <button type="submit" class="py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900">
+                                Sí, eliminar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- Encabezado de la tabla -->
+        <div class="flex flex-col md:flex-row items-center justify-between space-y-3 md:space-y-0 md:space-x-4 p-4">
+            <div class="w-full md:w-1/2">
+                <form class="flex items-center" onsubmit="return false;">
+                    <label for="simple-search" class="sr-only">Buscar</label>
+                    <div class="relative w-96">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg aria-hidden="true" class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="currentColor" viewbox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <input type="text" id="simple-search" oninput="filterTable()" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Buscar por nombre" required="">
+                    </div>
+                </form>
+            </div>
+            <div class="w-full md:w-auto flex flex-col md:flex-row space-y-2 md:space-y-0 items-stretch md:items-center justify-end md:space-x-3 flex-shrink-0">
+                <div class="flex items-center space-x-3 w-full md:w-auto">
+                    <!-- Botón de Filtro -->
+                    <button id="filterDropdownButton" data-dropdown-toggle="filterDropdown" class="w-full md:w-auto flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700" type="button">
+                        <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="h-4 w-4 mr-2 text-gray-400" viewbox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
+                        </svg>
+                        Filtros
+                        <svg class="-mr-1 ml-1.5 w-5 h-5" fill="currentColor" viewbox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                        </svg>
+                    </button>
+                    <!-- Dropdown de Filtro -->
+                    <div id="filterDropdown" class="z-10 hidden w-56 p-3 bg-white rounded-lg shadow dark:bg-gray-700">
+                        <form method="get" asp-action="Index" id="filterForm" class="space-y-4">
+                            <input type="hidden" name="pageNumber" value="1" />
+
+                            <!-- Filtrar por Estado -->
+                            <div>
+                                <h6 class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Estado</h6>
+                                <ul class="space-y-2 text-sm">
+                                    <!-- Checkbox Activo -->
+                                    <li class="flex items-center">
+                                        <input id="activoCheckbox" type="checkbox" name="estados" value="Activo"
+                                        @(ViewBag.Estados?.Contains("Activo") == true ? "checked" : "")
+                                               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
+                                        <label for="activoCheckbox" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">Activo</label>
+                                    </li>
+                                    <!-- Checkbox Inactivo -->
+                                    <li class="flex items-center">
+                                        <input id="inactivoCheckbox" type="checkbox" name="estados" value="Inactivo"
+                                        @(ViewBag.Estados?.Contains("Inactivo") == true ? "checked" : "")
+                                               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
+                                        <label for="inactivoCheckbox" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">Inactivo</label>
+                                    </li>
+                                </ul>
+                            </div>
+                            <!-- Filtrar por Tipo -->
+                            <div>
+                                <h6 class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Servicio</h6>
+                                <ul class="space-y-2 max-h-36 overflow-y-auto text-sm">
+                                    @if (ViewBag.TodosLosTipos != null)
+                                    {
+                                        @foreach (var tipo in ViewBag.TodosLosTipos)
+                                        {
+                                            <li class="flex items-center">
+                                                <input id="tipo-@tipo.Replace(" ", "-")" type="checkbox" name="tipos" value="@tipo"
+                                                @(ViewBag.Tipos?.Contains(tipo) == true ? "checked" : "")
+                                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
+                                                <label for="tipo-@tipo.Replace(" ", "-")" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">@tipo</label>
+                                            </li>
+                                        }
+                                    }
+                                </ul>
+                            </div>
+                            <button type="submit" class="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                Aplicar Filtros
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Tabla de la vista -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                    <tr>
+                        <th scope="col" class="px-4 py-3">Nombre</th>
+                        <th scope="col" class="px-4 py-3">Precio</th>
+                        <th scope="col" class="px-4 py-3">Tipo</th>
+                        <th scope="col" class="px-4 py-3">Estado</th>
+                        <th scope="col" class="px-4 py-3 w-1/6 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Any())
+                    {
+                        @foreach (var servicio in Model)
+                        {
+                            <tr class="border-b dark:border-gray-700">
+                                <th scope="row" class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap dark:text-white">@servicio.Nombre</th>
+                                <td class="px-4 py-3">@servicio.Precio.ToString("C")</td>
+                                <td class="px-4 py-3">@servicio.Tipo</td>
+                                <td class="px-4 py-3">
+                                    @if (servicio.Estado == "Activo")
+                                    {
+                                        <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-green-900 dark:text-green-300">
+                                            Activo
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-red-900 dark:text-red-300">
+                                            Inactivo
+                                        </span>
+                                    }
+                                </td>
+                                <td class="px-4 py-3 w-1/6 whitespace-nowrap text-center">
+                                    <div class="flex items-center justify-center gap-2">
+                                        @if (servicio.Estado == "Inactivo")
+                                        {
+                                            <!-- Botón Reactivar -->
+                                            <button data-modal-target="reactivateModal-@servicio.Id" data-modal-toggle="reactivateModal-@servicio.Id"
+                                                    class="p-1.5 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                                                    <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <!-- Botón Editar -->
+                                            <a href="@Url.Action("Index", new { editId = servicio.Id })" class="p-1.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"></path>
+                                                </svg>
+                                            </a>
+                                            <!-- Botón Eliminar -->
+                                            <button id="deleteButton-@servicio.Id" data-modal-target="deleteModal-@servicio.Id" data-modal-toggle="deleteModal-@servicio.Id" class="p-1.5 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path>
+                                                </svg>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                            <!-- Modal de Confirmacion -->
+                            <div id="deleteModal-@servicio.Id" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-modal md:h-full">
+                                <div class="relative p-4 w-full max-w-md h-full md:h-auto">
+                                    <!-- Contenido del modal -->
+                                    <div class="relative p-4 text-center bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
+                                        <button type="button" class="text-gray-400 absolute top-2.5 right-2.5 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-toggle="deleteModal-@servicio.Id">
+                                            <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                            <span class="sr-only">Close modal</span>
+                                        </button>
+                                        <svg class="text-gray-400 dark:text-gray-500 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                                        <p class="mb-4 text-gray-500 dark:text-gray-300">¿Está seguro que desea eliminar a este usuario?</p>
+                                        <div class="flex justify-center items-center space-x-4">
+                                            <button data-modal-toggle="deleteModal-@servicio.Id" type="button" class="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-primary-300 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">
+                                                No, cancelar
+                                            </button>
+                                            <form method="post" asp-action="DeactivateServicio">
+                                                <input type="hidden" name="id" value="@servicio.Id" />
+                                                <button type="submit" class="py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900">
+                                                    Sí, estoy seguro
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Modal de Reactivación -->
+                            <div id="reactivateModal-@servicio.Id" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-modal md:h-full">
+                                <div class="relative p-4 w-full max-w-md h-full md:h-auto">
+                                    <div class="relative p-4 text-center bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
+                                        <button type="button" class="text-gray-400 absolute top-2.5 right-2.5 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-toggle="reactivateModal-@servicio.Id">
+                                            <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                            <span class="sr-only">Cerrar</span>
+                                        </button>
+                                        <div class="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 p-2 flex items-center justify-center mx-auto mb-3.5">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-green-500 dark:text-green-400">
+                                                <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                                            </svg>
+                                        </div>
+                                        <p class="mb-4 text-gray-500 dark:text-gray-300">¿Está seguro que desea reactivar a este usuario?</p>
+                                        <div class="flex justify-center items-center space-x-4">
+                                            <button data-modal-toggle="reactivateModal-@servicio.Id" type="button" class="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-primary-300 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">
+                                                No, cancelar
+                                            </button>
+                                            <form method="post" asp-action="ReactivateServicio">
+                                                <input type="hidden" name="id" value="@servicio.Id" />
+                                                <button type="submit" class="py-2 px-3 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900">
+                                                    Sí, reactivar
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-gray-500 dark:text-gray-400">
+                                No hay datos para mostrar.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <!-- Paginación de la tabla -->
+        <nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">
+            <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
+                Mostrando página
+                <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.CurrentPage</span>
+                de
+                <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.TotalPages</span>
+            </span>
+
+            <ul class="inline-flex items-stretch -space-x-px">
+                <!-- Botón Anterior -->
+                <li>
+                    @if (ViewBag.CurrentPage > 1)
+                    {
+                        <a href="@Url.Action("Index", new {
+                    estados = ViewBag.Estados,
+                    lastDocId = ViewBag.LastDocId,
+                    pageNumber = ViewBag.CurrentPage - 1
+                })" class="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-500 bg-white rounded-l-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                            <span class="sr-only">Anterior</span>
+                            <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-300 bg-white rounded-l-lg border border-gray-300 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700">
+                            <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                    }
+                </li>
+
+                <!-- Números de página -->
+                @foreach (var pageNum in ViewBag.VisiblePages)
+                {
+                    <li>
+                        @if (pageNum == ViewBag.CurrentPage)
+                        {
+                            <span class="flex items-center justify-center text-sm z-10 py-2 px-3 leading-tight text-primary-600 bg-primary-50 border border-primary-300 dark:border-gray-700 dark:bg-gray-700 dark:text-white">@pageNum</span>
+                        }
+                        else
+                        {
+                            <a href="@Url.Action("Index", new {
+                        estados = ViewBag.Estados,
+                        lastDocId = ViewBag.LastDocId,
+                        pageNumber = pageNum
+                    })" class="flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                                @pageNum
+                            </a>
+                        }
+                    </li>
+                }
+
+                <!-- Botón Siguiente -->
+                <li>
+                    @if (ViewBag.CurrentPage < ViewBag.TotalPages)
+                    {
+                        <a href="@Url.Action("Index", new {
+                    estados = ViewBag.Estados,
+                    lastDocId = ViewBag.LastDocId,
+                    pageNumber = ViewBag.CurrentPage + 1
+                })" class="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-500 bg-white rounded-r-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                            <span class="sr-only">Siguiente</span>
+                            <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-300 bg-white rounded-r-lg border border-gray-300 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700">
+                            <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                    }
+                </li>
+            </ul>
+        </nav>
+    </div>
+</section>

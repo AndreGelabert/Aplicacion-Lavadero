@@ -2,7 +2,7 @@
 namespace Firebase.Models
 {
     [FirestoreData]
-    public class TipoServicio
+    public class TipoVehiculo
     {
         [FirestoreProperty]
         public required string Id { get; set; }
