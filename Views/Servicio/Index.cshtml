@@ -50,11 +50,11 @@
                 </button>
             </h2>
             <div id="accordion-flush-body-1" class="hidden" aria-labelledby="accordion-flush-heading-1">
-                <div class="py-5 border-b border-gray-200 dark:border-gray-700">
+                <div class="py-2 border-b border-gray-200 dark:border-gray-700">
                     <!-- Modal body -->
                     <form id="servicio-form" method="post" asp-action="@ViewBag.FormAction">
                         <input type="hidden" id="Id" name="Id" value="@(ViewBag.EditServicio?.Id)" />
-                        <div class="grid gap-4 mb-4 sm:grid-cols-3">
+                        <div class="grid gap-4 m-4 grid-cols-5">
                             <div>
                                 <label for="Nombre" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre</label>
                                 <input type="text" name="Nombre" id="Nombre" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Nombre del servicio" value="@(ViewBag.EditServicio?.Nombre)" required>
@@ -67,13 +67,18 @@
                                 <label for="Tipo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo</label>
                                 <div class="flex">
                                     <select name="Tipo" id="Tipo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" required>
-                                        @if (ViewBag.TiposServicio != null)
+                                        @foreach (var tipo in ViewBag.TiposServicio as List<string>)
                                         {
-                                            foreach (var tipo in ViewBag.TiposServicio as List<string>)
+                                            if (ViewBag.EditServicio?.Tipo == tipo)
+                                            {
+                                                <option value="@tipo" selected>@tipo</option>
+                                            }
+                                            else
                                             {
                                                 <option value="@tipo">@tipo</option>
                                             }
                                         }
+
                                     </select>
                                     <button type="button" data-modal-target="defaultModal" data-modal-toggle="defaultModal" class="ml-2 px-1 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -87,7 +92,41 @@
                                     </button>
                                 </div>
                             </div>
-                            <div class="sm:col-span-3">
+                            <!-- Nuevo campo para Tipo de Vehículo -->
+                            <div>
+                                <label for="TipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Vehículo</label>
+                                <div class="flex">
+                                    <select name="TipoVehiculo" id="TipoVehiculo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" required>
+                                        @foreach (var tipo in ViewBag.TiposVehiculo as List<string>)
+                                        {
+                                            if (ViewBag.EditServicio?.TipoVehiculo == tipo)
+                                            {
+                                                <option value="@tipo" selected>@tipo</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@tipo">@tipo</option>
+                                            }
+                                        }
+                                    </select>
+                                    <button type="button" data-modal-target="tipoVehiculoModal" data-modal-toggle="tipoVehiculoModal" class="ml-2 px-1 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button" data-modal-target="eliminarTipoVehiculoModal" data-modal-toggle="eliminarTipoVehiculoModal" class="ml-2 px-1 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Nuevo campo para Tiempo Estimado -->
+                            <div>
+                                <label for="TiempoEstimado" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tiempo Estimado (minutos)</label>
+                                <input type="number" name="TiempoEstimado" id="TiempoEstimado" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Tiempo estimado en minutos" value="@(ViewBag.EditServicio?.TiempoEstimado)" required min="1">
+                            </div>
+                            <div class="col-span-6">
                                 <label for="Descripcion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Descripción</label>
                                 <textarea id="Descripcion" name="Descripcion" rows="1" style="min-height: 2.5rem; overflow-y: hidden;" oninput="autoGrow(this)" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Descripción del servicio" required>@(ViewBag.EditServicio?.Descripcion)</textarea>
                             </div>
@@ -192,6 +231,72 @@
                 </div>
             </div>
         </div>
+        <!-- Modal de Tipo de Vehículo -->
+        <div id="tipoVehiculoModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-modal md:h-full">
+            <div class="relative p-4 w-full max-w-2xl h-full md:h-auto">
+                <!-- Modal content -->
+                <div class="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
+                    <!-- Modal header -->
+                    <div class="flex justify-between items-center pb-4 mb-4 rounded-t border-b sm:mb-5 dark:border-gray-600">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            Registrar un Tipo de Vehículo
+                        </h3>
+                        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-toggle="tipoVehiculoModal">
+                            <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                            <span class="sr-only">Close modal</span>
+                        </button>
+                    </div>
+                    <!-- Modal body -->
+                    <form asp-action="CrearTipoVehiculo" id="formCrearTipoVehiculo">
+                        <div class="grid gap-4 mb-4 sm:grid-cols-1">
+                            <div>
+                                <label for="nombreTipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre</label>
+                                <input type="text" name="nombreTipo" id="nombreTipoVehiculo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Ingrese el nombre del tipo de vehículo" required="">
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-2">
+                            <button type="submit" class="text-white inline-flex items-center bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
+                                    <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                                </svg>
+                                Registrar Tipo de Vehículo
+                            </button>
+                            <button type="button" onclick="limpiarModalTipoVehiculo()" class="text-white inline-flex items-center bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
+                                    <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
+                                </svg>
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- Modal de Confirmación para Eliminar Tipo de Vehículo -->
+        <div id="eliminarTipoVehiculoModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-modal md:h-full">
+            <div class="relative p-4 w-full max-w-md h-full md:h-auto">
+                <!-- Contenido del modal -->
+                <div class="relative p-4 text-center bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
+                    <button type="button" class="text-gray-400 absolute top-2.5 right-2.5 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-toggle="eliminarTipoVehiculoModal">
+                        <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                        <span class="sr-only">Cerrar modal</span>
+                    </button>
+                    <svg class="text-gray-400 dark:text-gray-500 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                    <p class="mb-4 text-gray-500 dark:text-gray-300">¿Está seguro que desea eliminar este tipo de vehículo?</p>
+                    <form method="post" asp-action="EliminarTipoVehiculo" id="formEliminarTipoVehiculo">
+                        <input type="hidden" id="nombreTipoVehiculoEliminar" name="nombreTipo" />
+                        <div class="flex justify-center items-center space-x-4">
+                            <button data-modal-toggle="eliminarTipoVehiculoModal" type="button" class="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-primary-300 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">
+                                No, cancelar
+                            </button>
+                            <button type="submit" class="py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900">
+                                Sí, eliminar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
         <!-- Encabezado de la tabla -->
         <div class="flex flex-col md:flex-row items-center justify-between space-y-3 md:space-y-0 md:space-x-4 p-4">
             <div class="w-full md:w-1/2">
@@ -244,7 +349,7 @@
                                     </li>
                                 </ul>
                             </div>
-                            <!-- Filtrar por Tipo -->
+                            <!-- Filtrar por Tipo de Servicio -->
                             <div>
                                 <h6 class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Servicio</h6>
                                 <ul class="space-y-2 max-h-36 overflow-y-auto text-sm">
@@ -257,6 +362,24 @@
                                                 @(ViewBag.Tipos?.Contains(tipo) == true ? "checked" : "")
                                                        class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
                                                 <label for="tipo-@tipo.Replace(" ", "-")" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">@tipo</label>
+                                            </li>
+                                        }
+                                    }
+                                </ul>
+                            </div>
+                            <!-- Filtrar por Tipo de Vehículo -->
+                            <div>
+                                <h6 class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Vehículo</h6>
+                                <ul class="space-y-2 max-h-36 overflow-y-auto text-sm">
+                                    @if (ViewBag.TiposVehiculo != null)
+                                    {
+                                        @foreach (var tipo in ViewBag.TiposVehiculo as List<string>)
+                                        {
+                                            <li class="flex items-center">
+                                                <input id="tipoVehiculo-@tipo.Replace(" ", "-")" type="checkbox" name="tiposVehiculo" value="@tipo"
+                                                @(ViewBag.TiposVehiculo?.Contains(tipo) == true ? "checked" : "")
+                                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
+                                                <label for="tipoVehiculo-@tipo.Replace(" ", "-")" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">@tipo</label>
                                             </li>
                                         }
                                     }
@@ -278,6 +401,8 @@
                         <th scope="col" class="px-4 py-3">Nombre</th>
                         <th scope="col" class="px-4 py-3">Precio</th>
                         <th scope="col" class="px-4 py-3">Tipo</th>
+                        <th scope="col" class="px-4 py-3">Tipo Vehículo</th>
+                        <th scope="col" class="px-4 py-3">Tiempo Est.</th>
                         <th scope="col" class="px-4 py-3">Estado</th>
                         <th scope="col" class="px-4 py-3 w-1/6 text-center">Acciones</th>
                     </tr>
@@ -291,6 +416,8 @@
                                 <th scope="row" class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap dark:text-white">@servicio.Nombre</th>
                                 <td class="px-4 py-3">@servicio.Precio.ToString("C")</td>
                                 <td class="px-4 py-3">@servicio.Tipo</td>
+                                <td class="px-4 py-3">@servicio.TipoVehiculo</td>
+                                <td class="px-4 py-3">@servicio.TiempoEstimado min</td>
                                 <td class="px-4 py-3">
                                     @if (servicio.Estado == "Activo")
                                     {

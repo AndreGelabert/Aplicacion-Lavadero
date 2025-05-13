@@ -17,6 +17,12 @@ namespace Firebase.Models
         public required string Tipo { get; set; } // Almacenar el tipo como string para permitir agregar nuevos tipos
 
         [FirestoreProperty]
+        public required string TipoVehiculo { get; set; } // Nuevo campo para tipo de vehículo
+
+        [FirestoreProperty]
+        public int TiempoEstimado { get; set; } // Nuevo campo para tiempo estimado en minutos
+
+        [FirestoreProperty]
         public required string Descripcion { get; set; }
 
         [FirestoreProperty]

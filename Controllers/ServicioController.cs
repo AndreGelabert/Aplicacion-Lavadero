@@ -8,13 +8,19 @@ public class ServicioController : Controller
 {
     private readonly ServicioService _servicioService;
     private readonly AuditService _auditService;
-    private readonly TipoServicioService _tipoServicioService; // Nuevo servicio para tipos
+    private readonly TipoServicioService _tipoServicioService;
+    private readonly TipoVehiculoService _tipoVehiculoService; // Nuevo servicio para tipos de vehículo
 
-    public ServicioController(ServicioService servicioService, AuditService auditService, TipoServicioService tipoServicioService)
+    public ServicioController(
+        ServicioService servicioService,
+        AuditService auditService,
+        TipoServicioService tipoServicioService,
+        TipoVehiculoService tipoVehiculoService) // Añadir inyección del nuevo servicio
     {
         _servicioService = servicioService;
         _auditService = auditService;
         _tipoServicioService = tipoServicioService;
+        _tipoVehiculoService = tipoVehiculoService;
     }
 
     [HttpGet]
@@ -35,6 +41,8 @@ public class ServicioController : Controller
 
         // Obtener tipos de servicio para el desplegable
         var tiposServicio = await _tipoServicioService.ObtenerTiposServicio() ?? new List<string>();
+        // Obtener tipos de vehículo para el desplegable
+        var tiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
 
         ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = visiblePages;
@@ -45,6 +53,8 @@ public class ServicioController : Controller
         ViewBag.FirstDocId = servicios.FirstOrDefault()?.Id;
         ViewBag.LastDocId = servicios.LastOrDefault()?.Id;
         ViewBag.TiposServicio = tiposServicio;
+        ViewBag.TiposVehiculo = tiposVehiculo; // Nuevo para el desplegable de tipos de vehículo
+        ViewBag.TodosLosTipos = tiposServicio; // Para el filtro
 
         if (!string.IsNullOrEmpty(editId))
         {
@@ -81,7 +91,10 @@ public class ServicioController : Controller
 
         // Si hay errores, necesitamos cargar los tipos de servicio para el formulario
         var tiposServicio = await _tipoServicioService.ObtenerTiposServicio() ?? new List<string>();
+        var tiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+
         ViewBag.TiposServicio = tiposServicio;
+        ViewBag.TiposVehiculo = tiposVehiculo; // Nuevo para el desplegable
 
         // También necesitamos configurar otras variables del ViewBag que utiliza la vista
         ViewBag.FormTitle = "Registrando un Servicio";
@@ -99,7 +112,6 @@ public class ServicioController : Controller
 
         return View("Index", servicios);
     }
-
 
     [HttpPost]
     public async Task<IActionResult> ActualizarServicio(Servicio servicio)
@@ -126,7 +138,11 @@ public class ServicioController : Controller
 
         // Si hay errores, volver a cargar la página con los mismos datos
         var tiposServicio = await _tipoServicioService.ObtenerTiposServicio() ?? new List<string>();
+        var tiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+
         ViewBag.TiposServicio = tiposServicio;
+        ViewBag.TiposVehiculo = tiposVehiculo; // Nuevo para el desplegable
+
         ViewBag.EditServicio = servicio;
         ViewBag.FormTitle = "Editando un Servicio";
         ViewBag.SubmitButtonText = "Guardar";
@@ -206,6 +222,54 @@ public class ServicioController : Controller
                 var userEmail = User.FindFirstValue(ClaimTypes.Email);
                 await _auditService.LogEvent(userId, userEmail, "Eliminación de tipo de servicio", nombreTipo, "TipoServicio");
                 TempData["Success"] = "Tipo de servicio eliminado correctamente.";
+            }
+        }
+        return RedirectToAction("Index");
+    }
+
+    // Nuevos métodos para gestionar tipos de vehículos
+    [HttpPost]
+    public async Task<IActionResult> CrearTipoVehiculo(string nombreTipo)
+    {
+        if (!string.IsNullOrWhiteSpace(nombreTipo))
+        {
+            bool existeTipo = await _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo);
+
+            if (existeTipo)
+            {
+                TempData["Error"] = "Ya existe un tipo de vehículo con el mismo nombre.";
+            }
+            else
+            {
+                await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo);
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var userEmail = User.FindFirstValue(ClaimTypes.Email);
+                await _auditService.LogEvent(userId, userEmail, "Creación de tipo de vehículo", nombreTipo, "TipoVehiculo");
+                TempData["Success"] = "Tipo de vehículo creado correctamente.";
+            }
+        }
+        return RedirectToAction("Index");
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> EliminarTipoVehiculo(string nombreTipo)
+    {
+        if (!string.IsNullOrWhiteSpace(nombreTipo))
+        {
+            // Verificar si hay servicios usando este tipo de vehículo
+            var serviciosConTipo = await _servicioService.ObtenerServiciosPorTipoVehiculo(nombreTipo);
+
+            if (serviciosConTipo.Any())
+            {
+                TempData["Error"] = "No se puede eliminar el tipo de vehículo porque hay servicios que lo utilizan.";
+            }
+            else
+            {
+                await _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo);
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var userEmail = User.FindFirstValue(ClaimTypes.Email);
+                await _auditService.LogEvent(userId, userEmail, "Eliminación de tipo de vehículo", nombreTipo, "TipoVehiculo");
+                TempData["Success"] = "Tipo de vehículo eliminado correctamente.";
             }
         }
         return RedirectToAction("Index");

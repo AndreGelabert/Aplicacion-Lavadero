@@ -225,3 +225,29 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+// Función para limpiar y cerrar el modal de tipo de vehículo
+function limpiarModalTipoVehiculo() {
+    document.getElementById('nombreTipoVehiculo').value = '';
+    // Cerrar el modal
+    document.querySelector('[data-modal-toggle="tipoVehiculoModal"]').click();
+}
+
+// Funciones para gestionar el modal de eliminación de tipo de vehículo
+document.addEventListener('DOMContentLoaded', function () {
+    // Setup para el formulario de eliminación de tipo de vehículo
+    const btnEliminarTipoVehiculo = document.querySelector('[data-modal-toggle="eliminarTipoVehiculoModal"]');
+    if (btnEliminarTipoVehiculo) {
+        btnEliminarTipoVehiculo.addEventListener('click', function () {
+            const tipoSeleccionado = document.getElementById('TipoVehiculo').value;
+            document.getElementById('nombreTipoVehiculoEliminar').value = tipoSeleccionado;
+        });
+    }
+
+    // Asegurar que el botón de cancelar del modal de tipo de vehículo funcione
+    const cancelarTipoVehiculoBtn = document.querySelector('#tipoVehiculoModal button[type="button"]');
+    if (cancelarTipoVehiculoBtn) {
+        cancelarTipoVehiculoBtn.addEventListener('click', function () {
+            limpiarModalTipoVehiculo();
+        });
+    }
+});

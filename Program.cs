@@ -23,6 +23,7 @@ builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<PersonalService>();
 builder.Services.AddScoped<ServicioService>();
 builder.Services.AddScoped<TipoServicioService>();
+builder.Services.AddScoped<TipoVehiculoService>();
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
