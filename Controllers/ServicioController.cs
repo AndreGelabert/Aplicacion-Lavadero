@@ -79,24 +79,53 @@ public class ServicioController : Controller
     [HttpPost]
     public async Task<IActionResult> CrearServicio(Servicio servicio)
     {
-        if (ModelState.IsValid)
+        try
         {
-            servicio.Estado = "Activo"; // Aseguramos que el servicio se crea activo
-            await _servicioService.CrearServicio(servicio);
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var userEmail = User.FindFirstValue(ClaimTypes.Email);
-            await _auditService.LogEvent(userId, userEmail, "Creación de servicio", servicio.Id, "Servicio");
-            return RedirectToAction("Index");
+            // Asignar un ID temporal para satisfacer la validación de modelo
+            if (string.IsNullOrEmpty(servicio.Id))
+            {
+                servicio.Id = "temp-" + Guid.NewGuid().ToString();
+            }
+
+            if (!ModelState.IsValid)
+            {
+                // Registra errores de validación
+                foreach (var state in ModelState)
+                {
+                    foreach (var error in state.Value.Errors)
+                    {
+                        Console.WriteLine($"Error en {state.Key}: {error.ErrorMessage}");
+                    }
+                }
+
+                TempData["Error"] = "Por favor, complete todos los campos obligatorios.";
+            }
+            else
+            {
+                servicio.Estado = "Activo"; // Aseguramos que el servicio se crea activo
+                await _servicioService.CrearServicio(servicio);
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var userEmail = User.FindFirstValue(ClaimTypes.Email);
+                await _auditService.LogEvent(userId, userEmail, "Creación de servicio", servicio.Id, "Servicio");
+                TempData["Success"] = "Servicio creado correctamente.";
+                return RedirectToAction("Index");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al crear servicio: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            TempData["Error"] = $"Error al crear servicio: {ex.Message}";
+            ModelState.AddModelError("", $"Error al crear servicio: {ex.Message}");
         }
 
-        // Si hay errores, necesitamos cargar los tipos de servicio para el formulario
+        // Si llegamos aquí, hubo un error - preparar la vista con los datos necesarios
         var tiposServicio = await _tipoServicioService.ObtenerTiposServicio() ?? new List<string>();
         var tiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
 
         ViewBag.TiposServicio = tiposServicio;
-        ViewBag.TiposVehiculo = tiposVehiculo; // Nuevo para el desplegable
-
-        // También necesitamos configurar otras variables del ViewBag que utiliza la vista
+        ViewBag.TiposVehiculo = tiposVehiculo;
+        ViewBag.EditServicio = servicio; // Mantener los valores introducidos
         ViewBag.FormTitle = "Registrando un Servicio";
         ViewBag.SubmitButtonText = "Registrar";
         ViewBag.ClearButtonText = "Limpiar Campos";
@@ -116,33 +145,54 @@ public class ServicioController : Controller
     [HttpPost]
     public async Task<IActionResult> ActualizarServicio(Servicio servicio)
     {
-        if (ModelState.IsValid)
+        try
         {
-            // Obtener el estado actual del servicio para mantenerlo
-            var servicioActual = await _servicioService.ObtenerServicio(servicio.Id);
-            if (servicioActual != null)
+            if (!ModelState.IsValid)
             {
-                servicio.Estado = servicioActual.Estado;
+                foreach (var state in ModelState)
+                {
+                    foreach (var error in state.Value.Errors)
+                    {
+                        Console.WriteLine($"Error en {state.Key}: {error.ErrorMessage}");
+                    }
+                }
 
-                await _servicioService.ActualizarServicio(servicio);
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var userEmail = User.FindFirstValue(ClaimTypes.Email);
-                await _auditService.LogEvent(userId, userEmail, "Actualización de servicio", servicio.Id, "Servicio");
-                return RedirectToAction("Index");
+                TempData["Error"] = "Por favor, complete todos los campos obligatorios.";
             }
             else
             {
-                ModelState.AddModelError("", "No se pudo encontrar el servicio a actualizar.");
+                var servicioActual = await _servicioService.ObtenerServicio(servicio.Id);
+                if (servicioActual != null)
+                {
+                    servicio.Estado = servicioActual.Estado;
+                    await _servicioService.ActualizarServicio(servicio);
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    var userEmail = User.FindFirstValue(ClaimTypes.Email);
+                    await _auditService.LogEvent(userId, userEmail, "Actualización de servicio", servicio.Id, "Servicio");
+                    TempData["Success"] = "Servicio actualizado correctamente.";
+                    return RedirectToAction("Index");
+                }
+                else
+                {
+                    TempData["Error"] = "No se pudo encontrar el servicio a actualizar.";
+                    ModelState.AddModelError("", "No se pudo encontrar el servicio a actualizar.");
+                }
             }
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al actualizar servicio: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            TempData["Error"] = $"Error al actualizar servicio: {ex.Message}";
+            ModelState.AddModelError("", $"Error al actualizar servicio: {ex.Message}");
+        }
 
-        // Si hay errores, volver a cargar la página con los mismos datos
+        // Si llegamos aquí, hubo un error
         var tiposServicio = await _tipoServicioService.ObtenerTiposServicio() ?? new List<string>();
         var tiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
 
         ViewBag.TiposServicio = tiposServicio;
-        ViewBag.TiposVehiculo = tiposVehiculo; // Nuevo para el desplegable
-
+        ViewBag.TiposVehiculo = tiposVehiculo;
         ViewBag.EditServicio = servicio;
         ViewBag.FormTitle = "Editando un Servicio";
         ViewBag.SubmitButtonText = "Guardar";
@@ -151,6 +201,7 @@ public class ServicioController : Controller
 
         return View("Index", await _servicioService.ObtenerServicios(new List<string> { "Activo" }, new List<string>(), null, null, 1, 10));
     }
+
 
     [HttpPost]
     public async Task<IActionResult> DeactivateServicio(string id)

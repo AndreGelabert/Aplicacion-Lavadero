@@ -42,10 +42,13 @@ public class ServicioService
         {
             Id = doc.Id,
             Nombre = doc.GetValue<string>("Nombre"),
-            Precio = doc.GetValue<decimal>("Precio"),
+            Precio = doc.ContainsField("Precio") ?
+                (decimal)Convert.ToDouble(doc.GetValue<object>("Precio")) : 0m, // Convertir a decimal
             Tipo = doc.GetValue<string>("Tipo"),
-            TipoVehiculo = doc.GetValue<string>("TipoVehiculo"),
-            TiempoEstimado = doc.GetValue<int>("TiempoEstimado"),
+            TipoVehiculo = doc.ContainsField("TipoVehiculo") ?
+                doc.GetValue<string>("TipoVehiculo") : "General", // Valor predeterminado
+            TiempoEstimado = doc.ContainsField("TiempoEstimado") ?
+                doc.GetValue<int>("TiempoEstimado") : 0,
             Descripcion = doc.GetValue<string>("Descripcion"),
             Estado = doc.GetValue<string>("Estado")
         }).ToList();
@@ -63,10 +66,13 @@ public class ServicioService
         {
             Id = snapshot.Id,
             Nombre = snapshot.GetValue<string>("Nombre"),
-            Precio = snapshot.GetValue<decimal>("Precio"),
+            Precio = snapshot.ContainsField("Precio") ?
+                (decimal)Convert.ToDouble(snapshot.GetValue<object>("Precio")) : 0m,
             Tipo = snapshot.GetValue<string>("Tipo"),
-            TipoVehiculo = snapshot.GetValue<string>("TipoVehiculo"),
-            TiempoEstimado = snapshot.GetValue<int>("TiempoEstimado"),
+            TipoVehiculo = snapshot.ContainsField("TipoVehiculo") ?
+                snapshot.GetValue<string>("TipoVehiculo") : "General",
+            TiempoEstimado = snapshot.ContainsField("TiempoEstimado") ?
+                snapshot.GetValue<int>("TiempoEstimado") : 0,
             Descripcion = snapshot.GetValue<string>("Descripcion"),
             Estado = snapshot.GetValue<string>("Estado")
         };
@@ -85,10 +91,13 @@ public class ServicioService
             {
                 Id = documento.Id,
                 Nombre = documento.GetValue<string>("Nombre"),
-                Precio = documento.GetValue<decimal>("Precio"),
+                Precio = documento.ContainsField("Precio") ?
+                    (decimal)Convert.ToDouble(documento.GetValue<object>("Precio")) : 0m,
                 Tipo = documento.GetValue<string>("Tipo"),
-                TipoVehiculo = documento.GetValue<string>("TipoVehiculo"),
-                TiempoEstimado = documento.GetValue<int>("TiempoEstimado"),
+                TipoVehiculo = documento.ContainsField("TipoVehiculo") ?
+                    documento.GetValue<string>("TipoVehiculo") : "General",
+                TiempoEstimado = documento.ContainsField("TiempoEstimado") ?
+                    documento.GetValue<int>("TiempoEstimado") : 0,
                 Descripcion = documento.GetValue<string>("Descripcion"),
                 Estado = documento.GetValue<string>("Estado")
             };
@@ -111,10 +120,12 @@ public class ServicioService
             {
                 Id = documento.Id,
                 Nombre = documento.GetValue<string>("Nombre"),
-                Precio = documento.GetValue<decimal>("Precio"),
+                Precio = documento.ContainsField("Precio") ?
+                    (decimal)Convert.ToDouble(documento.GetValue<object>("Precio")) : 0m,
                 Tipo = documento.GetValue<string>("Tipo"),
                 TipoVehiculo = documento.GetValue<string>("TipoVehiculo"),
-                TiempoEstimado = documento.GetValue<int>("TiempoEstimado"),
+                TiempoEstimado = documento.ContainsField("TiempoEstimado") ?
+                    documento.GetValue<int>("TiempoEstimado") : 0,
                 Descripcion = documento.GetValue<string>("Descripcion"),
                 Estado = documento.GetValue<string>("Estado")
             };
@@ -140,13 +151,26 @@ public class ServicioService
         try
         {
             var servicioRef = _firestore.Collection("servicios").Document();
-            servicio.Id = servicioRef.Id;
+            servicio.Id = servicioRef.Id; // Asignamos el ID generado por Firestore
 
-            // Crear un diccionario para asegurar que todos los campos se escriban correctamente
+            // Verificar valores nulos o vacíos
+            if (string.IsNullOrEmpty(servicio.Nombre))
+                throw new ArgumentException("El nombre del servicio no puede estar vacío");
+
+            if (string.IsNullOrEmpty(servicio.Tipo))
+                throw new ArgumentException("El tipo de servicio no puede estar vacío");
+
+            if (string.IsNullOrEmpty(servicio.TipoVehiculo))
+                throw new ArgumentException("El tipo de vehículo no puede estar vacío");
+
+            if (string.IsNullOrEmpty(servicio.Descripcion))
+                throw new ArgumentException("La descripción no puede estar vacía");
+
+            // Convertir el decimal a double manualmente para Firestore
             var servicioData = new Dictionary<string, object>
             {
                 { "Nombre", servicio.Nombre },
-                { "Precio", servicio.Precio },
+                { "Precio", (double)servicio.Precio }, // Conversión explícita a double
                 { "Tipo", servicio.Tipo },
                 { "TipoVehiculo", servicio.TipoVehiculo },
                 { "TiempoEstimado", servicio.TiempoEstimado },
@@ -159,6 +183,7 @@ public class ServicioService
         catch (Exception ex)
         {
             Console.WriteLine($"Error al crear servicio: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
             throw; // Relanzar la excepción para que el controlador pueda manejarla
         }
     }
@@ -169,11 +194,11 @@ public class ServicioService
         {
             var servicioRef = _firestore.Collection("servicios").Document(servicio.Id);
 
-            // Crear un diccionario para asegurar que todos los campos se actualicen correctamente
+            // Convertir manualmente decimal a double
             var servicioData = new Dictionary<string, object>
             {
                 { "Nombre", servicio.Nombre },
-                { "Precio", servicio.Precio },
+                { "Precio", (double)servicio.Precio }, // Conversión explícita
                 { "Tipo", servicio.Tipo },
                 { "TipoVehiculo", servicio.TipoVehiculo },
                 { "TiempoEstimado", servicio.TiempoEstimado },

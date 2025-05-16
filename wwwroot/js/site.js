@@ -158,20 +158,24 @@ function autoGrow(element) {
     element.style.height = '2.5rem'; // Altura inicial
     element.style.height = (element.scrollHeight) + 'px'; // Ajustar a contenido
 }
-
 function clearForm() {
     const idField = document.getElementById('Id');
     const nombreField = document.getElementById('Nombre');
     const precioField = document.getElementById('Precio');
     const tipoField = document.getElementById('Tipo');
+    const tipoVehiculoField = document.getElementById('TipoVehiculo');
+    const tiempoEstimadoField = document.getElementById('TiempoEstimado');
     const descripcionField = document.getElementById('Descripcion');
 
     if (idField) idField.value = '';
     if (nombreField) nombreField.value = '';
     if (precioField) precioField.value = '';
     if (tipoField) tipoField.selectedIndex = 0;
+    if (tipoVehiculoField) tipoVehiculoField.selectedIndex = 0;
+    if (tiempoEstimadoField) tiempoEstimadoField.value = '';
     if (descripcionField) descripcionField.value = '';
 }
+
 function initializeFilterForm() {
     const filterForm = document.getElementById('filterForm');
     if (filterForm) {
@@ -251,3 +255,65 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+// Función para asegurar que el acordeón se abra cuando hay errores de validación
+document.addEventListener('DOMContentLoaded', function () {
+    // Verificar si hay errores en el modelo (ModelState)
+    const servicioForm = document.getElementById('servicio-form');
+    if (servicioForm && servicioForm.querySelector('.validation-message')) {
+        // Abrir el acordeón si hay errores de validación
+        const accordion = document.getElementById('accordion-flush-body-1');
+        if (accordion && accordion.classList.contains('hidden')) {
+            accordion.classList.remove('hidden');
+        }
+    }
+});
+// Monitorear el envío del formulario de servicio
+document.addEventListener('DOMContentLoaded', function () {
+    const servicioForm = document.getElementById('servicio-form');
+    if (servicioForm) {
+        servicioForm.addEventListener('submit', function (e) {
+            // Verificar que todos los campos required estén llenos
+            const requiredFields = servicioForm.querySelectorAll('[required]');
+            let allValid = true;
+
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    allValid = false;
+                    field.classList.add('border-red-500');
+                } else {
+                    field.classList.remove('border-red-500');
+                }
+            });
+
+            if (!allValid) {
+                e.preventDefault();
+                // Abrir el acordeón si está cerrado
+                const accordion = document.getElementById('accordion-flush-body-1');
+                if (accordion && accordion.classList.contains('hidden')) {
+                    accordion.classList.remove('hidden');
+                }
+
+                // Mostrar mensaje de error
+                let errorDiv = document.getElementById('form-error-message');
+                if (!errorDiv) {
+                    errorDiv = document.createElement('div');
+                    errorDiv.id = 'form-error-message';
+                    errorDiv.className = 'p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400';
+                    errorDiv.innerHTML = '<span class="font-medium">¡Error!</span> Por favor, complete todos los campos obligatorios.';
+                    servicioForm.appendChild(errorDiv);
+                }
+            }
+        });
+    }
+});
+// Agregar al final del archivo
+document.addEventListener('DOMContentLoaded', function () {
+    // Verificar si hay mensajes de error o éxito
+    if (document.getElementById('error-alert') || document.getElementById('success-alert')) {
+        const accordion = document.getElementById('accordion-flush-body-1');
+        if (accordion && accordion.classList.contains('hidden')) {
+            accordion.classList.remove('hidden');
+        }
+    }
+});
+
