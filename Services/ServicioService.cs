@@ -78,7 +78,6 @@ public class ServicioService
         };
     }
 
-    // Añadir este método a la clase ServicioService
     public async Task<List<Servicio>> ObtenerServiciosPorTipo(string tipo)
     {
         var servicios = new List<Servicio>();
@@ -150,6 +149,13 @@ public class ServicioService
     {
         try
         {
+            // Validar si ya existe un servicio con el mismo nombre para el mismo tipo de vehículo
+            bool existeServicio = await ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo);
+            if (existeServicio)
+            {
+                throw new ArgumentException($"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'");
+            }
+
             var servicioRef = _firestore.Collection("servicios").Document();
             servicio.Id = servicioRef.Id; // Asignamos el ID generado por Firestore
 
@@ -166,17 +172,27 @@ public class ServicioService
             if (string.IsNullOrEmpty(servicio.Descripcion))
                 throw new ArgumentException("La descripción no puede estar vacía");
 
+            // Validaciones adicionales
+            if (!System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
+                throw new ArgumentException("El nombre solo puede contener letras y espacios");
+
+            if (servicio.Precio < 0)
+                throw new ArgumentException("El precio debe ser igual o mayor a 0");
+
+            if (servicio.TiempoEstimado <= 0)
+                throw new ArgumentException("El tiempo estimado debe ser mayor a 0");
+
             // Convertir el decimal a double manualmente para Firestore
             var servicioData = new Dictionary<string, object>
-            {
-                { "Nombre", servicio.Nombre },
-                { "Precio", (double)servicio.Precio }, // Conversión explícita a double
-                { "Tipo", servicio.Tipo },
-                { "TipoVehiculo", servicio.TipoVehiculo },
-                { "TiempoEstimado", servicio.TiempoEstimado },
-                { "Descripcion", servicio.Descripcion },
-                { "Estado", servicio.Estado }
-            };
+        {
+            { "Nombre", servicio.Nombre },
+            { "Precio", (double)servicio.Precio }, // Conversión explícita a double
+            { "Tipo", servicio.Tipo },
+            { "TipoVehiculo", servicio.TipoVehiculo },
+            { "TiempoEstimado", servicio.TiempoEstimado },
+            { "Descripcion", servicio.Descripcion },
+            { "Estado", servicio.Estado }
+        };
 
             await servicioRef.SetAsync(servicioData);
         }
@@ -192,19 +208,36 @@ public class ServicioService
     {
         try
         {
+            // Validar si ya existe un servicio con el mismo nombre para el mismo tipo de vehículo (excluyendo el actual)
+            bool existeServicio = await ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id);
+            if (existeServicio)
+            {
+                throw new ArgumentException($"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'");
+            }
+
+            // Validaciones adicionales
+            if (!System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
+                throw new ArgumentException("El nombre solo puede contener letras y espacios");
+
+            if (servicio.Precio < 0)
+                throw new ArgumentException("El precio debe ser igual o mayor a 0");
+
+            if (servicio.TiempoEstimado <= 0)
+                throw new ArgumentException("El tiempo estimado debe ser mayor a 0");
+
             var servicioRef = _firestore.Collection("servicios").Document(servicio.Id);
 
             // Convertir manualmente decimal a double
             var servicioData = new Dictionary<string, object>
-            {
-                { "Nombre", servicio.Nombre },
-                { "Precio", (double)servicio.Precio }, // Conversión explícita
-                { "Tipo", servicio.Tipo },
-                { "TipoVehiculo", servicio.TipoVehiculo },
-                { "TiempoEstimado", servicio.TiempoEstimado },
-                { "Descripcion", servicio.Descripcion },
-                { "Estado", servicio.Estado }
-            };
+        {
+            { "Nombre", servicio.Nombre },
+            { "Precio", (double)servicio.Precio }, // Conversión explícita
+            { "Tipo", servicio.Tipo },
+            { "TipoVehiculo", servicio.TipoVehiculo },
+            { "TiempoEstimado", servicio.TiempoEstimado },
+            { "Descripcion", servicio.Descripcion },
+            { "Estado", servicio.Estado }
+        };
 
             await servicioRef.SetAsync(servicioData, SetOptions.Overwrite);
         }
@@ -219,5 +252,29 @@ public class ServicioService
     {
         var servicioRef = _firestore.Collection("servicios").Document(id);
         await servicioRef.UpdateAsync("Estado", nuevoEstado);
+    }
+
+    public async Task<bool> ExisteServicioConNombreTipoVehiculo(string nombre, string tipoVehiculo, string idActual = null)
+    {
+        var coleccion = _firestore.Collection("servicios");
+        // Primero buscamos por nombre exacto (ignorando mayúsculas/minúsculas)
+        var querySnapshot = await coleccion
+            .WhereEqualTo("TipoVehiculo", tipoVehiculo)
+            .GetSnapshotAsync();
+
+        foreach (var doc in querySnapshot.Documents)
+        {
+            // Si estamos actualizando, ignoramos el mismo servicio
+            if (idActual != null && doc.Id == idActual)
+                continue;
+
+            // Comparamos el nombre ignorando mayúsculas/minúsculas y espacios adicionales
+            if (doc.GetValue<string>("Nombre").Trim().Equals(nombre.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                return true; // Ya existe un servicio con el mismo nombre para ese tipo de vehículo
+            }
+        }
+
+        return false;
     }
 }

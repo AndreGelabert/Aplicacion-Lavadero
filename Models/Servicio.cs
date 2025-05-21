@@ -1,32 +1,41 @@
-﻿using Google.Cloud.Firestore;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
+using Google.Cloud.Firestore;
 namespace Firebase.Models
 {
     [FirestoreData]
     public class Servicio
     {
         [FirestoreProperty]
-        public string Id { get; set; } = string.Empty; // Quitar required y asignar valor por defecto  
+        public required string Id { get; set; }
 
         [FirestoreProperty]
+        [Required(ErrorMessage = "El nombre del servicio es obligatorio")]
+        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", ErrorMessage = "El nombre solo puede contener letras y espacios")]
         public required string Nombre { get; set; }
 
-        // Cambiar el atributo incorrecto a FirestoreProperty y usar el convertidor manualmente  
         [FirestoreProperty]
+        [Range(0, double.MaxValue, ErrorMessage = "El precio debe ser igual o mayor a 0")]
         public decimal Precio { get; set; }
 
         [FirestoreProperty]
+        [Required(ErrorMessage = "El tipo de servicio es obligatorio")]
         public required string Tipo { get; set; }
 
         [FirestoreProperty]
+        [Required(ErrorMessage = "El tipo de vehículo es obligatorio")]
         public required string TipoVehiculo { get; set; }
 
         [FirestoreProperty]
+        [Range(1, int.MaxValue, ErrorMessage = "El tiempo estimado debe ser mayor a 0")]
         public int TiempoEstimado { get; set; }
 
         [FirestoreProperty]
+        [Required(ErrorMessage = "La descripción es obligatoria")]
         public required string Descripcion { get; set; }
 
         [FirestoreProperty]
+        [Required(ErrorMessage = "El estado es obligatorio")]
         public required string Estado { get; set; }
     }
 

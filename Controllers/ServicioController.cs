@@ -85,7 +85,13 @@ public class ServicioController : Controller
             if (string.IsNullOrEmpty(servicio.Id))
             {
                 servicio.Id = "temp-" + Guid.NewGuid().ToString();
+                // Limpiar el ModelState y volver a validar con el ID asignado
+                ModelState.Clear();
+                TryValidateModel(servicio);
             }
+
+            // Validaciones personalizadas adicionales
+            ValidateServicio(servicio);
 
             if (!ModelState.IsValid)
             {
@@ -98,17 +104,27 @@ public class ServicioController : Controller
                     }
                 }
 
-                TempData["Error"] = "Por favor, complete todos los campos obligatorios.";
+                TempData["Error"] = "Por favor, complete todos los campos obligatorios correctamente.";
             }
             else
             {
-                servicio.Estado = "Activo"; // Aseguramos que el servicio se crea activo
-                await _servicioService.CrearServicio(servicio);
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var userEmail = User.FindFirstValue(ClaimTypes.Email);
-                await _auditService.LogEvent(userId, userEmail, "Creación de servicio", servicio.Id, "Servicio");
-                TempData["Success"] = "Servicio creado correctamente.";
-                return RedirectToAction("Index");
+                // Verificar si ya existe un servicio con el mismo nombre para el mismo tipo de vehículo
+                bool existeServicio = await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo);
+                if (existeServicio)
+                {
+                    TempData["Error"] = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'.";
+                    ModelState.AddModelError("Nombre", $"Ya existe un servicio con este nombre para vehículos tipo '{servicio.TipoVehiculo}'.");
+                }
+                else
+                {
+                    servicio.Estado = "Activo"; // Aseguramos que el servicio se crea activo
+                    await _servicioService.CrearServicio(servicio);
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    var userEmail = User.FindFirstValue(ClaimTypes.Email);
+                    await _auditService.LogEvent(userId, userEmail, "Creación de servicio", servicio.Id, "Servicio");
+                    TempData["Success"] = "Servicio creado correctamente.";
+                    return RedirectToAction("Index");
+                }
             }
         }
         catch (Exception ex)
@@ -147,6 +163,9 @@ public class ServicioController : Controller
     {
         try
         {
+            // Validaciones personalizadas adicionales
+            ValidateServicio(servicio);
+
             if (!ModelState.IsValid)
             {
                 foreach (var state in ModelState)
@@ -157,20 +176,30 @@ public class ServicioController : Controller
                     }
                 }
 
-                TempData["Error"] = "Por favor, complete todos los campos obligatorios.";
+                TempData["Error"] = "Por favor, complete todos los campos obligatorios correctamente.";
             }
             else
             {
                 var servicioActual = await _servicioService.ObtenerServicio(servicio.Id);
                 if (servicioActual != null)
                 {
-                    servicio.Estado = servicioActual.Estado;
-                    await _servicioService.ActualizarServicio(servicio);
-                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                    var userEmail = User.FindFirstValue(ClaimTypes.Email);
-                    await _auditService.LogEvent(userId, userEmail, "Actualización de servicio", servicio.Id, "Servicio");
-                    TempData["Success"] = "Servicio actualizado correctamente.";
-                    return RedirectToAction("Index");
+                    // Verificar si ya existe otro servicio con el mismo nombre para el mismo tipo de vehículo
+                    bool existeServicio = await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id);
+                    if (existeServicio)
+                    {
+                        TempData["Error"] = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'.";
+                        ModelState.AddModelError("Nombre", $"Ya existe un servicio con este nombre para vehículos tipo '{servicio.TipoVehiculo}'.");
+                    }
+                    else
+                    {
+                        servicio.Estado = servicioActual.Estado;
+                        await _servicioService.ActualizarServicio(servicio);
+                        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                        var userEmail = User.FindFirstValue(ClaimTypes.Email);
+                        await _auditService.LogEvent(userId, userEmail, "Actualización de servicio", servicio.Id, "Servicio");
+                        TempData["Success"] = "Servicio actualizado correctamente.";
+                        return RedirectToAction("Index");
+                    }
                 }
                 else
                 {
@@ -201,7 +230,6 @@ public class ServicioController : Controller
 
         return View("Index", await _servicioService.ObtenerServicios(new List<string> { "Activo" }, new List<string>(), null, null, 1, 10));
     }
-
 
     [HttpPost]
     public async Task<IActionResult> DeactivateServicio(string id)
@@ -331,5 +359,27 @@ public class ServicioController : Controller
         var start = Math.Max(1, currentPage - range);
         var end = Math.Min(totalPages, currentPage + range);
         return Enumerable.Range(start, end - start + 1).ToList();
+    }
+
+    // Método para validar las reglas específicas del servicio
+    private void ValidateServicio(Servicio servicio)
+    {
+        // Validación para el nombre (solo letras y espacios)
+        if (!string.IsNullOrEmpty(servicio.Nombre) && !System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
+        {
+            ModelState.AddModelError("Nombre", "El nombre solo puede contener letras y espacios.");
+        }
+
+        // Validación para el precio (no negativo)
+        if (servicio.Precio < 0)
+        {
+            ModelState.AddModelError("Precio", "El precio debe ser igual o mayor a 0.");
+        }
+
+        // Validación para el tiempo estimado (mayor a 0)
+        if (servicio.TiempoEstimado <= 0)
+        {
+            ModelState.AddModelError("TiempoEstimado", "El tiempo estimado debe ser mayor a 0.");
+        }
     }
 }

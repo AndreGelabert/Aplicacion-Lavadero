@@ -317,3 +317,136 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
+// Agregar estas funciones para la validación del formulario de servicios
+document.addEventListener('DOMContentLoaded', function() {
+    const nombreInput = document.getElementById('Nombre');
+    const precioInput = document.getElementById('Precio');
+    const tiempoEstimadoInput = document.getElementById('TiempoEstimado');
+    
+    if (nombreInput) {
+        nombreInput.addEventListener('input', function() {
+            const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
+            if (!regex.test(this.value)) {
+                this.classList.add('border-red-500');
+                // Eliminar caracteres no permitidos
+                this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+            } else {
+                this.classList.remove('border-red-500');
+            }
+        });
+    }
+    
+    if (precioInput) {
+        precioInput.addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            if (isNaN(value) || value < 0) {
+                this.classList.add('border-red-500');
+                // Si es negativo, convertirlo a positivo
+                if (value < 0) {
+                    this.value = Math.abs(value);
+                }
+            } else {
+                this.classList.remove('border-red-500');
+            }
+        });
+        
+        // También validar al perder el foco
+        precioInput.addEventListener('blur', function() {
+            const value = parseFloat(this.value);
+            if (isNaN(value) || value < 0) {
+                this.value = '0';
+                this.classList.remove('border-red-500');
+            }
+        });
+    }
+    
+    if (tiempoEstimadoInput) {
+        tiempoEstimadoInput.addEventListener('input', function() {
+            const value = parseInt(this.value);
+            if (isNaN(value) || value <= 0) {
+                this.classList.add('border-red-500');
+                // Si es negativo o cero, convertirlo a 1
+                if (value <= 0) {
+                    this.value = 1;
+                    this.classList.remove('border-red-500');
+                }
+            } else {
+                this.classList.remove('border-red-500');
+            }
+        });
+        
+        // También validar al perder el foco
+        tiempoEstimadoInput.addEventListener('blur', function() {
+            const value = parseInt(this.value);
+            if (isNaN(value) || value <= 0) {
+                this.value = '1';
+                this.classList.remove('border-red-500');
+            }
+        });
+    }
+    
+    // Validar el formulario antes de enviarlo
+    const servicioForm = document.getElementById('servicio-form');
+    if (servicioForm) {
+        servicioForm.addEventListener('submit', function(e) {
+            const nombreValue = nombreInput.value.trim();
+            const precioValue = parseFloat(precioInput.value);
+            const tiempoEstimadoValue = parseInt(tiempoEstimadoInput.value);
+            
+            let hasErrors = false;
+            let errorMessages = [];
+            
+            // Validar nombre (solo letras y espacios)
+            const nombreRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+            if (!nombreRegex.test(nombreValue) || nombreValue === '') {
+                nombreInput.classList.add('border-red-500');
+                errorMessages.push("El nombre solo puede contener letras y espacios");
+                hasErrors = true;
+            } else {
+                nombreInput.classList.remove('border-red-500');
+            }
+            
+            // Validar precio (no negativo)
+            if (isNaN(precioValue) || precioValue < 0) {
+                precioInput.classList.add('border-red-500');
+                errorMessages.push("El precio debe ser igual o mayor a 0");
+                hasErrors = true;
+            } else {
+                precioInput.classList.remove('border-red-500');
+            }
+            
+            // Validar tiempo estimado (mayor a 0)
+            if (isNaN(tiempoEstimadoValue) || tiempoEstimadoValue <= 0) {
+                tiempoEstimadoInput.classList.add('border-red-500');
+                errorMessages.push("El tiempo estimado debe ser mayor a 0");
+                hasErrors = true;
+            } else {
+                tiempoEstimadoInput.classList.remove('border-red-500');
+            }
+            
+            // Si hay errores, prevenir envío y mostrar mensajes
+            if (hasErrors) {
+                e.preventDefault();
+                
+                // Abrir el acordeón si está cerrado
+                const accordion = document.getElementById('accordion-flush-body-1');
+                if (accordion && accordion.classList.contains('hidden')) {
+                    accordion.classList.remove('hidden');
+                }
+                
+                // Mostrar mensaje de error
+                let errorDiv = document.getElementById('form-error-message');
+                if (!errorDiv) {
+                    errorDiv = document.createElement('div');
+                    errorDiv.id = 'form-error-message';
+                    errorDiv.className = 'p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400';
+                    errorDiv.innerHTML = '<span class="font-medium">¡Error!</span> ' + errorMessages.join('<br>');
+                    servicioForm.appendChild(errorDiv);
+                } else {
+                    errorDiv.innerHTML = '<span class="font-medium">¡Error!</span> ' + errorMessages.join('<br>');
+                }
+            }
+        });
+    }
+});
+
