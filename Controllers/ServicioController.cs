@@ -27,14 +27,21 @@ public class ServicioController : Controller
     public async Task<IActionResult> Index(
     List<string> estados,
     List<string> tipos,
+    List<string> tiposVehiculo, // Añadimos este parámetro
     string firstDocId = null,
     string lastDocId = null,
     int pageNumber = 1,
     int pageSize = 10,
     string editId = null)
     {
-        var servicios = await _servicioService.ObtenerServicios(estados, tipos, firstDocId, lastDocId, pageNumber, pageSize);
-        var totalPages = await _servicioService.ObtenerTotalPaginas(estados, tipos, pageSize);
+        // Si no hay estados seleccionados, usar "Activo" por defecto
+        if (estados == null || !estados.Any())
+        {
+            estados = new List<string> { "Activo" };
+        }
+
+        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, firstDocId, lastDocId, pageNumber, pageSize);
+        var totalPages = await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, pageSize);
         totalPages = Math.Max(totalPages, 1);
         var currentPage = Math.Clamp(pageNumber, 1, totalPages);
         var visiblePages = GetVisiblePages(currentPage, totalPages);
@@ -42,18 +49,19 @@ public class ServicioController : Controller
         // Obtener tipos de servicio para el desplegable
         var tiposServicio = await _tipoServicioService.ObtenerTiposServicio() ?? new List<string>();
         // Obtener tipos de vehículo para el desplegable
-        var tiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+        var tiposVehiculoList = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
 
         ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = visiblePages;
         ViewBag.CurrentPage = currentPage;
         ViewBag.Estados = estados;
         ViewBag.Tipos = tipos;
+        ViewBag.TiposVehiculo = tiposVehiculo; // Agregar a ViewBag los tipos de vehículo seleccionados
+        ViewBag.TodosLosTiposVehiculo = tiposVehiculoList; // Para el filtro de todos los tipos de vehículo
         ViewBag.PageSize = pageSize;
         ViewBag.FirstDocId = servicios.FirstOrDefault()?.Id;
         ViewBag.LastDocId = servicios.LastOrDefault()?.Id;
         ViewBag.TiposServicio = tiposServicio;
-        ViewBag.TiposVehiculo = tiposVehiculo; // Nuevo para el desplegable de tipos de vehículo
         ViewBag.TodosLosTipos = tiposServicio; // Para el filtro
 
         if (!string.IsNullOrEmpty(editId))
@@ -148,8 +156,8 @@ public class ServicioController : Controller
         ViewBag.FormAction = "CrearServicio";
 
         // Configuración de la paginación
-        var servicios = await _servicioService.ObtenerServicios(new List<string> { "Activo" }, null, null, null, 1, 10);
-        var totalPages = await _servicioService.ObtenerTotalPaginas(new List<string> { "Activo" }, null, 10);
+        var servicios = await _servicioService.ObtenerServicios(new List<string> { "Activo" }, null, null, null, null, 1, 10);
+        var totalPages = await _servicioService.ObtenerTotalPaginas(new List<string> { "Activo" }, null, null, 10);
         totalPages = Math.Max(totalPages, 1);
         ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = GetVisiblePages(1, totalPages);
@@ -228,7 +236,7 @@ public class ServicioController : Controller
         ViewBag.ClearButtonText = "Cancelar";
         ViewBag.FormAction = "ActualizarServicio";
 
-        return View("Index", await _servicioService.ObtenerServicios(new List<string> { "Activo" }, new List<string>(), null, null, 1, 10));
+        return View("Index", await _servicioService.ObtenerServicios(new List<string> { "Activo" }, new List<string>(), null, null, null, 1, 10));
     }
 
     [HttpPost]

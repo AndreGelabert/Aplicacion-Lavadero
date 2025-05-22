@@ -10,7 +10,14 @@ public class ServicioService
         _firestore = firestore;
     }
 
-    public async Task<List<Servicio>> ObtenerServicios(List<string> estados, List<string> tipos, string firstDocId, string lastDocId, int pageNumber, int pageSize)
+    public async Task<List<Servicio>> ObtenerServicios(
+    List<string> estados,
+    List<string> tipos,
+    List<string> tiposVehiculo, // Añadir este parámetro
+    string firstDocId,
+    string lastDocId,
+    int pageNumber,
+    int pageSize)
     {
         if (estados == null || !estados.Any())
         {
@@ -22,9 +29,15 @@ public class ServicioService
         if (estados.Any()) query = query.WhereIn("Estado", estados);
         else query = query.WhereEqualTo("Estado", "Activo");
 
-        if (tipos != null && tipos.Any()) query = query.WhereIn("Tipo", tipos);
+        // No podemos usar múltiples WhereIn en una consulta de Firestore
+        // Así que obtendremos todos los resultados que coincidan con estado y tipo
+        // y luego filtraremos por tipo de vehículo en memoria
+        if (tipos != null && tipos.Any())
+        {
+            query = query.WhereIn("Tipo", tipos);
+        }
 
-        query = query.OrderBy("Estado").OrderBy("Nombre").Limit(pageSize);
+        query = query.OrderBy("Estado").OrderBy("Nombre").Limit(pageSize * 3); // Aumentamos el límite para tener suficientes resultados después del filtrado
 
         if (!string.IsNullOrEmpty(lastDocId) && pageNumber > 1)
         {
@@ -38,20 +51,65 @@ public class ServicioService
         }
 
         var snapshot = await query.GetSnapshotAsync();
-        return snapshot.Documents.Select(doc => new Servicio
+        var servicios = snapshot.Documents.Select(doc => new Servicio
         {
             Id = doc.Id,
             Nombre = doc.GetValue<string>("Nombre"),
             Precio = doc.ContainsField("Precio") ?
-                (decimal)Convert.ToDouble(doc.GetValue<object>("Precio")) : 0m, // Convertir a decimal
+                (decimal)Convert.ToDouble(doc.GetValue<object>("Precio")) : 0m,
             Tipo = doc.GetValue<string>("Tipo"),
             TipoVehiculo = doc.ContainsField("TipoVehiculo") ?
-                doc.GetValue<string>("TipoVehiculo") : "General", // Valor predeterminado
+                doc.GetValue<string>("TipoVehiculo") : "General",
             TiempoEstimado = doc.ContainsField("TiempoEstimado") ?
                 doc.GetValue<int>("TiempoEstimado") : 0,
             Descripcion = doc.GetValue<string>("Descripcion"),
             Estado = doc.GetValue<string>("Estado")
         }).ToList();
+
+        // Filtrar por tipo de vehículo si es necesario
+        if (tiposVehiculo != null && tiposVehiculo.Any())
+        {
+            servicios = servicios.Where(s => tiposVehiculo.Contains(s.TipoVehiculo)).ToList();
+        }
+
+        // Aplicar paginación después del filtrado
+        return servicios.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+    }
+
+    public async Task<int> ObtenerTotalPaginas(
+        List<string> estados,
+        List<string> tipos,
+        List<string> tiposVehiculo, // Añadir este parámetro
+        int pageSize)
+    {
+        if (estados == null || !estados.Any())
+        {
+            estados = new List<string> { "Activo" };
+        }
+
+        Query query = _firestore.Collection("servicios");
+        if (estados.Any()) query = query.WhereIn("Estado", estados);
+        if (tipos != null && tipos.Any()) query = query.WhereIn("Tipo", tipos);
+
+        var snapshot = await query.GetSnapshotAsync();
+        var servicios = snapshot.Documents.Select(doc => new Servicio
+        {
+            Id = doc.Id,
+            Nombre = doc.GetValue<string>("Nombre"), // Añadir Nombre
+            Tipo = doc.GetValue<string>("Tipo"), // Añadir Tipo
+            TipoVehiculo = doc.ContainsField("TipoVehiculo") ?
+        doc.GetValue<string>("TipoVehiculo") : "General",
+            Descripcion = "N/A", // Añadir Descripcion
+            Estado = doc.ContainsField("Estado") ? doc.GetValue<string>("Estado") : "Activo" // Añadir Estado
+        }).ToList();
+
+        // Filtrar por tipo de vehículo si es necesario
+        if (tiposVehiculo != null && tiposVehiculo.Any())
+        {
+            servicios = servicios.Where(s => tiposVehiculo.Contains(s.TipoVehiculo)).ToList();
+        }
+
+        return (int)Math.Ceiling(servicios.Count / (double)pageSize);
     }
 
     public async Task<Servicio> ObtenerServicio(string id)
@@ -132,17 +190,6 @@ public class ServicioService
         }
 
         return servicios;
-    }
-
-    public async Task<int> ObtenerTotalPaginas(List<string> estados, List<string> tipos, int pageSize)
-    {
-        Query query = _firestore.Collection("servicios");
-        if (estados.Any()) query = query.WhereIn("Estado", estados);
-        if (tipos != null && tipos.Any()) query = query.WhereIn("Tipo", tipos);
-
-        var countQuery = query.Select("__name__");
-        var snapshot = await countQuery.GetSnapshotAsync();
-        return (int)Math.Ceiling(snapshot.Count / (double)pageSize);
     }
 
     public async Task CrearServicio(Servicio servicio)

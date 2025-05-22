@@ -317,6 +317,27 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
+document.addEventListener('DOMContentLoaded', function () {
+    // Configurar el evento click del botón de filtro
+    const filterButton = document.getElementById('filterDropdownButton');
+    const filterDropdown = document.getElementById('filterDropdown');
+
+    if (filterButton && filterDropdown) {
+        filterButton.addEventListener('click', function () {
+            // Calcular la posición del dropdown basada en el botón
+            const buttonRect = filterButton.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+            // Establecer la posición del dropdown para que se muestre debajo del botón
+            filterDropdown.style.position = 'fixed';
+            filterDropdown.style.top = (buttonRect.bottom + scrollTop) + 'px';
+            filterDropdown.style.left = buttonRect.left + 'px';
+            filterDropdown.style.maxHeight = '80vh'; // Altura máxima para que quepa en la pantalla
+            filterDropdown.style.overflowY = 'auto'; // Permitir scroll si el contenido es demasiado largo
+        });
+    }
+});
+
 // Agregar estas funciones para la validación del formulario de servicios
 document.addEventListener('DOMContentLoaded', function() {
     const nombreInput = document.getElementById('Nombre');
