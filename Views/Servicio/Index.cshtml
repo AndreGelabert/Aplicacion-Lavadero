@@ -42,9 +42,9 @@
         <!-- Formulario de Registro/Edicion -->
         <div id="accordion-flush" data-accordion="collapse" data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white" data-inactive-classes="text-gray-500 dark:text-gray-400">
             <h2 id="accordion-flush-heading-1">
-                <button type="button" class="flex items-center justify-between w-full py-5 font-medium rtl:text-right text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400 gap-3" data-accordion-target="#accordion-flush-body-1" aria-expanded="true" aria-controls="accordion-flush-body-1">
+                <button type="button" class="flex items-center justify-between w-full py-5 font-medium rtl:text-right text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400 gap-3" data-accordion-target="#accordion-flush-body-1" aria-expanded="false" aria-controls="accordion-flush-body-1">
                     <span id="form-title">@ViewBag.FormTitle</span>
-                    <svg data-accordion-icon class="w-3 h-3 rotate-180 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+                    <svg data-accordion-icon class="w-3 h-3 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5" />
                     </svg>
                 </button>
@@ -109,7 +109,7 @@
                                 <label for="TipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Vehículo</label>
                                 <div class="flex">
                                     <select name="TipoVehiculo" id="TipoVehiculo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" required>
-                                        @foreach (var tipo in ViewBag.TiposVehiculo as List<string>)
+                                        @foreach (var tipo in ViewBag.TodosLosTiposVehiculo as List<string>)
                                         {
                                             if (ViewBag.EditServicio?.TipoVehiculo == tipo)
                                             {
@@ -342,7 +342,7 @@
                         </svg>
                     </button>
                     <!-- Dropdown de Filtro -->
-                    <div id="filterDropdown" class="z-10 hidden w-56 p-3 bg-white rounded-lg shadow dark:bg-gray-700 max-h-96 overflow-y-auto">
+                    <div id="filterDropdown" class="z-10 hidden w-56 p-3 bg-white rounded-lg shadow dark:bg-gray-700">
                         <form method="get" asp-action="Index" id="filterForm" class="space-y-4">
                             <input type="hidden" name="pageNumber" value="1" />
                             <!-- Filtrar por Estado -->

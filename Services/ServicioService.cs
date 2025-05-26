@@ -11,23 +11,26 @@ public class ServicioService
     }
 
     public async Task<List<Servicio>> ObtenerServicios(
-    List<string> estados,
-    List<string> tipos,
-    List<string> tiposVehiculo, // Añadir este parámetro
-    string firstDocId,
-    string lastDocId,
-    int pageNumber,
-    int pageSize)
+        List<string> estados,
+        List<string> tipos,
+        List<string> tiposVehiculo,
+        string firstDocId,
+        string lastDocId,
+        int pageNumber,
+        int pageSize)
     {
-        if (estados == null || !estados.Any())
+        estados ??= new List<string>();
+        if (!estados.Any())
         {
-            estados = new List<string> { "Activo" };
+            estados.Add("Activo");
         }
 
         Query query = _firestore.Collection("servicios");
 
-        if (estados.Any()) query = query.WhereIn("Estado", estados);
-        else query = query.WhereEqualTo("Estado", "Activo");
+        if (estados.Any())
+            query = query.WhereIn("Estado", estados);
+        else
+            query = query.WhereEqualTo("Estado", "Activo");
 
         // No podemos usar múltiples WhereIn en una consulta de Firestore
         // Así que obtendremos todos los resultados que coincidan con estado y tipo
@@ -37,7 +40,7 @@ public class ServicioService
             query = query.WhereIn("Tipo", tipos);
         }
 
-        query = query.OrderBy("Estado").OrderBy("Nombre").Limit(pageSize * 3); // Aumentamos el límite para tener suficientes resultados después del filtrado
+        query = query.OrderBy("Estado").OrderBy("Nombre").Limit(pageSize * 3); // Aumentamos el límite para el filtrado en memoria
 
         if (!string.IsNullOrEmpty(lastDocId) && pageNumber > 1)
         {
@@ -51,20 +54,7 @@ public class ServicioService
         }
 
         var snapshot = await query.GetSnapshotAsync();
-        var servicios = snapshot.Documents.Select(doc => new Servicio
-        {
-            Id = doc.Id,
-            Nombre = doc.GetValue<string>("Nombre"),
-            Precio = doc.ContainsField("Precio") ?
-                (decimal)Convert.ToDouble(doc.GetValue<object>("Precio")) : 0m,
-            Tipo = doc.GetValue<string>("Tipo"),
-            TipoVehiculo = doc.ContainsField("TipoVehiculo") ?
-                doc.GetValue<string>("TipoVehiculo") : "General",
-            TiempoEstimado = doc.ContainsField("TiempoEstimado") ?
-                doc.GetValue<int>("TiempoEstimado") : 0,
-            Descripcion = doc.GetValue<string>("Descripcion"),
-            Estado = doc.GetValue<string>("Estado")
-        }).ToList();
+        var servicios = snapshot.Documents.Select(MapearDocumentoAServicio).ToList();
 
         // Filtrar por tipo de vehículo si es necesario
         if (tiposVehiculo != null && tiposVehiculo.Any())
@@ -79,28 +69,32 @@ public class ServicioService
     public async Task<int> ObtenerTotalPaginas(
         List<string> estados,
         List<string> tipos,
-        List<string> tiposVehiculo, // Añadir este parámetro
+        List<string> tiposVehiculo,
         int pageSize)
     {
-        if (estados == null || !estados.Any())
+        estados ??= new List<string>();
+        if (!estados.Any())
         {
-            estados = new List<string> { "Activo" };
+            estados.Add("Activo");
         }
 
         Query query = _firestore.Collection("servicios");
-        if (estados.Any()) query = query.WhereIn("Estado", estados);
-        if (tipos != null && tipos.Any()) query = query.WhereIn("Tipo", tipos);
+        if (estados.Any())
+            query = query.WhereIn("Estado", estados);
+        if (tipos != null && tipos.Any())
+            query = query.WhereIn("Tipo", tipos);
 
         var snapshot = await query.GetSnapshotAsync();
         var servicios = snapshot.Documents.Select(doc => new Servicio
         {
             Id = doc.Id,
-            Nombre = doc.GetValue<string>("Nombre"), // Añadir Nombre
-            Tipo = doc.GetValue<string>("Tipo"), // Añadir Tipo
+            Nombre = doc.GetValue<string>("Nombre"),
+            Tipo = doc.GetValue<string>("Tipo"),
             TipoVehiculo = doc.ContainsField("TipoVehiculo") ?
-        doc.GetValue<string>("TipoVehiculo") : "General",
-            Descripcion = "N/A", // Añadir Descripcion
-            Estado = doc.ContainsField("Estado") ? doc.GetValue<string>("Estado") : "Activo" // Añadir Estado
+                doc.GetValue<string>("TipoVehiculo") : "General",
+            Descripcion = "N/A",
+            Estado = doc.ContainsField("Estado") ?
+                doc.GetValue<string>("Estado") : "Activo"
         }).ToList();
 
         // Filtrar por tipo de vehículo si es necesario
@@ -117,123 +111,32 @@ public class ServicioService
         var docRef = _firestore.Collection("servicios").Document(id);
         var snapshot = await docRef.GetSnapshotAsync();
 
-        if (!snapshot.Exists)
-            return null;
-
-        return new Servicio
-        {
-            Id = snapshot.Id,
-            Nombre = snapshot.GetValue<string>("Nombre"),
-            Precio = snapshot.ContainsField("Precio") ?
-                (decimal)Convert.ToDouble(snapshot.GetValue<object>("Precio")) : 0m,
-            Tipo = snapshot.GetValue<string>("Tipo"),
-            TipoVehiculo = snapshot.ContainsField("TipoVehiculo") ?
-                snapshot.GetValue<string>("TipoVehiculo") : "General",
-            TiempoEstimado = snapshot.ContainsField("TiempoEstimado") ?
-                snapshot.GetValue<int>("TiempoEstimado") : 0,
-            Descripcion = snapshot.GetValue<string>("Descripcion"),
-            Estado = snapshot.GetValue<string>("Estado")
-        };
+        return !snapshot.Exists ? null : MapearDocumentoAServicio(snapshot);
     }
 
     public async Task<List<Servicio>> ObtenerServiciosPorTipo(string tipo)
-    {
-        var servicios = new List<Servicio>();
-        var coleccion = _firestore.Collection("servicios");
-        var querySnapshot = await coleccion.WhereEqualTo("Tipo", tipo).GetSnapshotAsync();
+        => await ObtenerServiciosPorCampo("Tipo", tipo);
 
-        foreach (var documento in querySnapshot.Documents)
-        {
-            var servicio = new Servicio
-            {
-                Id = documento.Id,
-                Nombre = documento.GetValue<string>("Nombre"),
-                Precio = documento.ContainsField("Precio") ?
-                    (decimal)Convert.ToDouble(documento.GetValue<object>("Precio")) : 0m,
-                Tipo = documento.GetValue<string>("Tipo"),
-                TipoVehiculo = documento.ContainsField("TipoVehiculo") ?
-                    documento.GetValue<string>("TipoVehiculo") : "General",
-                TiempoEstimado = documento.ContainsField("TiempoEstimado") ?
-                    documento.GetValue<int>("TiempoEstimado") : 0,
-                Descripcion = documento.GetValue<string>("Descripcion"),
-                Estado = documento.GetValue<string>("Estado")
-            };
-            servicios.Add(servicio);
-        }
-
-        return servicios;
-    }
-
-    // Nuevo método para obtener servicios por tipo de vehículo
     public async Task<List<Servicio>> ObtenerServiciosPorTipoVehiculo(string tipoVehiculo)
-    {
-        var servicios = new List<Servicio>();
-        var coleccion = _firestore.Collection("servicios");
-        var querySnapshot = await coleccion.WhereEqualTo("TipoVehiculo", tipoVehiculo).GetSnapshotAsync();
-
-        foreach (var documento in querySnapshot.Documents)
-        {
-            var servicio = new Servicio
-            {
-                Id = documento.Id,
-                Nombre = documento.GetValue<string>("Nombre"),
-                Precio = documento.ContainsField("Precio") ?
-                    (decimal)Convert.ToDouble(documento.GetValue<object>("Precio")) : 0m,
-                Tipo = documento.GetValue<string>("Tipo"),
-                TipoVehiculo = documento.GetValue<string>("TipoVehiculo"),
-                TiempoEstimado = documento.ContainsField("TiempoEstimado") ?
-                    documento.GetValue<int>("TiempoEstimado") : 0,
-                Descripcion = documento.GetValue<string>("Descripcion"),
-                Estado = documento.GetValue<string>("Estado")
-            };
-            servicios.Add(servicio);
-        }
-
-        return servicios;
-    }
+        => await ObtenerServiciosPorCampo("TipoVehiculo", tipoVehiculo);
 
     public async Task CrearServicio(Servicio servicio)
     {
-        try
-        {
-            // Validar si ya existe un servicio con el mismo nombre para el mismo tipo de vehículo
-            bool existeServicio = await ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo);
-            if (existeServicio)
-            {
-                throw new ArgumentException($"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'");
-            }
+        // Validar si ya existe un servicio con el mismo nombre para el mismo tipo de vehículo
+        if (await ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo))
+            throw new ArgumentException($"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'");
 
-            var servicioRef = _firestore.Collection("servicios").Document();
-            servicio.Id = servicioRef.Id; // Asignamos el ID generado por Firestore
+        var servicioRef = _firestore.Collection("servicios").Document();
+        servicio.Id = servicioRef.Id;
 
-            // Verificar valores nulos o vacíos
-            if (string.IsNullOrEmpty(servicio.Nombre))
-                throw new ArgumentException("El nombre del servicio no puede estar vacío");
+        // Validaciones
+        ValidarServicio(servicio);
 
-            if (string.IsNullOrEmpty(servicio.Tipo))
-                throw new ArgumentException("El tipo de servicio no puede estar vacío");
-
-            if (string.IsNullOrEmpty(servicio.TipoVehiculo))
-                throw new ArgumentException("El tipo de vehículo no puede estar vacío");
-
-            if (string.IsNullOrEmpty(servicio.Descripcion))
-                throw new ArgumentException("La descripción no puede estar vacía");
-
-            // Validaciones adicionales
-            if (!System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
-                throw new ArgumentException("El nombre solo puede contener letras y espacios");
-
-            if (servicio.Precio < 0)
-                throw new ArgumentException("El precio debe ser igual o mayor a 0");
-
-            if (servicio.TiempoEstimado <= 0)
-                throw new ArgumentException("El tiempo estimado debe ser mayor a 0");
-
-            // Convertir el decimal a double manualmente para Firestore
-            var servicioData = new Dictionary<string, object>
+        // Convertir el decimal a double para Firestore
+        var servicioData = new Dictionary<string, object>
         {
             { "Nombre", servicio.Nombre },
-            { "Precio", (double)servicio.Precio }, // Conversión explícita a double
+            { "Precio", (double)servicio.Precio },
             { "Tipo", servicio.Tipo },
             { "TipoVehiculo", servicio.TipoVehiculo },
             { "TiempoEstimado", servicio.TiempoEstimado },
@@ -241,44 +144,25 @@ public class ServicioService
             { "Estado", servicio.Estado }
         };
 
-            await servicioRef.SetAsync(servicioData);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error al crear servicio: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            throw; // Relanzar la excepción para que el controlador pueda manejarla
-        }
+        await servicioRef.SetAsync(servicioData);
     }
 
     public async Task ActualizarServicio(Servicio servicio)
     {
-        try
-        {
-            // Validar si ya existe un servicio con el mismo nombre para el mismo tipo de vehículo (excluyendo el actual)
-            bool existeServicio = await ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id);
-            if (existeServicio)
-            {
-                throw new ArgumentException($"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'");
-            }
+        // Validar si ya existe un servicio con el mismo nombre para el mismo tipo de vehículo (excluyendo el actual)
+        if (await ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id))
+            throw new ArgumentException($"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'");
 
-            // Validaciones adicionales
-            if (!System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
-                throw new ArgumentException("El nombre solo puede contener letras y espacios");
+        // Validaciones
+        ValidarServicio(servicio);
 
-            if (servicio.Precio < 0)
-                throw new ArgumentException("El precio debe ser igual o mayor a 0");
+        var servicioRef = _firestore.Collection("servicios").Document(servicio.Id);
 
-            if (servicio.TiempoEstimado <= 0)
-                throw new ArgumentException("El tiempo estimado debe ser mayor a 0");
-
-            var servicioRef = _firestore.Collection("servicios").Document(servicio.Id);
-
-            // Convertir manualmente decimal a double
-            var servicioData = new Dictionary<string, object>
+        // Convertir decimal a double para Firestore
+        var servicioData = new Dictionary<string, object>
         {
             { "Nombre", servicio.Nombre },
-            { "Precio", (double)servicio.Precio }, // Conversión explícita
+            { "Precio", (double)servicio.Precio },
             { "Tipo", servicio.Tipo },
             { "TipoVehiculo", servicio.TipoVehiculo },
             { "TiempoEstimado", servicio.TiempoEstimado },
@@ -286,13 +170,7 @@ public class ServicioService
             { "Estado", servicio.Estado }
         };
 
-            await servicioRef.SetAsync(servicioData, SetOptions.Overwrite);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error al actualizar servicio: {ex.Message}");
-            throw; // Relanzar la excepción para que el controlador pueda manejarla
-        }
+        await servicioRef.SetAsync(servicioData, SetOptions.Overwrite);
     }
 
     public async Task CambiarEstadoServicio(string id, string nuevoEstado)
@@ -304,24 +182,65 @@ public class ServicioService
     public async Task<bool> ExisteServicioConNombreTipoVehiculo(string nombre, string tipoVehiculo, string idActual = null)
     {
         var coleccion = _firestore.Collection("servicios");
-        // Primero buscamos por nombre exacto (ignorando mayúsculas/minúsculas)
         var querySnapshot = await coleccion
             .WhereEqualTo("TipoVehiculo", tipoVehiculo)
             .GetSnapshotAsync();
 
-        foreach (var doc in querySnapshot.Documents)
-        {
-            // Si estamos actualizando, ignoramos el mismo servicio
-            if (idActual != null && doc.Id == idActual)
-                continue;
-
-            // Comparamos el nombre ignorando mayúsculas/minúsculas y espacios adicionales
-            if (doc.GetValue<string>("Nombre").Trim().Equals(nombre.Trim(), StringComparison.OrdinalIgnoreCase))
-            {
-                return true; // Ya existe un servicio con el mismo nombre para ese tipo de vehículo
-            }
-        }
-
-        return false;
+        return querySnapshot.Documents
+            .Where(doc => idActual == null || doc.Id != idActual)
+            .Any(doc => doc.GetValue<string>("Nombre").Trim().Equals(nombre.Trim(), StringComparison.OrdinalIgnoreCase));
     }
+
+    #region Métodos privados
+
+    private async Task<List<Servicio>> ObtenerServiciosPorCampo(string campo, string valor)
+    {
+        var coleccion = _firestore.Collection("servicios");
+        var querySnapshot = await coleccion.WhereEqualTo(campo, valor).GetSnapshotAsync();
+        return querySnapshot.Documents.Select(MapearDocumentoAServicio).ToList();
+    }
+
+    private Servicio MapearDocumentoAServicio(DocumentSnapshot documento)
+    {
+        return new Servicio
+        {
+            Id = documento.Id,
+            Nombre = documento.GetValue<string>("Nombre"),
+            Precio = documento.ContainsField("Precio") ?
+                (decimal)Convert.ToDouble(documento.GetValue<object>("Precio")) : 0m,
+            Tipo = documento.GetValue<string>("Tipo"),
+            TipoVehiculo = documento.ContainsField("TipoVehiculo") ?
+                documento.GetValue<string>("TipoVehiculo") : "General",
+            TiempoEstimado = documento.ContainsField("TiempoEstimado") ?
+                documento.GetValue<int>("TiempoEstimado") : 0,
+            Descripcion = documento.GetValue<string>("Descripcion"),
+            Estado = documento.GetValue<string>("Estado")
+        };
+    }
+
+    private void ValidarServicio(Servicio servicio)
+    {
+        if (string.IsNullOrEmpty(servicio.Nombre))
+            throw new ArgumentException("El nombre del servicio no puede estar vacío");
+
+        if (string.IsNullOrEmpty(servicio.Tipo))
+            throw new ArgumentException("El tipo de servicio no puede estar vacío");
+
+        if (string.IsNullOrEmpty(servicio.TipoVehiculo))
+            throw new ArgumentException("El tipo de vehículo no puede estar vacío");
+
+        if (string.IsNullOrEmpty(servicio.Descripcion))
+            throw new ArgumentException("La descripción no puede estar vacía");
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
+            throw new ArgumentException("El nombre solo puede contener letras y espacios");
+
+        if (servicio.Precio < 0)
+            throw new ArgumentException("El precio debe ser igual o mayor a 0");
+
+        if (servicio.TiempoEstimado <= 0)
+            throw new ArgumentException("El tiempo estimado debe ser mayor a 0");
+    }
+
+    #endregion
 }
