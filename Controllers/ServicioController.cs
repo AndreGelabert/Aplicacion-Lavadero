@@ -57,11 +57,11 @@ public class ServicioController : Controller
             tiposServicio, tiposVehiculoList,
             pageSize, currentPage, totalPages, visiblePages,
             servicios.FirstOrDefault()?.Id, servicios.LastOrDefault()?.Id);
-
-        // Configurar formulario según si es edición o creación
+        // --- CAMBIO PRINCIPAL ---
+        // Si hay editId, cargar el servicio directamente
         if (!string.IsNullOrEmpty(editId))
         {
-            var servicio = servicios.FirstOrDefault(s => s.Id == editId);
+            var servicio = await _servicioService.ObtenerServicio(editId);
             ViewBag.EditServicio = servicio;
             ViewBag.FormTitle = "Editando un Servicio";
             ViewBag.SubmitButtonText = "Guardar";

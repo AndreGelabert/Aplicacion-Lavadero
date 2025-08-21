@@ -32,26 +32,13 @@ public class ServicioService
         else
             query = query.WhereEqualTo("Estado", "Activo");
 
-        // No podemos usar múltiples WhereIn en una consulta de Firestore
-        // Así que obtendremos todos los resultados que coincidan con estado y tipo
-        // y luego filtraremos por tipo de vehículo en memoria
         if (tipos != null && tipos.Any())
         {
             query = query.WhereIn("Tipo", tipos);
         }
 
-        query = query.OrderBy("Estado").OrderBy("Nombre").Limit(pageSize * 3); // Aumentamos el límite para el filtrado en memoria
-
-        if (!string.IsNullOrEmpty(lastDocId) && pageNumber > 1)
-        {
-            var lastDoc = await _firestore.Collection("servicios").Document(lastDocId).GetSnapshotAsync();
-            query = query.StartAfter(lastDoc);
-        }
-        else if (!string.IsNullOrEmpty(firstDocId) && pageNumber > 1)
-        {
-            var firstDoc = await _firestore.Collection("servicios").Document(firstDocId).GetSnapshotAsync();
-            query = query.StartAt(firstDoc);
-        }
+        query = query.OrderBy("Estado").OrderBy("Nombre");
+        // Elimina el Limit aquí
 
         var snapshot = await query.GetSnapshotAsync();
         var servicios = snapshot.Documents.Select(MapearDocumentoAServicio).ToList();
