@@ -476,3 +476,191 @@ function showFormError(message) {
 
     errorDiv.innerHTML = '<span class="font-medium">¡Error!</span> ' + message;
 }
+// ===== AJAX Servicios (form + tabla) =====
+function loadServicioForm(id) {
+    const url = '/Servicio/FormPartial' + (id ? ('?id=' + encodeURIComponent(id)) : '');
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.text())
+        .then(html => {
+            document.getElementById('servicio-form-container').innerHTML = html;
+            setupFormValidation();
+            const desc = document.getElementById('Descripcion');
+            if (desc) autoGrow(desc);
+            // Abrir acordeón si estaba cerrado
+            const accordionBody = document.getElementById('accordion-flush-body-1');
+            if (accordionBody && accordionBody.classList.contains('hidden')) {
+                accordionBody.classList.remove('hidden');
+            }
+        })
+        .catch(e => console.error('Error cargando formulario:', e));
+}
+
+function reloadServicioTable(page) {
+    // Tomar filtros actuales desde DOM (solo si quieres ampliar en siguiente paso)
+    const url = '/Servicio/TablePartial?pageNumber=' + page;
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.text())
+        .then(html => {
+            document.getElementById('servicio-table-container').innerHTML = html;
+        })
+        .catch(e => console.error('Error cargando tabla:', e));
+}
+
+function submitServicioAjax(form) {
+    const fd = new FormData(form);
+    fetch(form.action, {
+        method: 'POST',
+        body: fd,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+        .then(resp => {
+            const valid = resp.headers.get('X-Form-Valid') === 'true';
+            const msg = resp.headers.get('X-Form-Message');
+            return resp.text().then(html => ({ html, valid, msg }));
+        })
+        .then(r => {
+            document.getElementById('servicio-form-container').innerHTML = r.html;
+            setupFormValidation();
+            const desc = document.getElementById('Descripcion');
+            if (desc) autoGrow(desc);
+            if (r.valid) {
+                showToast(r.msg || 'Operación exitosa', false);
+                reloadServicioTable(1);
+            } else {
+                showToast('Revise los errores del formulario', true);
+            }
+        })
+        .catch(e => console.error('Error enviando formulario:', e));
+    return false;
+}
+
+// Cambiar estado (desactivar/reactivar) sin recargar toda la página
+function submitEstadoServicio(form) {
+    const fd = new FormData(form);
+    fetch(form.action, {
+        method: 'POST',
+        body: fd,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    }).then(() => reloadServicioTable(getCurrentTablePage()));
+    return false;
+}
+
+function showToast(msg, isError) {
+    let el = document.getElementById('toast-msg');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'toast-msg';
+        document.body.appendChild(el);
+    }
+    el.className = 'fixed top-4 right-4 z-50 px-4 py-2 rounded shadow text-sm font-medium ' + (isError ? 'bg-red-600 text-white' : 'bg-green-600 text-white');
+    el.textContent = msg;
+    setTimeout(() => el.remove(), 4000);
+}
+function reloadServicioTable(page) {
+    fetch('/Servicio/TablePartial?pageNumber=' + page, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.text())
+        .then(html => {
+            const cont = document.getElementById('servicio-table-container');
+            cont.innerHTML = html;
+            const cp = document.getElementById('current-page-value')?.value;
+            if (cp) cont.dataset.currentPage = cp;
+        })
+        .catch(e => console.error('Error cargando tabla:', e));
+}
+
+function getCurrentTablePage() {
+    return parseInt(document.getElementById('servicio-table-container')?.dataset.currentPage || '1');
+}
+// ================== Modal reutilizable Servicios ==================
+function openServicioConfirmModal(tipoAccion, id, nombre) {
+    const modal = document.getElementById('servicioConfirmModal');
+    const title = document.getElementById('servicioConfirmTitle');
+    const msg = document.getElementById('servicioConfirmMessage');
+    const submitBtn = document.getElementById('servicioConfirmSubmit');
+    const form = document.getElementById('servicioConfirmForm');
+    const idInput = document.getElementById('servicioConfirmId');
+
+    // Iconos y wrapper
+    const iconWrapper = document.getElementById('servicioConfirmIconWrapper');
+    const icon = document.getElementById('servicioConfirmIcon');
+
+    idInput.value = id;
+
+    if (tipoAccion === 'desactivar') {
+        // Texto
+        title.textContent = 'Desactivar Servicio';
+        msg.innerHTML = '¿Confirma desactivar el servicio <strong>' + escapeHtml(nombre) + '</strong>?';
+        form.action = '/Servicio/DeactivateServicio';
+        submitBtn.textContent = 'Desactivar';
+
+        // Estilos botón
+        submitBtn.className = 'py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900';
+
+        // Icono rojo ❌
+        iconWrapper.className = 'w-12 h-12 rounded-full bg-red-100 dark:bg-red-900 p-2 flex items-center justify-center mx-auto mb-3.5';
+        icon.setAttribute('fill', 'currentColor');
+        icon.setAttribute('viewBox', '0 0 20 20');
+        icon.setAttribute('class', 'w-8 h-8 text-red-600 dark:text-red-400');
+        icon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.293a1 1 0 
+        00-1.414-1.414L10 7.586 7.707 5.293a1 1 0 
+        00-1.414 1.414L8.586 10l-2.293 2.293a1 1 0 
+        001.414 1.414L10 12.414l2.293 2.293a1 1 0 
+        001.414-1.414L11.414 10l2.293-2.293z" clip-rule="evenodd"/>`;
+
+    } else { // reactivar
+        // Texto
+        title.textContent = 'Reactivar Servicio';
+        msg.innerHTML = '¿Confirma reactivar el servicio <strong>' + escapeHtml(nombre) + '</strong>?';
+        form.action = '/Servicio/ReactivateServicio';
+        submitBtn.textContent = 'Reactivar';
+
+        // Estilos botón
+        submitBtn.className = 'py-2 px-3 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900';
+
+        // Icono verde ✅
+        iconWrapper.className = 'w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 p-2 flex items-center justify-center mx-auto mb-3.5';
+        icon.setAttribute('fill', 'currentColor');
+        icon.setAttribute('viewBox', '0 0 24 24');
+        icon.setAttribute('class', 'w-8 h-8 text-green-500 dark:text-green-400');
+        icon.innerHTML = `<path fill-rule="evenodd" d="M2.25 12c0-5.385 
+        4.365-9.75 9.75-9.75s9.75 4.365 
+        9.75 9.75-4.365 9.75-9.75 
+        9.75S2.25 17.385 2.25 
+        12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 
+        4.53L9.53 12.22a.75.75 0 0 0-1.06 
+        1.06l2.25 2.25a.75.75 0 0 0 
+        1.14-.094l3.75-5.25Z" clip-rule="evenodd"/>`;
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function closeServicioConfirmModal() {
+    const modal = document.getElementById('servicioConfirmModal');
+    modal.classList.add('hidden');
+}
+
+
+function submitServicioEstado(form) {
+    const fd = new FormData(form);
+    fetch(form.action, {
+        method: 'POST',
+        body: fd,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    }).then(r => {
+        if (!r.ok) throw new Error('Error estado');
+        closeServicioConfirmModal();
+        showToast('Operación realizada', false);
+        reloadServicioTable(getCurrentTablePage());
+    }).catch(e => {
+        console.error(e);
+        showToast('Error procesando la operación', true);
+    });
+    return false;
+}
+
+function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}

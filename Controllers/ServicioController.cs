@@ -380,4 +380,133 @@ public class ServicioController : Controller
     }
 
     #endregion
+
+    [HttpGet]
+    public async Task<IActionResult> FormPartial(string id)
+    {
+        await CargarListasForm();
+        Servicio servicio = null;
+        if (!string.IsNullOrEmpty(id))
+            servicio = await _servicioService.ObtenerServicio(id);
+
+        return PartialView("_ServicioForm", servicio);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> TablePartial(
+        List<string> estados,
+        List<string> tipos,
+        List<string> tiposVehiculo,
+        int pageNumber = 1,
+        int pageSize = 10)
+    {
+        estados ??= new List<string>();
+        if (!estados.Any()) estados.Add("Activo");
+
+        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, null, null, pageNumber, pageSize);
+        var totalPages = await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, pageSize);
+        totalPages = Math.Max(totalPages, 1);
+        ViewBag.CurrentPage = pageNumber;
+        ViewBag.TotalPages = totalPages;
+        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
+        ViewBag.Estados = estados;
+        ViewBag.Tipos = tipos;
+        ViewBag.TiposVehiculo = tiposVehiculo;
+        return PartialView("_ServicioTable", servicios);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CrearServicioAjax(Servicio servicio)
+    {
+        try
+        {
+            ValidateServicio(servicio);
+            if (!ModelState.IsValid)
+            {
+                Response.Headers["X-Form-Valid"] = "false";
+                await CargarListasForm();
+                return PartialView("_ServicioForm", servicio);
+            }
+
+            if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo))
+            {
+                ModelState.AddModelError("Nombre", "Ya existe un servicio con ese nombre para ese tipo de vehículo.");
+                Response.Headers["X-Form-Valid"] = "false";
+                await CargarListasForm();
+                return PartialView("_ServicioForm", servicio);
+            }
+
+            servicio.Estado = "Activo";
+            await _servicioService.CrearServicio(servicio);
+            await RegistrarEvento("Creación (AJAX) de servicio", servicio.Id, "Servicio");
+
+            Response.Headers["X-Form-Valid"] = "true";
+            Response.Headers["X-Form-Message"] = "Servicio creado correctamente.";
+            await CargarListasForm();
+            return PartialView("_ServicioForm", null); // Limpio
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            Response.Headers["X-Form-Valid"] = "false";
+            await CargarListasForm();
+            return PartialView("_ServicioForm", servicio);
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ActualizarServicioAjax(Servicio servicio)
+    {
+        try
+        {
+            ValidateServicio(servicio);
+            if (!ModelState.IsValid)
+            {
+                Response.Headers["X-Form-Valid"] = "false";
+                await CargarListasForm();
+                return PartialView("_ServicioForm", servicio);
+            }
+
+            var actual = await _servicioService.ObtenerServicio(servicio.Id);
+            if (actual == null)
+            {
+                ModelState.AddModelError("", "Servicio no encontrado.");
+                Response.Headers["X-Form-Valid"] = "false";
+                await CargarListasForm();
+                return PartialView("_ServicioForm", servicio);
+            }
+
+            if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id))
+            {
+                ModelState.AddModelError("Nombre", "Ya existe otro servicio con ese nombre para ese tipo de vehículo.");
+                Response.Headers["X-Form-Valid"] = "false";
+                await CargarListasForm();
+                return PartialView("_ServicioForm", servicio);
+            }
+
+            servicio.Estado = actual.Estado;
+            await _servicioService.ActualizarServicio(servicio);
+            await RegistrarEvento("Actualización (AJAX) de servicio", servicio.Id, "Servicio");
+
+            Response.Headers["X-Form-Valid"] = "true";
+            Response.Headers["X-Form-Message"] = "Servicio actualizado correctamente.";
+            await CargarListasForm();
+            return PartialView("_ServicioForm", null);
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            Response.Headers["X-Form-Valid"] = "false";
+            await CargarListasForm();
+            return PartialView("_ServicioForm", servicio);
+        }
+    }
+
+    private async Task CargarListasForm()
+    {
+        ViewBag.TiposServicio = await _tipoServicioService.ObtenerTiposServicio() ?? new List<string>();
+        ViewBag.TodosLosTiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+    }
 }
