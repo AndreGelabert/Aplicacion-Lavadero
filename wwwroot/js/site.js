@@ -316,8 +316,11 @@ function setupFormValidation() {
     // Configurar validación de campos individuales
     setupFieldValidation();
 
-    // Validación en envío del formulario
-    servicioForm.addEventListener('submit', validateFormOnSubmit);
+    // Validación en envío del formulario - solo agregar si no existe ya
+    if (!servicioForm.hasAttribute('data-validation-setup')) {
+        servicioForm.addEventListener('submit', validateFormOnSubmit);
+        servicioForm.setAttribute('data-validation-setup', 'true');
+    }
 }
 
 function setupFieldValidation() {
@@ -476,6 +479,50 @@ function showFormError(message) {
 
     errorDiv.innerHTML = '<span class="font-medium">¡Error!</span> ' + message;
 }
+
+function displayServerValidationErrors() {
+    // Look for validation error messages in the returned HTML
+    const form = document.getElementById('servicio-form');
+    if (!form) return;
+
+    const errorMessages = [];
+    
+    // Look for ASP.NET validation spans
+    const validationSpans = form.querySelectorAll('span[data-valmsg-for]');
+    validationSpans.forEach(span => {
+        if (span.textContent.trim()) {
+            errorMessages.push(span.textContent.trim());
+        }
+    });
+
+    // Look for field-specific validation errors
+    const fieldErrors = form.querySelectorAll('.field-validation-error');
+    fieldErrors.forEach(error => {
+        if (error.textContent.trim()) {
+            errorMessages.push(error.textContent.trim());
+        }
+    });
+
+    // Look for validation summary
+    const validationSummary = form.querySelector('[data-valmsg-summary="true"]');
+    if (validationSummary) {
+        const summaryErrors = validationSummary.querySelectorAll('li');
+        summaryErrors.forEach(error => {
+            if (error.textContent.trim()) {
+                errorMessages.push(error.textContent.trim());
+            }
+        });
+        // Show the validation summary if there are errors
+        if (summaryErrors.length > 0) {
+            validationSummary.style.display = 'block';
+        }
+    }
+
+    // If we found specific errors, display them
+    if (errorMessages.length > 0) {
+        showFormError(errorMessages.join('<br>'));
+    }
+}
 // ===== AJAX Servicios (form + tabla) =====
 function loadServicioForm(id) {
     const url = '/Servicio/FormPartial' + (id ? ('?id=' + encodeURIComponent(id)) : '');
@@ -527,6 +574,8 @@ function submitServicioAjax(form) {
                 showToast(r.msg || 'Operación exitosa', false);
                 reloadServicioTable(1);
             } else {
+                // Extract and display specific validation errors from server
+                displayServerValidationErrors();
                 showToast('Revise los errores del formulario', true);
             }
         })
