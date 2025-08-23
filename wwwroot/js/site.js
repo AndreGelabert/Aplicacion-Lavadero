@@ -571,18 +571,65 @@ function revealServicioValidation() {
 }
 
 // Helper alert para formulario de servicio (añadir cerca de otras utilidades)
+// --- Mensajes del formulario Servicio ---
+let servicioMsgTimeout = null;
+
 function buildServicioAlert(type, msg) {
     const color = type === 'success'
-        ? 'green'
-        : (type === 'info' ? 'blue' : 'red');
-    return `<div class="p-4 mb-4 text-sm rounded-lg bg-${color}-50 text-${color}-800 dark:bg-gray-800 dark:text-${color}-400">
+        ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300' }
+        : type === 'info'
+            ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300' }
+            : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300' };
+
+    return `<div id="servicio-inline-alert"
+                class="servicio-inline-alert opacity-100 transition-opacity duration-700
+                       p-4 mb-4 text-sm rounded-lg border
+                       bg-${color.bg} text-${color.text} border-${color.border}
+                       dark:bg-gray-800 dark:text-${color.darkText}">
                 ${msg}
             </div>`;
 }
-function showServicioMessage(type, msg) {
+
+/**
+ * Muestra un mensaje bajo el formulario y lo oculta automáticamente.
+ * @param {'success'|'error'|'info'} type
+ * @param {string} msg
+ * @param {number} disappearMs (default 5000)
+ */
+function showServicioMessage(type, msg, disappearMs = 5000) {
     const c = document.getElementById('ajax-form-messages');
-    if (c) c.innerHTML = buildServicioAlert(type, msg);
+    if (!c) return;
+
+    if (servicioMsgTimeout) {
+        clearTimeout(servicioMsgTimeout);
+        servicioMsgTimeout = null;
+    }
+
+    c.innerHTML = buildServicioAlert(type, msg);
+    const alertEl = document.getElementById('servicio-inline-alert');
+    if (!alertEl) return;
+
+    servicioMsgTimeout = setTimeout(() => {
+        alertEl.classList.add('opacity-0');
+        setTimeout(() => {
+            if (alertEl.parentElement) alertEl.remove();
+        }, 750);
+    }, disappearMs);
 }
+
+// Elimina la definición duplicada anterior de showServicioMessage (si existe)
+
+// Ocultar mensaje al editar cualquier campo
+document.addEventListener('input', (e) => {
+    if (e.target.closest('#servicio-form')) {
+        const al = document.getElementById('servicio-inline-alert');
+        if (al) {
+            if (servicioMsgTimeout) clearTimeout(servicioMsgTimeout);
+            al.classList.add('opacity-0');
+            setTimeout(() => { if (al.parentElement) al.remove(); }, 400);
+        }
+    }
+});
 
 // Modificar submitServicioAjax para no duplicar errores
 function submitServicioAjax(form) {
@@ -608,20 +655,21 @@ function submitServicioAjax(form) {
             if (titleSpan) titleSpan.textContent = isEdit ? 'Editando un Servicio' : 'Registrando un Servicio';
 
             if (r.valid) {
-                showServicioMessage('success', r.msg || 'Operación exitosa.');
+                // Éxito: cerrar modo edición y mostrar mensaje que desaparece más rápido
+                showServicioMessage('success', r.msg || 'Operación exitosa.', 4000);
                 reloadServicioTable(1);
             } else {
-                // Mostrar summary si contiene errores
                 const summary = document.getElementById('servicio-validation-summary');
                 if (summary && summary.textContent.trim().length > 0) {
                     summary.classList.remove('hidden');
                 }
-                showServicioMessage('error', 'Revise los errores del formulario.');
+                // Error: mantener más tiempo visible
+                showServicioMessage('error', 'Revise los errores del formulario.', 8000);
             }
         })
         .catch(e => {
             console.error('Error enviando formulario:', e);
-            showServicioMessage('error', 'Error de comunicación con el servidor.');
+            showServicioMessage('error', 'Error de comunicación con el servidor.', 8000);
         });
     return false;
 }
