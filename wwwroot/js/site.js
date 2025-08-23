@@ -533,6 +533,12 @@ function loadServicioForm(id) {
             setupFormValidation();
             const desc = document.getElementById('Descripcion');
             if (desc) autoGrow(desc);
+
+            // Actualizar título externo
+            const isEdit = !!document.getElementById('Id')?.value;
+            const titleSpan = document.getElementById('form-title');
+            if (titleSpan) titleSpan.textContent = isEdit ? 'Editando un Servicio' : 'Registrando un Servicio';
+
             // Abrir acordeón si estaba cerrado
             const accordionBody = document.getElementById('accordion-flush-body-1');
             if (accordionBody && accordionBody.classList.contains('hidden')) {
@@ -542,17 +548,43 @@ function loadServicioForm(id) {
         .catch(e => console.error('Error cargando formulario:', e));
 }
 
-function reloadServicioTable(page) {
-    // Tomar filtros actuales desde DOM (solo si quieres ampliar en siguiente paso)
-    const url = '/Servicio/TablePartial?pageNumber=' + page;
-    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(r => r.text())
-        .then(html => {
-            document.getElementById('servicio-table-container').innerHTML = html;
-        })
-        .catch(e => console.error('Error cargando tabla:', e));
+// Nueva función: mostrar summary si hay errores
+function revealServicioValidation() {
+    const summary = document.getElementById('servicio-validation-summary');
+    if (!summary) return;
+    // Si el summary recibió li's (MVC) o texto, mostrar
+    if (summary.innerText.trim() !== '') {
+        summary.classList.remove('hidden');
+    } else {
+        // Buscar spans de campo con texto y, si existen, crear una lista
+        const spans = document.querySelectorAll('#servicio-form span[asp-validation-for], #servicio-form span[data-valmsg-for]');
+        const messages = [];
+        spans.forEach(s => {
+            const txt = s.textContent.trim();
+            if (txt) messages.push(txt);
+        });
+        if (messages.length) {
+            summary.innerHTML = messages.map(m => `<div>${m}</div>`).join('');
+            summary.classList.remove('hidden');
+        }
+    }
 }
 
+// Helper alert para formulario de servicio (añadir cerca de otras utilidades)
+function buildServicioAlert(type, msg) {
+    const color = type === 'success'
+        ? 'green'
+        : (type === 'info' ? 'blue' : 'red');
+    return `<div class="p-4 mb-4 text-sm rounded-lg bg-${color}-50 text-${color}-800 dark:bg-gray-800 dark:text-${color}-400">
+                ${msg}
+            </div>`;
+}
+function showServicioMessage(type, msg) {
+    const c = document.getElementById('ajax-form-messages');
+    if (c) c.innerHTML = buildServicioAlert(type, msg);
+}
+
+// Modificar submitServicioAjax para no duplicar errores
 function submitServicioAjax(form) {
     const fd = new FormData(form);
     fetch(form.action, {
@@ -570,19 +602,31 @@ function submitServicioAjax(form) {
             setupFormValidation();
             const desc = document.getElementById('Descripcion');
             if (desc) autoGrow(desc);
+
+            const isEdit = !!document.getElementById('Id')?.value;
+            const titleSpan = document.getElementById('form-title');
+            if (titleSpan) titleSpan.textContent = isEdit ? 'Editando un Servicio' : 'Registrando un Servicio';
+
             if (r.valid) {
-                showToast(r.msg || 'Operación exitosa', false);
+                showServicioMessage('success', r.msg || 'Operación exitosa.');
                 reloadServicioTable(1);
             } else {
-                // Extract and display specific validation errors from server
-                displayServerValidationErrors();
-                showToast('Revise los errores del formulario', true);
+                // Mostrar summary si contiene errores
+                const summary = document.getElementById('servicio-validation-summary');
+                if (summary && summary.textContent.trim().length > 0) {
+                    summary.classList.remove('hidden');
+                }
+                showServicioMessage('error', 'Revise los errores del formulario.');
             }
         })
-        .catch(e => console.error('Error enviando formulario:', e));
+        .catch(e => {
+            console.error('Error enviando formulario:', e);
+            showServicioMessage('error', 'Error de comunicación con el servidor.');
+        });
     return false;
 }
 
+// (Opcional) puedes eliminar displayServerValidationErrors y showFormError si ya no se usan en otros módulos
 // Cambiar estado (desactivar/reactivar) sin recargar toda la página
 function submitEstadoServicio(form) {
     const fd = new FormData(form);

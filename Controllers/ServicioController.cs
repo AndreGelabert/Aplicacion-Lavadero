@@ -34,7 +34,7 @@ public class ServicioController : Controller
         int pageSize = 10,
         string editId = null)
     {
-        // Usar "Activo" por defecto si no se especifica ning�n estado
+        // Usar "Activo" por defecto si no se especifica ningun estado
         estados ??= new List<string>();
         if (!estados.Any())
         {
@@ -84,7 +84,7 @@ public class ServicioController : Controller
     {
         try
         {
-            // Asignar un ID temporal para la validaci�n
+            // Asignar un ID temporal para la validacion
             if (string.IsNullOrEmpty(servicio.Id))
             {
                 servicio.Id = "temp-" + Guid.NewGuid().ToString();
@@ -92,7 +92,7 @@ public class ServicioController : Controller
                 TryValidateModel(servicio);
             }
 
-            // Validaci�n personalizada
+            // Validacion personalizada
             ValidateServicio(servicio);
 
             if (!ModelState.IsValid)
@@ -104,8 +104,8 @@ public class ServicioController : Controller
             // Verificar si ya existe servicio con mismo nombre y tipo
             if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo))
             {
-                TempData["Error"] = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para veh�culos tipo '{servicio.TipoVehiculo}'.";
-                ModelState.AddModelError("Nombre", $"Ya existe un servicio con este nombre para veh�culos tipo '{servicio.TipoVehiculo}'.");
+                TempData["Error"] = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehiculos tipo '{servicio.TipoVehiculo}'.";
+                ModelState.AddModelError("Nombre", $"Ya existe un servicio con este nombre para vehiculos tipo '{servicio.TipoVehiculo}'.");
                 return await PrepararVistaConError(servicio);
             }
 
@@ -113,8 +113,8 @@ public class ServicioController : Controller
             servicio.Estado = "Activo";
             await _servicioService.CrearServicio(servicio);
 
-            // Registrar evento de auditor�a
-            await RegistrarEvento("Creaci�n de servicio", servicio.Id, "Servicio");
+            // Registrar evento de auditoria
+            await RegistrarEvento("Creacion de servicio", servicio.Id, "Servicio");
 
             TempData["Success"] = "Servicio creado correctamente.";
             return RedirectToAction("Index");
@@ -138,7 +138,7 @@ public class ServicioController : Controller
     {
         try
         {
-            // Validaci�n personalizada
+            // Validacion personalizada
             ValidateServicio(servicio);
 
             if (!ModelState.IsValid)
@@ -155,11 +155,11 @@ public class ServicioController : Controller
                 return await PrepararVistaConError(servicio);
             }
 
-            // Verificar si ya existe otro servicio con el mismo nombre para el mismo tipo de veh�culo
+            // Verificar si ya existe otro servicio con el mismo nombre para el mismo tipo de vehiculo
             if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id))
             {
-                TempData["Error"] = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para veh�culos tipo '{servicio.TipoVehiculo}'.";
-                ModelState.AddModelError("Nombre", $"Ya existe un servicio con este nombre para veh�culos tipo '{servicio.TipoVehiculo}'.");
+                TempData["Error"] = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehiculos tipo '{servicio.TipoVehiculo}'.";
+                ModelState.AddModelError("Nombre", $"Ya existe un servicio con este nombre para vehiculos tipo '{servicio.TipoVehiculo}'.");
                 return await PrepararVistaConError(servicio);
             }
 
@@ -169,8 +169,8 @@ public class ServicioController : Controller
             // Actualizar el servicio
             await _servicioService.ActualizarServicio(servicio);
 
-            // Registrar evento de auditor�a
-            await RegistrarEvento("Actualizaci�n de servicio", servicio.Id, "Servicio");
+            // Registrar evento de auditoria
+            await RegistrarEvento("Actualizacion de servicio", servicio.Id, "Servicio");
 
             TempData["Success"] = "Servicio actualizado correctamente.";
             return RedirectToAction("Index");
@@ -195,7 +195,7 @@ public class ServicioController : Controller
         await _servicioService.CambiarEstadoServicio(id, "Inactivo");
         TempData["StateChangeEvent_UserId"] = id;
         TempData["StateChangeEvent_NewState"] = "Inactivo";
-        await RegistrarEvento("Desactivaci�n de servicio", id, "Servicio");
+        await RegistrarEvento("Desactivacion de servicio", id, "Servicio");
         return RedirectToAction("Index");
     }
 
@@ -205,7 +205,7 @@ public class ServicioController : Controller
         await _servicioService.CambiarEstadoServicio(id, "Activo");
         TempData["StateChangeEvent_UserId"] = id;
         TempData["StateChangeEvent_NewState"] = "Activo";
-        await RegistrarEvento("Reactivaci�n de servicio", id, "Servicio");
+        await RegistrarEvento("Reactivacion de servicio", id, "Servicio");
         return RedirectToAction("Index");
     }
 
@@ -224,7 +224,7 @@ public class ServicioController : Controller
             else
             {
                 await _tipoServicioService.CrearTipoServicio(nombreTipo);
-                await RegistrarEvento("Creaci�n de tipo de servicio", nombreTipo, "TipoServicio");
+                await RegistrarEvento("Creacion de tipo de servicio", nombreTipo, "TipoServicio");
                 TempData["Success"] = "Tipo de servicio creado correctamente.";
             }
         }
@@ -246,7 +246,7 @@ public class ServicioController : Controller
             else
             {
                 await _tipoServicioService.EliminarTipoServicio(nombreTipo);
-                await RegistrarEvento("Eliminaci�n de tipo de servicio", nombreTipo, "TipoServicio");
+                await RegistrarEvento("Eliminacion de tipo de servicio", nombreTipo, "TipoServicio");
                 TempData["Success"] = "Tipo de servicio eliminado correctamente.";
             }
         }
@@ -262,13 +262,13 @@ public class ServicioController : Controller
 
             if (existeTipo)
             {
-                TempData["Error"] = "Ya existe un tipo de veh�culo con el mismo nombre.";
+                TempData["Error"] = "Ya existe un tipo de vehiculo con el mismo nombre.";
             }
             else
             {
                 await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo);
-                await RegistrarEvento("Creaci�n de tipo de veh�culo", nombreTipo, "TipoVehiculo");
-                TempData["Success"] = "Tipo de veh�culo creado correctamente.";
+                await RegistrarEvento("Creacion de tipo de vehiculo", nombreTipo, "TipoVehiculo");
+                TempData["Success"] = "Tipo de vehiculo creado correctamente.";
             }
         }
         return RedirectToAction("Index");
@@ -279,24 +279,24 @@ public class ServicioController : Controller
     {
         if (!string.IsNullOrWhiteSpace(nombreTipo))
         {
-            // Verificar si hay servicios usando este tipo de veh�culo
+            // Verificar si hay servicios usando este tipo de vehiculo
             var serviciosConTipo = await _servicioService.ObtenerServiciosPorTipoVehiculo(nombreTipo);
 
             if (serviciosConTipo.Any())
             {
-                TempData["Error"] = "No se puede eliminar el tipo de veh�culo porque hay servicios que lo utilizan.";
+                TempData["Error"] = "No se puede eliminar el tipo de vehiculo porque hay servicios que lo utilizan.";
             }
             else
             {
                 await _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo);
-                await RegistrarEvento("Eliminaci�n de tipo de veh�culo", nombreTipo, "TipoVehiculo");
-                TempData["Success"] = "Tipo de veh�culo eliminado correctamente.";
+                await RegistrarEvento("Eliminacion de tipo de vehiculo", nombreTipo, "TipoVehiculo");
+                TempData["Success"] = "Tipo de vehiculo eliminado correctamente.";
             }
         }
         return RedirectToAction("Index");
     }
 
-    #region M�todos privados
+    #region Metodos privados
 
     private List<int> GetVisiblePages(int currentPage, int totalPages, int range = 2)
     {
@@ -307,7 +307,7 @@ public class ServicioController : Controller
 
     private void ValidateServicio(Servicio servicio)
     {
-        if (!string.IsNullOrEmpty(servicio.Nombre) && !System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-Z������������\s]+$"))
+        if (!string.IsNullOrEmpty(servicio.Nombre) && !System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
         {
             ModelState.AddModelError("Nombre", "El nombre solo puede contener letras y espacios.");
         }
@@ -338,7 +338,7 @@ public class ServicioController : Controller
         ViewBag.ClearButtonText = esCreacion ? "Limpiar Campos" : "Cancelar";
         ViewBag.FormAction = esCreacion ? "CrearServicio" : "ActualizarServicio";
 
-        // Configuraci�n de la paginaci�n
+        // Configuracion de la paginacion
         var servicios = await _servicioService.ObtenerServicios(
             new List<string> { "Activo" }, null, null, null, null, 1, 10);
         var totalPages = await _servicioService.ObtenerTotalPaginas(
@@ -439,7 +439,7 @@ public class ServicioController : Controller
 
             if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo))
             {
-                ModelState.AddModelError("Nombre", "Ya existe un servicio con ese nombre para ese tipo de veh�culo.");
+                ModelState.AddModelError("Nombre", "Ya existe un servicio con ese nombre para ese tipo de vehiculo.");
                 Response.Headers["X-Form-Valid"] = "false";
                 await CargarListasForm();
                 return PartialView("_ServicioForm", servicio);
@@ -447,7 +447,7 @@ public class ServicioController : Controller
 
             servicio.Estado = "Activo";
             await _servicioService.CrearServicio(servicio);
-            await RegistrarEvento("Creaci�n (AJAX) de servicio", servicio.Id, "Servicio");
+            await RegistrarEvento("Creacion (AJAX) de servicio", servicio.Id, "Servicio");
 
             Response.Headers["X-Form-Valid"] = "true";
             Response.Headers["X-Form-Message"] = "Servicio creado correctamente.";
@@ -488,7 +488,7 @@ public class ServicioController : Controller
 
             if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id))
             {
-                ModelState.AddModelError("Nombre", "Ya existe otro servicio con ese nombre para ese tipo de veh�culo.");
+                ModelState.AddModelError("Nombre", "Ya existe otro servicio con ese nombre para ese tipo de vehiculo.");
                 Response.Headers["X-Form-Valid"] = "false";
                 await CargarListasForm();
                 return PartialView("_ServicioForm", servicio);
@@ -496,7 +496,7 @@ public class ServicioController : Controller
 
             servicio.Estado = actual.Estado;
             await _servicioService.ActualizarServicio(servicio);
-            await RegistrarEvento("Actualizaci�n (AJAX) de servicio", servicio.Id, "Servicio");
+            await RegistrarEvento("Actualizacion (AJAX) de servicio", servicio.Id, "Servicio");
 
             Response.Headers["X-Form-Valid"] = "true";
             Response.Headers["X-Form-Message"] = "Servicio actualizado correctamente.";
