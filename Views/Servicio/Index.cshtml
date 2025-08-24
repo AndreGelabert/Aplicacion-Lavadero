@@ -16,7 +16,7 @@
     }
 }
 <section class="bg-gray-50 dark:bg-gray-900">
-    <div class="mx-auto bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-hidden">
+    <div class="mx-auto bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-visible">
         <!-- Encabezado -->
         <div class="p-2 flex justify-between items-center rounded-t border-b dark:border-gray-600">
             <h1 class="text-2xl md:block font-semibold text-gray-900 dark:text-white">
@@ -217,69 +217,89 @@
                             <path clip-rule="evenodd" fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
                         </svg>
                     </button>
-                    <!-- Dropdown de Filtro -->
-                    <div id="filterDropdown" class="z-10 hidden w-56 p-3 bg-white rounded-lg shadow dark:bg-gray-700">
-                        <form method="get" asp-action="Index" id="filterForm" class="space-y-4">
+                    <!-- Dropdown de Filtro con layout horizontal -->
+                    <div id="filterDropdown" class="z-50 hidden bg-white rounded-lg shadow-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+                        <form method="get" asp-action="Index" id="filterForm" class="p-4">
                             <input type="hidden" name="pageNumber" value="1" />
-                            <!-- Filtrar por Estado -->
-                            <div>
-                                <h6 class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Estado</h6>
-                                <ul class="space-y-2 text-sm">
-                                    <!-- Checkbox Activo -->
-                                    <li class="flex items-center">
-                                        <input id="activoCheckbox" type="checkbox" name="estados" value="Activo"
-                                        @(ViewBag.Estados?.Contains("Activo") == true ? "checked" : "")
-                                               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                        <label for="activoCheckbox" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">Activo</label>
-                                    </li>
-                                    <!-- Checkbox Inactivo -->
-                                    <li class="flex items-center">
-                                        <input id="inactivoCheckbox" type="checkbox" name="estados" value="Inactivo"
-                                        @(ViewBag.Estados?.Contains("Inactivo") == true ? "checked" : "")
-                                               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                        <label for="inactivoCheckbox" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">Inactivo</label>
-                                    </li>
-                                </ul>
-                            </div>
-                            <!-- Filtrar por Tipo de Servicio -->
-                            <div>
-                                <h6 class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Servicio</h6>
-                                <ul class="space-y-2 max-h-36 overflow-y-auto text-sm">
-                                    @if (ViewBag.TodosLosTipos != null)
-                                    {
-                                        @foreach (var tipo in ViewBag.TodosLosTipos)
+                            
+                            <!-- Layout horizontal con grid -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 min-w-[600px]">
+                                
+                                <!-- Columna 1: Estado -->
+                                <div>
+                                    <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                        Estado
+                                    </h6>
+                                    <div class="space-y-2 text-sm">
+                                        <label class="flex items-center">
+                                            <input id="activoCheckbox" type="checkbox" name="estados" value="Activo"
+                                                   @(ViewBag.Estados?.Contains("Activo") == true ? "checked" : "")
+                                                   class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                            <span class="ml-2 text-gray-900 dark:text-gray-100">Activo</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input id="inactivoCheckbox" type="checkbox" name="estados" value="Inactivo"
+                                                   @(ViewBag.Estados?.Contains("Inactivo") == true ? "checked" : "")
+                                                   class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                            <span class="ml-2 text-gray-900 dark:text-gray-100">Inactivo</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Columna 2: Tipo de Servicio -->
+                                <div>
+                                    <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                        Tipo de Servicio
+                                    </h6>
+                                    <div class="space-y-2 max-h-40 overflow-y-auto text-sm">
+                                        @if (ViewBag.TodosLosTipos != null)
                                         {
-                                            <li class="flex items-center">
-                                                <input id="tipo-@tipo.Replace(" ", "-")" type="checkbox" name="tipos" value="@tipo"
-                                                @(ViewBag.Tipos?.Contains(tipo) == true ? "checked" : "")
-                                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                                <label for="tipo-@tipo.Replace(" ", "-")" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">@tipo</label>
-                                            </li>
+                                            @foreach (var tipo in ViewBag.TodosLosTipos)
+                                            {
+                                                <label class="flex items-center">
+                                                    <input id="tipo-@tipo.Replace(" ", "-")" type="checkbox" name="tipos" value="@tipo"
+                                                           @(ViewBag.Tipos?.Contains(tipo) == true ? "checked" : "")
+                                                           class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                    <span class="ml-2 text-gray-900 dark:text-gray-100">@tipo</span>
+                                                </label>
+                                            }
                                         }
-                                    }
-                                </ul>
-                            </div>
-                            <!-- Filtrar por Tipo de Vehículo -->
-                            <div>
-                                <h6 class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Vehículo</h6>
-                                <ul class="space-y-2 max-h-36 overflow-y-auto text-sm">
-                                    @if (ViewBag.TodosLosTiposVehiculo != null)
-                                    {
-                                        @foreach (var tipo in ViewBag.TodosLosTiposVehiculo)
+                                    </div>
+                                </div>
+
+                                <!-- Columna 3: Tipo de Vehículo -->
+                                <div>
+                                    <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                        Tipo de Vehículo
+                                    </h6>
+                                    <div class="space-y-2 max-h-40 overflow-y-auto text-sm">
+                                        @if (ViewBag.TodosLosTiposVehiculo != null)
                                         {
-                                            <li class="flex items-center">
-                                                <input id="tipoVehiculo-@tipo.Replace(" ", "-")" type="checkbox" name="tiposVehiculo" value="@tipo"
-                                                @(ViewBag.TiposVehiculo != null && ViewBag.TiposVehiculo.Contains(tipo) ? "checked" : "")
-                                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                                <label for="tipoVehiculo-@tipo.Replace(" ", "-")" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">@tipo</label>
-                                            </li>
+                                            @foreach (var tipo in ViewBag.TodosLosTiposVehiculo)
+                                            {
+                                                <label class="flex items-center">
+                                                    <input id="tipoVehiculo-@tipo.Replace(" ", "-")" type="checkbox" name="tiposVehiculo" value="@tipo"
+                                                           @(ViewBag.TiposVehiculo != null && ViewBag.TiposVehiculo.Contains(tipo) ? "checked" : "")
+                                                           class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                    <span class="ml-2 text-gray-900 dark:text-gray-100">@tipo</span>
+                                                </label>
+                                            }
                                         }
-                                    }
-                                </ul>
+                                    </div>
+                                </div>
                             </div>
-                            <button type="submit" class="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                Aplicar Filtros
-                            </button>
+
+                            <!-- Botones de acción -->
+                            <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
+                                <button type="button" onclick="clearAllFilters()" 
+                                        class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
+                                    Limpiar filtros
+                                </button>
+                                <button type="submit" 
+                                        class="px-6 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300">
+                                    Aplicar Filtros
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>

@@ -107,18 +107,119 @@ function setupFilterDropdown() {
     const filterDropdown = document.getElementById('filterDropdown');
 
     if (filterButton && filterDropdown) {
-        filterButton.addEventListener('click', function () {
-            // Calcular la posición del dropdown basada en el botón
-            const buttonRect = filterButton.getBoundingClientRect();
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        filterButton.addEventListener('click', function (e) {
+            e.stopPropagation();
 
-            // Establecer la posición del dropdown para que se muestre debajo del botón
+            // Toggle dropdown
+            const isHidden = filterDropdown.classList.contains('hidden');
+            if (!isHidden) {
+                filterDropdown.classList.add('hidden');
+                return;
+            }
+
+            // Calcular posicionamiento inteligente
+            const buttonRect = filterButton.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+
+            // Mostrar temporalmente para medir
+            filterDropdown.classList.remove('hidden');
+            filterDropdown.style.visibility = 'hidden';
             filterDropdown.style.position = 'fixed';
-            filterDropdown.style.top = (buttonRect.bottom + scrollTop) + 'px';
-            filterDropdown.style.left = buttonRect.left + 'px';
-            filterDropdown.style.maxHeight = '80vh'; // Altura máxima para que quepa en la pantalla
-            filterDropdown.style.overflowY = 'auto'; // Permitir scroll si el contenido es demasiado largo
+
+            const dropdownRect = filterDropdown.getBoundingClientRect();
+            const dropdownWidth = dropdownRect.width;
+            const dropdownHeight = dropdownRect.height;
+
+            // Calcular posición horizontal
+            let left = buttonRect.left;
+
+            // Ajustar si se sale por la derecha
+            if (left + dropdownWidth > viewportWidth) {
+                left = viewportWidth - dropdownWidth - 10;
+            }
+
+            // Ajustar si se sale por la izquierda
+            if (left < 10) {
+                left = 10;
+            }
+
+            // Calcular posición vertical
+            const spaceBelow = viewportHeight - buttonRect.bottom;
+            const spaceAbove = buttonRect.top;
+
+            let top;
+            let maxHeight = 'none';
+
+            if (spaceBelow >= dropdownHeight + 10) {
+                // Hay suficiente espacio abajo - posicionar normalmente
+                top = buttonRect.bottom + 5;
+            } else if (spaceAbove >= dropdownHeight + 10) {
+                // Hay suficiente espacio arriba
+                top = buttonRect.top - dropdownHeight - 5;
+            } else {
+                // No hay suficiente espacio en ningún lado
+                if (spaceBelow > spaceAbove) {
+                    top = buttonRect.bottom + 5;
+                    maxHeight = (spaceBelow - 15) + 'px';
+                } else {
+                    top = 10;
+                    maxHeight = (spaceAbove - 15) + 'px';
+                }
+            }
+
+            // Aplicar estilos finales
+            filterDropdown.style.position = 'fixed';
+            filterDropdown.style.left = left + 'px';
+            filterDropdown.style.top = top + 'px';
+            filterDropdown.style.zIndex = '1000';
+            filterDropdown.style.maxHeight = maxHeight;
+            filterDropdown.style.visibility = 'visible';
+
+            // Actualizar ícono del botón
+            updateDropdownIcon(spaceBelow < dropdownHeight + 10 && spaceAbove >= dropdownHeight + 10);
         });
+
+        // Cerrar al hacer clic fuera
+        document.addEventListener('click', function (event) {
+            if (!filterButton.contains(event.target) && !filterDropdown.contains(event.target)) {
+                filterDropdown.classList.add('hidden');
+            }
+        });
+
+        // Reposicionar en resize
+        window.addEventListener('resize', function () {
+            if (!filterDropdown.classList.contains('hidden')) {
+                filterButton.click();
+                filterButton.click(); // Re-abrir
+            }
+        });
+    }
+}
+
+// Función para actualizar el ícono del botón
+function updateDropdownIcon(isAbove) {
+    const filterButton = document.getElementById('filterDropdownButton');
+    const icon = filterButton?.querySelector('svg:last-child');
+    if (icon) {
+        icon.style.transform = isAbove ? 'rotate(180deg)' : 'rotate(0deg)';
+        icon.style.transition = 'transform 0.2s ease';
+    }
+}
+
+// Función para limpiar todos los filtros
+function clearAllFilters() {
+    const form = document.getElementById('filterForm');
+    if (form) {
+        // Limpiar todos los checkboxes
+        const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = false);
+
+        // Marcar solo "Activo" por defecto
+        const activoCheckbox = form.querySelector('input[value="Activo"]');
+        if (activoCheckbox) {
+            activoCheckbox.checked = true;
+        }
     }
 }
 

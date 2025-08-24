@@ -96,7 +96,7 @@
             <span asp-validation-for="Descripcion" class="text-red-600 text-xs"></span>
         </div>
     </div>
-    <div class="flex justify-end gap-2">
+    <div class="flex justify-end m-4 gap-2">
         <button type="submit" id="submit-button" class="text-white inline-flex items-center bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
                 <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
@@ -112,7 +112,7 @@
     </div>
     <!-- Summary (se mostrará vía JS si tiene contenido) -->
     <div id="servicio-validation-summary" asp-validation-summary="All"
-         class="hidden p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"></div>
+         class="hidden p-4 mt-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"></div>
     <!-- Mensajes AJAX (éxito / error general) -->
     <div id="ajax-form-messages" class="mb-4"></div>
 </form>

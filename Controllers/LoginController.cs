@@ -198,30 +198,73 @@ public class LoginController : Controller
             var decodedToken = await FirebaseAdmin.Auth.FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(request.IdToken);
             var email = decodedToken.Claims["email"].ToString();
             var displayName = decodedToken.Claims["name"].ToString();
+            var uid = decodedToken.Uid; // UID generado por Google
 
             var employeesCollection = _firestore.Collection("empleados");
-            var query = employeesCollection.WhereEqualTo("Email", email);
-            var snapshot = await query.GetSnapshotAsync();
-
+            
+            // Buscar primero por UID (más eficiente), luego por email como fallback
+            var employeeDoc = await employeesCollection.Document(uid).GetSnapshotAsync();
+            
             string role;
             string estado;
-            if (snapshot.Count == 0)
+            
+            if (!employeeDoc.Exists)
             {
-                role = "Empleado";
-                estado = "Activo";
-                var newEmployee = new
+                // Verificar si existe un empleado con este email (migración de cuentas)
+                var emailQuery = employeesCollection.WhereEqualTo("Email", email);
+                var emailSnapshot = await emailQuery.GetSnapshotAsync();
+                
+                if (emailSnapshot.Count > 0)
                 {
-                    Nombre = displayName,
-                    Email = email,
-                    Rol = role,
-                    Estado = estado
-                };
-                await employeesCollection.AddAsync(newEmployee);
+                    // Empleado existe con email pero sin UID correcto
+                    var existingEmployee = emailSnapshot.Documents[0];
+                    role = existingEmployee.GetValue<string>("Rol");
+                    estado = existingEmployee.GetValue<string>("Estado");
+                    
+                    if (estado != "Activo")
+                    {
+                        return BadRequest(new { error = "Su cuenta está inactiva. Por favor, contacte al administrador." });
+                    }
+                    
+                    // Migrar: eliminar documento viejo y crear con UID correcto
+                    await existingEmployee.Reference.DeleteAsync();
+                    
+                    var migratedEmployee = new Dictionary<string, object>
+                    {
+                        { "Uid", uid },
+                        { "Nombre", displayName },
+                        { "Email", email },
+                        { "Rol", role },
+                        { "Estado", estado }
+                    };
+                    await employeesCollection.Document(uid).SetAsync(migratedEmployee);
+                    
+                    await _auditService.LogEvent(uid, email, "Migración a Google Auth", uid, "Empleado");
+                }
+                else
+                {
+                    // Empleado completamente nuevo
+                    role = "Empleado";
+                    estado = "Activo";
+                    
+                    var newEmployee = new Dictionary<string, object>
+                    {
+                        { "Uid", uid },
+                        { "Nombre", displayName },
+                        { "Email", email },
+                        { "Rol", role },
+                        { "Estado", estado }
+                    };
+                    await employeesCollection.Document(uid).SetAsync(newEmployee);
+                    
+                    await _auditService.LogEvent(uid, email, "Registro con Google", uid, "Empleado");
+                }
             }
             else
             {
-                role = snapshot.Documents[0].GetValue<string>("Rol");
-                estado = snapshot.Documents[0].GetValue<string>("Estado");
+                // Empleado ya existe con UID correcto
+                role = employeeDoc.GetValue<string>("Rol");
+                estado = employeeDoc.GetValue<string>("Estado");
 
                 if (estado != "Activo")
                 {
@@ -231,6 +274,7 @@ public class LoginController : Controller
 
             var claims = new List<Claim>
         {
+            new Claim(ClaimTypes.NameIdentifier, uid), // ← CRÍTICO: agregar UID
             new Claim(ClaimTypes.Name, displayName),
             new Claim(ClaimTypes.Email, email),
             new Claim(ClaimTypes.Role, role)
@@ -243,6 +287,9 @@ public class LoginController : Controller
             };
 
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
+
+            // Registrar inicio de sesión
+            await _auditService.LogEvent(uid, email, "Inicio de sesión con Google", null, null);
 
             return Json(new { redirectUrl = Url.Action("Index", "Lavados") });
         }
