@@ -3,9 +3,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
+/// <summary>
+/// Controlador para la gestión de servicios del lavadero.
+/// Maneja operaciones CRUD, tipos de servicio y tipos de vehículo.
+/// </summary>
 [Authorize(Roles = "Administrador")]
 public class ServicioController : Controller
 {
+    #region Dependencias
     private readonly ServicioService _servicioService;
     private readonly AuditService _auditService;
     private readonly TipoServicioService _tipoServicioService;
@@ -22,7 +27,12 @@ public class ServicioController : Controller
         _tipoServicioService = tipoServicioService;
         _tipoVehiculoService = tipoVehiculoService;
     }
+    #endregion
 
+    #region Vistas Principales
+    /// <summary>
+    /// Página principal de servicios con filtros y paginación
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> Index(
         List<string> estados,
@@ -34,31 +44,283 @@ public class ServicioController : Controller
         int pageSize = 10,
         string editId = null)
     {
-        // Usar "Activo" por defecto si no se especifica ningun estado
-        estados ??= new List<string>();
-        if (!estados.Any())
-        {
-            estados.Add("Activo");
-        }
+        // Configurar estados por defecto
+        estados = ConfigurarEstadosDefecto(estados);
 
-        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, firstDocId, lastDocId, pageNumber, pageSize);
+        // Obtener datos de servicios
+        var (servicios, currentPage, totalPages, visiblePages) = await ObtenerDatosServicios(
+            estados, tipos, tiposVehiculo, pageNumber, pageSize);
+
+        // Cargar listas para dropdowns
+        var (tiposServicio, tiposVehiculoList) = await CargarListasDropdown();
+
+        // Configurar ViewBag
+        ConfigurarViewBag(estados, tipos, tiposVehiculo, tiposServicio, tiposVehiculoList,
+            pageSize, currentPage, totalPages, visiblePages,
+            servicios.FirstOrDefault()?.Id, servicios.LastOrDefault()?.Id);
+
+        // Configurar formulario (creación vs edición)
+        await ConfigurarFormulario(editId);
+
+        return View(servicios);
+    }
+    #endregion
+
+    #region Operaciones CRUD - Formulario Tradicional
+    /// <summary>
+    /// Crear un nuevo servicio (formulario tradicional)
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> CrearServicio(Servicio servicio)
+    {
+        try
+        {
+            var resultado = await ProcesarCreacionServicio(servicio);
+            if (!resultado.EsExitoso)
+            {
+                return await PrepararVistaConError(servicio, resultado.MensajeError);
+            }
+
+            await RegistrarEvento("Creacion de servicio", servicio.Id, "Servicio");
+            TempData["Success"] = "Servicio creado correctamente.";
+            return RedirectToAction("Index");
+        }
+        catch (Exception ex)
+        {
+            return await ManejiarExcepcion(ex, servicio);
+        }
+    }
+
+    /// <summary>
+    /// Actualizar un servicio existente (formulario tradicional)
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> ActualizarServicio(Servicio servicio)
+    {
+        try
+        {
+            var resultado = await ProcesarActualizacionServicio(servicio);
+            if (!resultado.EsExitoso)
+            {
+                return await PrepararVistaConError(servicio, resultado.MensajeError);
+            }
+
+            await RegistrarEvento("Actualizacion de servicio", servicio.Id, "Servicio");
+            TempData["Success"] = "Servicio actualizado correctamente.";
+            return RedirectToAction("Index");
+        }
+        catch (Exception ex)
+        {
+            return await ManejiarExcepcion(ex, servicio);
+        }
+    }
+    #endregion
+
+    #region Operaciones CRUD - AJAX
+    /// <summary>
+    /// Crear servicio vía AJAX
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CrearServicioAjax(Servicio servicio)
+    {
+        try
+        {
+            var resultado = await ProcesarCreacionServicio(servicio);
+            return await PrepararRespuestaAjax(resultado, servicio, "Creacion (AJAX) de servicio");
+        }
+        catch (Exception ex)
+        {
+            return await ManejiarExcepcionAjax(ex, servicio);
+        }
+    }
+
+    /// <summary>
+    /// Actualizar servicio vía AJAX
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ActualizarServicioAjax(Servicio servicio)
+    {
+        try
+        {
+            var resultado = await ProcesarActualizacionServicio(servicio);
+            return await PrepararRespuestaAjax(resultado, servicio, "Actualizacion (AJAX) de servicio");
+        }
+        catch (Exception ex)
+        {
+            return await ManejiarExcepcionAjax(ex, servicio);
+        }
+    }
+    #endregion
+
+    #region Cambio de Estado
+    /// <summary>
+    /// Desactivar un servicio
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> DeactivateServicio(string id)
+    {
+        return await CambiarEstadoServicio(id, "Inactivo", "Desactivacion de servicio");
+    }
+
+    /// <summary>
+    /// Reactivar un servicio
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> ReactivateServicio(string id)
+    {
+        return await CambiarEstadoServicio(id, "Activo", "Reactivacion de servicio");
+    }
+    #endregion
+
+    #region Gestión de Tipos (Servicio y Vehículo)
+    /// <summary>
+    /// Crear nuevo tipo de servicio
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> CrearTipoServicio(string nombreTipo)
+    {
+        return await GestionarTipo(
+            nombreTipo,
+            () => _tipoServicioService.ExisteTipoServicio(nombreTipo),
+            () => _tipoServicioService.CrearTipoServicio(nombreTipo),
+            "tipo de servicio",
+            "Creacion de tipo de servicio"
+        );
+    }
+
+    /// <summary>
+    /// Eliminar tipo de servicio
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> EliminarTipoServicio(string nombreTipo)
+    {
+        return await EliminarTipo(
+            nombreTipo,
+            () => _servicioService.ObtenerServiciosPorTipo(nombreTipo),
+            () => _tipoServicioService.EliminarTipoServicio(nombreTipo),
+            "tipo de servicio",
+            "Eliminacion de tipo de servicio"
+        );
+    }
+
+    /// <summary>
+    /// Crear nuevo tipo de vehículo
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> CrearTipoVehiculo(string nombreTipo)
+    {
+        return await GestionarTipo(
+            nombreTipo,
+            () => _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo),
+            () => _tipoVehiculoService.CrearTipoVehiculo(nombreTipo),
+            "tipo de vehiculo",
+            "Creacion de tipo de vehiculo"
+        );
+    }
+
+    /// <summary>
+    /// Eliminar tipo de vehículo
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> EliminarTipoVehiculo(string nombreTipo)
+    {
+        return await EliminarTipo(
+            nombreTipo,
+            () => _servicioService.ObtenerServiciosPorTipoVehiculo(nombreTipo),
+            () => _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo),
+            "tipo de vehiculo",
+            "Eliminacion de tipo de vehiculo"
+        );
+    }
+    #endregion
+
+    #region Vistas Parciales
+    /// <summary>
+    /// Obtener formulario parcial para AJAX
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> FormPartial(string id)
+    {
+        await CargarListasForm();
+        Servicio servicio = null;
+        if (!string.IsNullOrEmpty(id))
+            servicio = await _servicioService.ObtenerServicio(id);
+
+        return PartialView("_ServicioForm", servicio);
+    }
+
+    /// <summary>
+    /// Obtener tabla parcial para AJAX
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> TablePartial(
+        List<string> estados,
+        List<string> tipos,
+        List<string> tiposVehiculo,
+        int pageNumber = 1,
+        int pageSize = 10)
+    {
+        estados = ConfigurarEstadosDefecto(estados);
+
+        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, null, null, pageNumber, pageSize);
         var totalPages = await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, pageSize);
         totalPages = Math.Max(totalPages, 1);
+
+        ViewBag.CurrentPage = pageNumber;
+        ViewBag.TotalPages = totalPages;
+        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
+        ViewBag.Estados = estados;
+        ViewBag.Tipos = tipos;
+        ViewBag.TiposVehiculo = tiposVehiculo;
+
+        return PartialView("_ServicioTable", servicios);
+    }
+    #endregion
+
+    #region Métodos Privados - Procesamiento de Negocio
+
+    /// <summary>
+    /// Configura los estados por defecto si no se especificaron
+    /// </summary>
+    private static List<string> ConfigurarEstadosDefecto(List<string> estados)
+    {
+        estados ??= new List<string>();
+        if (!estados.Any())
+            estados.Add("Activo");
+        return estados;
+    }
+
+    /// <summary>
+    /// Obtiene los datos de servicios con paginación
+    /// </summary>
+    private async Task<(List<Servicio> servicios, int currentPage, int totalPages, List<int> visiblePages)>
+        ObtenerDatosServicios(List<string> estados, List<string> tipos, List<string> tiposVehiculo, int pageNumber, int pageSize)
+    {
+        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, null, null, pageNumber, pageSize);
+        var totalPages = Math.Max(await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, pageSize), 1);
         var currentPage = Math.Clamp(pageNumber, 1, totalPages);
         var visiblePages = GetVisiblePages(currentPage, totalPages);
 
-        // Obtener listas para dropdowns
-        var tiposServicio = await _tipoServicioService.ObtenerTiposServicio() ?? new List<string>();
-        var tiposVehiculoList = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+        return (servicios, currentPage, totalPages, visiblePages);
+    }
 
-        // Configurar ViewBag
-        ConfigurarViewBag(
-            estados, tipos, tiposVehiculo,
-            tiposServicio, tiposVehiculoList,
-            pageSize, currentPage, totalPages, visiblePages,
-            servicios.FirstOrDefault()?.Id, servicios.LastOrDefault()?.Id);
-        // --- CAMBIO PRINCIPAL ---
-        // Si hay editId, cargar el servicio directamente
+    /// <summary>
+    /// Carga las listas para los dropdowns
+    /// </summary>
+    private async Task<(List<string> tiposServicio, List<string> tiposVehiculo)> CargarListasDropdown()
+    {
+        var tiposServicio = await _tipoServicioService.ObtenerTiposServicio() ?? new List<string>();
+        var tiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+        return (tiposServicio, tiposVehiculo);
+    }
+
+    /// <summary>
+    /// Configura el formulario según si es creación o edición
+    /// </summary>
+    private async Task ConfigurarFormulario(string editId)
+    {
         if (!string.IsNullOrEmpty(editId))
         {
             var servicio = await _servicioService.ObtenerServicio(editId);
@@ -75,228 +337,190 @@ public class ServicioController : Controller
             ViewBag.ClearButtonText = "Limpiar Campos";
             ViewBag.FormAction = "CrearServicio";
         }
-
-        return View(servicios);
     }
 
-    [HttpPost]
-    public async Task<IActionResult> CrearServicio(Servicio servicio)
+    /// <summary>
+    /// Procesa la creación de un servicio con validaciones
+    /// </summary>
+    private async Task<ResultadoOperacion> ProcesarCreacionServicio(Servicio servicio)
     {
-        try
+        // Asignar ID temporal si no lo tiene
+        if (string.IsNullOrEmpty(servicio.Id))
         {
-            // Asignar un ID temporal para la validacion
-            if (string.IsNullOrEmpty(servicio.Id))
-            {
-                servicio.Id = "temp-" + Guid.NewGuid().ToString();
-                ModelState.Clear();
-                TryValidateModel(servicio);
-            }
-
-            // Validacion personalizada
-            ValidateServicio(servicio);
-
-            if (!ModelState.IsValid)
-            {
-                TempData["Error"] = "Por favor, complete todos los campos obligatorios correctamente.";
-                return await PrepararVistaConError(servicio);
-            }
-
-            // Verificar si ya existe servicio con mismo nombre y tipo
-            if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo))
-            {
-                TempData["Error"] = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehiculos tipo '{servicio.TipoVehiculo}'.";
-                ModelState.AddModelError("Nombre", $"Ya existe un servicio con este nombre para vehiculos tipo '{servicio.TipoVehiculo}'.");
-                return await PrepararVistaConError(servicio);
-            }
-
-            // Crear el servicio
-            servicio.Estado = "Activo";
-            await _servicioService.CrearServicio(servicio);
-
-            // Registrar evento de auditoria
-            await RegistrarEvento("Creacion de servicio", servicio.Id, "Servicio");
-
-            TempData["Success"] = "Servicio creado correctamente.";
-            return RedirectToAction("Index");
+            servicio.Id = "temp-" + Guid.NewGuid().ToString();
+            ModelState.Clear();
+            TryValidateModel(servicio);
         }
-        catch (ArgumentException ex)
+
+        // Validaciones
+        ValidateServicio(servicio);
+        if (!ModelState.IsValid)
         {
-            TempData["Error"] = ex.Message;
-            ModelState.AddModelError("", ex.Message);
-            return await PrepararVistaConError(servicio);
+            return ResultadoOperacion.CrearError("Por favor, complete todos los campos obligatorios correctamente.");
         }
-        catch (Exception ex)
+
+        // Verificar duplicados
+        if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo))
         {
-            TempData["Error"] = $"Error al crear servicio: {ex.Message}";
-            ModelState.AddModelError("", $"Error al crear servicio: {ex.Message}");
-            return await PrepararVistaConError(servicio);
+            var mensaje = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'.";
+            ModelState.AddModelError("Nombre", $"Ya existe un servicio con este nombre para vehículos tipo '{servicio.TipoVehiculo}'.");
+            return ResultadoOperacion.CrearError(mensaje);
         }
+
+        // Crear servicio
+        servicio.Estado = "Activo";
+        await _servicioService.CrearServicio(servicio);
+        return ResultadoOperacion.CrearExito("Servicio creado correctamente.");
     }
 
-    [HttpPost]
-    public async Task<IActionResult> ActualizarServicio(Servicio servicio)
+    /// <summary>
+    /// Procesa la actualización de un servicio con validaciones
+    /// </summary>
+    private async Task<ResultadoOperacion> ProcesarActualizacionServicio(Servicio servicio)
     {
-        try
+        // Validaciones
+        ValidateServicio(servicio);
+        if (!ModelState.IsValid)
         {
-            // Validacion personalizada
-            ValidateServicio(servicio);
-
-            if (!ModelState.IsValid)
-            {
-                TempData["Error"] = "Por favor, complete todos los campos obligatorios correctamente.";
-                return await PrepararVistaConError(servicio);
-            }
-
-            var servicioActual = await _servicioService.ObtenerServicio(servicio.Id);
-            if (servicioActual == null)
-            {
-                TempData["Error"] = "No se pudo encontrar el servicio a actualizar.";
-                ModelState.AddModelError("", "No se pudo encontrar el servicio a actualizar.");
-                return await PrepararVistaConError(servicio);
-            }
-
-            // Verificar si ya existe otro servicio con el mismo nombre para el mismo tipo de vehiculo
-            if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id))
-            {
-                TempData["Error"] = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehiculos tipo '{servicio.TipoVehiculo}'.";
-                ModelState.AddModelError("Nombre", $"Ya existe un servicio con este nombre para vehiculos tipo '{servicio.TipoVehiculo}'.");
-                return await PrepararVistaConError(servicio);
-            }
-
-            // Mantener el estado actual
-            servicio.Estado = servicioActual.Estado;
-
-            // Actualizar el servicio
-            await _servicioService.ActualizarServicio(servicio);
-
-            // Registrar evento de auditoria
-            await RegistrarEvento("Actualizacion de servicio", servicio.Id, "Servicio");
-
-            TempData["Success"] = "Servicio actualizado correctamente.";
-            return RedirectToAction("Index");
+            return ResultadoOperacion.CrearError("Por favor, complete todos los campos obligatorios correctamente.");
         }
-        catch (ArgumentException ex)
+
+        // Verificar que el servicio existe
+        var servicioActual = await _servicioService.ObtenerServicio(servicio.Id);
+        if (servicioActual == null)
         {
-            TempData["Error"] = ex.Message;
-            ModelState.AddModelError("", ex.Message);
-            return await PrepararVistaConError(servicio);
+            ModelState.AddModelError("", "No se pudo encontrar el servicio a actualizar.");
+            return ResultadoOperacion.CrearError("No se pudo encontrar el servicio a actualizar.");
         }
-        catch (Exception ex)
+
+        // Verificar duplicados (excluyendo el actual)
+        if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id))
         {
-            TempData["Error"] = $"Error al actualizar servicio: {ex.Message}";
-            ModelState.AddModelError("", $"Error al actualizar servicio: {ex.Message}");
-            return await PrepararVistaConError(servicio);
+            var mensaje = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'.";
+            ModelState.AddModelError("Nombre", $"Ya existe un servicio con este nombre para vehículos tipo '{servicio.TipoVehiculo}'.");
+            return ResultadoOperacion.CrearError(mensaje);
         }
+
+        // Actualizar servicio
+        servicio.Estado = servicioActual.Estado;
+        await _servicioService.ActualizarServicio(servicio);
+        return ResultadoOperacion.CrearExito("Servicio actualizado correctamente.");
     }
 
-    [HttpPost]
-    public async Task<IActionResult> DeactivateServicio(string id)
+    /// <summary>
+    /// Cambia el estado de un servicio
+    /// </summary>
+    private async Task<IActionResult> CambiarEstadoServicio(string id, string nuevoEstado, string accionAuditoria)
     {
-        await _servicioService.CambiarEstadoServicio(id, "Inactivo");
+        await _servicioService.CambiarEstadoServicio(id, nuevoEstado);
         TempData["StateChangeEvent_UserId"] = id;
-        TempData["StateChangeEvent_NewState"] = "Inactivo";
-        await RegistrarEvento("Desactivacion de servicio", id, "Servicio");
+        TempData["StateChangeEvent_NewState"] = nuevoEstado;
+        await RegistrarEvento(accionAuditoria, id, "Servicio");
         return RedirectToAction("Index");
     }
 
-    [HttpPost]
-    public async Task<IActionResult> ReactivateServicio(string id)
-    {
-        await _servicioService.CambiarEstadoServicio(id, "Activo");
-        TempData["StateChangeEvent_UserId"] = id;
-        TempData["StateChangeEvent_NewState"] = "Activo";
-        await RegistrarEvento("Reactivacion de servicio", id, "Servicio");
-        return RedirectToAction("Index");
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> CrearTipoServicio(string nombreTipo)
+    /// <summary>
+    /// Gestiona la creación de tipos (servicio/vehículo)
+    /// </summary>
+    private async Task<IActionResult> GestionarTipo(
+        string nombreTipo,
+        Func<Task<bool>> verificarExistencia,
+        Func<Task> crear,
+        string tipoDescripcion,
+        string accionAuditoria)
     {
         if (!string.IsNullOrWhiteSpace(nombreTipo))
         {
-            // Verificar si ya existe un tipo con el mismo nombre
-            bool existeTipo = await _tipoServicioService.ExisteTipoServicio(nombreTipo);
-
-            if (existeTipo)
+            if (await verificarExistencia())
             {
-                TempData["Error"] = "Ya existe un tipo de servicio con el mismo nombre.";
+                TempData["Error"] = $"Ya existe un {tipoDescripcion} con el mismo nombre.";
             }
             else
             {
-                await _tipoServicioService.CrearTipoServicio(nombreTipo);
-                await RegistrarEvento("Creacion de tipo de servicio", nombreTipo, "TipoServicio");
-                TempData["Success"] = "Tipo de servicio creado correctamente.";
+                await crear();
+                await RegistrarEvento(accionAuditoria, nombreTipo, tipoDescripcion.Contains("servicio") ? "TipoServicio" : "TipoVehiculo");
+                TempData["Success"] = $"{char.ToUpper(tipoDescripcion[0])}{tipoDescripcion[1..]} creado correctamente.";
             }
         }
         return RedirectToAction("Index");
     }
 
-    [HttpPost]
-    public async Task<IActionResult> EliminarTipoServicio(string nombreTipo)
+    /// <summary>
+    /// Gestiona la eliminación de tipos con verificación de uso
+    /// </summary>
+    private async Task<IActionResult> EliminarTipo(
+        string nombreTipo,
+        Func<Task<List<Servicio>>> obtenerServiciosUsandoTipo,
+        Func<Task> eliminar,
+        string tipoDescripcion,
+        string accionAuditoria)
     {
         if (!string.IsNullOrWhiteSpace(nombreTipo))
         {
-            // Verificar si hay servicios usando este tipo
-            var serviciosConTipo = await _servicioService.ObtenerServiciosPorTipo(nombreTipo);
-
-            if (serviciosConTipo.Any())
+            var serviciosUsandoTipo = await obtenerServiciosUsandoTipo();
+            if (serviciosUsandoTipo.Any())
             {
-                TempData["Error"] = "No se puede eliminar el tipo de servicio porque hay servicios que lo utilizan.";
+                TempData["Error"] = $"No se puede eliminar el {tipoDescripcion} porque hay servicios que lo utilizan.";
             }
             else
             {
-                await _tipoServicioService.EliminarTipoServicio(nombreTipo);
-                await RegistrarEvento("Eliminacion de tipo de servicio", nombreTipo, "TipoServicio");
-                TempData["Success"] = "Tipo de servicio eliminado correctamente.";
+                await eliminar();
+                await RegistrarEvento(accionAuditoria, nombreTipo, tipoDescripcion.Contains("servicio") ? "TipoServicio" : "TipoVehiculo");
+                TempData["Success"] = $"{char.ToUpper(tipoDescripcion[0])}{tipoDescripcion[1..]} eliminado correctamente.";
             }
         }
         return RedirectToAction("Index");
     }
+    #endregion
 
-    [HttpPost]
-    public async Task<IActionResult> CrearTipoVehiculo(string nombreTipo)
+    #region Métodos Privados - Respuestas y Manejo de Errores
+
+    /// <summary>
+    /// Prepara respuesta AJAX según el resultado de la operación
+    /// </summary>
+    private async Task<IActionResult> PrepararRespuestaAjax(ResultadoOperacion resultado, Servicio servicio, string accionAuditoria)
     {
-        if (!string.IsNullOrWhiteSpace(nombreTipo))
+        if (!resultado.EsExitoso)
         {
-            bool existeTipo = await _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo);
-
-            if (existeTipo)
-            {
-                TempData["Error"] = "Ya existe un tipo de vehiculo con el mismo nombre.";
-            }
-            else
-            {
-                await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo);
-                await RegistrarEvento("Creacion de tipo de vehiculo", nombreTipo, "TipoVehiculo");
-                TempData["Success"] = "Tipo de vehiculo creado correctamente.";
-            }
+            Response.Headers["X-Form-Valid"] = "false";
+            await CargarListasForm();
+            return PartialView("_ServicioForm", servicio);
         }
-        return RedirectToAction("Index");
+
+        await RegistrarEvento(accionAuditoria, servicio.Id, "Servicio");
+        Response.Headers["X-Form-Valid"] = "true";
+        Response.Headers["X-Form-Message"] = resultado.MensajeExito;
+        await CargarListasForm();
+        return PartialView("_ServicioForm", null); // Formulario limpio
     }
 
-    [HttpPost]
-    public async Task<IActionResult> EliminarTipoVehiculo(string nombreTipo)
+    /// <summary>
+    /// Maneja excepciones en operaciones tradicionales
+    /// </summary>
+    private async Task<IActionResult> ManejiarExcepcion(Exception ex, Servicio servicio)
     {
-        if (!string.IsNullOrWhiteSpace(nombreTipo))
-        {
-            // Verificar si hay servicios usando este tipo de vehiculo
-            var serviciosConTipo = await _servicioService.ObtenerServiciosPorTipoVehiculo(nombreTipo);
+        var mensaje = ex is ArgumentException
+            ? ex.Message
+            : $"Error al procesar servicio: {ex.Message}";
 
-            if (serviciosConTipo.Any())
-            {
-                TempData["Error"] = "No se puede eliminar el tipo de vehiculo porque hay servicios que lo utilizan.";
-            }
-            else
-            {
-                await _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo);
-                await RegistrarEvento("Eliminacion de tipo de vehiculo", nombreTipo, "TipoVehiculo");
-                TempData["Success"] = "Tipo de vehiculo eliminado correctamente.";
-            }
-        }
-        return RedirectToAction("Index");
+        TempData["Error"] = mensaje;
+        ModelState.AddModelError("", mensaje);
+        return await PrepararVistaConError(servicio, mensaje);
     }
 
-    #region Metodos privados
+    /// <summary>
+    /// Maneja excepciones en operaciones AJAX
+    /// </summary>
+    private async Task<IActionResult> ManejiarExcepcionAjax(Exception ex, Servicio servicio)
+    {
+        ModelState.AddModelError("", ex.Message);
+        Response.Headers["X-Form-Valid"] = "false";
+        await CargarListasForm();
+        return PartialView("_ServicioForm", servicio);
+    }
+    #endregion
+
+    #region Métodos Privados - Utilidades
 
     private List<int> GetVisiblePages(int currentPage, int totalPages, int range = 2)
     {
@@ -323,10 +547,9 @@ public class ServicioController : Controller
         }
     }
 
-    private async Task<IActionResult> PrepararVistaConError(Servicio servicio)
+    private async Task<IActionResult> PrepararVistaConError(Servicio servicio, string mensaje = null)
     {
-        var tiposServicio = await _tipoServicioService.ObtenerTiposServicio() ?? new List<string>();
-        var tiposVehiculoList = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+        var (tiposServicio, tiposVehiculoList) = await CargarListasDropdown();
         ViewBag.TiposServicio = tiposServicio;
         ViewBag.TodosLosTipos = tiposServicio;
         ViewBag.TodosLosTiposVehiculo = tiposVehiculoList;
@@ -338,13 +561,11 @@ public class ServicioController : Controller
         ViewBag.ClearButtonText = esCreacion ? "Limpiar Campos" : "Cancelar";
         ViewBag.FormAction = esCreacion ? "CrearServicio" : "ActualizarServicio";
 
-        // Configuracion de la paginacion
         var servicios = await _servicioService.ObtenerServicios(
             new List<string> { "Activo" }, null, null, null, null, 1, 10);
-        var totalPages = await _servicioService.ObtenerTotalPaginas(
-            new List<string> { "Activo" }, null, null, 10);
+        var totalPages = Math.Max(await _servicioService.ObtenerTotalPaginas(
+            new List<string> { "Activo" }, null, null, 10), 1);
 
-        totalPages = Math.Max(totalPages, 1);
         ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = GetVisiblePages(1, totalPages);
         ViewBag.CurrentPage = 1;
@@ -379,142 +600,60 @@ public class ServicioController : Controller
         await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad);
     }
 
-    #endregion
-
-    [HttpGet]
-    public async Task<IActionResult> FormPartial(string id)
-    {
-        await CargarListasForm();
-        Servicio servicio = null;
-        if (!string.IsNullOrEmpty(id))
-            servicio = await _servicioService.ObtenerServicio(id);
-
-        return PartialView("_ServicioForm", servicio);
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> TablePartial(
-        List<string> estados,
-        List<string> tipos,
-        List<string> tiposVehiculo,
-        int pageNumber = 1,
-        int pageSize = 10)
-    {
-        estados ??= new List<string>();
-        if (!estados.Any()) estados.Add("Activo");
-
-        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, null, null, pageNumber, pageSize);
-        var totalPages = await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, pageSize);
-        totalPages = Math.Max(totalPages, 1);
-        ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = totalPages;
-        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-        ViewBag.Estados = estados;
-        ViewBag.Tipos = tipos;
-        ViewBag.TiposVehiculo = tiposVehiculo;
-        return PartialView("_ServicioTable", servicios);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CrearServicioAjax(Servicio servicio)
-    {
-        try
-        {
-            // Asignar un ID temporal para la validación si no lo tiene
-            if (string.IsNullOrEmpty(servicio.Id))
-            {
-                servicio.Id = "temp-" + Guid.NewGuid().ToString();
-                ModelState.Clear();
-                TryValidateModel(servicio);
-            }
-
-            ValidateServicio(servicio);
-            if (!ModelState.IsValid)
-            {
-                Response.Headers["X-Form-Valid"] = "false";
-                await CargarListasForm();
-                return PartialView("_ServicioForm", servicio);
-            }
-
-            if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo))
-            {
-                ModelState.AddModelError("Nombre", "Ya existe un servicio con ese nombre para ese tipo de vehiculo.");
-                Response.Headers["X-Form-Valid"] = "false";
-                await CargarListasForm();
-                return PartialView("_ServicioForm", servicio);
-            }
-
-            servicio.Estado = "Activo";
-            await _servicioService.CrearServicio(servicio);
-            await RegistrarEvento("Creacion (AJAX) de servicio", servicio.Id, "Servicio");
-
-            Response.Headers["X-Form-Valid"] = "true";
-            Response.Headers["X-Form-Message"] = "Servicio creado correctamente.";
-            await CargarListasForm();
-            return PartialView("_ServicioForm", null); // Limpio
-        }
-        catch (Exception ex)
-        {
-            ModelState.AddModelError("", ex.Message);
-            Response.Headers["X-Form-Valid"] = "false";
-            await CargarListasForm();
-            return PartialView("_ServicioForm", servicio);
-        }
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ActualizarServicioAjax(Servicio servicio)
-    {
-        try
-        {
-            ValidateServicio(servicio);
-            if (!ModelState.IsValid)
-            {
-                Response.Headers["X-Form-Valid"] = "false";
-                await CargarListasForm();
-                return PartialView("_ServicioForm", servicio);
-            }
-
-            var actual = await _servicioService.ObtenerServicio(servicio.Id);
-            if (actual == null)
-            {
-                ModelState.AddModelError("", "Servicio no encontrado.");
-                Response.Headers["X-Form-Valid"] = "false";
-                await CargarListasForm();
-                return PartialView("_ServicioForm", servicio);
-            }
-
-            if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id))
-            {
-                ModelState.AddModelError("Nombre", "Ya existe otro servicio con ese nombre para ese tipo de vehiculo.");
-                Response.Headers["X-Form-Valid"] = "false";
-                await CargarListasForm();
-                return PartialView("_ServicioForm", servicio);
-            }
-
-            servicio.Estado = actual.Estado;
-            await _servicioService.ActualizarServicio(servicio);
-            await RegistrarEvento("Actualizacion (AJAX) de servicio", servicio.Id, "Servicio");
-
-            Response.Headers["X-Form-Valid"] = "true";
-            Response.Headers["X-Form-Message"] = "Servicio actualizado correctamente.";
-            await CargarListasForm();
-            return PartialView("_ServicioForm", null);
-        }
-        catch (Exception ex)
-        {
-            ModelState.AddModelError("", ex.Message);
-            Response.Headers["X-Form-Valid"] = "false";
-            await CargarListasForm();
-            return PartialView("_ServicioForm", servicio);
-        }
-    }
-
     private async Task CargarListasForm()
     {
         ViewBag.TiposServicio = await _tipoServicioService.ObtenerTiposServicio() ?? new List<string>();
         ViewBag.TodosLosTiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+    }
+    #endregion
+}
+
+/// <summary>
+/// Clase auxiliar para representar el resultado de una operación
+//</summary>
+public class ResultadoOperacion
+{
+    /// <summary>
+    /// Indica si la operación fue exitosa
+    /// </summary>
+    public bool EsExitoso { get; private set; }
+
+    /// <summary>
+    /// Mensaje de éxito si la operación fue exitosa
+    /// </summary>
+    public string MensajeExito { get; private set; }
+
+    /// <summary>
+    /// Mensaje de error si la operación falló
+    /// </summary>
+    public string MensajeError { get; private set; }
+
+    /// <summary>
+    /// Constructor privado para forzar el uso de métodos factory
+    /// </summary>
+    private ResultadoOperacion() { }
+
+    /// <summary>
+    /// Crea un resultado exitoso
+    /// </summary>
+    public static ResultadoOperacion CrearExito(string mensaje)
+    {
+        return new ResultadoOperacion
+        {
+            EsExitoso = true,
+            MensajeExito = mensaje
+        };
+    }
+
+    /// <summary>
+    /// Crea un resultado de error
+    /// </summary>
+    public static ResultadoOperacion CrearError(string mensaje)
+    {
+        return new ResultadoOperacion
+        {
+            EsExitoso = false,
+            MensajeError = mensaje
+        };
     }
 }
