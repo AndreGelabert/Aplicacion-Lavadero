@@ -38,17 +38,4 @@ namespace Firebase.Models
         [Required(ErrorMessage = "El estado es obligatorio")]
         public required string Estado { get; set; }
     }
-
-    // Converter personalizado para Decimal
-    public class DecimalConverter : IFirestoreConverter<decimal>
-    {
-        public object ToFirestore(decimal value) => (double)value;
-
-        public decimal FromFirestore(object value)
-        {
-            if (value is double doubleValue)
-                return (decimal)doubleValue;
-            return 0;
-        }
-    }
 }
