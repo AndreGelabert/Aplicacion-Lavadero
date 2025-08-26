@@ -610,7 +610,7 @@ public class ServicioController : Controller
 
 /// <summary>
 /// Clase auxiliar para representar el resultado de una operación
-//</summary>
+/// </summary>
 public class ResultadoOperacion
 {
     /// <summary>
