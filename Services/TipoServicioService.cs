@@ -27,7 +27,7 @@ public class TipoServicioService
         }
     }
 
-
+    // Método para crear un tipo de servicio
     public async Task CrearTipoServicio(string nombre)
     {
         var tipoRef = _firestore.Collection("tiposServicio").Document();
@@ -38,7 +38,7 @@ public class TipoServicioService
         await tipoRef.SetAsync(tipo);
     }
 
-    // Nuevo método para eliminar un tipo de servicio
+    // Método para eliminar un tipo de servicio
     public async Task EliminarTipoServicio(string nombre)
     {
         var tiposRef = _firestore.Collection("tiposServicio");
@@ -51,7 +51,7 @@ public class TipoServicioService
         }
     }
 
-    // Nuevo método para verificar si un tipo de servicio ya existe
+    // Método para verificar si un tipo de servicio ya existe
     public async Task<bool> ExisteTipoServicio(string nombre)
     {
         var tiposExistentes = await ObtenerTiposServicio();

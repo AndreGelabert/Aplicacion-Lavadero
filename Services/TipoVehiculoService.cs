@@ -27,7 +27,7 @@ public class TipoVehiculoService
         }
     }
 
-
+    // Método para crear un tipo de vehiculo
     public async Task CrearTipoVehiculo(string nombre)
     {
         var tipoRef = _firestore.Collection("tiposVehiculos").Document();
@@ -37,7 +37,7 @@ public class TipoVehiculoService
         };
         await tipoRef.SetAsync(tipo);
     }
-
+    // Método para eliminar un tipo de vehiculo
     public async Task EliminarTipoVehiculo(string nombre)
     {
         var tiposRef = _firestore.Collection("tiposVehiculos");

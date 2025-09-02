@@ -2,6 +2,8 @@ using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Localization;
+using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,13 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.LoginPath = "/Login/Index";
         options.LogoutPath = "/Lavados/Logout";
     });
+// Asegurar codificación UTF-8
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    options.DefaultRequestCulture = new RequestCulture("es-MX");
+    options.SupportedCultures = new[] { new CultureInfo("es-MX"), new CultureInfo("es-ES") };
+    options.SupportedUICultures = new[] { new CultureInfo("es-MX"), new CultureInfo("es-ES") };
+});
 // Registrar FirestoreDb como un servicio singleton
 builder.Services.AddSingleton(provider =>
 {
@@ -36,9 +45,9 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseRouting();
-
+// Usar localización
+app.UseRequestLocalization();
 app.UseAuthentication();
 app.UseAuthorization();
 

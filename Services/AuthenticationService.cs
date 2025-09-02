@@ -1,7 +1,4 @@
 using FirebaseAdmin.Auth;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System.Security.Claims;
 using System.Text;
