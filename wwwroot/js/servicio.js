@@ -353,37 +353,10 @@ const ServicioModule = {
                     accordionBody.classList.remove('hidden');
                 }
 
-                // NUEVO: Scroll automático hacia el formulario
+                // Scroll automático hacia el formulario
                 this.scrollToForm();
             })
             .catch(e => console.error('Error cargando formulario:', e));
-    },
-
-    /**
-     * Realiza scroll suave hacia el formulario de edición
-     */
-    scrollToForm() {
-        // Buscar el elemento del acordeón o el formulario
-        const formContainer = document.getElementById('accordion-flush-body-1') || 
-                             document.getElementById('servicio-form-container') ||
-                             document.getElementById('servicio-form');
-        
-        if (formContainer) {
-            // Usar scrollIntoView con comportamiento suave
-            formContainer.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start',
-                inline: 'nearest'
-            });
-            
-            // Alternativa: si scrollIntoView no funciona bien, usar un offset manual
-            // const elementTop = formContainer.getBoundingClientRect().top + window.pageYOffset;
-            // const offset = 80; // Espacio desde el top para que no quede pegado
-            // window.scrollTo({
-            //     top: elementTop - offset,
-            //     behavior: 'smooth'
-            // });
-        }
     },
 
     /**
