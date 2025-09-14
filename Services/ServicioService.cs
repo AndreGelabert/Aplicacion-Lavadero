@@ -11,6 +11,8 @@ public class ServicioService
     private const string COLLECTION_NAME = "servicios";
     private const string ESTADO_DEFECTO = "Activo";
     private const string TIPO_VEHICULO_DEFECTO = "General";
+    private const string ORDEN_DEFECTO = "Nombre";
+    private const string DIRECCION_DEFECTO = "asc";
     #endregion
 
     #region Dependencias
@@ -29,26 +31,34 @@ public class ServicioService
     #region Operaciones de Consulta
 
     /// <summary>
-    /// Obtiene una lista paginada de servicios aplicando filtros especificados
+    /// Obtiene una lista paginada de servicios aplicando filtros y ordenamiento
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar (null para solo activos)</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar (null para todos)</param>
     /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar (null para todos)</param>
     /// <param name="pageNumber">Número de página (1-based)</param>
     /// <param name="pageSize">Cantidad de elementos por página</param>
-    /// <returns>Lista de servicios filtrados y paginados</returns>
+    /// <param name="sortBy">Campo por el cual ordenar</param>
+    /// <param name="sortOrder">Dirección del ordenamiento (asc/desc)</param>
+    /// <returns>Lista de servicios filtrados, ordenados y paginados</returns>
     public async Task<List<Servicio>> ObtenerServicios(
         List<string> estados = null,
         List<string> tipos = null,
         List<string> tiposVehiculo = null,
         int pageNumber = 1,
-        int pageSize = 10)
+        int pageSize = 10,
+        string sortBy = null,
+        string sortOrder = null)
     {
         // Validar parámetros de paginación
         ValidarParametrosPaginacion(pageNumber, pageSize);
 
-        // Obtener servicios aplicando filtros
-        var servicios = await ObtenerServiciosFiltrados(estados, tipos, tiposVehiculo);
+        // Configurar ordenamiento por defecto
+        sortBy ??= ORDEN_DEFECTO;
+        sortOrder ??= DIRECCION_DEFECTO;
+
+        // Obtener servicios aplicando filtros y ordenamiento
+        var servicios = await ObtenerServiciosFiltrados(estados, tipos, tiposVehiculo, sortBy, sortOrder);
 
         // Aplicar paginación
         return servicios
@@ -237,18 +247,20 @@ public class ServicioService
     #region Métodos Privados - Consultas Base
 
     /// <summary>
-    /// Obtiene todos los servicios aplicando los filtros especificados
+    /// Obtiene todos los servicios aplicando los filtros y ordenamiento especificados
     /// </summary>
     private async Task<List<Servicio>> ObtenerServiciosFiltrados(
         List<string> estados,
         List<string> tipos,
-        List<string> tiposVehiculo)
+        List<string> tiposVehiculo,
+        string sortBy,
+        string sortOrder)
     {
         // Configurar estados por defecto
         estados = ConfigurarEstadosDefecto(estados);
 
         // Construir query base
-        var query = ConstruirQueryFiltros(estados, tipos);
+        var query = ConstruirQueryFiltros(estados, tipos, incluirOrdenamiento: false);
 
         // Ejecutar query
         var snapshot = await query.GetSnapshotAsync();
@@ -257,7 +269,10 @@ public class ServicioService
             .ToList();
 
         // Aplicar filtro de tipo de vehículo (post-procesamiento debido a limitaciones de Firestore)
-        return AplicarFiltroTipoVehiculo(servicios, tiposVehiculo);
+        servicios = AplicarFiltroTipoVehiculo(servicios, tiposVehiculo);
+
+        // Aplicar ordenamiento en memoria
+        return AplicarOrdenamiento(servicios, sortBy, sortOrder);
     }
 
     /// <summary>
@@ -337,7 +352,7 @@ public class ServicioService
     /// Construye un query de Firestore aplicando los filtros especificados
     /// </summary>
     private Query ConstruirQueryFiltros(
-        List<string> estados,
+        List<string> estados, 
         List<string> tipos,
         bool incluirOrdenamiento = true)
     {
@@ -355,12 +370,6 @@ public class ServicioService
             query = query.WhereIn("Tipo", tipos);
         }
 
-        // Aplicar ordenamiento si se requiere
-        if (incluirOrdenamiento)
-        {
-            query = query.OrderBy("Estado").OrderBy("Nombre");
-        }
-
         return query;
     }
 
@@ -376,6 +385,43 @@ public class ServicioService
                 .ToList();
         }
         return servicios;
+    }
+
+    /// <summary>
+    /// Aplica ordenamiento a una lista de servicios
+    /// </summary>
+    private static List<Servicio> AplicarOrdenamiento(List<Servicio> servicios, string sortBy, string sortOrder)
+    {
+        var descending = sortOrder?.ToLower() == "desc";
+
+        return sortBy?.ToLower() switch
+        {
+            "nombre" => descending 
+                ? servicios.OrderByDescending(s => s.Nombre).ToList()
+                : servicios.OrderBy(s => s.Nombre).ToList(),
+                
+            "precio" => descending 
+                ? servicios.OrderByDescending(s => s.Precio).ToList()
+                : servicios.OrderBy(s => s.Precio).ToList(),
+                
+            "tipo" => descending 
+                ? servicios.OrderByDescending(s => s.Tipo).ToList()
+                : servicios.OrderBy(s => s.Tipo).ToList(),
+                
+            "tipovehiculo" => descending 
+                ? servicios.OrderByDescending(s => s.TipoVehiculo).ToList()
+                : servicios.OrderBy(s => s.TipoVehiculo).ToList(),
+                
+            "tiempoestimado" => descending 
+                ? servicios.OrderByDescending(s => s.TiempoEstimado).ToList()
+                : servicios.OrderBy(s => s.TiempoEstimado).ToList(),
+                
+            "estado" => descending 
+                ? servicios.OrderByDescending(s => s.Estado).ToList()
+                : servicios.OrderBy(s => s.Estado).ToList(),
+                
+            _ => servicios.OrderBy(s => s.Nombre).ToList() // Default por nombre ascendente
+        };
     }
 
     /// <summary>
