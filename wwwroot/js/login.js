@@ -8,13 +8,30 @@ const LoginModule = {
      * Inicializa el módulo de login
      */
     init() {
-        this.setupFormValidation();
         this.setupPasswordToggle();
-        this.setupRememberMe();
+        this.setupFormValidation(); // Ahora incluye "Recordarme"
+        this.loadRememberedEmail(); // Cargar email guardado al inicio
+    },
+
+    /**
+     * Carga el email guardado si existe
+     */
+    loadRememberedEmail() {
+        const rememberCheckbox = document.getElementById('rememberMe');
+        const emailField = document.getElementById('email');
+
+        if (rememberCheckbox && emailField) {
+            const savedEmail = localStorage.getItem('rememberedEmail');
+            if (savedEmail) {
+                emailField.value = savedEmail;
+                rememberCheckbox.checked = true;
+            }
+        }
     },
 
     /**
      * Configura validación del formulario de login
+     * AHORA INCLUYE LA LÓGICA DE "RECORDARME"
      */
     setupFormValidation() {
         const loginForm = document.getElementById('loginForm');
@@ -23,6 +40,7 @@ const LoginModule = {
         loginForm.addEventListener('submit', (e) => {
             const email = document.getElementById('email');
             const password = document.getElementById('password');
+            const rememberCheckbox = document.getElementById('rememberMe');
 
             let hasErrors = false;
 
@@ -45,9 +63,20 @@ const LoginModule = {
                 this.clearFieldError(password);
             }
 
+            // Si hay errores, prevenir envío
             if (hasErrors) {
                 e.preventDefault();
+                return;
             }
+
+            // ✅ NUEVO: Guardar/eliminar email según checkbox (solo si no hay errores)
+            if (rememberCheckbox && rememberCheckbox.checked) {
+                localStorage.setItem('rememberedEmail', email.value);
+            } else {
+                localStorage.removeItem('rememberedEmail');
+            }
+
+            // Dejar que el formulario se envíe normalmente
         });
     },
 
@@ -69,35 +98,6 @@ const LoginModule = {
                     icon.classList.toggle('fa-eye-slash');
                 }
             });
-        }
-    },
-
-    /**
-     * Configura funcionalidad de "Recordarme"
-     */
-    setupRememberMe() {
-        const rememberCheckbox = document.getElementById('rememberMe');
-        const emailField = document.getElementById('email');
-
-        if (rememberCheckbox && emailField) {
-            // Cargar email guardado si existe
-            const savedEmail = localStorage.getItem('rememberedEmail');
-            if (savedEmail) {
-                emailField.value = savedEmail;
-                rememberCheckbox.checked = true;
-            }
-
-            // Guardar/eliminar email según checkbox
-            const loginForm = document.getElementById('loginForm');
-            if (loginForm) {
-                loginForm.addEventListener('submit', () => {
-                    if (rememberCheckbox.checked) {
-                        localStorage.setItem('rememberedEmail', emailField.value);
-                    } else {
-                        localStorage.removeItem('rememberedEmail');
-                    }
-                });
-            }
         }
     },
 

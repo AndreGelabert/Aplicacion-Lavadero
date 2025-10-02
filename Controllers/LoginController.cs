@@ -31,9 +31,15 @@ public class LoginController : Controller
     /// <summary>
     /// Muestra la página principal de login/registro.
     /// </summary>
+    /// <param name="expired">Indica si la sesión expiró por inactividad</param>
     /// <returns>Vista de login</returns>
-    public IActionResult Index()
+    public IActionResult Index(bool expired = false)
     {
+        if (expired)
+        {
+            ViewBag.Warning = "Su sesión ha expirado por inactividad. Por favor, inicie sesión nuevamente.";
+        }
+        
         return View();
     }
 
@@ -41,6 +47,7 @@ public class LoginController : Controller
     /// Procesa el inicio de sesión con email y contraseña.
     /// </summary>
     /// <param name="request">Datos de login del usuario</param>
+    /// <param name="rememberMe">Indica si el usuario quiere ser recordado</param>
     /// <returns>Resultado de la autenticación</returns>
     [HttpPost]
     public async Task<IActionResult> Login(LoginRequest request)
@@ -54,19 +61,19 @@ public class LoginController : Controller
         try
         {
             var result = await _authService.AuthenticateWithEmailAsync(request.Email, request.Password);
-            
+
             if (!result.IsSuccess)
             {
                 ViewBag.Error = result.ErrorMessage;
                 return View("Index");
             }
 
-            // Crear claims y autenticar al usuario
-            await SignInUserAsync(result.UserInfo!);
+            // Usar request.RememberMe en lugar de un parámetro separado
+            await SignInUserAsync(result.UserInfo!, isPersistent: request.RememberMe);
 
             // Registrar evento de inicio de sesión en Google Analytics
             TempData["LoginEvent"] = true;
-            
+
             return RedirectToAction("Index", "Lavados");
         }
         catch (Exception)
@@ -154,10 +161,20 @@ public class LoginController : Controller
         
         var authProperties = new AuthenticationProperties
         {
-            IsPersistent = isPersistent
+            IsPersistent = isPersistent,
+            // NUEVO: Configurar tiempo de expiración diferenciado
+            ExpiresUtc = isPersistent 
+                ? DateTimeOffset.UtcNow.AddDays(7) // 7 días si marca "Recordarme"
+                : DateTimeOffset.UtcNow.AddHours(8), // 8 horas si NO marca
+            AllowRefresh = true,
+            IssuedUtc = DateTimeOffset.UtcNow
         };
 
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProperties);
+        
+        // NUEVO: Inicializar tracking de actividad
+        HttpContext.Session.SetString("LastActivity", DateTime.UtcNow.ToString("O"));
+        HttpContext.Session.SetString("LoginTime", DateTime.UtcNow.ToString("O"));
     }
 }
 
