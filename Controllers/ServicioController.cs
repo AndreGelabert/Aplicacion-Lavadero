@@ -42,14 +42,20 @@ public class ServicioController : Controller
         string lastDocId = null,
         int pageNumber = 1,
         int pageSize = 10,
-        string editId = null)
+        string editId = null,
+        string sortBy = null,
+        string sortOrder = null)
     {
         // Configurar estados por defecto
         estados = ConfigurarEstadosDefecto(estados);
 
+        // Configurar ordenamiento por defecto
+        sortBy ??= "Nombre";
+        sortOrder ??= "asc";
+
         // Obtener datos de servicios
         var (servicios, currentPage, totalPages, visiblePages) = await ObtenerDatosServicios(
-            estados, tipos, tiposVehiculo, pageNumber, pageSize);
+            estados, tipos, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
 
         // Cargar listas para dropdowns
         var (tiposServicio, tiposVehiculoList) = await CargarListasDropdown();
@@ -57,7 +63,7 @@ public class ServicioController : Controller
         // Configurar ViewBag
         ConfigurarViewBag(estados, tipos, tiposVehiculo, tiposServicio, tiposVehiculoList,
             pageSize, currentPage, totalPages, visiblePages,
-            servicios.FirstOrDefault()?.Id, servicios.LastOrDefault()?.Id);
+            servicios.FirstOrDefault()?.Id, servicios.LastOrDefault()?.Id, sortBy, sortOrder);
 
         // Configurar formulario (creación vs edición)
         await ConfigurarFormulario(editId);
@@ -260,11 +266,17 @@ public class ServicioController : Controller
         List<string> tipos,
         List<string> tiposVehiculo,
         int pageNumber = 1,
-        int pageSize = 10)
+        int pageSize = 10,
+        string sortBy = null,
+        string sortOrder = null)
     {
         estados = ConfigurarEstadosDefecto(estados);
+        
+        // Configurar ordenamiento por defecto
+        sortBy ??= "Nombre";
+        sortOrder ??= "asc";
 
-        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, null, null, pageNumber, pageSize);
+        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
         var totalPages = await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, pageSize);
         totalPages = Math.Max(totalPages, 1);
 
@@ -274,6 +286,8 @@ public class ServicioController : Controller
         ViewBag.Estados = estados;
         ViewBag.Tipos = tipos;
         ViewBag.TiposVehiculo = tiposVehiculo;
+        ViewBag.SortBy = sortBy;
+        ViewBag.SortOrder = sortOrder;
 
         return PartialView("_ServicioTable", servicios);
     }
@@ -293,12 +307,13 @@ public class ServicioController : Controller
     }
 
     /// <summary>
-    /// Obtiene los datos de servicios con paginación
+    /// Obtiene los datos de servicios con paginación y ordenamiento
     /// </summary>
     private async Task<(List<Servicio> servicios, int currentPage, int totalPages, List<int> visiblePages)>
-        ObtenerDatosServicios(List<string> estados, List<string> tipos, List<string> tiposVehiculo, int pageNumber, int pageSize)
+        ObtenerDatosServicios(List<string> estados, List<string> tipos, List<string> tiposVehiculo, 
+        int pageNumber, int pageSize, string sortBy, string sortOrder)
     {
-        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, null, null, pageNumber, pageSize);
+        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
         var totalPages = Math.Max(await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, pageSize), 1);
         var currentPage = Math.Clamp(pageNumber, 1, totalPages);
         var visiblePages = GetVisiblePages(currentPage, totalPages);
@@ -577,7 +592,7 @@ public class ServicioController : Controller
         List<string> estados, List<string> tipos, List<string> tiposVehiculo,
         List<string> tiposServicio, List<string> tiposVehiculoList,
         int pageSize, int currentPage, int totalPages, List<int> visiblePages,
-        string firstDocId, string lastDocId)
+        string firstDocId, string lastDocId, string sortBy, string sortOrder)
     {
         ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = visiblePages;
@@ -591,7 +606,13 @@ public class ServicioController : Controller
         ViewBag.LastDocId = lastDocId;
         ViewBag.TiposServicio = tiposServicio;
         ViewBag.TodosLosTipos = tiposServicio;
+        ViewBag.SortBy = sortBy;
+        ViewBag.SortOrder = sortOrder;
     }
+
+    #endregion
+
+    #region Métodos Privados - Auditoría y Carga de Datos
 
     private async Task RegistrarEvento(string accion, string targetId, string entidad)
     {
