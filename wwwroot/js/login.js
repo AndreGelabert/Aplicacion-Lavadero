@@ -69,7 +69,7 @@ const LoginModule = {
                 return;
             }
 
-            // ✅ NUEVO: Guardar/eliminar email según checkbox (solo si no hay errores)
+            // Guardar/eliminar email según checkbox (solo si no hay errores)
             if (rememberCheckbox && rememberCheckbox.checked) {
                 localStorage.setItem('rememberedEmail', email.value);
             } else {
@@ -141,12 +141,53 @@ const LoginModule = {
         }
     }
 };
+/**
+ * Cierra el modal de verificación de email
+ */
+function closeVerificationModal() {
+    const modal = document.getElementById('verificationModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+/**
+ * Muestra el modal de verificación de email
+ */
+function showVerificationModal(email) {
+    const modal = document.getElementById('verificationModal');
+    const emailSpan = modal.querySelector('.registration-email');
+
+    if (emailSpan) {
+        emailSpan.textContent = email;
+    }
+
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+// Exportar funciones globalmente
+window.closeVerificationModal = closeVerificationModal;
+window.showVerificationModal = showVerificationModal;
 
 // =====================================
 // INICIALIZACIÓN DEL MÓDULO
 // =====================================
+
+// Al cargar la página, si hay un modal de verificación abierto, cerrar el de registro
 document.addEventListener('DOMContentLoaded', () => {
-    // Solo inicializar si estamos en la página de login
+    const verificationModal = document.getElementById('verificationModal');
+    const registerModal = document.getElementById('registerModal');
+
+    if (verificationModal && !verificationModal.classList.contains('hidden')) {
+        // Cerrar el modal de registro si el de verificación está abierto
+        if (registerModal) {
+            registerModal.classList.add('hidden');
+        }
+    }
+
+    // Inicializar el módulo de login
     if (document.getElementById('loginForm')) {
         LoginModule.init();
     }

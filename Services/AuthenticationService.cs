@@ -62,22 +62,47 @@ namespace Firebase.Services
                     var errorResponse = await response.Content.ReadAsStringAsync();
                     var firebaseError = JsonConvert.DeserializeObject<FirebaseErrorResponse>(errorResponse);
                     var errorCode = firebaseError?.error?.message?.Split(' ').FirstOrDefault() ?? "UNKNOWN_ERROR";
-                    
+
                     return AuthenticationResult.Failure(GetFirebaseErrorMessage(errorCode));
                 }
 
                 var responseData = await response.Content.ReadAsStringAsync();
                 var loginResponse = JsonConvert.DeserializeObject<FirebaseLoginResponse>(responseData);
-                
+
                 if (loginResponse?.localId == null)
                 {
                     return AuthenticationResult.Failure("Error al procesar la respuesta de autenticación.");
                 }
 
+                // NUEVO: Verificar que el email esté verificado
+                var userRecord = await FirebaseAuth.DefaultInstance.GetUserAsync(loginResponse.localId);
+                if (!userRecord.EmailVerified)
+                {
+                    return AuthenticationResult.Failure("Debe verificar su correo electrónico antes de iniciar sesión. Revise su bandeja de entrada.");
+                }
+
                 // Verificar estado del empleado en Firestore
                 var employeeDoc = await _firestore.Collection("empleados").Document(loginResponse.localId).GetSnapshotAsync();
-                
-                if (!employeeDoc.Exists || employeeDoc.GetValue<string>("Estado") != "Activo")
+
+                if (!employeeDoc.Exists)
+                {
+                    return AuthenticationResult.Failure("Cuenta no encontrada.");
+                }
+
+                var estado = employeeDoc.GetValue<string>("Estado");
+
+                // NUEVO: Si el estado es "Pendiente" y el email está verificado, activar cuenta
+                if (estado == "Pendiente" && userRecord.EmailVerified)
+                {
+                    await _firestore.Collection("empleados").Document(loginResponse.localId).UpdateAsync(new Dictionary<string, object>
+            {
+                { "Estado", "Activo" },
+                { "EmailVerificado", true }
+            });
+                    estado = "Activo";
+                }
+
+                if (estado != "Activo")
                 {
                     return AuthenticationResult.Failure("Cuenta inactiva, contacte con el administrador.");
                 }
@@ -100,6 +125,7 @@ namespace Firebase.Services
 
         /// <summary>
         /// Registra un nuevo usuario en Firebase Authentication y Firestore.
+        /// AHORA: Envía email de verificación en lugar de autenticar automáticamente
         /// </summary>
         /// <param name="request">Datos de registro del usuario</param>
         /// <returns>Resultado de la operación de registro</returns>
@@ -107,48 +133,129 @@ namespace Firebase.Services
         {
             try
             {
-                // Crear usuario en Firebase Authentication
+                // 1. Crear usuario en Firebase Authentication
                 var userRecordArgs = new UserRecordArgs
                 {
                     Email = request.Email,
                     Password = request.Password,
-                    DisplayName = request.NombreCompleto
+                    DisplayName = request.NombreCompleto,
+                    EmailVerified = false
                 };
 
                 var userRecord = await FirebaseAuth.DefaultInstance.CreateUserAsync(userRecordArgs);
 
-                // Guardar datos adicionales en Firestore
+                // 2. Guardar datos en Firestore con estado Pendiente
                 var employeeData = new Dictionary<string, object>
-                {
-                    { "Uid", userRecord.Uid },
-                    { "Nombre", request.NombreCompleto },
-                    { "Email", request.Email },
-                    { "Rol", "Empleado" },
-                    { "Estado", "Activo" }
-                };
+        {
+            { "Uid", userRecord.Uid },
+            { "Nombre", request.NombreCompleto },
+            { "Email", request.Email },
+            { "Rol", "Empleado" },
+            { "Estado", "Pendiente" },
+            { "EmailVerificado", false }
+        };
 
-                await _firestore.Collection("empleados").Document(userRecord.Uid).SetAsync(employeeData);
+                await _firestore.Collection("empleados")
+                    .Document(userRecord.Uid)
+                    .SetAsync(employeeData);
 
-                // Autenticar al usuario recién registrado
-                var authResult = await AuthenticateWithEmailAsync(request.Email, request.Password);
-                
-                if (authResult.IsSuccess)
+                // 3. Disparar envío de email de verificación usando plantilla de Firebase
+                try
                 {
-                    // Registrar evento de auditoría
-                    await _auditService.LogEvent(userRecord.Uid, request.Email, "Registro de usuario", userRecord.Uid, "Empleado");
+                    await TriggerFirebaseTemplateVerificationEmailAsync(request.Email, request.Password);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error enviando verificación: {ex.Message}");
+                    // No abortar el registro, solo log
                 }
 
-                return authResult;
+                // 4. Auditoría
+                await _auditService.LogEvent(
+                    userRecord.Uid,
+                    request.Email,
+                    "Registro de usuario (pendiente verificación)",
+                    userRecord.Uid,
+                    "Empleado");
+
+                // 5. Devolver éxito sin autenticar
+                return AuthenticationResult.Success(new UserInfo
+                {
+                    Uid = userRecord.Uid,
+                    Email = request.Email,
+                    Name = request.NombreCompleto,
+                    Role = "Empleado"
+                });
             }
             catch (FirebaseAuthException ex)
             {
                 var errorCode = ex.AuthErrorCode.ToString();
                 return AuthenticationResult.Failure($"Error al registrar el usuario: {GetFirebaseErrorMessage(errorCode)}");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return AuthenticationResult.Failure("Error al registrar el usuario. Por favor, intente de nuevo.");
+                return AuthenticationResult.Failure($"Error al registrar el usuario: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Firma en Firebase REST para obtener idToken y dispara el envío del correo
+        /// usando la plantilla configurada en Authentication.
+        /// No autentica al usuario en tu aplicación.
+        /// </summary>
+        private async Task TriggerFirebaseTemplateVerificationEmailAsync(string email, string plainPassword)
+        {
+            // 1. Sign in técnico para obtener idToken (no genera cookie de tu app)
+            var signInPayload = new
+            {
+                email = email,
+                password = plainPassword,
+                returnSecureToken = true
+            };
+
+            var signInContent = new StringContent(
+                JsonConvert.SerializeObject(signInPayload),
+                Encoding.UTF8,
+                "application/json");
+
+            var signInUri = $"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={_firebaseApiKey}";
+            var signInResponse = await _httpClient.PostAsync(signInUri, signInContent);
+
+            if (!signInResponse.IsSuccessStatusCode)
+            {
+                var raw = await signInResponse.Content.ReadAsStringAsync();
+                throw new Exception($"Fallo en signIn técnico: {raw}");
+            }
+
+            var signInJson = await signInResponse.Content.ReadAsStringAsync();
+            dynamic signInObj = JsonConvert.DeserializeObject(signInJson);
+            string idToken = signInObj.idToken;
+
+            if (string.IsNullOrWhiteSpace(idToken))
+                throw new Exception("No se obtuvo idToken para verificación.");
+
+            // 2. Enviar la verificación (usa plantilla de Firebase)
+            var verifyPayload = new
+            {
+                requestType = "VERIFY_EMAIL",
+                idToken = idToken
+            };
+
+            var verifyContent = new StringContent(
+                JsonConvert.SerializeObject(verifyPayload),
+                Encoding.UTF8,
+                "application/json");
+
+            var verifyUri = $"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={_firebaseApiKey}";
+            var verifyResponse = await _httpClient.PostAsync(verifyUri, verifyContent);
+
+            if (!verifyResponse.IsSuccessStatusCode)
+            {
+                var raw = await verifyResponse.Content.ReadAsStringAsync();
+                throw new Exception($"Fallo al solicitar envío de verificación: {raw}");
+            }
+
+            Console.WriteLine("Correo de verificación enviado mediante plantilla Firebase.");
         }
 
         /// <summary>

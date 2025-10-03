@@ -200,6 +200,78 @@
             </div>
         </div>
     </div>
+    <!-- Modal de advertencia: verificación de correo (estilo unificado con modal de Servicios) -->
+    <div id="verificationModal" class="@(ViewBag.ShowVerificationModal == true ? "" : "hidden") fixed inset-0 z-50 flex items-center justify-center">
+        <div class="relative p-4 w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg sm:p-5 text-center">
+            <!-- Botón de cierre -->
+            <button type="button"
+                    class="absolute top-2.5 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900
+                       rounded-lg text-sm p-1.5 dark:hover:bg-gray-600 dark:hover:text-white"
+                    onclick="closeVerificationModal()">
+                <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd"
+                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414
+                       1.414L11.414 10l4.293 4.293a1 1 0 01-1.414
+                       1.414L10 11.414l-4.293 4.293a1 1 0
+                       01-1.414-1.414L8.586 10 4.293 5.707a1
+                       1 0 010-1.414z"
+                          clip-rule="evenodd"></path>
+                </svg>
+                <span class="sr-only">Cerrar</span>
+            </button>
+
+            <!-- Ícono -->
+            <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 p-2 flex items-center justify-center mx-auto mb-3.5">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                     class="w-8 h-8 text-yellow-500 dark:text-yellow-400" viewBox="0 0 24 24">
+                    <path fill-rule="evenodd"
+                          d="M12 2.25c-5.385 0-9.75 4.365-9.75
+                       9.75s4.365 9.75 9.75
+                       9.75 9.75-4.365 9.75-9.75S17.385
+                       2.25 12 2.25Zm-.75 4.5a.75.75 0
+                       1 1 1.5 0v6a.75.75 0 0
+                       1-1.5 0v-6Zm0 9a.75.75 0 0
+                       1 1.5 0v1.5a.75.75 0 0
+                       1-1.5 0V15.75Z"
+                          clip-rule="evenodd" />
+                </svg>
+            </div>
+
+            <!-- Contenido -->
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Verifique su correo electrónico
+            </h3>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                Para completar su registro debe validar su correo electrónico mediante el enlace enviado.
+            </p>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">
+                @(ViewBag.RegistrationEmail ?? "usuario@correo.com")
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-5">
+                Revise su bandeja de entrada (y carpeta de spam). Una vez verificado podrá iniciar sesión.
+            </p>
+
+            <!-- Acciones -->
+            <div class="flex justify-center items-center space-x-4">
+                <button type="button"
+                        onclick="closeVerificationModal()"
+                        class="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200
+                           hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-300 hover:text-gray-900
+                           dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white
+                           dark:hover:bg-gray-600 dark:focus:ring-gray-600">
+                    Entendido
+                </button>
+                <button type="button"
+                        onclick="resendVerificationEmail()"
+                        class="py-2 px-3 text-sm font-medium text-center text-white bg-blue-600 rounded-lg
+                           hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300
+                           dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-800">
+                    Reenviar correo
+                </button>
+            </div>
+            <div id="verificationFeedback" class="mt-4 hidden text-sm"></div>
+        </div>
+    </div>
 </section>
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
@@ -239,6 +311,34 @@
         <text>
                 document.getElementById('registerModal').classList.remove('hidden');
         </text>
+    }
+</script>
+<script>
+    function closeVerificationModal() {
+        const m = document.getElementById('verificationModal');
+        if (m) m.classList.add('hidden');
+    }
+    async function resendVerificationEmail() {
+        const feedback = document.getElementById('verificationFeedback');
+        if (feedback) {
+            feedback.className = 'mt-4 text-sm text-gray-600 dark:text-gray-300';
+            feedback.textContent = 'Reenviando...';
+            feedback.classList.remove('hidden');
+        }
+        try {
+            // Punto extensible: implementar endpoint si se desea reenviar (POST /Login/ResendVerification)
+            const resp = await fetch('/Login/ResendVerification', { method: 'POST', headers: { "Content-Type": "application/json" } });
+            if (!resp.ok) throw new Error();
+            if (feedback) {
+                feedback.textContent = 'Correo de verificación reenviado.';
+                feedback.className = 'mt-4 text-sm text-green-600 dark:text-green-400';
+            }
+        } catch {
+            if (feedback) {
+                feedback.textContent = 'No se pudo reenviar el correo.';
+                feedback.className = 'mt-4 text-sm text-red-600 dark:text-red-400';
+            }
+        }
     }
 </script>
 <script src="~/js/login.js" asp-append-version="true"></script>

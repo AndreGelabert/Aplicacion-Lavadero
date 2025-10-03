@@ -47,7 +47,6 @@ public class LoginController : Controller
     /// Procesa el inicio de sesión con email y contraseña.
     /// </summary>
     /// <param name="request">Datos de login del usuario</param>
-    /// <param name="rememberMe">Indica si el usuario quiere ser recordado</param>
     /// <returns>Resultado de la autenticación</returns>
     [HttpPost]
     public async Task<IActionResult> Login(LoginRequest request)
@@ -100,17 +99,18 @@ public class LoginController : Controller
         try
         {
             var result = await _authService.RegisterUserAsync(request);
-            
+
             if (!result.IsSuccess)
             {
                 ViewBag.Error = result.ErrorMessage;
                 return View("Index");
             }
 
-            // Autenticar al usuario recién registrado
-            await SignInUserAsync(result.UserInfo!);
-            
-            return RedirectToAction("Index", "Lavados");
+            // NUEVO: En lugar de autenticar, mostrar modal de verificación
+            ViewBag.ShowVerificationModal = true;
+            ViewBag.RegistrationEmail = request.Email;
+
+            return View("Index");
         }
         catch (Exception)
         {
