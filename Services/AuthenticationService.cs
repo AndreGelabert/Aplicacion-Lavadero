@@ -199,6 +199,54 @@ namespace Firebase.Services
         }
 
         /// <summary>
+        /// Envía un correo de recuperación de contraseña usando la plantilla de Firebase.
+        /// </summary>
+        /// <param name="email">Email del usuario que solicita recuperar la contraseña</param>
+        /// <returns>Resultado de la operación</returns>
+        public async Task<AuthenticationResult> SendPasswordResetEmailAsync(string email)
+        {
+            try
+            {
+                var resetPayload = new
+                {
+                    requestType = "PASSWORD_RESET",
+                    email = email
+                };
+
+                var resetContent = new StringContent(
+                    JsonConvert.SerializeObject(resetPayload),
+                    Encoding.UTF8,
+                    "application/json");
+
+                var resetUri = $"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={_firebaseApiKey}";
+                var resetResponse = await _httpClient.PostAsync(resetUri, resetContent);
+
+                if (!resetResponse.IsSuccessStatusCode)
+                {
+                    var errorResponse = await resetResponse.Content.ReadAsStringAsync();
+                    var firebaseError = JsonConvert.DeserializeObject<FirebaseErrorResponse>(errorResponse);
+                    var errorCode = firebaseError?.error?.message?.Split(' ').FirstOrDefault() ?? "UNKNOWN_ERROR";
+                    
+                    return AuthenticationResult.Failure(GetFirebaseErrorMessage(errorCode));
+                }
+
+                Console.WriteLine("Correo de recuperación de contraseña enviado mediante plantilla Firebase.");
+                return AuthenticationResult.Success(new UserInfo 
+                { 
+                    Uid = "", 
+                    Email = email, 
+                    Name = "", 
+                    Role = "" 
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error enviando correo de recuperación: {ex.Message}");
+                return AuthenticationResult.Failure("Error al enviar el correo de recuperación. Por favor, intente de nuevo.");
+            }
+        }
+
+        /// <summary>
         /// Firma en Firebase REST para obtener idToken y dispara el envío del correo
         /// usando la plantilla configurada en Authentication.
         /// No autentica al usuario en tu aplicación.
