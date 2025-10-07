@@ -88,6 +88,8 @@
             </div>
             <div class="flex items-center justify-between">
                 <p class="text-sm text-gray-500">
+                    <a href="javascript:void(0)" class="underline" onclick="document.getElementById('forgotPasswordModal').classList.remove('hidden');">¿Olvidó su contraseña?</a>
+                    <br />
                     ¿No tiene cuenta?
                     <button type="button" class="underline" onclick="document.getElementById('registerModal').classList.remove('hidden');">Registrese</button>
                 </p>
@@ -272,6 +274,71 @@
             <div id="verificationFeedback" class="mt-4 hidden text-sm"></div>
         </div>
     </div>
+    <!-- Modal de recuperación de contraseña -->
+    <div id="forgotPasswordModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="relative p-4 w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg sm:p-5">
+            <!-- Botón de cierre -->
+            <button type="button"
+                    class="absolute top-2.5 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900
+                       rounded-lg text-sm p-1.5 dark:hover:bg-gray-600 dark:hover:text-white"
+                    onclick="closeForgotPasswordModal()">
+                <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd"
+                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414
+                       1.414L11.414 10l4.293 4.293a1 1 0 01-1.414
+                       1.414L10 11.414l-4.293 4.293a1 1 0
+                       01-1.414-1.414L8.586 10 4.293 5.707a1
+                       1 0 010-1.414z"
+                          clip-rule="evenodd"></path>
+                </svg>
+                <span class="sr-only">Cerrar</span>
+            </button>
+
+            <!-- Ícono -->
+            <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 p-2 flex items-center justify-center mx-auto mb-3.5">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                     class="w-8 h-8 text-blue-600 dark:text-blue-400" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+            </div>
+
+            <!-- Contenido -->
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 text-center">
+                Recuperar contraseña
+            </h3>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 text-center">
+                Ingrese su correo electrónico y le enviaremos un enlace para restablecer su contraseña.
+            </p>
+
+            <!-- Formulario -->
+            <div class="mb-4">
+                <label for="resetEmail" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Correo Electrónico</label>
+                <input type="email" id="resetEmail" 
+                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" 
+                       placeholder="correo@ejemplo.com" required>
+            </div>
+
+            <!-- Acciones -->
+            <div class="flex justify-center items-center space-x-4">
+                <button type="button"
+                        onclick="closeForgotPasswordModal()"
+                        class="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200
+                           hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-300 hover:text-gray-900
+                           dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white
+                           dark:hover:bg-gray-600 dark:focus:ring-gray-600">
+                    Cancelar
+                </button>
+                <button type="button"
+                        onclick="sendPasswordResetEmail()"
+                        class="py-2 px-3 text-sm font-medium text-center text-white bg-blue-600 rounded-lg
+                           hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300
+                           dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-800">
+                    Enviar enlace
+                </button>
+            </div>
+            <div id="forgotPasswordFeedback" class="mt-4 hidden text-sm text-center"></div>
+        </div>
+    </div>
 </section>
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
@@ -337,6 +404,80 @@
             if (feedback) {
                 feedback.textContent = 'No se pudo reenviar el correo.';
                 feedback.className = 'mt-4 text-sm text-red-600 dark:text-red-400';
+            }
+        }
+    }
+    
+    function closeForgotPasswordModal() {
+        const modal = document.getElementById('forgotPasswordModal');
+        const feedback = document.getElementById('forgotPasswordFeedback');
+        const emailInput = document.getElementById('resetEmail');
+        
+        if (modal) modal.classList.add('hidden');
+        if (feedback) {
+            feedback.classList.add('hidden');
+            feedback.textContent = '';
+        }
+        if (emailInput) emailInput.value = '';
+    }
+    
+    async function sendPasswordResetEmail() {
+        const emailInput = document.getElementById('resetEmail');
+        const feedback = document.getElementById('forgotPasswordFeedback');
+        const email = emailInput?.value?.trim();
+        
+        if (!email) {
+            if (feedback) {
+                feedback.textContent = 'Por favor, ingrese un correo electrónico.';
+                feedback.className = 'mt-4 text-sm text-red-600 dark:text-red-400 text-center';
+                feedback.classList.remove('hidden');
+            }
+            return;
+        }
+        
+        // Validar formato de email
+        const emailRegex = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
+        if (!emailRegex.test(email)) {
+            if (feedback) {
+                feedback.textContent = 'Por favor, ingrese un correo electrónico válido.';
+                feedback.className = 'mt-4 text-sm text-red-600 dark:text-red-400 text-center';
+                feedback.classList.remove('hidden');
+            }
+            return;
+        }
+        
+        if (feedback) {
+            feedback.className = 'mt-4 text-sm text-gray-600 dark:text-gray-300 text-center';
+            feedback.textContent = 'Enviando...';
+            feedback.classList.remove('hidden');
+        }
+        
+        try {
+            const resp = await fetch('/Login/ForgotPassword', {
+                method: 'POST',
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email })
+            });
+            
+            const data = await resp.json();
+            
+            if (!resp.ok) {
+                throw new Error(data.error || 'Error al enviar el correo');
+            }
+            
+            if (feedback) {
+                feedback.textContent = 'Correo de recuperación enviado. Revise su bandeja de entrada.';
+                feedback.className = 'mt-4 text-sm text-green-600 dark:text-green-400 text-center';
+            }
+            
+            // Cerrar modal después de 3 segundos
+            setTimeout(() => {
+                closeForgotPasswordModal();
+            }, 3000);
+        } catch (error) {
+            if (feedback) {
+                feedback.textContent = error.message || 'No se pudo enviar el correo de recuperación.';
+                feedback.className = 'mt-4 text-sm text-red-600 dark:text-red-400 text-center';
             }
         }
     }

@@ -148,6 +148,36 @@ public class LoginController : Controller
     }
 
     /// <summary>
+    /// Procesa la solicitud de recuperación de contraseña.
+    /// </summary>
+    /// <param name="email">Email del usuario que solicita recuperar la contraseña</param>
+    /// <returns>Resultado de la operación</returns>
+    [HttpPost]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Email))
+            {
+                return BadRequest(new { error = "Por favor, ingrese un correo electrónico válido." });
+            }
+
+            var result = await _authService.SendPasswordResetEmailAsync(request.Email);
+
+            if (!result.IsSuccess)
+            {
+                return BadRequest(new { error = result.ErrorMessage });
+            }
+
+            return Ok(new { message = "Correo de recuperación enviado exitosamente." });
+        }
+        catch (Exception)
+        {
+            return BadRequest(new { error = "Error al enviar el correo de recuperación. Por favor, intente de nuevo." });
+        }
+    }
+
+    /// <summary>
     /// Autentica al usuario en la aplicación creando las claims correspondientes.
     /// </summary>
     /// <param name="userInfo">Información del usuario</param>
@@ -188,5 +218,18 @@ public class GoogleLoginRequest
     /// </summary>
     [Required]
     public required string IdToken { get; set; }
+}
+
+/// <summary>
+/// Modelo para las solicitudes de recuperación de contraseña.
+/// </summary>
+public class ForgotPasswordRequest
+{
+    /// <summary>
+    /// Email del usuario que solicita recuperar la contraseña.
+    /// </summary>
+    [Required]
+    [EmailAddress]
+    public required string Email { get; set; }
 }
 
