@@ -181,12 +181,48 @@ public class ServicioController : Controller
     #endregion
 
     #region Gestión de Tipos (Servicio y Vehículo)
+
     /// <summary>
-    /// Crear nuevo tipo de servicio
+    /// Crear nuevo tipo de servicio con respuesta AJAX
     /// </summary>
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> CrearTipoServicio(string nombreTipo)
     {
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        {
+            // Respuesta AJAX
+            try
+            {
+                if (string.IsNullOrWhiteSpace(nombreTipo))
+                {
+                    return Json(new { success = false, message = "El nombre del tipo de servicio es obligatorio." });
+                }
+
+                if (await _tipoServicioService.ExisteTipoServicio(nombreTipo))
+                {
+                    return Json(new { success = false, message = "Ya existe un tipo de servicio con el mismo nombre." });
+                }
+
+                await _tipoServicioService.CrearTipoServicio(nombreTipo);
+                await RegistrarEvento("Creacion de tipo de servicio", nombreTipo, "TipoServicio");
+
+                var tiposActualizados = await _tipoServicioService.ObtenerTiposServicio();
+
+                return Json(new
+                {
+                    success = true,
+                    message = "Tipo de servicio creado correctamente.",
+                    tipos = tiposActualizados
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error al crear el tipo de servicio: {ex.Message}" });
+            }
+        }
+
+        // Fallback tradicional (mantener compatibilidad)
         return await GestionarTipo(
             nombreTipo,
             () => _tipoServicioService.ExisteTipoServicio(nombreTipo),
@@ -197,11 +233,51 @@ public class ServicioController : Controller
     }
 
     /// <summary>
-    /// Eliminar tipo de servicio
+    /// Eliminar tipo de servicio con respuesta AJAX
     /// </summary>
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> EliminarTipoServicio(string nombreTipo)
     {
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        {
+            // Respuesta AJAX
+            try
+            {
+                if (string.IsNullOrWhiteSpace(nombreTipo))
+                {
+                    return Json(new { success = false, message = "Debe seleccionar un tipo de servicio." });
+                }
+
+                var serviciosUsandoTipo = await _servicioService.ObtenerServiciosPorTipo(nombreTipo);
+                if (serviciosUsandoTipo.Any())
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = "No se puede eliminar el tipo de servicio porque hay servicios que lo utilizan."
+                    });
+                }
+
+                await _tipoServicioService.EliminarTipoServicio(nombreTipo);
+                await RegistrarEvento("Eliminacion de tipo de servicio", nombreTipo, "TipoServicio");
+
+                var tiposActualizados = await _tipoServicioService.ObtenerTiposServicio();
+
+                return Json(new
+                {
+                    success = true,
+                    message = "Tipo de servicio eliminado correctamente.",
+                    tipos = tiposActualizados
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error al eliminar el tipo de servicio: {ex.Message}" });
+            }
+        }
+
+        // Fallback tradicional
         return await EliminarTipo(
             nombreTipo,
             () => _servicioService.ObtenerServiciosPorTipo(nombreTipo),
@@ -212,11 +288,46 @@ public class ServicioController : Controller
     }
 
     /// <summary>
-    /// Crear nuevo tipo de vehículo
+    /// Crear nuevo tipo de vehículo con respuesta AJAX
     /// </summary>
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> CrearTipoVehiculo(string nombreTipo)
     {
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        {
+            // Respuesta AJAX
+            try
+            {
+                if (string.IsNullOrWhiteSpace(nombreTipo))
+                {
+                    return Json(new { success = false, message = "El nombre del tipo de vehículo es obligatorio." });
+                }
+
+                if (await _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo))
+                {
+                    return Json(new { success = false, message = "Ya existe un tipo de vehículo con el mismo nombre." });
+                }
+
+                await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo);
+                await RegistrarEvento("Creacion de tipo de vehiculo", nombreTipo, "TipoVehiculo");
+
+                var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculos();
+
+                return Json(new
+                {
+                    success = true,
+                    message = "Tipo de vehículo creado correctamente.",
+                    tipos = tiposActualizados
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error al crear el tipo de vehículo: {ex.Message}" });
+            }
+        }
+
+        // Fallback tradicional
         return await GestionarTipo(
             nombreTipo,
             () => _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo),
@@ -227,11 +338,51 @@ public class ServicioController : Controller
     }
 
     /// <summary>
-    /// Eliminar tipo de vehículo
+    /// Eliminar tipo de vehículo con respuesta AJAX
     /// </summary>
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> EliminarTipoVehiculo(string nombreTipo)
     {
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        {
+            // Respuesta AJAX
+            try
+            {
+                if (string.IsNullOrWhiteSpace(nombreTipo))
+                {
+                    return Json(new { success = false, message = "Debe seleccionar un tipo de vehículo." });
+                }
+
+                var serviciosUsandoTipo = await _servicioService.ObtenerServiciosPorTipoVehiculo(nombreTipo);
+                if (serviciosUsandoTipo.Any())
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = "No se puede eliminar el tipo de vehículo porque hay servicios que lo utilizan."
+                    });
+                }
+
+                await _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo);
+                await RegistrarEvento("Eliminacion de tipo de vehiculo", nombreTipo, "TipoVehiculo");
+
+                var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculos();
+
+                return Json(new
+                {
+                    success = true,
+                    message = "Tipo de vehículo eliminado correctamente.",
+                    tipos = tiposActualizados
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error al eliminar el tipo de vehículo: {ex.Message}" });
+            }
+        }
+
+        // Fallback tradicional
         return await EliminarTipo(
             nombreTipo,
             () => _servicioService.ObtenerServiciosPorTipoVehiculo(nombreTipo),
@@ -240,6 +391,7 @@ public class ServicioController : Controller
             "Eliminacion de tipo de vehiculo"
         );
     }
+
     #endregion
 
     #region Vistas Parciales

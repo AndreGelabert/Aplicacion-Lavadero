@@ -8,6 +8,7 @@
     'use strict';
 
     let servicioMsgTimeout = null;
+    let tableMsgTimeout = null;
 
     // =====================================
     // INICIALIZACIÓN DEL MÓDULO
@@ -31,6 +32,18 @@
         // Verificar si estamos en modo edición
         checkEditMode();
     }
+
+    // IMPORTANTE: asegurar que init se ejecute siempre
+    // Evita que los formularios hagan submit tradicional (recarga),
+    // engancha eventos de los modales (abrir/cerrar) y AJAX de crear/eliminar tipos.
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            window.PageModules?.servicios?.init();
+        } catch (e) {
+            // fallback por si se renombra el módulo
+            initializeServiciosPage();
+        }
+    });
 
     // =====================================
     // CONFIGURACIÓN INICIAL
@@ -299,7 +312,6 @@
         const servicioForm = this;
         const requiredFields = servicioForm.querySelectorAll('[required]');
         let allValid = true;
-        let errorMessages = [];
 
         // Verificar campos requeridos
         requiredFields.forEach(field => {
@@ -392,43 +404,357 @@
     function setupModals() {
         setupServiceTypeModals();
         setupVehicleTypeModals();
+
+        // Inicializar Flowbite modals para compatibilidad cross-browser
+        if (typeof initModals === 'function') {
+            initModals();
+        }
     }
 
     /**
      * Configura modales de tipos de servicio
      */
     function setupServiceTypeModals() {
-        const btnEliminarTipo = document.querySelector('[data-modal-toggle="eliminarTipoModal"]');
-        if (btnEliminarTipo) {
-            btnEliminarTipo.addEventListener('click', function () {
+        // Configurar formulario de crear tipo de servicio
+        const formCrearTipo = document.getElementById('formCrearTipoServicio');
+        if (formCrearTipo && !formCrearTipo.hasAttribute('data-setup')) {
+            formCrearTipo.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                await handleCrearTipoServicio(this);
+            });
+            formCrearTipo.setAttribute('data-setup', 'true');
+        }
+
+        // Configurar formulario de eliminar tipo de servicio
+        const formEliminarTipo = document.getElementById('formEliminarTipo');
+        if (formEliminarTipo && !formEliminarTipo.hasAttribute('data-setup')) {
+            formEliminarTipo.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                await handleEliminarTipoServicio(this);
+            });
+            formEliminarTipo.setAttribute('data-setup', 'true');
+        }
+
+        // Configurar botones que abren modal de eliminar (para llenar el input hidden)
+        const btnsEliminarTipo = document.querySelectorAll('[data-modal-toggle="eliminarTipoModal"]');
+        btnsEliminarTipo.forEach(btn => {
+            btn.addEventListener('click', function () {
                 const tipoSeleccionado = document.getElementById('Tipo')?.value;
                 const eliminInput = document.getElementById('nombreTipoEliminar');
                 if (eliminInput) eliminInput.value = tipoSeleccionado;
+                // NO llamar a abrirModal ni hacer preventDefault: Flowbite abre por data-modal-toggle
             });
-        }
+        });
 
-        const cancelarTipoBtn = document.querySelector('#defaultModal button[type="button"]');
-        if (cancelarTipoBtn) {
-            cancelarTipoBtn.addEventListener('click', limpiarModalTipoServicio);
-        }
+        // Configurar botones de abrir modal de crear
+        const btnsCrearTipo = document.querySelectorAll('[data-modal-toggle="defaultModal"]');
+        btnsCrearTipo.forEach(btn => {
+            btn.addEventListener('click', function () {
+                // NO preventDefault/stopPropagation ni abrirModal
+            });
+        });
     }
 
     /**
      * Configura modales de tipos de vehículo
      */
     function setupVehicleTypeModals() {
-        const btnEliminarTipoVehiculo = document.querySelector('[data-modal-toggle="eliminarTipoVehiculoModal"]');
-        if (btnEliminarTipoVehiculo) {
-            btnEliminarTipoVehiculo.addEventListener('click', function () {
+        // Configurar formulario de crear tipo de vehículo
+        const formCrearTipoVehiculo = document.getElementById('formCrearTipoVehiculo');
+        if (formCrearTipoVehiculo && !formCrearTipoVehiculo.hasAttribute('data-setup')) {
+            formCrearTipoVehiculo.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                await handleCrearTipoVehiculo(this);
+            });
+            formCrearTipoVehiculo.setAttribute('data-setup', 'true');
+        }
+
+        // Configurar formulario de eliminar tipo de vehículo
+        const formEliminarTipoVehiculo = document.getElementById('formEliminarTipoVehiculo');
+        if (formEliminarTipoVehiculo && !formEliminarTipoVehiculo.hasAttribute('data-setup')) {
+            formEliminarTipoVehiculo.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                await handleEliminarTipoVehiculo(this);
+            });
+            formEliminarTipoVehiculo.setAttribute('data-setup', 'true');
+        }
+
+        // Configurar botones que abren modal de eliminar vehículo
+        const btnsEliminarTipoVehiculo = document.querySelectorAll('[data-modal-toggle="eliminarTipoVehiculoModal"]');
+        btnsEliminarTipoVehiculo.forEach(btn => {
+            btn.addEventListener('click', function () {
                 const tipoSeleccionado = document.getElementById('TipoVehiculo')?.value;
                 const eliminInput = document.getElementById('nombreTipoVehiculoEliminar');
                 if (eliminInput) eliminInput.value = tipoSeleccionado;
+                // NO llamar a abrirModal
             });
+        });
+
+        // Configurar botones de abrir modal de crear vehículo
+        const btnsCrearTipoVehiculo = document.querySelectorAll('[data-modal-toggle="tipoVehiculoModal"]');
+        btnsCrearTipoVehiculo.forEach(btn => {
+            btn.addEventListener('click', function () {
+                // NO llamar a abrirModal
+            });
+        });
+    }
+
+    /**
+     * Maneja la creación de tipo de servicio vía AJAX
+     */
+    async function handleCrearTipoServicio(form) {
+        const nombreTipo = document.getElementById('nombreTipo')?.value?.trim();
+        if (!nombreTipo) {
+            showTableMessage('error', 'El nombre del tipo de servicio es obligatorio.');
+            return;
         }
 
-        const cancelarTipoVehiculoBtn = document.querySelector('#tipoVehiculoModal button[type="button"]');
-        if (cancelarTipoVehiculoBtn) {
-            cancelarTipoVehiculoBtn.addEventListener('click', limpiarModalTipoVehiculo);
+        try {
+            const formData = new FormData(form);
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                body: formData
+            });
+
+            const { ok, data } = await parseJsonSafe(response);
+            const success = data?.success ?? ok;
+            const message = data?.message ?? (success ? 'Tipo de servicio creado.' : 'No se pudo crear el tipo de servicio.');
+
+            if (success) {
+                if (data?.tipos) actualizarDropdownTipos('Tipo', data.tipos, nombreTipo);
+                cerrarModal('defaultModal');
+                form.reset();
+                showTableMessage('success', message);
+            } else {
+                showTableMessage('error', message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showTableMessage('error', 'Error al crear el tipo de servicio.');
+        }
+    }
+
+    /**
+     * Maneja la creación de tipo de vehículo vía AJAX
+     */
+    async function handleCrearTipoVehiculo(form) {
+        const nombreTipo = document.getElementById('nombreTipoVehiculo')?.value?.trim();
+        if (!nombreTipo) {
+            showTableMessage('error', 'El nombre del tipo de vehículo es obligatorio.');
+            return;
+        }
+
+        try {
+            const formData = new FormData(form);
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                body: formData
+            });
+
+            const { ok, data } = await parseJsonSafe(response);
+            const success = data?.success ?? ok;
+            const message = data?.message ?? (success ? 'Tipo de vehículo creado.' : 'No se pudo crear el tipo de vehículo.');
+
+            if (success) {
+                if (data?.tipos) actualizarDropdownTipos('TipoVehiculo', data.tipos, nombreTipo);
+                cerrarModal('tipoVehiculoModal');
+                form.reset();
+                showTableMessage('success', message);
+            } else {
+                showTableMessage('error', message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showTableMessage('error', 'Error al crear el tipo de vehículo.');
+        }
+    }
+
+    /**
+     * Maneja la eliminación de tipo de servicio vía AJAX
+     */
+    async function handleEliminarTipoServicio(form) {
+        const nombreTipo = document.getElementById('nombreTipoEliminar')?.value?.trim();
+        if (!nombreTipo) {
+            showTableMessage('error', 'Debe seleccionar un tipo de servicio.');
+            return;
+        }
+
+        try {
+            const formData = new FormData(form);
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                body: formData
+            });
+
+            const { ok, data } = await parseJsonSafe(response);
+            const success = data?.success ?? ok;
+            const message = data?.message ?? (success ? 'Tipo de servicio eliminado.' : 'No se pudo eliminar el tipo de servicio.');
+
+            if (success) {
+                if (data?.tipos?.length) actualizarDropdownTipos('Tipo', data.tipos);
+                cerrarModal('eliminarTipoModal');
+                form.reset();
+                showTableMessage('success', message);
+            } else {
+                cerrarModal('eliminarTipoModal');
+                showTableMessage('error', message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            cerrarModal('eliminarTipoModal');
+            showTableMessage('error', 'Error al eliminar el tipo de servicio.');
+        }
+    }
+
+    /**
+     * Maneja la eliminación de tipo de vehículo vía AJAX
+     */
+    async function handleEliminarTipoVehiculo(form) {
+        const nombreTipo = document.getElementById('nombreTipoVehiculoEliminar')?.value?.trim();
+        if (!nombreTipo) {
+            showTableMessage('error', 'Debe seleccionar un tipo de vehículo.');
+            return;
+        }
+
+        try {
+            const formData = new FormData(form);
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                body: formData
+            });
+
+            const { ok, data } = await parseJsonSafe(response);
+            const success = data?.success ?? ok;
+            const message = data?.message ?? (success ? 'Tipo de vehículo eliminado.' : 'No se pudo eliminar el tipo de vehículo.');
+
+            if (success) {
+                if (data?.tipos?.length) actualizarDropdownTipos('TipoVehiculo', data.tipos);
+                cerrarModal('eliminarTipoVehiculoModal');
+                form.reset();
+                showTableMessage('success', message);
+            } else {
+                cerrarModal('eliminarTipoVehiculoModal');
+                showTableMessage('error', message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            cerrarModal('eliminarTipoVehiculoModal');
+            showTableMessage('error', 'Error al eliminar el tipo de vehículo.');
+        }
+    }
+
+    /**
+     * Actualiza un dropdown con nuevos tipos
+     */
+    function actualizarDropdownTipos(selectId, tipos, valorSeleccionado) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+
+        // Limpiar opciones actuales
+        select.innerHTML = '';
+
+        // Agregar nuevas opciones
+        tipos.forEach(tipo => {
+            const option = document.createElement('option');
+            option.value = tipo;
+            option.textContent = tipo;
+            if (tipo === valorSeleccionado) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+    }
+
+    // Helper: obtiene o crea la instancia Flowbite del modal
+    function getFlowbiteModal(modalEl) {
+        if (!modalEl || typeof window !== 'object' || typeof window.Modal === 'undefined') return null;
+
+        const opts = { backdrop: 'dynamic', closable: true };
+
+        // Flowbite 2.x expone getInstance y getOrCreateInstance
+        if (typeof Modal.getInstance === 'function') {
+            const existing = Modal.getInstance(modalEl);
+            if (existing) return existing;
+        }
+        if (typeof Modal.getOrCreateInstance === 'function') {
+            return Modal.getOrCreateInstance(modalEl, opts);
+        }
+        // Fallback
+        try {
+            return new Modal(modalEl, opts);
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Cierra un modal garantizando que se quite el backdrop y se restaure el scroll
+     */
+    function cerrarModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+
+        let closed = false;
+
+        // 1) API de Flowbite
+        try {
+            const inst = getFlowbiteModal(modal);
+            if (inst && typeof inst.hide === 'function') {
+                inst.hide();
+                closed = true;
+            }
+        } catch { /* no-op */ }
+
+        // 2) Intentar cerrar haciendo click sobre el backdrop de Flowbite (si existe)
+        try {
+            const backdrop = document.querySelector('[modal-backdrop]');
+            if (backdrop) {
+                backdrop.click(); // Flowbite interpreta el click y oculta el modal
+                closed = true;
+            }
+        } catch { /* no-op */ }
+
+        // 3) Click sintético en cualquier botón con data-modal-hide="..."
+        try {
+            document.querySelectorAll(`[data-modal-hide="${modalId}"]`).forEach(btn => {
+                btn.click();
+                closed = true;
+            });
+        } catch { /* no-op */ }
+
+        // 4) Fallback final: forzar hidden y limpiar overlays
+        modal.classList.add('hidden');
+        modal.setAttribute('aria-hidden', 'true');
+
+        // Limpieza de overlays y scroll
+        document.querySelectorAll('[modal-backdrop]').forEach(b => b.remove());
+        document.body.classList.remove('overflow-hidden');
+    }
+    // 4) NUEVO: helper para parsear JSON de forma segura (evita "primer intento fallido" si el servidor no devuelve JSON)
+    async function parseJsonSafe(response) {
+        try {
+            const ct = response.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+                const data = await response.json();
+                return { ok: response.ok, data };
+            }
+            const text = await response.text();
+            if (!text) return { ok: response.ok, data: null };
+            try {
+                return { ok: response.ok, data: JSON.parse(text) };
+            } catch {
+                return { ok: response.ok, data: null };
+            }
+        } catch {
+            return { ok: response.ok, data: null };
         }
     }
 
@@ -514,9 +840,12 @@
             tableContainer.parentNode.insertBefore(container, tableContainer);
         }
 
-        if (servicioMsgTimeout) {
-            clearTimeout(servicioMsgTimeout);
-            servicioMsgTimeout = null;
+        // Si quedó oculto por un mensaje anterior, volver a mostrarlo
+        container.style.display = 'block';
+
+        if (tableMsgTimeout) {
+            clearTimeout(tableMsgTimeout);
+            tableMsgTimeout = null;
         }
 
         const color = type === 'success'
@@ -526,17 +855,20 @@
                 : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300' };
 
         container.innerHTML = `<div id="table-inline-alert"
-            class="table-inline-alert opacity-100 transition-opacity duration-700
-                   p-4 mb-4 text-sm rounded-lg border
-                   bg-${color.bg} text-${color.text} border-${color.border}
-                   dark:bg-gray-800 dark:text-${color.darkText}">
-            ${msg}
-        </div>`;
+        class="table-inline-alert opacity-100 transition-opacity duration-700
+               p-4 mb-4 text-sm rounded-lg border
+               bg-${color.bg} text-${color.text} border-${color.border}
+               dark:bg-gray-800 dark:text-${color.darkText}">
+        ${msg}
+    </div>`;
 
         const alertEl = document.getElementById('table-inline-alert');
         if (!alertEl) return;
 
-        servicioMsgTimeout = setTimeout(() => {
+        // Asegurar visibilidad para el usuario
+        try { alertEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {}
+
+        tableMsgTimeout = setTimeout(() => {
             alertEl.classList.add('opacity-0');
             setTimeout(() => {
                 if (alertEl.parentElement) {
@@ -552,15 +884,13 @@
     // =====================================
     // FUNCIONES AUXILIARES PRIVADAS
     // =====================================
+
     /**
      * Limpia modal de tipo de servicio
      */
     function limpiarModalTipoServicio() {
         const nombreTipo = document.getElementById('nombreTipo');
         if (nombreTipo) nombreTipo.value = '';
-
-        const toggleBtn = document.querySelector('[data-modal-toggle="defaultModal"]');
-        if (toggleBtn) toggleBtn.click();
     }
 
     /**
@@ -569,9 +899,6 @@
     function limpiarModalTipoVehiculo() {
         const nombreTipoVehiculo = document.getElementById('nombreTipoVehiculo');
         if (nombreTipoVehiculo) nombreTipoVehiculo.value = '';
-
-        const toggleBtn = document.querySelector('[data-modal-toggle="tipoVehiculoModal"]');
-        if (toggleBtn) toggleBtn.click();
     }
 
     // =====================================
@@ -781,5 +1108,10 @@
         icon.setAttribute('class', 'w-8 h-8 text-green-500 dark:text-green-400');
         icon.innerHTML = `<path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd"/>`;
     }
+
+    // Exportar funciones globalmente
+    window.limpiarModalTipoServicio = limpiarModalTipoServicio;
+    window.limpiarModalTipoVehiculo = limpiarModalTipoVehiculo;
+    window.cerrarModal = cerrarModal;
 
 })();
