@@ -409,6 +409,26 @@
         if (typeof initModals === 'function') {
             initModals();
         }
+
+        // Asegurar cierre robusto en X y Cancelar
+        addModalCloseHandlers('defaultModal');
+        addModalCloseHandlers('eliminarTipoModal');
+        addModalCloseHandlers('tipoVehiculoModal');
+        addModalCloseHandlers('eliminarTipoVehiculoModal');
+    }
+
+    function addModalCloseHandlers(modalId) {
+        const closeBtns = document.querySelectorAll(`[data-modal-hide="${modalId}"]`);
+        closeBtns.forEach(btn => {
+            if (btn.hasAttribute('data-close-setup')) return;
+            btn.addEventListener('click', (e) => {
+                // Asegura cierre incluso si Flowbite no reacciona
+                e.preventDefault();
+                e.stopPropagation();
+                cerrarModal(modalId);
+            });
+            btn.setAttribute('data-close-setup', 'true');
+        });
     }
 
     /**
@@ -440,19 +460,26 @@
         // Configurar botones que abren modal de eliminar (para llenar el input hidden)
         const btnsEliminarTipo = document.querySelectorAll('[data-modal-toggle="eliminarTipoModal"]');
         btnsEliminarTipo.forEach(btn => {
-            btn.addEventListener('click', function () {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
                 const tipoSeleccionado = document.getElementById('Tipo')?.value;
                 const eliminInput = document.getElementById('nombreTipoEliminar');
                 if (eliminInput) eliminInput.value = tipoSeleccionado;
-                // NO llamar a abrirModal ni hacer preventDefault: Flowbite abre por data-modal-toggle
+
+                abrirModal('eliminarTipoModal');
             });
         });
 
         // Configurar botones de abrir modal de crear
         const btnsCrearTipo = document.querySelectorAll('[data-modal-toggle="defaultModal"]');
         btnsCrearTipo.forEach(btn => {
-            btn.addEventListener('click', function () {
-                // NO preventDefault/stopPropagation ni abrirModal
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                abrirModal('defaultModal');
             });
         });
     }
@@ -486,19 +513,26 @@
         // Configurar botones que abren modal de eliminar vehículo
         const btnsEliminarTipoVehiculo = document.querySelectorAll('[data-modal-toggle="eliminarTipoVehiculoModal"]');
         btnsEliminarTipoVehiculo.forEach(btn => {
-            btn.addEventListener('click', function () {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
                 const tipoSeleccionado = document.getElementById('TipoVehiculo')?.value;
                 const eliminInput = document.getElementById('nombreTipoVehiculoEliminar');
                 if (eliminInput) eliminInput.value = tipoSeleccionado;
-                // NO llamar a abrirModal
+
+                abrirModal('eliminarTipoVehiculoModal');
             });
         });
 
         // Configurar botones de abrir modal de crear vehículo
         const btnsCrearTipoVehiculo = document.querySelectorAll('[data-modal-toggle="tipoVehiculoModal"]');
         btnsCrearTipoVehiculo.forEach(btn => {
-            btn.addEventListener('click', function () {
-                // NO llamar a abrirModal
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                abrirModal('tipoVehiculoModal');
             });
         });
     }
@@ -694,7 +728,22 @@
             return null;
         }
     }
+    function abrirModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
 
+        try {
+            const inst = getFlowbiteModal(modal);
+            if (inst && typeof inst.show === 'function') {
+                inst.show(); // Flowbite crea y gestiona su backdrop
+                return;
+            }
+        } catch { /* no-op */ }
+
+        // Fallback minimal
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+    }
     /**
      * Cierra un modal garantizando que se quite el backdrop y se restaure el scroll
      */
