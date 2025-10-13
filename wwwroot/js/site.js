@@ -64,18 +64,29 @@ const SiteModule = {
     },
 
     /**
-     * Limpia todos los filtros y marca "Activo" por defecto
-     */
+    * Limpia todos los filtros y marca "Activo" por defecto
+    */
     clearAllFilters() {
         const form = document.getElementById('filterForm');
         if (form) {
+            // Limpiar checkboxes
             const checkboxes = form.querySelectorAll('input[type="checkbox"]');
             checkboxes.forEach(cb => cb.checked = false);
 
+            // Marcar "Activo" por defecto
             const activoCheckbox = form.querySelector('input[value="Activo"]');
             if (activoCheckbox) {
                 activoCheckbox.checked = true;
             }
+
+            // Restablecer ordenamiento a valores por defecto
+            const sortByInput = document.getElementById('current-sort-by');
+            const sortOrderInput = document.getElementById('current-sort-order');
+            if (sortByInput) sortByInput.value = 'Nombre';
+            if (sortOrderInput) sortOrderInput.value = 'asc';
+
+            // Enviar el formulario para aplicar los filtros limpios
+            form.submit();
         }
     },
 
@@ -281,3 +292,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Exportar para uso global
 window.SiteModule = SiteModule;
+window.clearAllFilters = function () {
+    SiteModule.clearAllFilters();
+};
+
+window.filterTable = function () {
+    SiteModule.filterTable();
+};
