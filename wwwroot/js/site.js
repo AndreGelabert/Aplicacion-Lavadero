@@ -105,9 +105,10 @@ const SiteModule = {
     },
 
     /**
-     * Filtra las filas de una tabla según el texto de búsqueda
-     */
+    * Filtra las filas de una tabla según el texto de búsqueda (DEPRECATED - usar búsqueda del servidor)
+    */
     filterTable() {
+        // Esta función ahora solo se usa como fallback
         const input = document.getElementById("simple-search");
         if (!input) return;
 

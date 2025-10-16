@@ -121,6 +121,175 @@ public class ServicioService
     }
 
     /// <summary>
+    /// Busca servicios por término de búsqueda en múltiples campos
+    /// Soporta búsqueda por texto (nombre, descripción, tipo) y por valores numéricos (precio, tiempo)
+    /// Formato especial: "X min" busca solo por tiempo estimado
+    /// </summary>
+    /// <param name="searchTerm">Término de búsqueda</param>
+    /// <param name="estados">Lista de estados a filtrar</param>
+    /// <param name="tipos">Lista de tipos de servicio a filtrar</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar</param>
+    /// <param name="pageNumber">Número de página</param>
+    /// <param name="pageSize">Cantidad de elementos por página</param>
+    /// <param name="sortBy">Campo por el cual ordenar</param>
+    /// <param name="sortOrder">Dirección del ordenamiento</param>
+    /// <returns>Lista de servicios que coinciden con la búsqueda</returns>
+    public async Task<List<Servicio>> BuscarServicios(
+        string searchTerm,
+        List<string> estados = null,
+        List<string> tipos = null,
+        List<string> tiposVehiculo = null,
+        int pageNumber = 1,
+        int pageSize = 10,
+        string sortBy = null,
+        string sortOrder = null)
+    {
+        // Validar parámetros de paginación
+        ValidarParametrosPaginacion(pageNumber, pageSize);
+
+        // Configurar ordenamiento por defecto
+        sortBy ??= ORDEN_DEFECTO;
+        sortOrder ??= DIRECCION_DEFECTO;
+
+        // Configurar estados por defecto
+        estados = ConfigurarEstadosDefecto(estados);
+
+        // Obtener todos los servicios filtrados
+        var servicios = await ObtenerServiciosFiltrados(estados, tipos, tiposVehiculo, sortBy, sortOrder);
+
+        // Aplicar búsqueda en memoria si hay término de búsqueda
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var searchTermTrimmed = searchTerm.Trim();
+            var searchTermUpper = searchTermTrimmed.ToUpperInvariant();
+
+            // Detectar si termina con "min" (búsqueda específica por tiempo)
+            bool isTimeSearch = searchTermUpper.EndsWith("MIN");
+
+            if (isTimeSearch)
+            {
+                // Extraer el número antes de "min"
+                var timeText = searchTermTrimmed.Substring(0, searchTermTrimmed.Length - 3).Trim();
+
+                if (int.TryParse(timeText, out int timeValue))
+                {
+                    // Búsqueda SOLO por tiempo estimado
+                    servicios = servicios.Where(s =>
+                        s.TiempoEstimado == timeValue || // Tiempo exacto
+                        (timeValue >= 10 && s.TiempoEstimado >= timeValue && s.TiempoEstimado < timeValue + 10) // Rango de decenas
+                    ).ToList();
+                }
+                else
+                {
+                    // Si no se puede parsear el número, no hay resultados
+                    servicios = new List<Servicio>();
+                }
+            }
+            else
+            {
+                // Búsqueda normal (texto + numérico para precio y tiempo)
+                bool isNumericSearch = decimal.TryParse(searchTermTrimmed, out decimal searchNumber);
+
+                servicios = servicios.Where(s =>
+                    // Búsqueda por texto en nombre
+                    (s.Nombre?.ToUpperInvariant().Contains(searchTermUpper) ?? false) ||
+
+                    // Búsqueda por texto en descripción
+                    (s.Descripcion?.ToUpperInvariant().Contains(searchTermUpper) ?? false) ||
+
+                    // Búsqueda por texto en tipo de servicio
+                    (s.Tipo?.ToUpperInvariant().Contains(searchTermUpper) ?? false) ||
+
+                    // Búsqueda por texto en tipo de vehículo
+                    (s.TipoVehiculo?.ToUpperInvariant().Contains(searchTermUpper) ?? false) ||
+
+                    // Búsqueda numérica por precio (exacto o rango)
+                    (isNumericSearch && (
+                        s.Precio == searchNumber || // Precio exacto
+                        s.Precio.ToString().Contains(searchTermTrimmed) || // Precio que contiene el número
+                        (searchNumber >= 1000 && s.Precio >= searchNumber && s.Precio < searchNumber + 1000) // Rango de miles
+                    )) ||
+
+                    // Búsqueda numérica por tiempo estimado (exacto o rango)
+                    (isNumericSearch && (
+                        s.TiempoEstimado == (int)searchNumber || // Tiempo exacto
+                        s.TiempoEstimado.ToString().Contains(searchTermTrimmed) || // Tiempo que contiene el número
+                        (searchNumber >= 10 && s.TiempoEstimado >= (int)searchNumber && s.TiempoEstimado < (int)searchNumber + 10) // Rango de decenas
+                    ))
+                ).ToList();
+            }
+        }
+
+        // Aplicar paginación
+        return servicios
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Obtiene el total de servicios que coinciden con la búsqueda
+    /// </summary>
+    public async Task<int> ObtenerTotalServiciosBusqueda(
+        string searchTerm,
+        List<string> estados,
+        List<string> tipos,
+        List<string> tiposVehiculo)
+    {
+        estados = ConfigurarEstadosDefecto(estados);
+        var servicios = await ObtenerServiciosFiltrados(estados, tipos, tiposVehiculo, ORDEN_DEFECTO, DIRECCION_DEFECTO);
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var searchTermTrimmed = searchTerm.Trim();
+            var searchTermUpper = searchTermTrimmed.ToUpperInvariant();
+
+            // Detectar si termina con "min"
+            bool isTimeSearch = searchTermUpper.EndsWith("MIN");
+
+            if (isTimeSearch)
+            {
+                var timeText = searchTermTrimmed.Substring(0, searchTermTrimmed.Length - 3).Trim();
+
+                if (int.TryParse(timeText, out int timeValue))
+                {
+                    servicios = servicios.Where(s =>
+                        s.TiempoEstimado == timeValue ||
+                        (timeValue >= 10 && s.TiempoEstimado >= timeValue && s.TiempoEstimado < timeValue + 10)
+                    ).ToList();
+                }
+                else
+                {
+                    servicios = new List<Servicio>();
+                }
+            }
+            else
+            {
+                bool isNumericSearch = decimal.TryParse(searchTermTrimmed, out decimal searchNumber);
+
+                servicios = servicios.Where(s =>
+                    (s.Nombre?.ToUpperInvariant().Contains(searchTermUpper) ?? false) ||
+                    (s.Descripcion?.ToUpperInvariant().Contains(searchTermUpper) ?? false) ||
+                    (s.Tipo?.ToUpperInvariant().Contains(searchTermUpper) ?? false) ||
+                    (s.TipoVehiculo?.ToUpperInvariant().Contains(searchTermUpper) ?? false) ||
+                    (isNumericSearch && (
+                        s.Precio == searchNumber ||
+                        s.Precio.ToString().Contains(searchTermTrimmed) ||
+                        (searchNumber >= 1000 && s.Precio >= searchNumber && s.Precio < searchNumber + 1000)
+                    )) ||
+                    (isNumericSearch && (
+                        s.TiempoEstimado == (int)searchNumber ||
+                        s.TiempoEstimado.ToString().Contains(searchTermTrimmed) ||
+                        (searchNumber >= 10 && s.TiempoEstimado >= (int)searchNumber && s.TiempoEstimado < (int)searchNumber + 10)
+                    ))
+                ).ToList();
+            }
+        }
+
+        return servicios.Count;
+    }
+
+    /// <summary>
     /// Obtiene todos los servicios de un tipo específico
     /// </summary>
     /// <param name="tipo">Tipo de servicio a buscar</param>

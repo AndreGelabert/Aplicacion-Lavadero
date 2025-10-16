@@ -120,6 +120,46 @@ public class ServicioController : Controller
             return await ManejiarExcepcion(ex, servicio);
         }
     }
+
+    /// <summary>
+    /// Busca servicios por término de búsqueda
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> SearchPartial(
+        string searchTerm,
+        List<string> estados,
+        List<string> tipos,
+        List<string> tiposVehiculo,
+        int pageNumber = 1,
+        int pageSize = 10,
+        string sortBy = null,
+        string sortOrder = null)
+    {
+        estados = ConfigurarEstadosDefecto(estados);
+
+        sortBy ??= "Nombre";
+        sortOrder ??= "asc";
+
+        var servicios = await _servicioService.BuscarServicios(
+            searchTerm, estados, tipos, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
+
+        var totalServicios = await _servicioService.ObtenerTotalServiciosBusqueda(
+            searchTerm, estados, tipos, tiposVehiculo);
+
+        var totalPages = Math.Max((int)Math.Ceiling(totalServicios / (double)pageSize), 1);
+
+        ViewBag.CurrentPage = pageNumber;
+        ViewBag.TotalPages = totalPages;
+        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
+        ViewBag.Estados = estados;
+        ViewBag.Tipos = tipos;
+        ViewBag.TiposVehiculo = tiposVehiculo;
+        ViewBag.SortBy = sortBy;
+        ViewBag.SortOrder = sortOrder;
+        ViewBag.SearchTerm = searchTerm;
+
+        return PartialView("_ServicioTable", servicios);
+    }
     #endregion
 
     #region Operaciones CRUD - AJAX

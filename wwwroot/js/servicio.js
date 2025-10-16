@@ -9,6 +9,7 @@
 
     let servicioMsgTimeout = null;
     let tableMsgTimeout = null;
+    let searchTimeout = null;
 
     // =====================================
     // INICIALIZACIÓN DEL MÓDULO
@@ -27,10 +28,9 @@
         setupAccordion();
         setupDescriptionAutoGrow();
         setupFormMessageHandler();
+        setupSearchWithDebounce();
         window.CommonUtils?.setupDefaultFilterForm();
-
-        // Verificar si estamos en modo edición
-        checkEditMode();
+        checkEditMode(); // Verificar si estamos en modo edición
     }
 
     // IMPORTANTE: asegurar que init se ejecute siempre
@@ -112,6 +112,79 @@
                 if (icon) icon.classList.add('rotate-180');
             }
         }
+    }
+
+    // =====================================
+    // BUSQUEDA DE LA TABLA
+    // =====================================
+    /**
+ * Configura la búsqueda con debouncing
+ */
+    function setupSearchWithDebounce() {
+        const searchInput = document.getElementById('simple-search');
+        if (!searchInput) return;
+
+        // Remover event listeners anteriores
+        const newSearchInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+
+        newSearchInput.addEventListener('input', function () {
+            const searchTerm = this.value.trim();
+
+            // Cancelar timeout anterior
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+
+            // Si está vacío, recargar sin búsqueda
+            if (searchTerm === '') {
+                reloadServicioTable(1);
+                return;
+            }
+
+            // Debouncing: esperar 500ms después de que el usuario deje de escribir
+            searchTimeout = setTimeout(() => {
+                performServerSearch(searchTerm);
+            }, 500);
+        });
+    }
+
+    /**
+     * Realiza búsqueda en el servidor
+     */
+    function performServerSearch(searchTerm) {
+        // Obtener filtros actuales
+        const filterForm = document.getElementById('filterForm');
+        const params = new URLSearchParams();
+
+        if (filterForm) {
+            const formData = new FormData(filterForm);
+            for (const [key, value] of formData.entries()) {
+                params.append(key, value);
+            }
+        }
+
+        // Agregar término de búsqueda y ordenamiento
+        const currentSort = getCurrentSort();
+        params.set('searchTerm', searchTerm);
+        params.set('pageNumber', '1');
+        params.set('sortBy', currentSort.sortBy);
+        params.set('sortOrder', currentSort.sortOrder);
+
+        const url = `/Servicio/SearchPartial?${params.toString()}`;
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.text())
+            .then(html => {
+                const cont = document.getElementById('servicio-table-container');
+                cont.innerHTML = html;
+                const cp = document.getElementById('current-page-value')?.value;
+                if (cp) cont.dataset.currentPage = cp;
+            })
+            .catch(e => {
+                console.error('Error en búsqueda:', e);
+                showTableMessage('error', 'Error al realizar la búsqueda.');
+            });
     }
 
     // =====================================
