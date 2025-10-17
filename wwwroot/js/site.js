@@ -64,30 +64,43 @@ const SiteModule = {
     },
 
     /**
-    * Limpia todos los filtros y marca "Activo" por defecto
+    * Limpia todos los filtros y marca "Activo" por defecto (si aplica)
     */
     clearAllFilters() {
         const form = document.getElementById('filterForm');
-        if (form) {
-            // Limpiar checkboxes
-            const checkboxes = form.querySelectorAll('input[type="checkbox"]');
-            checkboxes.forEach(cb => cb.checked = false);
+        if (!form) return;
 
-            // Marcar "Activo" por defecto
-            const activoCheckbox = form.querySelector('input[value="Activo"]');
-            if (activoCheckbox) {
-                activoCheckbox.checked = true;
-            }
+        // Limpiar checkboxes
+        const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = false);
 
-            // Restablecer ordenamiento a valores por defecto
-            const sortByInput = document.getElementById('current-sort-by');
-            const sortOrderInput = document.getElementById('current-sort-order');
-            if (sortByInput) sortByInput.value = 'Nombre';
-            if (sortOrderInput) sortOrderInput.value = 'asc';
+        // Limpiar campos de fecha (para auditoría)
+        const dateInputs = form.querySelectorAll('input[type="date"]');
+        dateInputs.forEach(input => input.value = '');
 
-            // Enviar el formulario para aplicar los filtros limpios
-            form.submit();
+        // Marcar "Activo" por defecto solo en páginas que lo requieran
+        const activoCheckbox = form.querySelector('input[value="Activo"]');
+        if (activoCheckbox && !window.location.pathname.includes('Auditoria')) {
+            activoCheckbox.checked = true;
         }
+
+        // Restablecer ordenamiento a valores por defecto
+        const sortByInput = document.getElementById('current-sort-by');
+        const sortOrderInput = document.getElementById('current-sort-order');
+
+        if (sortByInput && sortOrderInput) {
+            // Valores por defecto según la página
+            if (window.location.pathname.includes('Auditoria')) {
+                sortByInput.value = 'Timestamp';
+                sortOrderInput.value = 'desc';
+            } else {
+                sortByInput.value = 'Nombre';
+                sortOrderInput.value = 'asc';
+            }
+        }
+
+        // Enviar el formulario para aplicar los filtros limpios
+        form.submit();
     },
 
     // =====================================

@@ -1,0 +1,193 @@
+@model List<AuditLogConNombre>
+
+<input type="hidden" id="current-page-value" value="@ViewBag.CurrentPage" />
+<input type="hidden" id="current-sort-by" value="@(ViewBag.SortBy ?? "Timestamp")" />
+<input type="hidden" id="current-sort-order" value="@(ViewBag.SortOrder ?? "desc")" />
+
+<table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+        <tr>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Fecha y Hora</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('Timestamp')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "Timestamp" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Usuario</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('UserEmail')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "UserEmail" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Acción</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('Action')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "Action" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Tipo de Objeto</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('TargetType')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "TargetType" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3">ID del Objeto</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model.Any())
+        {
+            @foreach (var registro in Model)
+            {
+                <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                        @registro.Timestamp.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex flex-col">
+                            <span class="font-medium text-gray-900 dark:text-white">@registro.UserName</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">@registro.UserEmail</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
+                            @registro.Action
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        @if (!string.IsNullOrEmpty(registro.TargetType))
+                        {
+                            <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-purple-900 dark:text-purple-300">
+                                @registro.TargetType
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="text-gray-400 dark:text-gray-500">-</span>
+                        }
+                    </td>
+                    <td class="px-4 py-3">
+                        @if (!string.IsNullOrEmpty(registro.TargetId))
+                        {
+                            <code class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">@registro.TargetId</code>
+                        }
+                        else
+                        {
+                            <span class="text-gray-400 dark:text-gray-500">-</span>
+                        }
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="5" class="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <div class="flex flex-col items-center">
+                        <svg class="w-16 h-16 mb-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <p class="text-lg font-medium">No hay registros de auditoría para mostrar</p>
+                        <p class="text-sm">Prueba ajustando los filtros o el rango de fechas</p>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Paginación -->
+<nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">
+    <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
+        Mostrando página
+        <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.CurrentPage</span>
+        de
+        <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.TotalPages</span>
+    </span>
+
+    <ul class="inline-flex items-stretch -space-x-px">
+        <!-- Botón Anterior -->
+        <li>
+            @if (ViewBag.CurrentPage > 1)
+            {
+                <button onclick="reloadAuditoriaTable(@(ViewBag.CurrentPage - 1))"
+                        class="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-500 bg-white rounded-l-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                    <span class="sr-only">Anterior</span>
+                    <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            }
+            else
+            {
+                <span class="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-300 bg-white rounded-l-lg border border-gray-300 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700">
+                    <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </span>
+            }
+        </li>
+
+        <!-- Números de página -->
+        @foreach (var pageNum in (IEnumerable<int>)ViewBag.VisiblePages)
+        {
+            <li>
+                @if (pageNum == (int)ViewBag.CurrentPage)
+                {
+                    <span class="flex items-center justify-center text-sm z-10 py-2 px-3 leading-tight text-primary-600 bg-primary-50 border border-primary-300 dark:border-gray-700 dark:bg-gray-700 dark:text-white">
+                        @pageNum
+                    </span>
+                }
+                else
+                {
+                    <button onclick="reloadAuditoriaTable(@pageNum)"
+                            class="flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                        @pageNum
+                    </button>
+                }
+            </li>
+        }
+
+        <!-- Botón Siguiente -->
+        <li>
+            @if (ViewBag.CurrentPage < ViewBag.TotalPages)
+            {
+                <button onclick="reloadAuditoriaTable(@(ViewBag.CurrentPage + 1))"
+                        class="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-500 bg-white rounded-r-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                    <span class="sr-only">Siguiente</span>
+                    <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            }
+            else
+            {
+                <span class="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-300 bg-white rounded-r-lg border border-gray-300 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700">
+                    <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </span>
+            }
+        </li>
+    </ul>
+</nav>
