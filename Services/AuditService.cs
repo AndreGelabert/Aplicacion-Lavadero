@@ -334,15 +334,70 @@ public class AuditService
     #region Métodos Auxiliares de Búsqueda
 
     /// <summary>
-    /// Busca en un texto respetando acentos y mayúsculas/minúsculas
+    /// Busca en un texto con soporte para búsqueda exacta y normalizada
+    /// Soporta coincidencias exactas, parciales y búsqueda de palabras individuales
     /// </summary>
     private static bool BuscarEnTexto(string texto, string termino)
     {
         if (string.IsNullOrWhiteSpace(texto) || string.IsNullOrWhiteSpace(termino))
             return false;
 
-        // Búsqueda case-insensitive pero respetando acentos
-        return texto.Contains(termino, StringComparison.OrdinalIgnoreCase);
+        // 1. Búsqueda exacta (respetando acentos)
+        if (texto.Equals(termino, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // 2. Normalizar ambos textos
+        var textoNormalizado = NormalizarTexto(texto);
+        var terminoNormalizado = NormalizarTexto(termino);
+
+        // 3. Búsqueda exacta normalizada
+        if (textoNormalizado.Equals(terminoNormalizado, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // 4. Búsqueda parcial (contiene el término completo)
+        if (textoNormalizado.Contains(terminoNormalizado, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // 5. NUEVO: Búsqueda por palabras individuales (para "Andre Gelabert")
+        // Si el término tiene espacios, buscar cada palabra individualmente
+        if (termino.Contains(' '))
+        {
+            var palabrasBusqueda = terminoNormalizado.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var palabrasTexto = textoNormalizado.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            // Todas las palabras del término deben estar en el texto
+            return palabrasBusqueda.All(palabraBusqueda =>
+                palabrasTexto.Any(palabraTexto =>
+                    palabraTexto.Contains(palabraBusqueda, StringComparison.OrdinalIgnoreCase) ||
+                    palabraBusqueda.Contains(palabraTexto, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Normaliza texto removiendo acentos y caracteres especiales
+    /// </summary>
+    private static string NormalizarTexto(string texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+            return string.Empty;
+
+        // Normalizar a forma de descomposición (separa caracteres base de diacríticos)
+        var textoNormalizado = texto.Normalize(System.Text.NormalizationForm.FormD);
+
+        // Filtrar solo caracteres que no sean marcas diacríticas
+        var resultado = new System.Text.StringBuilder();
+        foreach (var c in textoNormalizado)
+        {
+            var categoriaUnicode = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+            if (categoriaUnicode != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                resultado.Append(c);
+            }
+        }
+
+        return resultado.ToString().Normalize(System.Text.NormalizationForm.FormC);
     }
 
     /// <summary>
