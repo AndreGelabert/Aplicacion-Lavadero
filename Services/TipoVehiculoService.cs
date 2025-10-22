@@ -16,19 +16,17 @@ public class TipoVehiculoService
             var snapshot = await _firestore.Collection("tiposVehiculos").GetSnapshotAsync();
             var tipos = snapshot.Documents.Select(doc => doc.GetValue<string>("Nombre")).ToList();
 
-            // Si no hay tipos, devuelve una lista vacía en lugar de null
             return tipos ?? new List<string>();
         }
         catch (Exception ex)
         {
-            // Si ocurre un error, registra la excepción y devuelve una lista vacía
             Console.WriteLine($"Error al obtener tipos de servicio: {ex.Message}");
             return new List<string>();
         }
     }
 
-    // Método para crear un tipo de vehiculo
-    public async Task CrearTipoVehiculo(string nombre)
+    // Ahora devuelve el ID del documento creado
+    public async Task<string> CrearTipoVehiculo(string nombre)
     {
         var tipoRef = _firestore.Collection("tiposVehiculos").Document();
         var tipo = new Dictionary<string, object>
@@ -36,21 +34,25 @@ public class TipoVehiculoService
             { "Nombre", nombre }
         };
         await tipoRef.SetAsync(tipo);
+        return tipoRef.Id;
     }
-    // Método para eliminar un tipo de vehiculo
-    public async Task EliminarTipoVehiculo(string nombre)
+
+    // Ahora devuelve los IDs de los documentos eliminados (puede haber más de uno con el mismo nombre)
+    public async Task<List<string>> EliminarTipoVehiculo(string nombre)
     {
         var tiposRef = _firestore.Collection("tiposVehiculos");
         var query = tiposRef.WhereEqualTo("Nombre", nombre);
         var snapshot = await query.GetSnapshotAsync();
 
+        var eliminados = new List<string>();
         foreach (var documento in snapshot.Documents)
         {
+            eliminados.Add(documento.Id);
             await documento.Reference.DeleteAsync();
         }
+        return eliminados;
     }
 
-    // Método para verificar si un tipo de servicio ya existe
     public async Task<bool> ExisteTipoVehiculo(string nombre)
     {
         var tiposExistentes = await ObtenerTiposVehiculos();

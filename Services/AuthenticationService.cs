@@ -115,9 +115,16 @@ namespace Firebase.Services
                     Role = employeeDoc.GetValue<string>("Rol")
                 };
 
+                await _auditService.LogEvent(
+                userId: userInfo.Uid,
+                userEmail: userInfo.Email,
+                action: "Inicio de sesión tradicional",
+                targetId: userInfo.Uid,
+                targetType: "Empleado");
+
                 return AuthenticationResult.Success(userInfo);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return AuthenticationResult.Failure("Error al iniciar sesión. Por favor, intente de nuevo.");
             }

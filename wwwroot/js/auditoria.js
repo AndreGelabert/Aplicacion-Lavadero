@@ -23,6 +23,7 @@
      */
     function initializeAuditoriaPage() {
         setupSearchWithDebounce();
+        setupFilterFormSubmit();
         window.CommonUtils?.setupDefaultFilterForm();
     }
 
@@ -262,6 +263,42 @@
             }, 750);
         }, disappearMs);
     }
+
+    // =====================================
+    // FILTROS
+    // =====================================
+    /**
+     * Configura el envío del formulario de filtros
+     */
+    function setupFilterFormSubmit() {
+        const form = document.getElementById('filterForm');
+        if (!form || form.dataset.submitSetup === 'true') return;
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Asegurar que la paginación inicie en 1
+            const pg = form.querySelector('input[name="pageNumber"]');
+            if (pg) pg.value = '1';
+
+            // Persistir término de búsqueda actual (si hay)
+            const searchInput = document.getElementById('simple-search');
+            if (searchInput) {
+                currentSearchTerm = searchInput.value.trim();
+            }
+
+            // Cerrar el dropdown de filtros (si está abierto)
+            const dd = document.getElementById('filterDropdown');
+            if (dd) dd.classList.add('hidden');
+
+            // Recargar tabla con filtros aplicados (y búsqueda/orden actuales)
+            reloadAuditoriaTable(1);
+        });
+
+        form.dataset.submitSetup = 'true';
+    }
+
 
     // =====================================
     // FUNCIONES GLOBALES

@@ -244,8 +244,9 @@ public class ServicioController : Controller
                     return Json(new { success = false, message = "Ya existe un tipo de servicio con el mismo nombre." });
                 }
 
-                await _tipoServicioService.CrearTipoServicio(nombreTipo);
-                await RegistrarEvento("Creacion de tipo de servicio", nombreTipo, "TipoServicio");
+                // Crear tipo de servicio (AJAX)
+                var docId = await _tipoServicioService.CrearTipoServicio(nombreTipo);
+                await RegistrarEvento("Creacion de tipo de servicio", docId, "TipoServicio");
 
                 var tiposActualizados = await _tipoServicioService.ObtenerTiposServicio();
 
@@ -262,12 +263,12 @@ public class ServicioController : Controller
             }
         }
 
-        // Fallback tradicional (mantener compatibilidad)
-        return await GestionarTipo(
+        // Fallback Crear Tipo Servicio
+        return await GestionarTipoConId(
             nombreTipo,
             () => _tipoServicioService.ExisteTipoServicio(nombreTipo),
             () => _tipoServicioService.CrearTipoServicio(nombreTipo),
-            "tipo de servicio",
+            "TipoServicio",
             "Creacion de tipo de servicio"
         );
     }
@@ -299,8 +300,12 @@ public class ServicioController : Controller
                     });
                 }
 
-                await _tipoServicioService.EliminarTipoServicio(nombreTipo);
-                await RegistrarEvento("Eliminacion de tipo de servicio", nombreTipo, "TipoServicio");
+                // Eliminar tipo de servicio (AJAX)
+                var idsEliminados = await _tipoServicioService.EliminarTipoServicio(nombreTipo);
+                foreach (var id in idsEliminados)
+                {
+                    await RegistrarEvento("Eliminacion de tipo de servicio", id, "TipoServicio");
+                }
 
                 var tiposActualizados = await _tipoServicioService.ObtenerTiposServicio();
 
@@ -317,12 +322,12 @@ public class ServicioController : Controller
             }
         }
 
-        // Fallback tradicional
-        return await EliminarTipo(
+        // Fallback Eliminar Tipo Servicio
+        return await EliminarTipoConIds(
             nombreTipo,
             () => _servicioService.ObtenerServiciosPorTipo(nombreTipo),
             () => _tipoServicioService.EliminarTipoServicio(nombreTipo),
-            "tipo de servicio",
+            "TipoServicio",
             "Eliminacion de tipo de servicio"
         );
     }
@@ -349,8 +354,9 @@ public class ServicioController : Controller
                     return Json(new { success = false, message = "Ya existe un tipo de vehículo con el mismo nombre." });
                 }
 
-                await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo);
-                await RegistrarEvento("Creacion de tipo de vehiculo", nombreTipo, "TipoVehiculo");
+                // Crear tipo de vehículo (AJAX)
+                var vehDocId = await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo);
+                await RegistrarEvento("Creacion de tipo de vehiculo", vehDocId, "TipoVehiculo");
 
                 var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculos();
 
@@ -367,12 +373,12 @@ public class ServicioController : Controller
             }
         }
 
-        // Fallback tradicional
-        return await GestionarTipo(
+        // Fallback Crear Tipo Vehículo
+        return await GestionarTipoConId(
             nombreTipo,
             () => _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo),
             () => _tipoVehiculoService.CrearTipoVehiculo(nombreTipo),
-            "tipo de vehiculo",
+            "TipoVehiculo",
             "Creacion de tipo de vehiculo"
         );
     }
@@ -404,8 +410,12 @@ public class ServicioController : Controller
                     });
                 }
 
-                await _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo);
-                await RegistrarEvento("Eliminacion de tipo de vehiculo", nombreTipo, "TipoVehiculo");
+                // Eliminar tipo de vehículo (AJAX)
+                var vehIdsEliminados = await _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo);
+                foreach (var id in vehIdsEliminados)
+                {
+                    await RegistrarEvento("Eliminacion de tipo de vehiculo", id, "TipoVehiculo");
+                }
 
                 var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculos();
 
@@ -422,12 +432,12 @@ public class ServicioController : Controller
             }
         }
 
-        // Fallback tradicional
-        return await EliminarTipo(
+        // Fallback Eliminar Tipo Vehículo
+        return await EliminarTipoConIds(
             nombreTipo,
             () => _servicioService.ObtenerServiciosPorTipoVehiculo(nombreTipo),
             () => _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo),
-            "tipo de vehiculo",
+            "TipoVehiculo",
             "Eliminacion de tipo de vehiculo"
         );
     }
@@ -674,6 +684,56 @@ public class ServicioController : Controller
                 await eliminar();
                 await RegistrarEvento(accionAuditoria, nombreTipo, tipoDescripcion.Contains("servicio") ? "TipoServicio" : "TipoVehiculo");
                 TempData["Success"] = $"{char.ToUpper(tipoDescripcion[0])}{tipoDescripcion[1..]} eliminado correctamente.";
+            }
+        }
+        return RedirectToAction("Index");
+    }
+    // Nuevo: crear tipo registrando ID real
+    private async Task<IActionResult> GestionarTipoConId(
+        string nombreTipo,
+        Func<Task<bool>> verificarExistencia,
+        Func<Task<string>> crearConId,
+        string entidad,
+        string accionAuditoria)
+    {
+        if (!string.IsNullOrWhiteSpace(nombreTipo))
+        {
+            if (await verificarExistencia())
+            {
+                TempData["Error"] = $"Ya existe un {entidad} con el mismo nombre.";
+            }
+            else
+            {
+                var id = await crearConId();
+                await RegistrarEvento(accionAuditoria, id, entidad);
+                TempData["Success"] = $"{entidad} creado correctamente.";
+            }
+        }
+        return RedirectToAction("Index");
+    }
+
+    // Nuevo: eliminar tipo registrando todos los IDs eliminados
+    private async Task<IActionResult> EliminarTipoConIds(
+        string nombreTipo,
+        Func<Task<List<Servicio>>> obtenerServiciosUsandoTipo,
+        Func<Task<List<string>>> eliminarConIds,
+        string entidad,
+        string accionAuditoria)
+    {
+        if (!string.IsNullOrWhiteSpace(nombreTipo))
+        {
+            var serviciosUsandoTipo = await obtenerServiciosUsandoTipo();
+            if (serviciosUsandoTipo.Any())
+            {
+                TempData["Error"] = $"No se puede eliminar {entidad} porque hay servicios que lo utilizan.";
+            }
+            else
+            {
+                var ids = await eliminarConIds();
+                foreach (var id in ids)
+                    await RegistrarEvento(accionAuditoria, id, entidad);
+
+                TempData["Success"] = $"{entidad} eliminado correctamente.";
             }
         }
         return RedirectToAction("Index");
