@@ -8,6 +8,7 @@
     'use strict';
 
     let searchTimeout = null;
+    let currentSearchTerm = '';
 
     // =====================================
     // INICIALIZACIÓN DEL MÓDULO
@@ -48,21 +49,21 @@
         const newSearchInput = searchInput.cloneNode(true);
         searchInput.parentNode.replaceChild(newSearchInput, searchInput);
 
+        // Inicializar estado con el valor actual del input (si vino del servidor)
+        currentSearchTerm = newSearchInput.value?.trim() || '';
+
         newSearchInput.addEventListener('input', function () {
             const searchTerm = this.value.trim();
 
-            // Cancelar timeout anterior
-            if (searchTimeout) {
-                clearTimeout(searchTimeout);
-            }
+            if (searchTimeout) clearTimeout(searchTimeout);
 
-            // Si está vacío, recargar sin búsqueda
             if (searchTerm === '') {
+                // limpiar estado y volver a la tabla base
+                currentSearchTerm = '';
                 reloadAuditoriaTable(1);
                 return;
             }
 
-            // Debouncing: esperar 500ms después de que el usuario deje de escribir
             searchTimeout = setTimeout(() => {
                 performServerSearch(searchTerm);
             }, 500);
@@ -73,6 +74,9 @@
      * Realiza búsqueda en el servidor
      */
     function performServerSearch(searchTerm) {
+        // Persistir búsqueda activa
+        currentSearchTerm = searchTerm;
+
         // Obtener filtros actuales
         const filterForm = document.getElementById('filterForm');
         const params = new URLSearchParams();
@@ -169,16 +173,21 @@
             }
         }
 
-        // Obtener ordenamiento actual
+        // Orden actual
         const currentSort = getCurrentSort();
-        
-        // Asegurar que se incluyan todos los parámetros
         params.set('pageNumber', page.toString());
         params.set('sortBy', currentSort.sortBy);
         params.set('sortOrder', currentSort.sortOrder);
 
-        const url = `/Auditoria/TablePartial?${params.toString()}`;
-        
+        // Si hay búsqueda activa, mantener paginación y ordenamiento dentro del contexto de búsqueda
+        let url;
+        if (currentSearchTerm && currentSearchTerm.trim().length > 0) {
+            params.set('searchTerm', currentSearchTerm.trim());
+            url = `/Auditoria/SearchPartial?${params.toString()}`;
+        } else {
+            url = `/Auditoria/TablePartial?${params.toString()}`;
+        }
+
         fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => r.text())
             .then(html => {
