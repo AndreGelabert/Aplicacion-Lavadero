@@ -53,6 +53,13 @@ public class TipoVehiculoService
         return eliminados;
     }
 
+    public async Task<string?> ObtenerNombrePorId(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return null;
+        var doc = await _firestore.Collection("tiposVehiculos").Document(id).GetSnapshotAsync();
+        return doc.Exists && doc.ContainsField("Nombre") ? doc.GetValue<string>("Nombre") : null;
+    }
+
     public async Task<bool> ExisteTipoVehiculo(string nombre)
     {
         var tiposExistentes = await ObtenerTiposVehiculos();

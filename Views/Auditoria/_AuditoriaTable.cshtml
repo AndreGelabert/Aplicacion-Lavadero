@@ -52,7 +52,7 @@
                     </div>
                 </div>
             </th>
-            <th class="px-4 py-3">ID del Objeto</th>
+            <th class="px-4 py-3">Objeto</th>
         </tr>
     </thead>
     <tbody>
@@ -88,9 +88,9 @@
                         }
                     </td>
                     <td class="px-4 py-3">
-                        @if (!string.IsNullOrEmpty(registro.TargetId))
+                        @if (!string.IsNullOrEmpty(registro.TargetName))
                         {
-                            <code class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">@registro.TargetId</code>
+                            <code class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">@registro.TargetName</code>
                         }
                         else
                         {

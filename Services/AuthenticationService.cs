@@ -406,7 +406,12 @@ namespace Firebase.Services
                 };
 
                 // Registrar evento de auditoría
-                await _auditService.LogEvent(uid, email, "Inicio de sesión con Google", null, null);
+                await _auditService.LogEvent(
+                userId: uid,
+                userEmail: email,
+                action: "Inicio de sesión con Google",
+                targetId: uid,
+                targetType: "Empleado");
 
                 return AuthenticationResult.Success(userInfo);
             }

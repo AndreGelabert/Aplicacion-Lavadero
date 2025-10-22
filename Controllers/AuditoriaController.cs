@@ -12,13 +12,22 @@ public class AuditoriaController : Controller
     #region Dependencias
     private readonly AuditService _auditService;
     private readonly PersonalService _personalService;
+    private readonly ServicioService _servicioService;                
+    private readonly TipoServicioService _tipoServicioService;        
+    private readonly TipoVehiculoService _tipoVehiculoService;        
 
     public AuditoriaController(
         AuditService auditService,
-        PersonalService personalService)
+        PersonalService personalService,
+        ServicioService servicioService,              
+        TipoServicioService tipoServicioService,      
+        TipoVehiculoService tipoVehiculoService)      
     {
         _auditService = auditService;
         _personalService = personalService;
+        _servicioService = servicioService;                  
+        _tipoServicioService = tipoServicioService;          
+        _tipoVehiculoService = tipoVehiculoService;          
     }
     #endregion
 
@@ -205,21 +214,87 @@ public class AuditoriaController : Controller
     /// </summary>
     private async Task<List<AuditLogConNombre>> MapearNombresUsuarios(List<AuditLog> registros)
     {
-        // Obtener todos los empleados una sola vez
+        // Empleados: obtener todos una vez
         var empleados = await _personalService.ObtenerEmpleados(new List<string>(), null, null, 1, int.MaxValue);
         var empleadosDict = empleados.ToDictionary(e => e.Id, e => e.NombreCompleto);
 
-        return registros.Select(r => new AuditLogConNombre
+        // IDs por tipo para resolver nombres
+        var servicioIds = registros.Where(r => r.TargetType == "Servicio" && !string.IsNullOrWhiteSpace(r.TargetId))
+                                   .Select(r => r.TargetId).Distinct().ToList();
+
+        var tipoServIds = registros.Where(r => r.TargetType == "TipoServicio" && !string.IsNullOrWhiteSpace(r.TargetId))
+                                   .Select(r => r.TargetId).Distinct().ToList();
+
+        var tipoVehIds = registros.Where(r => r.TargetType == "TipoVehiculo" && !string.IsNullOrWhiteSpace(r.TargetId))
+                                  .Select(r => r.TargetId).Distinct().ToList();
+
+        // Resolver nombres de Servicio (llamadas individuales; pageSize pequeño)
+        var servDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var id in servicioIds)
         {
-            UserId = r.UserId,
-            UserEmail = r.UserEmail,
-            UserName = empleadosDict.ContainsKey(r.UserId ?? string.Empty) 
-                ? empleadosDict[r.UserId] 
-                : r.UserEmail ?? "Usuario desconocido",
-            Action = r.Action,
-            TargetId = r.TargetId,
-            TargetType = r.TargetType,
-            Timestamp = r.Timestamp
+            try
+            {
+                var s = await _servicioService.ObtenerServicio(id);
+                servDict[id] = s?.Nombre;
+            }
+            catch { servDict[id] = null; }
+        }
+
+        // Resolver nombres de TipoServicio
+        var tipoServDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var id in tipoServIds)
+        {
+            try { tipoServDict[id] = await _tipoServicioService.ObtenerNombrePorId(id); }
+            catch { tipoServDict[id] = null; }
+        }
+
+        // Resolver nombres de TipoVehiculo
+        var tipoVehDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var id in tipoVehIds)
+        {
+            try { tipoVehDict[id] = await _tipoVehiculoService.ObtenerNombrePorId(id); }
+            catch { tipoVehDict[id] = null; }
+        }
+
+        // Construir modelo de vista
+        return registros.Select(r =>
+        {
+            var userName = empleadosDict.TryGetValue(r.UserId ?? string.Empty, out var nombre)
+                ? nombre
+                : (r.UserEmail ?? "Usuario desconocido");
+
+            string? targetName = null;
+            if (!string.IsNullOrWhiteSpace(r.TargetId))
+            {
+                switch (r.TargetType)
+                {
+                    case "Servicio":
+                        servDict.TryGetValue(r.TargetId, out targetName);
+                        break;
+                    case "TipoServicio":
+                        tipoServDict.TryGetValue(r.TargetId, out targetName);
+                        break;
+                    case "TipoVehiculo":
+                        tipoVehDict.TryGetValue(r.TargetId, out targetName);
+                        break;
+                    case "Empleado":
+                    case "Usuario":
+                        targetName = empleadosDict.TryGetValue(r.TargetId, out var empNombre) ? empNombre : null;
+                        break;
+                }
+            }
+
+            return new AuditLogConNombre
+            {
+                UserId = r.UserId,
+                UserEmail = r.UserEmail,
+                UserName = userName,
+                Action = r.Action,
+                TargetId = r.TargetId,
+                TargetType = r.TargetType,
+                TargetName = targetName,               
+                Timestamp = r.Timestamp
+            };
         }).ToList();
     }
 
@@ -361,5 +436,6 @@ public class AuditLogConNombre
     public string Action { get; set; }
     public string TargetId { get; set; }
     public string TargetType { get; set; }
+    public string TargetName { get; set; }
     public DateTime Timestamp { get; set; }
 }
