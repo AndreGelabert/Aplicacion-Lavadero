@@ -127,13 +127,12 @@ public class AuditoriaController : Controller
         sortBy ??= "Timestamp";
         sortOrder ??= "desc";
 
-        // 1) Buscar por correo/acción/tipo/id/fecha (todos los match de texto)
-        //    Traemos todos para poder unificar y paginar correctamente
+        // 1) Coincidencias por texto básico (correo/acción/tipo/id/fecha)
         var porTexto = await _auditService.BuscarRegistros(
             searchTerm, fechaInicio, fechaFin, acciones, tiposObjetivo,
             pageNumber: 1, pageSize: int.MaxValue, sortBy, sortOrder);
 
-        // 2) Resolver coincidencias por NOMBRE de empleado (no por correo)
+        // 2) Coincidencias por NOMBRE del usuario actor (no por correo)
         var empleados = await _personalService.ObtenerEmpleados(
             new List<string> { "Activo", "Inactivo" }, null, null, 1, int.MaxValue);
 
@@ -143,18 +142,35 @@ public class AuditoriaController : Controller
                 .Select(e => e.Id)
         );
 
-        // 3) Traer todos los registros según filtros (sin término) para poder cruzar por UserId
         var porFiltros = await _auditService.ObtenerRegistros(
             fechaInicio, fechaFin, acciones, tiposObjetivo,
             pageNumber: 1, pageSize: int.MaxValue, sortBy, sortOrder);
 
-        var porNombre = porFiltros
+        var porNombreActor = porFiltros
             .Where(r => !string.IsNullOrWhiteSpace(r.UserId) && idsPorNombre.Contains(r.UserId))
+            .ToList();
+
+        // 3) NUEVO: Coincidencias por NOMBRE DEL OBJETO (TargetName) mostrado en la vista
+        //    Reutilizamos el mapeo que resuelve TargetName para todos los registros filtrados,
+        //    y filtramos por CoincideTexto sobre ese TargetName.
+        var porFiltrosConNombres = await MapearNombresUsuarios(porFiltros);
+        var porNombreObjeto = porFiltrosConNombres
+            .Where(r => !string.IsNullOrWhiteSpace(r.TargetName) && CoincideTexto(r.TargetName, searchTerm))
+            .Select(r => new AuditLog
+            {
+                UserId = r.UserId,
+                UserEmail = r.UserEmail,
+                Action = r.Action,
+                TargetId = r.TargetId,
+                TargetType = r.TargetType,
+                Timestamp = r.Timestamp
+            })
             .ToList();
 
         // 4) Unificar, quitar duplicados, ordenar y paginar
         var unificados = porTexto
-            .Concat(porNombre)
+            .Concat(porNombreActor)
+            .Concat(porNombreObjeto) // incluir coincidencias por TargetName
             .GroupBy(r => new { r.UserId, r.UserEmail, r.Action, r.TargetId, r.TargetType, r.Timestamp })
             .Select(g => g.First())
             .ToList();
