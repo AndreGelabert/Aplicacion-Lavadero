@@ -1333,8 +1333,7 @@
         // Crear nueva etapa
         const nuevaEtapa = {
             Id: 'etapa-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-            Nombre: nombre,
-            Estado: 'Pendiente'
+            Nombre: nombre
         };
         
         // Agregar a la lista en memoria

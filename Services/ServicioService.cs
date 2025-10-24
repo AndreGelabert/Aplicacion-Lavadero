@@ -610,15 +610,25 @@ public class ServicioService
     /// </summary>
     private static Dictionary<string, object> CrearDiccionarioServicio(Servicio servicio)
     {
+        var etapasList = (servicio.Etapas ?? new List<Etapa>())
+            .Where(e => e != null && !string.IsNullOrWhiteSpace(e.Nombre))
+            .Select(e => new Dictionary<string, object>
+            {
+                ["Id"] = string.IsNullOrWhiteSpace(e.Id) ? Guid.NewGuid().ToString() : e.Id,
+                ["Nombre"] = e.Nombre.Trim()
+            })
+            .ToList();
+
         return new Dictionary<string, object>
         {
             { "Nombre", servicio.Nombre },
-            { "Precio", (double)servicio.Precio }, // Firestore requiere double
+            { "Precio", (double)servicio.Precio },
             { "Tipo", servicio.Tipo },
             { "TipoVehiculo", servicio.TipoVehiculo },
             { "TiempoEstimado", servicio.TiempoEstimado },
             { "Descripcion", servicio.Descripcion },
-            { "Estado", servicio.Estado }
+            { "Estado", servicio.Estado },
+            { "Etapas", etapasList }
         };
     }
 
@@ -642,8 +652,31 @@ public class ServicioService
                 ? documento.GetValue<int>("TiempoEstimado")
                 : 0,
             Descripcion = documento.GetValue<string>("Descripcion"),
-            Estado = documento.GetValue<string>("Estado")
+            Estado = documento.GetValue<string>("Estado"),
+            Etapas = documento.ContainsField("Etapas")
+                ? MapearEtapas(documento)
+                : new List<Etapa>() // tolerante con documentos antiguos sin Etapas
         };
+    }
+    private static List<Etapa> MapearEtapas(DocumentSnapshot documento)
+    {
+        var etapas = new List<Etapa>();
+        var raw = documento.GetValue<IList<object>>("Etapas");
+        foreach (var item in raw)
+        {
+            if (item is IDictionary<string, object> map)
+            {
+                map.TryGetValue("Id", out var idVal);
+                map.TryGetValue("Nombre", out var nombreVal);
+
+                etapas.Add(new Etapa
+                {
+                    Id = idVal?.ToString() ?? string.Empty,
+                    Nombre = nombreVal?.ToString() ?? string.Empty
+                });
+            }
+        }
+        return etapas;
     }
 
     /// <summary>

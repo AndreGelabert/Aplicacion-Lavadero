@@ -25,13 +25,5 @@ namespace Firebase.Models
         [FirestoreProperty]
         [Required(ErrorMessage = "El nombre de la etapa es obligatorio")]
         public string Nombre { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Estado de la etapa durante la ejecución del servicio.
-        /// Valores posibles: "Pendiente", "En Proceso", "Completada"
-        /// Este campo se utiliza cuando un servicio está siendo ejecutado.
-        /// </summary>
-        [FirestoreProperty]
-        public string Estado { get; set; } = "Pendiente";
     }
 }
