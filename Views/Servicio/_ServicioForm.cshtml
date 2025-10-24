@@ -31,7 +31,7 @@
                    min="0" step="100" required />
             <span asp-validation-for="Precio" class="text-red-600 text-xs"></span>
         </div>
-        <div>
+        <div class="col-span-2">
             <label for="Tipo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Servicio</label>
             <div class="flex">
                 <select name="Tipo" id="Tipo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" required>
@@ -107,7 +107,7 @@
             }
             <input type="hidden" id="etapas-json" name="EtapasJson" value='@Html.Raw(etapasJson)' />
         </div>
-        <div class="col-span-6">
+        <div class="col-span-3">
             <label for="Descripcion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Descripción</label>
             <textarea id="Descripcion" name="Descripcion" rows="1" style="min-height: 2.5rem; overflow-y: hidden;" oninput="autoGrow(this)" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Descripción del servicio" required>@(Model?.Descripcion)</textarea>
             <span asp-validation-for="Descripcion" class="text-red-600 text-xs"></span>
