@@ -90,6 +90,18 @@
                    min="1" required />
             <span asp-validation-for="TiempoEstimado" class="text-red-600 text-xs"></span>
         </div>
+        <div>
+            <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Etapas del Servicio</label>
+            <div class="flex items-center gap-2">
+                <span class="text-sm text-gray-700 dark:text-gray-300">Cantidad de etapas: <span id="etapas-count">@(Model?.Etapas?.Count ?? 0)</span></span>
+                <button type="button" onclick="openEtapasModal()" class="px-2 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
+                    <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z"></path>
+                    </svg>
+                </button>
+            </div>
+            <input type="hidden" id="etapas-json" name="EtapasJson" value='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model?.Etapas ?? new List<Firebase.Models.Etapa>()))' />
+        </div>
         <div class="col-span-6">
             <label for="Descripcion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Descripción</label>
             <textarea id="Descripcion" name="Descripcion" rows="1" style="min-height: 2.5rem; overflow-y: hidden;" oninput="autoGrow(this)" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Descripción del servicio" required>@(Model?.Descripcion)</textarea>

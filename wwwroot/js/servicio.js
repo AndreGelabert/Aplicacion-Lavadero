@@ -1249,4 +1249,145 @@
     window.limpiarModalTipoVehiculo = limpiarModalTipoVehiculo;
     window.cerrarModal = cerrarModal;
 
+    // =====================================
+    // GESTIÓN DE ETAPAS
+    // =====================================
+    
+    /**
+     * Variable global para almacenar las etapas en memoria
+     */
+    let etapasEnMemoria = [];
+
+    /**
+     * Abre el modal de gestión de etapas
+     */
+    window.openEtapasModal = function() {
+        // Cargar etapas existentes desde el input hidden
+        const etapasJson = document.getElementById('etapas-json')?.value || '[]';
+        try {
+            etapasEnMemoria = JSON.parse(etapasJson);
+        } catch (e) {
+            etapasEnMemoria = [];
+        }
+        
+        // Renderizar lista de etapas
+        renderEtapasList();
+        
+        // Mostrar modal
+        const modal = document.getElementById('etapasModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    };
+
+    /**
+     * Cierra el modal de gestión de etapas y guarda los cambios
+     */
+    window.closeEtapasModal = function() {
+        // Guardar etapas en el input hidden
+        const etapasJson = JSON.stringify(etapasEnMemoria);
+        const hiddenInput = document.getElementById('etapas-json');
+        if (hiddenInput) {
+            hiddenInput.value = etapasJson;
+        }
+        
+        // Actualizar contador
+        const countSpan = document.getElementById('etapas-count');
+        if (countSpan) {
+            countSpan.textContent = etapasEnMemoria.length;
+        }
+        
+        // Cerrar modal
+        const modal = document.getElementById('etapasModal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+        
+        // Limpiar input
+        const inputNombre = document.getElementById('nuevaEtapaNombre');
+        if (inputNombre) {
+            inputNombre.value = '';
+        }
+    };
+
+    /**
+     * Agrega una nueva etapa a la lista
+     */
+    window.agregarEtapa = function() {
+        const inputNombre = document.getElementById('nuevaEtapaNombre');
+        if (!inputNombre) return;
+        
+        const nombre = inputNombre.value.trim();
+        if (!nombre) {
+            alert('Por favor, ingrese el nombre de la etapa');
+            return;
+        }
+        
+        // Crear nueva etapa
+        const nuevaEtapa = {
+            Id: 'etapa-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+            Nombre: nombre,
+            Estado: 'Pendiente'
+        };
+        
+        // Agregar a la lista en memoria
+        etapasEnMemoria.push(nuevaEtapa);
+        
+        // Re-renderizar lista
+        renderEtapasList();
+        
+        // Limpiar input
+        inputNombre.value = '';
+        inputNombre.focus();
+    };
+
+    /**
+     * Elimina una etapa de la lista
+     */
+    window.eliminarEtapa = function(etapaId) {
+        etapasEnMemoria = etapasEnMemoria.filter(e => e.Id !== etapaId);
+        renderEtapasList();
+    };
+
+    /**
+     * Renderiza la lista de etapas en el modal
+     */
+    function renderEtapasList() {
+        const container = document.getElementById('etapas-list');
+        if (!container) return;
+        
+        if (etapasEnMemoria.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-gray-500 dark:text-gray-400 py-8">
+                    No hay etapas agregadas. Agregue una etapa usando el campo de arriba.
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = etapasEnMemoria.map((etapa, index) => `
+            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                <div class="flex items-center gap-3">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">${index + 1}.</span>
+                    <span class="text-sm text-gray-900 dark:text-white">${escapeHtml(etapa.Nombre)}</span>
+                </div>
+                <button type="button" onclick="eliminarEtapa('${etapa.Id}')" 
+                        class="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    /**
+     * Escapa HTML para prevenir XSS
+     */
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
 })();

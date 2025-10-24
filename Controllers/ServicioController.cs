@@ -77,10 +77,16 @@ public class ServicioController : Controller
     /// Crear un nuevo servicio (formulario tradicional)
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> CrearServicio(Servicio servicio)
+    public async Task<IActionResult> CrearServicio(Servicio servicio, string? EtapasJson)
     {
         try
         {
+            // Parsear y asignar etapas si existen
+            if (!string.IsNullOrEmpty(EtapasJson))
+            {
+                servicio.Etapas = System.Text.Json.JsonSerializer.Deserialize<List<Etapa>>(EtapasJson) ?? new List<Etapa>();
+            }
+
             var resultado = await ProcesarCreacionServicio(servicio);
             if (!resultado.EsExitoso)
             {
@@ -101,10 +107,16 @@ public class ServicioController : Controller
     /// Actualizar un servicio existente (formulario tradicional)
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> ActualizarServicio(Servicio servicio)
+    public async Task<IActionResult> ActualizarServicio(Servicio servicio, string? EtapasJson)
     {
         try
         {
+            // Parsear y asignar etapas si existen
+            if (!string.IsNullOrEmpty(EtapasJson))
+            {
+                servicio.Etapas = System.Text.Json.JsonSerializer.Deserialize<List<Etapa>>(EtapasJson) ?? new List<Etapa>();
+            }
+
             var resultado = await ProcesarActualizacionServicio(servicio);
             if (!resultado.EsExitoso)
             {
@@ -168,10 +180,16 @@ public class ServicioController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CrearServicioAjax(Servicio servicio)
+    public async Task<IActionResult> CrearServicioAjax(Servicio servicio, string? EtapasJson)
     {
         try
         {
+            // Parsear y asignar etapas si existen
+            if (!string.IsNullOrEmpty(EtapasJson))
+            {
+                servicio.Etapas = System.Text.Json.JsonSerializer.Deserialize<List<Etapa>>(EtapasJson) ?? new List<Etapa>();
+            }
+
             var resultado = await ProcesarCreacionServicio(servicio);
             return await PrepararRespuestaAjax(resultado, servicio, "Creacion (AJAX) de servicio");
         }
@@ -186,10 +204,16 @@ public class ServicioController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ActualizarServicioAjax(Servicio servicio)
+    public async Task<IActionResult> ActualizarServicioAjax(Servicio servicio, string? EtapasJson)
     {
         try
         {
+            // Parsear y asignar etapas si existen
+            if (!string.IsNullOrEmpty(EtapasJson))
+            {
+                servicio.Etapas = System.Text.Json.JsonSerializer.Deserialize<List<Etapa>>(EtapasJson) ?? new List<Etapa>();
+            }
+
             var resultado = await ProcesarActualizacionServicio(servicio);
             return await PrepararRespuestaAjax(resultado, servicio, "Actualizacion (AJAX) de servicio");
         }

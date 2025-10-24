@@ -88,5 +88,14 @@ namespace Firebase.Models
         [FirestoreProperty]
         [Required(ErrorMessage = "El estado es obligatorio")]
         public required string Estado { get; set; }
+
+        /// <summary>
+        /// Lista de etapas que componen el servicio.
+        /// Un servicio puede tener cero, una o muchas etapas.
+        /// Las etapas permiten dividir el servicio en pasos específicos
+        /// que pueden ser completados de manera independiente.
+        /// </summary>
+        [FirestoreProperty]
+        public List<Etapa> Etapas { get; set; } = new List<Etapa>();
     }
 }
