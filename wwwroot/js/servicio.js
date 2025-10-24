@@ -1278,6 +1278,13 @@
         if (modal) {
             modal.classList.remove('hidden');
         }
+        
+        // Configurar el listener para Enter en el input
+        const inputNombre = document.getElementById('nuevaEtapaNombre');
+        if (inputNombre) {
+            inputNombre.addEventListener('keypress', handleEtapaInputKeyPress);
+            inputNombre.focus();
+        }
     };
 
     /**
@@ -1388,6 +1395,16 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    /**
+     * Maneja la tecla Enter en el input de nueva etapa
+     */
+    function handleEtapaInputKeyPress(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            agregarEtapa();
+        }
     }
 
 })();

@@ -100,7 +100,12 @@
                     </svg>
                 </button>
             </div>
-            <input type="hidden" id="etapas-json" name="EtapasJson" value='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model?.Etapas ?? new List<Firebase.Models.Etapa>()))' />
+            @{
+                var etapasJson = Model?.Etapas != null && Model.Etapas.Any() 
+                    ? System.Text.Json.JsonSerializer.Serialize(Model.Etapas)
+                    : "[]";
+            }
+            <input type="hidden" id="etapas-json" name="EtapasJson" value='@Html.Raw(etapasJson)' />
         </div>
         <div class="col-span-6">
             <label for="Descripcion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Descripción</label>
