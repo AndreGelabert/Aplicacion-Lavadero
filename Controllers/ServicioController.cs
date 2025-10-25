@@ -445,6 +445,11 @@ public class ServicioController : Controller
 
     #region Métodos Privados - Procesamiento de Negocio
 
+    /// <summary>
+    /// Configura los estados por defecto cuando no se recibe ninguno desde la vista.
+    /// </summary>
+    /// <param name="estados">Lista de estados seleccionados por el usuario (puede ser null o vacía).</param>
+    /// <returns>Lista con al menos un estado; si estaba vacía, contiene "Activo".</returns>
     private static List<string> ConfigurarEstadosDefecto(List<string> estados)
     {
         estados ??= new List<string>();
@@ -453,6 +458,17 @@ public class ServicioController : Controller
         return estados;
     }
 
+    /// <summary>
+    /// Obtiene los servicios según los filtros y orden actual, calcula la paginación y las páginas visibles.
+    /// </summary>
+    /// <param name="estados">Estados a filtrar.</param>
+    /// <param name="tipos">Tipos de servicio a filtrar.</param>
+    /// <param name="tiposVehiculo">Tipos de vehículo a filtrar.</param>
+    /// <param name="pageNumber">Número de página actual (1-based).</param>
+    /// <param name="pageSize">Cantidad de elementos por página.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento (asc/desc).</param>
+    /// <returns>Tupla con la lista de servicios, página actual, total de páginas y páginas visibles.</returns>
     private async Task<(List<Servicio> servicios, int currentPage, int totalPages, List<int> visiblePages)>
         ObtenerDatosServicios(List<string> estados, List<string> tipos, List<string> tiposVehiculo,
         int pageNumber, int pageSize, string sortBy, string sortOrder)
@@ -465,6 +481,10 @@ public class ServicioController : Controller
         return (servicios, currentPage, totalPages, visiblePages);
     }
 
+    /// <summary>
+    /// Carga las listas utilizadas por los dropdowns del formulario (tipos de servicio y de vehículo).
+    /// </summary>
+    /// <returns>Tupla con la lista de tipos de servicio y la de tipos de vehículo.</returns>
     private async Task<(List<string> tiposServicio, List<string> tiposVehiculo)> CargarListasDropdown()
     {
         var tiposServicio = await _tipoServicioService.ObtenerTiposServicio() ?? new List<string>();
@@ -472,6 +492,10 @@ public class ServicioController : Controller
         return (tiposServicio, tiposVehiculo);
     }
 
+    /// <summary>
+    /// Configura el formulario en modo creación o edición según el ID de edición recibido.
+    /// </summary>
+    /// <param name="editId">ID del servicio a editar. Si es null o vacío, configura modo creación.</param>
     private async Task ConfigurarFormulario(string editId)
     {
         if (!string.IsNullOrEmpty(editId))
@@ -492,6 +516,11 @@ public class ServicioController : Controller
         }
     }
 
+    /// <summary>
+    /// Procesa la creación de un servicio aplicando validaciones y verificación de duplicados.
+    /// </summary>
+    /// <param name="servicio">Modelo de servicio a crear.</param>
+    /// <returns>Resultado de la operación con éxito o detalle de error.</returns>
     private async Task<ResultadoOperacion> ProcesarCreacionServicio(Servicio servicio)
     {
         if (string.IsNullOrEmpty(servicio.Id))
@@ -519,6 +548,11 @@ public class ServicioController : Controller
         return ResultadoOperacion.CrearExito("Servicio creado correctamente.");
     }
 
+    /// <summary>
+    /// Procesa la actualización de un servicio aplicando validaciones y verificación de duplicados.
+    /// </summary>
+    /// <param name="servicio">Modelo de servicio con los cambios a guardar.</param>
+    /// <returns>Resultado de la operación con éxito o detalle de error.</returns>
     private async Task<ResultadoOperacion> ProcesarActualizacionServicio(Servicio servicio)
     {
         ValidateServicio(servicio);
@@ -546,6 +580,13 @@ public class ServicioController : Controller
         return ResultadoOperacion.CrearExito("Servicio actualizado correctamente.");
     }
 
+    /// <summary>
+    /// Cambia el estado de un servicio y registra el evento de auditoría.
+    /// </summary>
+    /// <param name="id">ID del servicio a actualizar.</param>
+    /// <param name="nuevoEstado">Nuevo estado a aplicar (por ejemplo, "Activo" o "Inactivo").</param>
+    /// <param name="accionAuditoria">Texto de la acción a registrar en auditoría.</param>
+    /// <returns>Redirección a <c>Index</c> tras aplicar el cambio.</returns>
     private async Task<IActionResult> CambiarEstadoServicio(string id, string nuevoEstado, string accionAuditoria)
     {
         await _servicioService.CambiarEstadoServicio(id, nuevoEstado);
@@ -558,6 +599,18 @@ public class ServicioController : Controller
 
     #region Métodos Privados - Respuestas y Manejo de Errores
 
+    /// <summary>
+    /// Prepara la respuesta de un envío AJAX de formulario, seteando headers y devolviendo el parcial del formulario.
+    /// </summary>
+    /// <param name="resultado">Resultado de la operación ejecutada.</param>
+    /// <param name="servicio">Modelo de servicio enviado por el formulario.</param>
+    /// <param name="accionAuditoria">Texto de acción a registrar en auditoría cuando es exitoso.</param>
+    /// <returns>Partial view <c>_ServicioForm</c> con el formulario (limpio o con errores).</returns>
+    /// <remarks>
+    /// Headers usados por el cliente:
+    /// - X-Form-Valid: "true" o "false"
+    /// - X-Form-Message: mensaje de éxito cuando corresponde
+    /// </remarks>
     private async Task<IActionResult> PrepararRespuestaAjax(ResultadoOperacion resultado, Servicio servicio, string accionAuditoria)
     {
         if (!resultado.EsExitoso)
@@ -574,6 +627,12 @@ public class ServicioController : Controller
         return PartialView("_ServicioForm", null);
     }
 
+    /// <summary>
+    /// Maneja excepciones en operaciones AJAX devolviendo el formulario parcial con errores.
+    /// </summary>
+    /// <param name="ex">Excepción capturada.</param>
+    /// <param name="servicio">Modelo de servicio que se intentaba procesar.</param>
+    /// <returns>Partial view <c>_ServicioForm</c> con ModelState poblado y encabezado de error.</returns>
     private async Task<IActionResult> ManejiarExcepcionAjax(Exception ex, Servicio servicio)
     {
         ModelState.AddModelError("", ex.Message);
@@ -585,6 +644,13 @@ public class ServicioController : Controller
 
     #region Métodos Privados - Utilidades
 
+    /// <summary>
+    /// Calcula el conjunto de páginas visibles alrededor de la página actual.
+    /// </summary>
+    /// <param name="currentPage">Página actual (1-based).</param>
+    /// <param name="totalPages">Total de páginas.</param>
+    /// <param name="range">Cantidad de páginas a mostrar a cada lado de la actual.</param>
+    /// <returns>Lista de números de página a mostrar.</returns>
     private List<int> GetVisiblePages(int currentPage, int totalPages, int range = 2)
     {
         var start = Math.Max(1, currentPage - range);
@@ -592,6 +658,10 @@ public class ServicioController : Controller
         return Enumerable.Range(start, end - start + 1).ToList();
     }
 
+    /// <summary>
+    /// Valida campos del modelo de servicio y agrega errores a <see cref="ModelState"/>.
+    /// </summary>
+    /// <param name="servicio">Modelo a validar.</param>
     private void ValidateServicio(Servicio servicio)
     {
         if (!string.IsNullOrEmpty(servicio.Nombre) && !System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
@@ -610,6 +680,12 @@ public class ServicioController : Controller
         }
     }
 
+    /// <summary>
+    /// Prepara la vista Index incluyendo el formulario con errores y recarga la tabla inicial.
+    /// </summary>
+    /// <param name="servicio">Modelo de servicio que produjo el error.</param>
+    /// <param name="mensaje">Mensaje de error opcional para mostrar.</param>
+    /// <returns>Vista Index con datos actualizados y formulario en estado de error.</returns>
     private async Task<IActionResult> PrepararVistaConError(Servicio servicio, string mensaje = null)
     {
         var (tiposServicio, tiposVehiculoList) = await CargarListasDropdown();
@@ -637,6 +713,20 @@ public class ServicioController : Controller
         return View("Index", servicios);
     }
 
+    /// <summary>
+    /// Copia a ViewBag la información común necesaria para renderizar la vista Index.
+    /// </summary>
+    /// <param name="estados">Estados activos en el filtro.</param>
+    /// <param name="tipos">Tipos de servicio activos en el filtro.</param>
+    /// <param name="tiposVehiculo">Tipos de vehículo activos en el filtro.</param>
+    /// <param name="tiposServicio">Lista completa para el dropdown de tipos de servicio.</param>
+    /// <param name="tiposVehiculoList">Lista completa para el dropdown de tipos de vehículo.</param>
+    /// <param name="pageSize">Tamaño de página actual.</param>
+    /// <param name="currentPage">Página actual.</param>
+    /// <param name="totalPages">Total de páginas.</param>
+    /// <param name="visiblePages">Rango de páginas visibles.</param>
+    /// <param name="sortBy">Campo de ordenamiento.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
     private void ConfigurarViewBag(
         List<string> estados, List<string> tipos, List<string> tiposVehiculo,
         List<string> tiposServicio, List<string> tiposVehiculoList,
@@ -657,6 +747,12 @@ public class ServicioController : Controller
         ViewBag.SortOrder = sortOrder;
     }
 
+    /// <summary>
+    /// Registra un evento de auditoría asociado al usuario actual.
+    /// </summary>
+    /// <param name="accion">Nombre de la acción ejecutada (por ejemplo, "Creacion de servicio").</param>
+    /// <param name="targetId">ID de la entidad objetivo sobre la que se actuó.</param>
+    /// <param name="entidad">Tipo de entidad (por ejemplo, "Servicio").</param>
     private async Task RegistrarEvento(string accion, string targetId, string entidad)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -664,14 +760,24 @@ public class ServicioController : Controller
         await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad);
     }
 
+    /// <summary>
+    /// Carga en ViewBag las listas necesarias para renderizar el formulario parcial.
+    /// </summary>
     private async Task CargarListasForm()
     {
         ViewBag.TiposServicio = await _tipoServicioService.ObtenerTiposServicio() ?? new List<string>();
         ViewBag.TodosLosTiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
     }
+
     /// <summary>
-    /// Fallback no-AJAX: crea un tipo (servicio/vehículo) registrando el ID real y auditando.
+    /// Fallback no-AJAX: crea un tipo (servicio o vehículo), registra auditoría y redirige a Index.
     /// </summary>
+    /// <param name="nombreTipo">Nombre del tipo a crear.</param>
+    /// <param name="verificarExistencia">Función que verifica existencia previa del tipo.</param>
+    /// <param name="crearConId">Función que crea el tipo y devuelve el ID creado.</param>
+    /// <param name="entidad">Etiqueta de entidad para auditoría (por ejemplo, "TipoServicio").</param>
+    /// <param name="accionAuditoria">Acción a registrar en auditoría.</param>
+    /// <returns>Redirección a <c>Index</c>.</returns>
     private async Task<IActionResult> GestionarTipoConId(
         string nombreTipo,
         Func<Task<bool>> verificarExistencia,
@@ -696,8 +802,14 @@ public class ServicioController : Controller
     }
 
     /// <summary>
-    /// Fallback no-AJAX: elimina un tipo (servicio/vehículo) registrando todos los IDs eliminados y auditando.
+    /// Fallback no-AJAX: elimina un tipo (servicio o vehículo), registra auditoría y redirige a Index.
     /// </summary>
+    /// <param name="nombreTipo">Nombre del tipo a eliminar.</param>
+    /// <param name="obtenerServiciosUsandoTipo">Función que obtiene servicios que usan el tipo (para impedir eliminación si hay uso).</param>
+    /// <param name="eliminarConIds">Función que elimina el tipo y devuelve los IDs eliminados.</param>
+    /// <param name="entidad">Etiqueta de entidad para auditoría (por ejemplo, "TipoVehiculo").</param>
+    /// <param name="accionAuditoria">Acción a registrar en auditoría.</param>
+    /// <returns>Redirección a <c>Index</c>.</returns>
     private async Task<IActionResult> EliminarTipoConIds(
         string nombreTipo,
         Func<Task<List<Servicio>>> obtenerServiciosUsandoTipo,
