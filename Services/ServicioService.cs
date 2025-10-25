@@ -135,95 +135,77 @@ public class ServicioService
     /// <param name="sortOrder">Dirección del ordenamiento</param>
     /// <returns>Lista de servicios que coinciden con la búsqueda</returns>
     public async Task<List<Servicio>> BuscarServicios(
-        string searchTerm,
-        List<string> estados = null,
-        List<string> tipos = null,
-        List<string> tiposVehiculo = null,
-        int pageNumber = 1,
-        int pageSize = 10,
-        string sortBy = null,
-        string sortOrder = null)
+    string searchTerm,
+    List<string> estados = null,
+    List<string> tipos = null,
+    List<string> tiposVehiculo = null,
+    int pageNumber = 1,
+    int pageSize = 10,
+    string sortBy = null,
+    string sortOrder = null)
     {
-        // Validar parámetros de paginación
-        ValidarParametrosPaginacion(pageNumber, pageSize);
+        // Base filtrada y ordenada (sin paginar)
+        var baseFiltrada = await ObtenerServiciosFiltrados(estados, tipos, tiposVehiculo, sortBy, sortOrder);
 
-        // Configurar ordenamiento por defecto
-        sortBy ??= ORDEN_DEFECTO;
-        sortOrder ??= DIRECCION_DEFECTO;
-
-        // Configurar estados por defecto
-        estados = ConfigurarEstadosDefecto(estados);
-
-        // Obtener todos los servicios filtrados
-        var servicios = await ObtenerServiciosFiltrados(estados, tipos, tiposVehiculo, sortBy, sortOrder);
-
-        // Aplicar búsqueda en memoria si hay término de búsqueda
-        if (!string.IsNullOrWhiteSpace(searchTerm))
+        if (string.IsNullOrWhiteSpace(searchTerm))
         {
-            var searchTermTrimmed = searchTerm.Trim();
-            var searchTermUpper = searchTermTrimmed.ToUpperInvariant();
-
-            // Detectar si termina con "min" (búsqueda específica por tiempo)
-            bool isTimeSearch = searchTermUpper.EndsWith("MIN");
-
-            if (isTimeSearch)
-            {
-                // Extraer el número antes de "min"
-                var timeText = searchTermTrimmed.Substring(0, searchTermTrimmed.Length - 3).Trim();
-
-                if (int.TryParse(timeText, out int timeValue))
-                {
-                    // Búsqueda SOLO por tiempo estimado
-                    servicios = servicios.Where(s =>
-                        s.TiempoEstimado == timeValue || // Tiempo exacto
-                        (timeValue >= 10 && s.TiempoEstimado >= timeValue && s.TiempoEstimado < timeValue + 10) // Rango de decenas
-                    ).ToList();
-                }
-                else
-                {
-                    // Si no se puede parsear el número, no hay resultados
-                    servicios = new List<Servicio>();
-                }
-            }
-            else
-            {
-                // Búsqueda normal (texto + numérico para precio y tiempo)
-                bool isNumericSearch = decimal.TryParse(searchTermTrimmed, out decimal searchNumber);
-
-                servicios = servicios.Where(s =>
-                    // Búsqueda por texto en nombre
-                    (s.Nombre?.ToUpperInvariant().Contains(searchTermUpper) ?? false) ||
-
-                    // Búsqueda por texto en descripción
-                    (s.Descripcion?.ToUpperInvariant().Contains(searchTermUpper) ?? false) ||
-
-                    // Búsqueda por texto en tipo de servicio
-                    (s.Tipo?.ToUpperInvariant().Contains(searchTermUpper) ?? false) ||
-
-                    // Búsqueda por texto en tipo de vehículo
-                    (s.TipoVehiculo?.ToUpperInvariant().Contains(searchTermUpper) ?? false) ||
-
-                    // Búsqueda numérica por precio (exacto o rango)
-                    (isNumericSearch && (
-                        s.Precio == searchNumber || // Precio exacto
-                        s.Precio.ToString().Contains(searchTermTrimmed) || // Precio que contiene el número
-                        (searchNumber >= 1000 && s.Precio >= searchNumber && s.Precio < searchNumber + 1000) // Rango de miles
-                    )) ||
-
-                    // Búsqueda numérica por tiempo estimado (exacto o rango)
-                    (isNumericSearch && (
-                        s.TiempoEstimado == (int)searchNumber || // Tiempo exacto
-                        s.TiempoEstimado.ToString().Contains(searchTermTrimmed) || // Tiempo que contiene el número
-                        (searchNumber >= 10 && s.TiempoEstimado >= (int)searchNumber && s.TiempoEstimado < (int)searchNumber + 10) // Rango de decenas
-                    ))
-                ).ToList();
-            }
+            // Paginar y devolver
+            return baseFiltrada
+                .Skip((Math.Max(pageNumber, 1) - 1) * Math.Max(pageSize, 1))
+                .Take(Math.Max(pageSize, 1))
+                .ToList();
         }
 
-        // Aplicar paginación
-        return servicios
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
+        var term = searchTerm.Trim();
+        var termUpper = term.ToUpperInvariant();
+
+        // Soporte "X min"
+        bool soloMin = false;
+        int minutos = 0;
+        if (termUpper.EndsWith("MIN"))
+        {
+            var timeText = term.Substring(0, term.Length - 3).Trim();
+            soloMin = int.TryParse(timeText, out minutos);
+        }
+
+        IEnumerable<Servicio> filtrados;
+
+        if (soloMin)
+        {
+            filtrados = baseFiltrada.Where(s => s.TiempoEstimado == minutos);
+        }
+        else if (decimal.TryParse(term, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var numeroDecimal))
+        {
+            // Búsqueda numérica:
+            // - Precio (igualdad aproximada)
+            // - TiempoEstimado
+            // - NUEVO: Cantidad de etapas
+            int numeroEntero = (int)numeroDecimal;
+
+            filtrados = baseFiltrada.Where(s =>
+                Math.Abs(s.Precio - numeroDecimal) < 0.0001m ||
+                s.TiempoEstimado == numeroEntero ||
+                (s.Etapas?.Count ?? 0) == numeroEntero
+            );
+        }
+        else
+        {
+            // Búsqueda textual (estilo previo: Contains con UpperInvariant)
+            filtrados = baseFiltrada.Where(s =>
+                (s.Nombre?.ToUpperInvariant().Contains(termUpper) ?? false) ||
+                (s.Descripcion?.ToUpperInvariant().Contains(termUpper) ?? false) ||
+                (s.Tipo?.ToUpperInvariant().Contains(termUpper) ?? false) ||
+                (s.TipoVehiculo?.ToUpperInvariant().Contains(termUpper) ?? false) ||
+                (s.Estado?.ToUpperInvariant().Contains(termUpper) ?? false)
+            );
+        }
+
+        // Reaplicar orden y paginar
+        var ordenados = AplicarOrdenamiento(filtrados.ToList(), sortBy, sortOrder);
+
+        return ordenados
+            .Skip((Math.Max(pageNumber, 1) - 1) * Math.Max(pageSize, 1))
+            .Take(Math.Max(pageSize, 1))
             .ToList();
     }
 
@@ -231,10 +213,10 @@ public class ServicioService
     /// Obtiene el total de servicios que coinciden con la búsqueda
     /// </summary>
     public async Task<int> ObtenerTotalServiciosBusqueda(
-        string searchTerm,
-        List<string> estados,
-        List<string> tipos,
-        List<string> tiposVehiculo)
+    string searchTerm,
+    List<string> estados,
+    List<string> tipos,
+    List<string> tiposVehiculo)
     {
         estados = ConfigurarEstadosDefecto(estados);
         var servicios = await ObtenerServiciosFiltrados(estados, tipos, tiposVehiculo, ORDEN_DEFECTO, DIRECCION_DEFECTO);
@@ -265,7 +247,8 @@ public class ServicioService
             }
             else
             {
-                bool isNumericSearch = decimal.TryParse(searchTermTrimmed, out decimal searchNumber);
+                bool isNumericSearch = decimal.TryParse(searchTermTrimmed, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out decimal searchNumber);
+                int searchInt = (int)searchNumber;
 
                 servicios = servicios.Where(s =>
                     (s.Nombre?.ToUpperInvariant().Contains(searchTermUpper) ?? false) ||
@@ -278,10 +261,12 @@ public class ServicioService
                         (searchNumber >= 1000 && s.Precio >= searchNumber && s.Precio < searchNumber + 1000)
                     )) ||
                     (isNumericSearch && (
-                        s.TiempoEstimado == (int)searchNumber ||
+                        s.TiempoEstimado == searchInt ||
                         s.TiempoEstimado.ToString().Contains(searchTermTrimmed) ||
-                        (searchNumber >= 10 && s.TiempoEstimado >= (int)searchNumber && s.TiempoEstimado < (int)searchNumber + 10)
-                    ))
+                        (searchNumber >= 10 && s.TiempoEstimado >= searchInt && s.TiempoEstimado < searchInt + 10)
+                    )) ||
+                    // NUEVO: contar por cantidad de etapas (igualdad exacta)
+                    (isNumericSearch && ((s.Etapas?.Count ?? 0) == searchInt))
                 ).ToList();
             }
         }
@@ -561,36 +546,26 @@ public class ServicioService
     /// </summary>
     private static List<Servicio> AplicarOrdenamiento(List<Servicio> servicios, string sortBy, string sortOrder)
     {
-        var descending = sortOrder?.ToLower() == "desc";
+        sortBy = (sortBy ?? ORDEN_DEFECTO).Trim();
+        sortOrder = (sortOrder ?? DIRECCION_DEFECTO).Trim().ToLowerInvariant();
 
-        return sortBy?.ToLower() switch
+        Func<Servicio, object> keySelector = sortBy switch
         {
-            "nombre" => descending 
-                ? servicios.OrderByDescending(s => s.Nombre).ToList()
-                : servicios.OrderBy(s => s.Nombre).ToList(),
-                
-            "precio" => descending 
-                ? servicios.OrderByDescending(s => s.Precio).ToList()
-                : servicios.OrderBy(s => s.Precio).ToList(),
-                
-            "tipo" => descending 
-                ? servicios.OrderByDescending(s => s.Tipo).ToList()
-                : servicios.OrderBy(s => s.Tipo).ToList(),
-                
-            "tipovehiculo" => descending 
-                ? servicios.OrderByDescending(s => s.TipoVehiculo).ToList()
-                : servicios.OrderBy(s => s.TipoVehiculo).ToList(),
-                
-            "tiempoestimado" => descending 
-                ? servicios.OrderByDescending(s => s.TiempoEstimado).ToList()
-                : servicios.OrderBy(s => s.TiempoEstimado).ToList(),
-                
-            "estado" => descending 
-                ? servicios.OrderByDescending(s => s.Estado).ToList()
-                : servicios.OrderBy(s => s.Estado).ToList(),
-                
-            _ => servicios.OrderBy(s => s.Nombre).ToList() // Default por nombre ascendente
+            "Nombre" => s => s.Nombre,
+            "Precio" => s => s.Precio,
+            "Tipo" => s => s.Tipo,
+            "TipoVehiculo" => s => s.TipoVehiculo,
+            "TiempoEstimado" => s => s.TiempoEstimado,
+            "Estado" => s => s.Estado,
+            "EtapasCount" => s => (s.Etapas?.Count ?? 0),
+            _ => s => s.Nombre // Ordenamiento por defecto
         };
+
+        var ordered = sortOrder == "desc"
+            ? servicios.OrderByDescending(keySelector)
+            : servicios.OrderBy(keySelector);
+
+        return ordered.ToList();
     }
 
     /// <summary>
