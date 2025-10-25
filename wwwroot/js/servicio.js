@@ -314,6 +314,7 @@
         setupNombreValidation();
         setupPrecioValidation();
         setupTiempoEstimadoValidation();
+        setupEtapaNombreValidation();
     }
 
     /**
@@ -389,6 +390,40 @@
                 this.classList.remove('border-red-500');
             }
         });
+    }
+
+    // Coloca esta función cerca de las demás funciones de validación
+    function setupEtapaNombreValidation() {
+        const input = document.getElementById('nuevaEtapaNombre');
+        if (!input || input.hasAttribute('data-validation-setup')) return;
+
+        const allowedRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]*$/;
+        const stripRegex = /[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g;
+
+        // Filtra mientras se escribe
+        input.addEventListener('input', function () {
+            if (!allowedRegex.test(this.value)) {
+                this.classList.add('border-red-500');
+                this.value = this.value.replace(stripRegex, '');
+            } else {
+                this.classList.remove('border-red-500');
+            }
+        });
+
+        // Normaliza lo pegado
+        input.addEventListener('paste', (e) => {
+            // Esperar a que el pegado termine
+            setTimeout(() => {
+                if (!allowedRegex.test(input.value)) {
+                    input.classList.add('border-red-500');
+                    input.value = input.value.replace(stripRegex, '');
+                } else {
+                    input.classList.remove('border-red-500');
+                }
+            }, 0);
+        });
+
+        input.setAttribute('data-validation-setup', 'true');
     }
 
     /**
@@ -1285,12 +1320,14 @@
         // Mostrar modal con Flowbite (crea y maneja el backdrop)
         abrirModal('etapasModal');
 
-        // Configurar el listener para Enter en el input
+        // Configurar el listener para Enter y validación de nombre
         const inputNombre = document.getElementById('nuevaEtapaNombre');
         if (inputNombre && !inputNombre.hasAttribute('data-keypress-setup')) {
             inputNombre.addEventListener('keypress', handleEtapaInputKeyPress);
             inputNombre.setAttribute('data-keypress-setup', 'true');
         }
+        setupEtapaNombreValidation();
+
         setTimeout(() => inputNombre?.focus(), 50);
     };
 
@@ -1324,30 +1361,41 @@
     /**
      * Agrega una nueva etapa a la lista
      */
-    window.agregarEtapa = function() {
+    window.agregarEtapa = function () {
         const inputNombre = document.getElementById('nuevaEtapaNombre');
         if (!inputNombre) return;
-        
+
         const nombre = inputNombre.value.trim();
+        const nombreRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
+
         if (!nombre) {
             alert('Por favor, ingrese el nombre de la etapa');
+            inputNombre.classList.add('border-red-500');
+            inputNombre.focus();
             return;
         }
-        
+        if (!nombreRegex.test(nombre)) {
+            alert('Solo se permiten letras, espacios y acentos en el nombre de la etapa.');
+            inputNombre.classList.add('border-red-500');
+            inputNombre.focus();
+            return;
+        }
+
         // Crear nueva etapa
         const nuevaEtapa = {
             Id: 'etapa-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
             Nombre: nombre
         };
-        
+
         // Agregar a la lista en memoria
         etapasEnMemoria.push(nuevaEtapa);
-        
+
         // Re-renderizar lista
         renderEtapasList();
-        
+
         // Limpiar input
         inputNombre.value = '';
+        inputNombre.classList.remove('border-red-500');
         inputNombre.focus();
     };
 
