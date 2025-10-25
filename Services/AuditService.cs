@@ -46,7 +46,9 @@ public class AuditService
     #region Operaciones de Consulta
 
     /// <summary>
-    /// Obtiene una lista paginada de registros de auditoría con filtros
+    /// Obtiene una lista paginada de registros de auditoría con filtros.
+    /// - Si sortBy == "Timestamp" (por defecto): usa paginación física (Limit/Offset) en Firestore.
+    /// - Para otros sortBy: mantiene lógica previa (orden/paginación en memoria).
     /// </summary>
     public async Task<List<AuditLog>> ObtenerRegistros(
         DateTime? fechaInicio = null,
@@ -58,17 +60,33 @@ public class AuditService
         string sortBy = null,
         string sortOrder = null)
     {
-        // Validar parámetros de paginación
         ValidarParametrosPaginacion(pageNumber, pageSize);
 
-        // Configurar ordenamiento por defecto
         sortBy ??= ORDEN_DEFECTO;
         sortOrder ??= DIRECCION_DEFECTO;
 
-        // Obtener registros aplicando filtros
+        // Paginación física soportada cuando ordenamos por Timestamp (caso por defecto y más común)
+        var ordenEsTimestamp = string.Equals(sortBy, "Timestamp", StringComparison.OrdinalIgnoreCase);
+
+        if (ordenEsTimestamp)
+        {
+            // Query en Firestore con filtros y orden por fecha
+            var query = ConstruirQueryAuditoria(fechaInicio, fechaFin, acciones, tiposObjetivo, sortBy, sortOrder, forCounting: false);
+
+            // Paginación física (Limit/Offset)
+            var offset = (pageNumber - 1) * pageSize;
+            if (offset > 0)
+                query = query.Offset(offset);
+
+            query = query.Limit(pageSize);
+
+            var snapshot = await query.GetSnapshotAsync();
+            return snapshot.Documents.Select(MapearDocumentoAAuditLog).ToList();
+        }
+
+        // Fallback: otros ordenamientos (UserEmail/Action/TargetType...)
         var registros = await ObtenerRegistrosFiltrados(fechaInicio, fechaFin, acciones, tiposObjetivo, sortBy, sortOrder);
 
-        // Aplicar paginación
         return registros
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
@@ -76,8 +94,7 @@ public class AuditService
     }
 
     /// <summary>
-    /// Busca registros de auditoría por término de búsqueda
-    /// Soporta búsqueda por fecha, usuario (con acentos), acción, tipo y ID
+    /// Busca registros por término (misma lógica previa). Mantiene paginación en memoria.
     /// </summary>
     public async Task<List<AuditLog>> BuscarRegistros(
         string searchTerm,
@@ -90,42 +107,27 @@ public class AuditService
         string sortBy = null,
         string sortOrder = null)
     {
-        // Validar parámetros
         ValidarParametrosPaginacion(pageNumber, pageSize);
         sortBy ??= ORDEN_DEFECTO;
         sortOrder ??= DIRECCION_DEFECTO;
 
-        // Obtener registros filtrados
         var registros = await ObtenerRegistrosFiltrados(fechaInicio, fechaFin, acciones, tiposObjetivo, sortBy, sortOrder);
 
-        // Aplicar búsqueda si hay término
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             var searchTermTrimmed = searchTerm.Trim();
-            
-            // Intentar parsear como fecha
             bool isFechaBusqueda = TryParseFecha(searchTermTrimmed, out DateTime fechaBuscada);
 
             registros = registros.Where(r =>
-                // Búsqueda por fecha (formato dd/MM/yyyy o dd/MM/yyyy HH:mm)
                 (isFechaBusqueda && r.Timestamp.Date == fechaBuscada.Date) ||
                 BuscarEnFecha(r.Timestamp, searchTermTrimmed) ||
-                
-                // Búsqueda por email (sin normalizar para mantener exactitud)
                 BuscarEnTexto(r.UserEmail, searchTermTrimmed) ||
-                
-                // Búsqueda por acción
                 BuscarEnTexto(r.Action, searchTermTrimmed) ||
-                
-                // Búsqueda por tipo de objetivo
                 BuscarEnTexto(r.TargetType, searchTermTrimmed) ||
-                
-                // Búsqueda por ID de objetivo
                 BuscarEnTexto(r.TargetId, searchTermTrimmed)
             ).ToList();
         }
 
-        // Aplicar paginación
         return registros
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
@@ -133,7 +135,8 @@ public class AuditService
     }
 
     /// <summary>
-    /// Obtiene el total de páginas para los registros filtrados
+    /// Obtiene el total de páginas para los registros filtrados.
+    /// Intenta usar agregación Count() en Firestore; si no está disponible, hace fallback.
     /// </summary>
     public async Task<int> ObtenerTotalPaginas(
         DateTime? fechaInicio,
@@ -145,12 +148,12 @@ public class AuditService
         if (pageSize <= 0)
             throw new ArgumentException("El tamaño de página debe ser mayor a 0", nameof(pageSize));
 
-        var totalRegistros = await ObtenerTotalRegistros(fechaInicio, fechaFin, acciones, tiposObjetivo);
+        var totalRegistros = await ObtenerTotalRegistrosLigero(fechaInicio, fechaFin, acciones, tiposObjetivo);
         return (int)Math.Ceiling(totalRegistros / (double)pageSize);
     }
 
     /// <summary>
-    /// Obtiene el total de registros que coinciden con la búsqueda
+    /// Total de registros que coinciden con la búsqueda (mantiene enfoque previo).
     /// </summary>
     public async Task<int> ObtenerTotalRegistrosBusqueda(
         string searchTerm,
@@ -213,7 +216,94 @@ public class AuditService
     #region Métodos Privados
 
     /// <summary>
-    /// Obtiene todos los registros aplicando filtros y ordenamiento
+    /// Construye un query de Firestore aplicando filtros y orden.
+    /// - Si hay filtros por rango de fecha, el primer OrderBy debe ser por "Timestamp" (requisito de Firestore).
+    /// - Para orden por Timestamp, se agrega tie-breaker por DocumentId para orden estable.
+    /// - Para WhereIn (acciones, tipos), Firestore limita a 10 elementos; si hay más, filtra cliente.
+    /// - Si forCounting=true, evita aplicar OrderBy para reducir requisitos de índice.
+    /// </summary>
+    private Query ConstruirQueryAuditoria(
+        DateTime? fechaInicio,
+        DateTime? fechaFin,
+        List<string> acciones,
+        List<string> tiposObjetivo,
+        string sortBy,
+        string sortOrder,
+        bool forCounting)
+    {
+        var query = _firestore.Collection(COLLECTION_NAME) as Query;
+
+        // Filtros por fecha (usar UTC)
+        if (fechaInicio.HasValue)
+        {
+            var fiUtc = ToUtc(fechaInicio.Value);
+            query = query.WhereGreaterThanOrEqualTo("Timestamp", fiUtc);
+        }
+
+        if (fechaFin.HasValue)
+        {
+            // Fin de día inclusivo
+            var ffUtc = ToUtc(EndOfDay(fechaFin.Value));
+            query = query.WhereLessThanOrEqualTo("Timestamp", ffUtc);
+        }
+
+        // Acciones
+        if (acciones?.Any() == true)
+        {
+            if (acciones.Count == 1)
+                query = query.WhereEqualTo("Action", acciones[0]);
+            else if (acciones.Count <= 10)
+                query = query.WhereIn("Action", acciones);
+            // Si > 10, no se aplica filtro aquí; se filtrará en memoria cuando corresponda.
+        }
+
+        // Tipos objetivo
+        if (tiposObjetivo?.Any() == true)
+        {
+            if (tiposObjetivo.Count == 1)
+                query = query.WhereEqualTo("TargetType", tiposObjetivo[0]);
+            else if (tiposObjetivo.Count <= 10)
+                query = query.WhereIn("TargetType", tiposObjetivo);
+            // Si > 10, no se aplica filtro aquí; se filtrará en memoria cuando corresponda.
+        }
+
+        // Para conteo, evitar orden innecesario
+        if (forCounting)
+        {
+            return query;
+        }
+
+        var descending = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);
+        var sortLower = sortBy?.ToLowerInvariant() ?? "timestamp";
+
+        // Si hay rango de fecha y sortBy != Timestamp, Firestore exige que el primer OrderBy sea por Timestamp
+        var rangoFechaActivo = fechaInicio.HasValue || fechaFin.HasValue;
+
+        if (rangoFechaActivo && sortLower != "timestamp")
+        {
+            query = descending ? query.OrderByDescending("Timestamp") : query.OrderBy("Timestamp");
+            // Segundo orden por el campo solicitado (puede requerir índice compuesto)
+            query = descending ? query.OrderByDescending(sortBy) : query.OrderBy(sortBy);
+        }
+        else
+        {
+            // Orden normal
+            query = descending ? query.OrderByDescending(sortBy) : query.OrderBy(sortBy);
+        }
+
+        // Tie-breaker por DocumentId para orden estable cuando ordenamos por Timestamp
+        if (sortLower == "timestamp")
+        {
+            query = descending
+                ? query.OrderByDescending(FieldPath.DocumentId)
+                : query.OrderBy(FieldPath.DocumentId);
+        }
+
+        return query;
+    }
+
+    /// <summary>
+    /// Obtiene registros aplicando filtros y ordenamiento en memoria (fallback).
     /// </summary>
     private async Task<List<AuditLog>> ObtenerRegistrosFiltrados(
         DateTime? fechaInicio,
@@ -223,56 +313,79 @@ public class AuditService
         string sortBy,
         string sortOrder)
     {
-        // Obtener todos los registros (Firestore tiene limitaciones para filtros complejos)
         var snapshot = await _firestore.Collection(COLLECTION_NAME).GetSnapshotAsync();
         var registros = snapshot.Documents
             .Select(MapearDocumentoAAuditLog)
             .ToList();
 
-        // Aplicar filtro de fecha de inicio
         if (fechaInicio.HasValue)
         {
             registros = registros.Where(r => r.Timestamp >= fechaInicio.Value).ToList();
         }
 
-        // Aplicar filtro de fecha fin
         if (fechaFin.HasValue)
         {
-            var fechaFinConHora = fechaFin.Value.Date.AddDays(1).AddTicks(-1);
+            var fechaFinConHora = EndOfDay(fechaFin.Value);
             registros = registros.Where(r => r.Timestamp <= fechaFinConHora).ToList();
         }
 
-        // Aplicar filtro de acciones
         if (acciones?.Any() == true)
         {
             registros = registros.Where(r => acciones.Contains(r.Action)).ToList();
         }
 
-        // Aplicar filtro de tipos de objetivo
         if (tiposObjetivo?.Any() == true)
         {
             registros = registros.Where(r => tiposObjetivo.Contains(r.TargetType)).ToList();
         }
 
-        // Aplicar ordenamiento
         return AplicarOrdenamiento(registros, sortBy, sortOrder);
     }
 
     /// <summary>
-    /// Obtiene el total de registros que cumplen con los filtros
+    /// Intenta contar registros usando agregación Count(); fallback a contar snapshot si no está disponible.
     /// </summary>
-    private async Task<int> ObtenerTotalRegistros(
+    private async Task<long> ObtenerTotalRegistrosLigero(
         DateTime? fechaInicio,
         DateTime? fechaFin,
         List<string> acciones,
         List<string> tiposObjetivo)
     {
-        var registros = await ObtenerRegistrosFiltrados(fechaInicio, fechaFin, acciones, tiposObjetivo, ORDEN_DEFECTO, DIRECCION_DEFECTO);
-        return registros.Count;
+        // Construir query sin orden para minimizar requisitos de índice
+        var query = ConstruirQueryAuditoria(fechaInicio, fechaFin, acciones, tiposObjetivo, ORDEN_DEFECTO, DIRECCION_DEFECTO, forCounting: true);
+
+        try
+        {
+            var aggSnapshot = await query.Count().GetSnapshotAsync();
+            return aggSnapshot.Count ?? 0;
+        }
+        catch
+        {
+            // Fallback: contar documentos del snapshot
+            var snapshot = await query.GetSnapshotAsync();
+            var total = snapshot.Documents.Count;
+
+            // Si no aplicamos WhereIn por exceder 10, filtrar en memoria para un conteo correcto
+            if (acciones?.Any() == true && acciones.Count > 10)
+            {
+                total = snapshot.Documents
+                    .Select(MapearDocumentoAAuditLog)
+                    .Count(r => acciones.Contains(r.Action));
+            }
+
+            if (tiposObjetivo?.Any() == true && tiposObjetivo.Count > 10)
+            {
+                total = snapshot.Documents
+                    .Select(MapearDocumentoAAuditLog)
+                    .Count(r => tiposObjetivo.Contains(r.TargetType));
+            }
+
+            return total;
+        }
     }
 
     /// <summary>
-    /// Aplica ordenamiento a la lista de registros
+    /// Aplica ordenamiento en memoria (fallback)
     /// </summary>
     private static List<AuditLog> AplicarOrdenamiento(List<AuditLog> registros, string sortBy, string sortOrder)
     {
@@ -296,7 +409,7 @@ public class AuditService
                 ? registros.OrderByDescending(r => r.TargetType).ToList()
                 : registros.OrderBy(r => r.TargetType).ToList(),
 
-            _ => registros.OrderByDescending(r => r.Timestamp).ToList() // Default por fecha descendente
+            _ => registros.OrderByDescending(r => r.Timestamp).ToList()
         };
     }
 
@@ -333,39 +446,28 @@ public class AuditService
 
     #region Métodos Auxiliares de Búsqueda
 
-    /// <summary>
-    /// Busca en un texto con soporte para búsqueda exacta y normalizada
-    /// Soporta coincidencias exactas, parciales y búsqueda de palabras individuales
-    /// </summary>
     private static bool BuscarEnTexto(string texto, string termino)
     {
         if (string.IsNullOrWhiteSpace(texto) || string.IsNullOrWhiteSpace(termino))
             return false;
 
-        // 1. Búsqueda exacta (respetando acentos)
         if (texto.Equals(termino, StringComparison.OrdinalIgnoreCase))
             return true;
 
-        // 2. Normalizar ambos textos
         var textoNormalizado = NormalizarTexto(texto);
         var terminoNormalizado = NormalizarTexto(termino);
 
-        // 3. Búsqueda exacta normalizada
         if (textoNormalizado.Equals(terminoNormalizado, StringComparison.OrdinalIgnoreCase))
             return true;
 
-        // 4. Búsqueda parcial (contiene el término completo)
         if (textoNormalizado.Contains(terminoNormalizado, StringComparison.OrdinalIgnoreCase))
             return true;
 
-        // 5. NUEVO: Búsqueda por palabras individuales (para "Andre Gelabert")
-        // Si el término tiene espacios, buscar cada palabra individualmente
         if (termino.Contains(' '))
         {
             var palabrasBusqueda = terminoNormalizado.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var palabrasTexto = textoNormalizado.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-            // Todas las palabras del término deben estar en el texto
             return palabrasBusqueda.All(palabraBusqueda =>
                 palabrasTexto.Any(palabraTexto =>
                     palabraTexto.Contains(palabraBusqueda, StringComparison.OrdinalIgnoreCase) ||
@@ -375,18 +477,12 @@ public class AuditService
         return false;
     }
 
-    /// <summary>
-    /// Normaliza texto removiendo acentos y caracteres especiales
-    /// </summary>
     private static string NormalizarTexto(string texto)
     {
         if (string.IsNullOrWhiteSpace(texto))
             return string.Empty;
 
-        // Normalizar a forma de descomposición (separa caracteres base de diacríticos)
         var textoNormalizado = texto.Normalize(System.Text.NormalizationForm.FormD);
-
-        // Filtrar solo caracteres que no sean marcas diacríticas
         var resultado = new System.Text.StringBuilder();
         foreach (var c in textoNormalizado)
         {
@@ -400,37 +496,30 @@ public class AuditService
         return resultado.ToString().Normalize(System.Text.NormalizationForm.FormC);
     }
 
-    /// <summary>
-    /// Busca en una fecha por diferentes formatos
-    /// </summary>
     private static bool BuscarEnFecha(DateTime fecha, string termino)
     {
         if (string.IsNullOrWhiteSpace(termino))
             return false;
 
         var fechaLocal = fecha.ToLocalTime();
-        
-        // Formatos de búsqueda soportados
+
         var formatosFecha = new[]
         {
-            fechaLocal.ToString("dd/MM/yyyy HH:mm:ss"),  // Formato completo
-            fechaLocal.ToString("dd/MM/yyyy HH:mm"),     // Sin segundos
-            fechaLocal.ToString("dd/MM/yyyy"),            // Solo fecha
-            fechaLocal.ToString("dd/MM"),                 // Día y mes
-            fechaLocal.ToString("MM/yyyy"),               // Mes y año
-            fechaLocal.ToString("yyyy"),                  // Solo año
-            fechaLocal.ToString("dd"),                    // Solo día
-            fechaLocal.ToString("MM"),                    // Solo mes
-            fechaLocal.ToString("HH:mm"),                 // Solo hora
-            fechaLocal.ToString("HH")                     // Solo hora (sin minutos)
+            fechaLocal.ToString("dd/MM/yyyy HH:mm:ss"),
+            fechaLocal.ToString("dd/MM/yyyy HH:mm"),
+            fechaLocal.ToString("dd/MM/yyyy"),
+            fechaLocal.ToString("dd/MM"),
+            fechaLocal.ToString("MM/yyyy"),
+            fechaLocal.ToString("yyyy"),
+            fechaLocal.ToString("dd"),
+            fechaLocal.ToString("MM"),
+            fechaLocal.ToString("HH:mm"),
+            fechaLocal.ToString("HH")
         };
 
         return formatosFecha.Any(f => f.Contains(termino, StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>
-    /// Intenta parsear una fecha de diferentes formatos
-    /// </summary>
     private static bool TryParseFecha(string texto, out DateTime fecha)
     {
         fecha = DateTime.MinValue;
@@ -438,7 +527,6 @@ public class AuditService
         if (string.IsNullOrWhiteSpace(texto))
             return false;
 
-        // Formatos de fecha a intentar
         var formatos = new[]
         {
             "dd/MM/yyyy",
@@ -451,18 +539,27 @@ public class AuditService
 
         foreach (var formato in formatos)
         {
-            if (DateTime.TryParseExact(texto, formato, 
-                System.Globalization.CultureInfo.InvariantCulture, 
-                System.Globalization.DateTimeStyles.None, 
+            if (DateTime.TryParseExact(texto, formato,
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None,
                 out fecha))
             {
                 return true;
             }
         }
 
-        // Intento final con parse genérico
         return DateTime.TryParse(texto, out fecha);
     }
 
+    private static DateTime ToUtc(DateTime dt)
+    {
+        return dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
+    }
+
+    private static DateTime EndOfDay(DateTime dt)
+    {
+        var d = dt.Date.AddDays(1).AddTicks(-1);
+        return d.Kind == DateTimeKind.Utc ? d : d.ToUniversalTime();
+    }
     #endregion
 }
