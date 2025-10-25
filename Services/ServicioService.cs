@@ -686,7 +686,6 @@ public class ServicioService
     {
         var errores = new List<string>();
 
-        // Validaciones de campos requeridos
         if (string.IsNullOrWhiteSpace(servicio.Nombre))
             errores.Add("El nombre del servicio no puede estar vacÌo");
 
@@ -699,12 +698,9 @@ public class ServicioService
         if (string.IsNullOrWhiteSpace(servicio.Descripcion))
             errores.Add("La descripciÛn no puede estar vacÌa");
 
-        // Validaciones de formato y rango
         if (!string.IsNullOrWhiteSpace(servicio.Nombre) &&
             !System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-Z·ÈÌÛ˙¡…Õ”⁄Ò—\s]+$"))
-        {
             errores.Add("El nombre solo puede contener letras y espacios");
-        }
 
         if (servicio.Precio < 0)
             errores.Add("El precio debe ser igual o mayor a 0");
@@ -712,11 +708,26 @@ public class ServicioService
         if (servicio.TiempoEstimado <= 0)
             errores.Add("El tiempo estimado debe ser mayor a 0");
 
-        // Lanzar excepciÛn con todos los errores si existen
-        if (errores.Any())
+        // ValidaciÛn de etapas
+        if (servicio.Etapas != null && servicio.Etapas.Any())
         {
-            throw new ArgumentException($"Errores de validaciÛn: {string.Join(", ", errores)}");
+            foreach (var etapa in servicio.Etapas)
+            {
+                if (etapa == null) continue;
+
+                if (string.IsNullOrWhiteSpace(etapa.Nombre))
+                {
+                    errores.Add("El nombre de la etapa no puede estar vacÌo");
+                    continue;
+                }
+
+                if (!System.Text.RegularExpressions.Regex.IsMatch(etapa.Nombre, @"^[a-zA-Z·ÈÌÛ˙¡…Õ”⁄Ò—\s]+$"))
+                    errores.Add($"La etapa '{etapa.Nombre}' solo puede contener letras y espacios");
+            }
         }
+
+        if (errores.Any())
+            throw new ArgumentException($"Errores de validaciÛn: {string.Join(", ", errores)}");
     }
     #endregion
 

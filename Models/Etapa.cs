@@ -24,6 +24,7 @@ namespace Firebase.Models
         /// </summary>
         [FirestoreProperty]
         [Required(ErrorMessage = "El nombre de la etapa es obligatorio")]
+        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", ErrorMessage = "El nombre de la etapa solo puede contener letras y espacios")]
         public string Nombre { get; set; } = string.Empty;
     }
 }

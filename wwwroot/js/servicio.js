@@ -501,6 +501,7 @@
         addModalCloseHandlers('eliminarTipoModal');
         addModalCloseHandlers('tipoVehiculoModal');
         addModalCloseHandlers('eliminarTipoVehiculoModal');
+        addModalCloseHandlers('etapasModal'); // <- añadido
     }
 
     function addModalCloseHandlers(modalId) {
@@ -1257,11 +1258,12 @@
      * Variable global para almacenar las etapas en memoria
      */
     let etapasEnMemoria = [];
+    let originalEtapasSnapshot = [];
 
     /**
      * Abre el modal de gestión de etapas
      */
-    window.openEtapasModal = function() {
+    window.openEtapasModal = function () {
         // Cargar etapas existentes desde el input hidden
         const etapasJson = document.getElementById('etapas-json')?.value || '[]';
         try {
@@ -1269,47 +1271,49 @@
         } catch (e) {
             etapasEnMemoria = [];
         }
-        
+
+        // Guardar snapshot para poder descartar cambios al cancelar
+        try {
+            originalEtapasSnapshot = JSON.parse(JSON.stringify(etapasEnMemoria));
+        } catch {
+            originalEtapasSnapshot = Array.isArray(etapasEnMemoria) ? [...etapasEnMemoria] : [];
+        }
+
         // Renderizar lista de etapas
         renderEtapasList();
-        
-        // Mostrar modal
-        const modal = document.getElementById('etapasModal');
-        if (modal) {
-            modal.classList.remove('hidden');
-        }
-        
+
+        // Mostrar modal con Flowbite (crea y maneja el backdrop)
+        abrirModal('etapasModal');
+
         // Configurar el listener para Enter en el input
         const inputNombre = document.getElementById('nuevaEtapaNombre');
-        if (inputNombre) {
+        if (inputNombre && !inputNombre.hasAttribute('data-keypress-setup')) {
             inputNombre.addEventListener('keypress', handleEtapaInputKeyPress);
-            inputNombre.focus();
+            inputNombre.setAttribute('data-keypress-setup', 'true');
         }
+        setTimeout(() => inputNombre?.focus(), 50);
     };
 
     /**
      * Cierra el modal de gestión de etapas y guarda los cambios
      */
-    window.closeEtapasModal = function() {
+    window.closeEtapasModal = function () {
         // Guardar etapas en el input hidden
         const etapasJson = JSON.stringify(etapasEnMemoria);
         const hiddenInput = document.getElementById('etapas-json');
         if (hiddenInput) {
             hiddenInput.value = etapasJson;
         }
-        
+
         // Actualizar contador
         const countSpan = document.getElementById('etapas-count');
         if (countSpan) {
             countSpan.textContent = etapasEnMemoria.length;
         }
-        
-        // Cerrar modal
-        const modal = document.getElementById('etapasModal');
-        if (modal) {
-            modal.classList.add('hidden');
-        }
-        
+
+        // Cerrar modal usando Flowbite (remueve backdrop y restaura scroll)
+        cerrarModal('etapasModal');
+
         // Limpiar input
         const inputNombre = document.getElementById('nuevaEtapaNombre');
         if (inputNombre) {
@@ -1353,6 +1357,50 @@
     window.eliminarEtapa = function(etapaId) {
         etapasEnMemoria = etapasEnMemoria.filter(e => e.Id !== etapaId);
         renderEtapasList();
+    };
+
+    // Guarda cambios y cierra
+    window.saveEtapasModal = function () {
+        // Guardar etapas en el input hidden
+        const etapasJson = JSON.stringify(etapasEnMemoria);
+        const hiddenInput = document.getElementById('etapas-json');
+        if (hiddenInput) {
+            hiddenInput.value = etapasJson;
+        }
+
+        // Actualizar contador
+        const countSpan = document.getElementById('etapas-count');
+        if (countSpan) {
+            countSpan.textContent = etapasEnMemoria.length;
+        }
+
+        // Cerrar modal usando Flowbite (remueve backdrop y restaura scroll)
+        cerrarModal('etapasModal');
+
+        // Limpiar input
+        const inputNombre = document.getElementById('nuevaEtapaNombre');
+        if (inputNombre) {
+            inputNombre.value = '';
+        }
+    };
+
+    // Cancela y descarta cambios
+    window.cancelEtapasModal = function () {
+        // Restaurar desde el snapshot
+        try {
+            etapasEnMemoria = JSON.parse(JSON.stringify(originalEtapasSnapshot));
+        } catch {
+            etapasEnMemoria = Array.isArray(originalEtapasSnapshot) ? [...originalEtapasSnapshot] : [];
+        }
+
+        // NO escribir el hidden ni actualizar contador (se mantienen valores previos)
+        cerrarModal('etapasModal');
+
+        // Limpiar input
+        const inputNombre = document.getElementById('nuevaEtapaNombre');
+        if (inputNombre) {
+            inputNombre.value = '';
+        }
     };
 
     /**
