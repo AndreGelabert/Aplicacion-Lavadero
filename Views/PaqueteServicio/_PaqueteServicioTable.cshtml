@@ -1,0 +1,201 @@
+@model List<Firebase.Models.PaqueteServicio>
+<input type="hidden" id="current-page-value" value="@ViewBag.CurrentPage" />
+<input type="hidden" id="current-sort-by" value="@(ViewBag.SortBy ?? "Nombre")" />
+<input type="hidden" id="current-sort-order" value="@(ViewBag.SortOrder ?? "asc")" />
+
+<table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+        <tr>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Nombre</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('Nombre')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "Nombre" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Tipo Vehículo</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('TipoVehiculo')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "TipoVehiculo" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Cant. Servicios</span>
+                    <div class="sort-icon-container cursor-pointer">
+                        <svg class="w-4 h-4 text-gray-400 dark:text-gray-500"
+                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Descuento</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('PorcentajeDescuento')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "PorcentajeDescuento" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Precio Final</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('Precio')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "Precio" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Tiempo Est.</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('TiempoEstimado')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "TiempoEstimado" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Estado</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('Estado')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "Estado" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 text-center w-1/6">Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model.Any())
+        {
+            foreach (var p in Model)
+            {
+                <tr class="border-b dark:border-gray-700">
+                    <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap dark:text-white">@p.Nombre</td>
+                    <td class="px-4 py-3">@p.TipoVehiculo</td>
+                    <td class="px-4 py-3">@p.ServiciosIds.Count</td>
+                    <td class="px-4 py-3">
+                        <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-0.5 rounded dark:bg-purple-900 dark:text-purple-300">
+                            @p.PorcentajeDescuento.ToString("0.##")%
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 font-semibold">@p.Precio.ToString("C")</td>
+                    <td class="px-4 py-3">@p.TiempoEstimado min</td>
+                    <td class="px-4 py-3">
+                        @if (p.Estado == "Activo")
+                        {
+                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded dark:bg-green-900 dark:text-green-300">Activo</span>
+                        }
+                        else
+                        {
+                            <span class="bg-red-100 text-red-800 text-xs font-medium px-2 py-0.5 rounded dark:bg-red-900 dark:text-red-300">Inactivo</span>
+                        }
+                    </td>
+                    <td class="px-4 py-3 flex items-center justify-center gap-1">
+                        <button type="button" onclick="editPaquete('@p.Id')" class="text-white inline-flex items-center bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-900 font-medium rounded-lg text-sm px-2 py-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32L19.513 8.2Z" />
+                            </svg>
+                        </button>
+                        @if (p.Estado == "Activo")
+                        {
+                            <form method="post" asp-action="DeactivatePaquete" asp-route-id="@p.Id" style="display:inline;">
+                                <button type="submit" class="text-white inline-flex items-center bg-yellow-600 rounded-lg hover:bg-yellow-700 focus:ring-4 focus:outline-none focus:ring-yellow-300 dark:bg-yellow-500 dark:hover:bg-yellow-600 dark:focus:ring-yellow-900 font-medium rounded-lg text-sm px-2 py-1 text-center" onclick="return confirm('¿Está seguro que desea desactivar este paquete?');">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                        <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form method="post" asp-action="ReactivatePaquete" asp-route-id="@p.Id" style="display:inline;">
+                                <button type="submit" class="text-white inline-flex items-center bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900 font-medium rounded-lg text-sm px-2 py-1 text-center" onclick="return confirm('¿Está seguro que desea reactivar este paquete?');">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                        <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="9" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                    No se encontraron paquetes de servicios con los filtros aplicados.
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Paginación -->
+@if (Model.Any())
+{
+    <nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">
+        <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
+            Mostrando página
+            <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.CurrentPage</span>
+            de
+            <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.TotalPages</span>
+        </span>
+        <ul class="inline-flex items-stretch -space-x-px">
+            <!-- Botón Anterior -->
+            <li>
+                <button onclick="changePage(@(ViewBag.CurrentPage - 1))"
+                        @(ViewBag.CurrentPage == 1 ? "disabled" : "")
+                        class="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-500 bg-white rounded-l-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white @(ViewBag.CurrentPage == 1 ? "cursor-not-allowed opacity-50" : "")">
+                    <span class="sr-only">Anterior</span>
+                    <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewbox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </li>
+            <!-- Números de página -->
+            @foreach (var pageNum in ViewBag.VisiblePages)
+            {
+                <li>
+                    <button onclick="changePage(@pageNum)"
+                            class="flex items-center justify-center text-sm py-2 px-3 leading-tight @(pageNum == ViewBag.CurrentPage ? "text-primary-600 bg-primary-50 border border-primary-300 hover:bg-primary-100 hover:text-primary-700 dark:border-gray-700 dark:bg-gray-700 dark:text-white" : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white")">
+                        @pageNum
+                    </button>
+                </li>
+            }
+            <!-- Botón Siguiente -->
+            <li>
+                <button onclick="changePage(@(ViewBag.CurrentPage + 1))"
+                        @(ViewBag.CurrentPage >= ViewBag.TotalPages ? "disabled" : "")
+                        class="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-500 bg-white rounded-r-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white @(ViewBag.CurrentPage >= ViewBag.TotalPages ? "cursor-not-allowed opacity-50" : "")">
+                    <span class="sr-only">Siguiente</span>
+                    <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewbox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </li>
+        </ul>
+    </nav>
+}
