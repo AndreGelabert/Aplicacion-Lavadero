@@ -298,7 +298,32 @@
 
         form.dataset.submitSetup = 'true';
     }
+    document.addEventListener('DOMContentLoaded', () => {
+        const dropdownButton = document.getElementById('filterDropdownButton');
+        const dropdown = document.getElementById('filterDropdown');
 
+        if (!dropdownButton || !dropdown) return;
+
+        dropdownButton.addEventListener('click', () => {
+            // Esperar al final del ciclo de render
+            setTimeout(() => {
+                // Forzar que el dropdown se adapte a su contenido
+                dropdown.style.maxHeight = 'fit-content';
+                dropdown.style.height = 'fit-content';
+                dropdown.style.overflowY = 'visible';
+
+                // Si Flowbite creó una instancia Popper, recalcular posición
+                try {
+                    const instance = window.Flowbite?.Dropdown?.getInstance(dropdown);
+                    if (instance?.popper) {
+                        instance.popper.update();
+                    }
+                } catch (e) {
+                    console.warn('No se pudo actualizar el dropdown:', e);
+                }
+            }, 50); // pequeño delay para dejar que Popper mida antes de ajustar
+        });
+    });
 
     // =====================================
     // FUNCIONES GLOBALES

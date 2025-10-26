@@ -62,8 +62,10 @@
                     </button>
                     
                     <!-- Dropdown de Filtro -->
-                    <div id="filterDropdown" class="z-50 hidden bg-white rounded-lg shadow-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
-                        <form method="get" asp-action="Index" id="filterForm" class="p-4">
+                    <div id="filterDropdown"
+                         data-popper-placement="bottom-start"
+                         class="z-50 hidden bg-white rounded-lg shadow-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600 w-fit max-w-full">
+                        <form method="get" asp-action="Index" id="filterForm" class="p-4 overflow-visible">
                             <input type="hidden" name="pageNumber" value="1" />
 
                             <!-- Layout con grid -->
