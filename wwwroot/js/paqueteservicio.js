@@ -383,8 +383,10 @@
     /**
      * Envía el formulario vía AJAX
      */
-    window.submitPaqueteAjax = function (form) {
-        event.preventDefault();
+    window.submitPaqueteAjax = function (form, event) {
+        if (event) {
+            event.preventDefault();
+        }
 
         // Validar servicios seleccionados
         if (serviciosSeleccionados.length < 2) {
@@ -480,7 +482,23 @@
      */
     window.changePage = function (pageNumber) {
         if (currentSearchTerm) {
-            performServerSearch(currentSearchTerm);
+            const estados = getSelectedCheckboxValues('estados');
+            const tiposVehiculo = getSelectedCheckboxValues('tiposVehiculo');
+            const sortBy = document.getElementById('current-sort-by')?.value || 'Nombre';
+            const sortOrder = document.getElementById('current-sort-order')?.value || 'asc';
+
+            const params = new URLSearchParams();
+            params.append('searchTerm', currentSearchTerm);
+            params.append('pageNumber', pageNumber);
+            params.append('pageSize', '10');
+            params.append('sortBy', sortBy);
+            params.append('sortOrder', sortOrder);
+
+            estados.forEach(e => params.append('estados', e));
+            tiposVehiculo.forEach(tv => params.append('tiposVehiculo', tv));
+
+            const url = '/PaqueteServicio/SearchPartial?' + params.toString();
+            loadTablePartial(url);
         } else {
             reloadPaqueteTable(pageNumber);
         }
