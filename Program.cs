@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 
-// Configuración de autenticación
+// Configuraciï¿½n de autenticaciï¿½n
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -49,7 +49,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
     options.SupportedUICultures = new[] { new CultureInfo("es-MX"), new CultureInfo("es-ES") };
 });
 
-// NUEVO: Configuración mejorada para FirestoreDb que funciona en local y producción
+// NUEVO: Configuraciï¿½n mejorada para FirestoreDb que funciona en local y producciï¿½n
 builder.Services.AddSingleton(provider =>
 {
     GoogleCredential credential;
@@ -59,7 +59,7 @@ builder.Services.AddSingleton(provider =>
 
     if (!string.IsNullOrEmpty(firebaseCredentialsJson))
     {
-        // Producción: usar credenciales desde variable de entorno
+        // Producciï¿½n: usar credenciales desde variable de entorno
         credential = GoogleCredential.FromJson(firebaseCredentialsJson);
     }
     else if (builder.Environment.IsDevelopment())
@@ -79,7 +79,7 @@ builder.Services.AddSingleton(provider =>
     else
     {
         // Firebase App Hosting: usar Application Default Credentials
-        // Google Cloud automáticamente proporciona las credenciales
+        // Google Cloud automï¿½ticamente proporciona las credenciales
         credential = GoogleCredential.GetApplicationDefault();
     }
 
@@ -95,6 +95,7 @@ builder.Services.AddScoped<PersonalService>();
 builder.Services.AddScoped<ServicioService>();
 builder.Services.AddScoped<TipoServicioService>();
 builder.Services.AddScoped<TipoVehiculoService>();
+builder.Services.AddScoped<PaqueteServicioService>();
 builder.Services.AddHttpClient<Firebase.Services.AuthenticationService>();
 builder.Services.AddScoped<Firebase.Services.AuthenticationService>();
 
@@ -118,7 +119,7 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Lavados}/{action=Index}/{id?}");
 
-// NUEVO: Configuración mejorada de FirebaseApp
+// NUEVO: Configuraciï¿½n mejorada de FirebaseApp
 try
 {
     GoogleCredential credential;
@@ -147,7 +148,7 @@ try
 }
 catch (Exception ex)
 {
-    // Log del error (considera agregar un logger aquí)
+    // Log del error (considera agregar un logger aquï¿½)
     Console.WriteLine($"Error al inicializar FirebaseApp: {ex.Message}");
     throw;
 }
