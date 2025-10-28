@@ -95,42 +95,66 @@
                         <path clip-rule="evenodd" fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
                     </svg>
                 </button>
-                <div id="filterDropdown" class="z-10 hidden w-72 p-3 bg-white rounded-lg shadow dark:bg-gray-700">
-                    <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white">
-                        Filtrar por estado
-                    </h6>
-                    <form id="filter-form">
-                        <ul class="space-y-2 text-sm" aria-labelledby="filterDropdownButton">
-                            <li class="flex items-center">
-                                <input id="estado-activo" type="checkbox" name="estados" value="Activo" @(ViewBag.Estados != null && ViewBag.Estados.Contains("Activo") ? "checked" : "") class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                <label for="estado-activo" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-                                    Activo
-                                </label>
-                            </li>
-                            <li class="flex items-center">
-                                <input id="estado-inactivo" type="checkbox" name="estados" value="Inactivo" @(ViewBag.Estados != null && ViewBag.Estados.Contains("Inactivo") ? "checked" : "") class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                <label for="estado-inactivo" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-                                    Inactivo
-                                </label>
-                            </li>
-                        </ul>
-                        @if (ViewBag.TodosLosTiposVehiculo != null && ViewBag.TodosLosTiposVehiculo.Count > 0)
-                        {
-                            <h6 class="mb-3 mt-4 text-sm font-medium text-gray-900 dark:text-white">
-                                Filtrar por tipo de vehículo
-                            </h6>
-                            <ul class="space-y-2 text-sm">
-                                @foreach (var tipoVehiculo in ViewBag.TodosLosTiposVehiculo)
-                                {
-                                    <li class="flex items-center">
-                                        <input id="tipo-vehiculo-@tipoVehiculo.Replace(" ", "-")" type="checkbox" name="tiposVehiculo" value="@tipoVehiculo" @(ViewBag.TiposVehiculo != null && ViewBag.TiposVehiculo.Contains(tipoVehiculo) ? "checked" : "") class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                        <label for="tipo-vehiculo-@tipoVehiculo.Replace(" ", "-")" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-                                            @tipoVehiculo
-                                        </label>
-                                    </li>
-                                }
-                            </ul>
-                        }
+                <div id="filterDropdown" class="z-50 hidden bg-white rounded-lg shadow-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+                    <form method="get" asp-action="Index" id="filterForm" class="p-4">
+                        <input type="hidden" name="pageNumber" value="1" />
+
+                        <!-- Layout horizontal con grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 min-w-[500px]">
+                            <!-- Columna 1: Estado -->
+                            <div>
+                                <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                    Estado
+                                </h6>
+                                <div class="space-y-2 text-sm">
+                                    <label class="flex items-center">
+                                        <input id="estado-activo" type="checkbox" name="estados" value="Activo"
+                                               @(ViewBag.Estados?.Contains("Activo") == true ? "checked" : "")
+                                               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                        <span class="ml-2 text-gray-900 dark:text-gray-100">Activo</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input id="estado-inactivo" type="checkbox" name="estados" value="Inactivo"
+                                               @(ViewBag.Estados?.Contains("Inactivo") == true ? "checked" : "")
+                                               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                        <span class="ml-2 text-gray-900 dark:text-gray-100">Inactivo</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Columna 2: Tipo de Vehículo -->
+                            <div>
+                                <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                    Tipo de Vehículo
+                                </h6>
+                                <div class="space-y-2 max-h-40 overflow-y-auto text-sm">
+                                    @if (ViewBag.TodosLosTiposVehiculo != null)
+                                    {
+                                        @foreach (var tipo in ViewBag.TodosLosTiposVehiculo)
+                                        {
+                                            <label class="flex items-center">
+                                                <input id="tipoVehiculo-@tipo.Replace(" ", "-")" type="checkbox" name="tiposVehiculo" value="@tipo"
+                                                       @(ViewBag.TiposVehiculo != null && ViewBag.TiposVehiculo.Contains(tipo) ? "checked" : "")
+                                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                <span class="ml-2 text-gray-900 dark:text-gray-100">@tipo</span>
+                                            </label>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botones de acción -->
+                        <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <button type="button" onclick="clearAllFilters()"
+                                    class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
+                                Limpiar filtros
+                            </button>
+                            <button type="submit"
+                                    class="px-6 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300">
+                                Aplicar Filtros
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -144,6 +168,57 @@
         <!-- Mensajes -->
         <div id="table-message-container" class="hidden p-4 mb-4 mx-4 text-sm rounded-lg" role="alert">
             <span id="table-message-text"></span>
+        </div>
+
+        <!-- Modal reutilizable de confirmación para paquetes -->
+        <div id="paqueteConfirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+            <div class="relative p-4 w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg sm:p-5 text-center">
+                <!-- Botón de cierre -->
+                <button type="button"
+                        class="absolute top-2.5 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 dark:hover:bg-gray-600 dark:hover:text-white"
+                        onclick="closePaqueteConfirmModal()">
+                    <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="sr-only">Cerrar</span>
+                </button>
+
+                <!-- Ícono dinámico -->
+                <div id="paqueteConfirmIconWrapper" class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 p-2 flex items-center justify-center mx-auto mb-3.5">
+                    <svg id="paqueteConfirmIcon" xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-8 h-8 text-yellow-500 dark:text-yellow-400" viewBox="0 0 24 24">
+                        <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-.75 4.5a.75.75 0 0 1 1.5 0v6a.75.75 0 0 1-1.5 0v-6Zm0 9a.75.75 0 0 1 1.5 0v1.5a.75.75 0 0 1-1.5 0V15.75Z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+
+                <!-- Título y mensaje dinámico -->
+                <h3 id="paqueteConfirmTitle" class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Confirmar acción
+                </h3>
+                <p id="paqueteConfirmMessage" class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                    ¿Está seguro?
+                </p>
+
+                <!-- Formulario dinámico -->
+                <form id="paqueteConfirmForm" method="post" onsubmit="return submitPaqueteEstado(this);">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="paqueteConfirmId" />
+
+                    <div class="flex justify-center items-center space-x-4">
+                        <!-- Cancelar -->
+                        <button type="button"
+                                onclick="closePaqueteConfirmModal()"
+                                class="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-300 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">
+                            Cancelar
+                        </button>
+                        <!-- Confirmar -->
+                        <button id="paqueteConfirmSubmit"
+                                type="submit"
+                                class="py-2 px-3 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900">
+                            Confirmar
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </section>
