@@ -275,8 +275,8 @@
         if (filterText) {
             const searchLower = filterText.toLowerCase();
             serviciosFiltrados = servicios.filter(s => 
-                s.nombre.toLowerCase().includes(searchLower) ||
-                s.tipo.toLowerCase().includes(searchLower)
+                (s.nombre && s.nombre.toLowerCase().includes(searchLower)) ||
+                (s.tipo && s.tipo.toLowerCase().includes(searchLower))
             );
         }
 
@@ -408,7 +408,8 @@
         serviciosSeleccionados = serviciosSeleccionados.filter(s => s.id !== servicioId);
         updateServiciosSeleccionadosList();
         updateResumen();
-        renderServiciosDropdown(serviciosDisponibles, document.getElementById('servicio-search')?.value || '');
+        const searchInput = document.getElementById('servicio-search');
+        renderServiciosDropdown(serviciosDisponibles, searchInput?.value || '');
     };
 
     /**
@@ -566,12 +567,23 @@
             servicioSeleccionadoDropdown = null;
             updateServiciosSeleccionadosList();
             updateResumen();
-            document.getElementById('servicio-selector-container')?.classList.add('hidden');
-            document.getElementById('servicio-search').value = '';
-            document.getElementById('servicio-dropdown')?.classList.add('hidden');
+            resetServiceDropdown();
             hidePaqueteMessage();
         }
     };
+
+    /**
+     * Resetea el dropdown de servicios
+     */
+    function resetServiceDropdown() {
+        const selectorContainer = document.getElementById('servicio-selector-container');
+        const searchInput = document.getElementById('servicio-search');
+        const dropdown = document.getElementById('servicio-dropdown');
+        
+        if (selectorContainer) selectorContainer.classList.add('hidden');
+        if (searchInput) searchInput.value = '';
+        if (dropdown) dropdown.classList.add('hidden');
+    }
 
     /**
      * Edita un paquete
