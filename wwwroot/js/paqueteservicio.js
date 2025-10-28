@@ -13,6 +13,7 @@
     let currentSearchTerm = '';
     let serviciosDisponibles = [];
     let serviciosSeleccionados = [];
+    let servicioSeleccionadoDropdown = null; // Servicio actualmente seleccionado en el dropdown
 
     // =====================================
     // INICIALIZACIÓN DEL MÓDULO
@@ -31,6 +32,7 @@
         window.CommonUtils?.setupDefaultFilterForm();
         checkEditMode();
         initializeForm();
+        setupDropdownClickOutside();
     }
 
     // IMPORTANTE: asegurar que init se ejecute siempre
@@ -64,14 +66,21 @@
             const tipoVehiculo = document.getElementById('TipoVehiculo')?.value;
             if (tipoVehiculo) {
                 loadServiciosPorTipoVehiculo().then(() => {
-                    // Marcar servicios seleccionados
+                    // Cargar servicios seleccionados en modo edición
                     window.paqueteEditData.serviciosIds.forEach(id => {
-                        const checkbox = document.querySelector(`input[name="servicio-${id}"]`);
-                        if (checkbox) {
-                            checkbox.checked = true;
-                            onServicioCheckboxChange({ target: checkbox });
+                        const servicio = serviciosDisponibles.find(s => s.id === id);
+                        if (servicio) {
+                            serviciosSeleccionados.push({
+                                id: servicio.id,
+                                nombre: servicio.nombre,
+                                tipo: servicio.tipo,
+                                precio: servicio.precio,
+                                tiempoEstimado: servicio.tiempoEstimado
+                            });
                         }
                     });
+                    updateServiciosSeleccionadosList();
+                    updateResumen();
                 });
             }
         }
@@ -84,6 +93,20 @@
         document.addEventListener('input', (e) => {
             if (e.target.closest('#paquete-form')) {
                 hidePaqueteMessage();
+            }
+        });
+    }
+
+    /**
+     * Configura cierre del dropdown al hacer clic fuera
+     */
+    function setupDropdownClickOutside() {
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('servicio-dropdown');
+            const searchInput = document.getElementById('servicio-search');
+            
+            if (dropdown && !dropdown.contains(e.target) && e.target !== searchInput) {
+                dropdown.classList.add('hidden');
             }
         });
     }
@@ -207,10 +230,10 @@
      */
     window.loadServiciosPorTipoVehiculo = async function () {
         const tipoVehiculo = document.getElementById('TipoVehiculo')?.value;
-        const container = document.getElementById('servicios-checkboxes');
+        const container = document.getElementById('servicio-selector-container');
 
         if (!tipoVehiculo) {
-            container.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Seleccione un tipo de vehículo</p>';
+            container.classList.add('hidden');
             serviciosDisponibles = [];
             serviciosSeleccionados = [];
             updateResumen();
@@ -223,99 +246,169 @@
 
             if (data.success) {
                 serviciosDisponibles = data.servicios;
-                renderServiciosCheckboxes();
+                container.classList.remove('hidden');
+                renderServiciosDropdown(serviciosDisponibles);
             } else {
-                container.innerHTML = `<p class="text-sm text-red-500">${data.message}</p>`;
+                container.classList.add('hidden');
+                showPaqueteMessage(data.message || 'No hay servicios disponibles', 'error');
             }
         } catch (error) {
             console.error('Error cargando servicios:', error);
-            container.innerHTML = '<p class="text-sm text-red-500">Error al cargar servicios</p>';
+            container.classList.add('hidden');
+            showPaqueteMessage('Error al cargar servicios', 'error');
         }
     };
 
     /**
-     * Renderiza los checkboxes de servicios
+     * Renderiza los servicios en el dropdown agrupados por tipo
      */
-    function renderServiciosCheckboxes() {
-        const container = document.getElementById('servicios-checkboxes');
+    function renderServiciosDropdown(servicios, filterText = '') {
+        const dropdownContent = document.getElementById('servicio-dropdown-content');
+        
+        if (!servicios || servicios.length === 0) {
+            dropdownContent.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No hay servicios disponibles</p>';
+            return;
+        }
 
-        if (!serviciosDisponibles || serviciosDisponibles.length === 0) {
-            container.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">No hay servicios disponibles</p>';
+        // Filtrar servicios por texto de búsqueda
+        let serviciosFiltrados = servicios;
+        if (filterText) {
+            const searchLower = filterText.toLowerCase();
+            serviciosFiltrados = servicios.filter(s => 
+                s.nombre.toLowerCase().includes(searchLower) ||
+                s.tipo.toLowerCase().includes(searchLower)
+            );
+        }
+
+        // Filtrar servicios ya seleccionados
+        serviciosFiltrados = serviciosFiltrados.filter(s => 
+            !serviciosSeleccionados.some(sel => sel.id === s.id)
+        );
+
+        if (serviciosFiltrados.length === 0) {
+            dropdownContent.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No se encontraron servicios</p>';
             return;
         }
 
         // Agrupar por tipo
         const serviciosPorTipo = {};
-        serviciosDisponibles.forEach(s => {
+        serviciosFiltrados.forEach(s => {
             if (!serviciosPorTipo[s.tipo]) {
                 serviciosPorTipo[s.tipo] = [];
             }
             serviciosPorTipo[s.tipo].push(s);
         });
 
+        // Renderizar agrupados
         let html = '';
-        Object.keys(serviciosPorTipo).forEach(tipo => {
-            html += `<div class="col-span-2 mb-2">
-                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">${tipo}</h4>
+        Object.keys(serviciosPorTipo).sort().forEach(tipo => {
+            html += `<div class="mb-2">
+                <h6 class="text-xs font-semibold text-gray-700 dark:text-gray-300 px-2 py-1 bg-gray-100 dark:bg-gray-600">${tipo}</h6>
                 <div class="space-y-1">`;
-
+            
             serviciosPorTipo[tipo].forEach(servicio => {
-                const isSelected = serviciosSeleccionados.some(s => s.id === servicio.id);
+                const isSelected = servicioSeleccionadoDropdown?.id === servicio.id;
                 html += `
-                    <label class="flex items-center p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
-                        <input type="checkbox" name="servicio-${servicio.id}" 
-                               value="${servicio.id}" 
-                               data-tipo="${servicio.tipo}"
-                               data-precio="${servicio.precio}"
-                               data-tiempo="${servicio.tiempoEstimado}"
-                               data-nombre="${servicio.nombre}"
-                               ${isSelected ? 'checked' : ''}
-                               onchange="onServicioCheckboxChange(event)"
-                               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                        <span class="ml-2 text-sm text-gray-900 dark:text-gray-100">
-                            ${servicio.nombre} - $${servicio.precio.toFixed(2)} - ${servicio.tiempoEstimado} min
-                        </span>
-                    </label>`;
+                    <div class="px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer ${isSelected ? 'bg-blue-100 dark:bg-blue-900' : ''}"
+                         onclick="selectServicioFromDropdown('${servicio.id}')">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white">${servicio.nombre}</div>
+                    </div>`;
             });
-
+            
             html += '</div></div>';
         });
 
-        container.innerHTML = html;
+        dropdownContent.innerHTML = html;
     }
 
     /**
-     * Maneja el cambio de checkbox de servicio
+     * Muestra el dropdown de servicios
      */
-    window.onServicioCheckboxChange = function (event) {
-        const checkbox = event.target;
-        const servicioId = checkbox.value;
-        const tipo = checkbox.dataset.tipo;
+    window.showServicioDropdown = function () {
+        const dropdown = document.getElementById('servicio-dropdown');
+        const searchInput = document.getElementById('servicio-search');
+        
+        if (serviciosDisponibles.length > 0) {
+            renderServiciosDropdown(serviciosDisponibles, searchInput.value);
+            dropdown.classList.remove('hidden');
+        }
+    };
 
-        if (checkbox.checked) {
-            // Verificar si ya hay un servicio de este tipo
-            const tipoYaSeleccionado = serviciosSeleccionados.some(s => s.tipo === tipo);
-            if (tipoYaSeleccionado) {
-                checkbox.checked = false;
-                showPaqueteMessage('Solo puede seleccionar un servicio de cada tipo', 'error');
-                return;
-            }
-
-            // Agregar servicio
-            serviciosSeleccionados.push({
-                id: servicioId,
-                nombre: checkbox.dataset.nombre,
-                tipo: tipo,
-                precio: parseFloat(checkbox.dataset.precio),
-                tiempoEstimado: parseInt(checkbox.dataset.tiempo)
-            });
+    /**
+     * Filtra servicios en el dropdown según el texto de búsqueda
+     */
+    window.filterServiciosDropdown = function (searchText) {
+        renderServiciosDropdown(serviciosDisponibles, searchText);
+        const dropdown = document.getElementById('servicio-dropdown');
+        if (!dropdown.classList.contains('hidden')) {
+            // El dropdown ya está visible, no hacer nada
         } else {
-            // Remover servicio
-            serviciosSeleccionados = serviciosSeleccionados.filter(s => s.id !== servicioId);
+            dropdown.classList.remove('hidden');
+        }
+    };
+
+    /**
+     * Selecciona un servicio del dropdown
+     */
+    window.selectServicioFromDropdown = function (servicioId) {
+        const servicio = serviciosDisponibles.find(s => s.id === servicioId);
+        if (servicio) {
+            servicioSeleccionadoDropdown = servicio;
+            
+            // Actualizar visualmente la selección
+            renderServiciosDropdown(serviciosDisponibles, document.getElementById('servicio-search').value);
+            
+            // Actualizar el input de búsqueda con el nombre del servicio
+            document.getElementById('servicio-search').value = servicio.nombre;
+        }
+    };
+
+    /**
+     * Agrega el servicio seleccionado a la lista
+     */
+    window.agregarServicioSeleccionado = function () {
+        if (!servicioSeleccionadoDropdown) {
+            showPaqueteMessage('Debe seleccionar un servicio del listado', 'error');
+            return;
         }
 
+        const tipo = servicioSeleccionadoDropdown.tipo;
+        
+        // Verificar si ya hay un servicio de este tipo
+        const tipoYaSeleccionado = serviciosSeleccionados.some(s => s.tipo === tipo);
+        if (tipoYaSeleccionado) {
+            showPaqueteMessage('Solo puede seleccionar un servicio de cada tipo', 'error');
+            return;
+        }
+
+        // Agregar servicio
+        serviciosSeleccionados.push({
+            id: servicioSeleccionadoDropdown.id,
+            nombre: servicioSeleccionadoDropdown.nombre,
+            tipo: servicioSeleccionadoDropdown.tipo,
+            precio: servicioSeleccionadoDropdown.precio,
+            tiempoEstimado: servicioSeleccionadoDropdown.tiempoEstimado
+        });
+
+        // Limpiar selección
+        servicioSeleccionadoDropdown = null;
+        document.getElementById('servicio-search').value = '';
+        document.getElementById('servicio-dropdown').classList.add('hidden');
+
+        // Actualizar UI
         updateServiciosSeleccionadosList();
         updateResumen();
+        renderServiciosDropdown(serviciosDisponibles, '');
+    };
+
+    /**
+     * Remueve un servicio de la lista de seleccionados
+     */
+    window.removerServicioSeleccionado = function (servicioId) {
+        serviciosSeleccionados = serviciosSeleccionados.filter(s => s.id !== servicioId);
+        updateServiciosSeleccionadosList();
+        updateResumen();
+        renderServiciosDropdown(serviciosDisponibles, document.getElementById('servicio-search')?.value || '');
     };
 
     /**
@@ -340,9 +433,19 @@
                         <span class="font-medium text-gray-900 dark:text-white">${servicio.nombre}</span>
                         <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">(${servicio.tipo})</span>
                     </div>
-                    <div class="text-right">
-                        <div class="text-sm font-medium text-gray-900 dark:text-white">$${servicio.precio.toFixed(2)}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">${servicio.tiempoEstimado} min</div>
+                    <div class="flex items-center gap-3">
+                        <div class="text-right">
+                            <div class="text-sm font-medium text-gray-900 dark:text-white">$${servicio.precio.toFixed(2)}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">${servicio.tiempoEstimado} min</div>
+                        </div>
+                        <button type="button" 
+                                onclick="removerServicioSeleccionado('${servicio.id}')"
+                                class="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                title="Quitar servicio">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                                <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
                     </div>
                 </li>`;
         });
@@ -460,9 +563,12 @@
             form.reset();
             serviciosSeleccionados = [];
             serviciosDisponibles = [];
+            servicioSeleccionadoDropdown = null;
             updateServiciosSeleccionadosList();
             updateResumen();
-            document.getElementById('servicios-checkboxes').innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Seleccione un tipo de vehículo</p>';
+            document.getElementById('servicio-selector-container')?.classList.add('hidden');
+            document.getElementById('servicio-search').value = '';
+            document.getElementById('servicio-dropdown')?.classList.add('hidden');
             hidePaqueteMessage();
         }
     };
@@ -472,6 +578,95 @@
      */
     window.editPaquete = function (id) {
         window.location.href = `/PaqueteServicio/Index?editId=${id}`;
+    };
+
+    // =====================================
+    // MODAL DE CONFIRMACIÓN
+    // =====================================
+    /**
+     * Abre modal de confirmación para paquetes
+     */
+    window.openPaqueteConfirmModal = function (tipoAccion, id, nombre) {
+        const modal = document.getElementById('paqueteConfirmModal');
+        const title = document.getElementById('paqueteConfirmTitle');
+        const msg = document.getElementById('paqueteConfirmMessage');
+        const submitBtn = document.getElementById('paqueteConfirmSubmit');
+        const form = document.getElementById('paqueteConfirmForm');
+        const idInput = document.getElementById('paqueteConfirmId');
+        const iconWrapper = document.getElementById('paqueteConfirmIconWrapper');
+        const icon = document.getElementById('paqueteConfirmIcon');
+
+        idInput.value = id;
+
+        if (tipoAccion === 'desactivar') {
+            title.textContent = 'Desactivar Paquete';
+            msg.textContent = `¿Está seguro que desea desactivar el paquete "${nombre}"?`;
+            form.action = '/PaqueteServicio/DeactivatePaquete';
+            submitBtn.textContent = 'Sí, desactivar';
+            submitBtn.className = 'py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900';
+            iconWrapper.className = 'w-12 h-12 rounded-full bg-red-100 dark:bg-red-900 p-2 flex items-center justify-center mx-auto mb-3.5';
+            icon.className = 'w-8 h-8 text-red-500 dark:text-red-400';
+        } else {
+            title.textContent = 'Reactivar Paquete';
+            msg.textContent = `¿Está seguro que desea reactivar el paquete "${nombre}"?`;
+            form.action = '/PaqueteServicio/ReactivatePaquete';
+            submitBtn.textContent = 'Sí, reactivar';
+            submitBtn.className = 'py-2 px-3 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900';
+            iconWrapper.className = 'w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 p-2 flex items-center justify-center mx-auto mb-3.5';
+            icon.className = 'w-8 h-8 text-green-500 dark:text-green-400';
+        }
+
+        modal.classList.remove('hidden');
+    };
+
+    /**
+     * Cierra modal de confirmación
+     */
+    window.closePaqueteConfirmModal = function () {
+        const modal = document.getElementById('paqueteConfirmModal');
+        modal.classList.add('hidden');
+    };
+
+    /**
+     * Envía cambio de estado de paquete
+     */
+    window.submitPaqueteEstado = function (form) {
+        const formData = new FormData(form);
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(r => {
+                if (!r.ok) throw new Error('Error estado');
+                window.closePaqueteConfirmModal();
+
+                const isDeactivate = form.action.includes('DeactivatePaquete');
+                const message = isDeactivate ? 'Paquete desactivado correctamente.' : 'Paquete reactivado correctamente.';
+
+                showTableMessage(message, 'success');
+                reloadPaqueteTable(1);
+            })
+            .catch(e => {
+                showTableMessage('Error procesando la operación.', 'error');
+            });
+
+        return false;
+    };
+
+    // =====================================
+    // FILTROS
+    // =====================================
+    /**
+     * Limpia todos los filtros
+     */
+    window.clearAllFilters = function () {
+        const filterForm = document.getElementById('filterForm');
+        if (filterForm) {
+            const checkboxes = filterForm.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+        }
     };
 
     // =====================================
