@@ -536,7 +536,8 @@
         addModalCloseHandlers('eliminarTipoModal');
         addModalCloseHandlers('tipoVehiculoModal');
         addModalCloseHandlers('eliminarTipoVehiculoModal');
-        addModalCloseHandlers('etapasModal'); // <- añadido
+        addModalCloseHandlers('etapasModal');
+        addModalCloseHandlers('servicioConfirmModal');
     }
 
     function addModalCloseHandlers(modalId) {
@@ -1195,15 +1196,15 @@
             configureReactivateModal(title, msg, form, submitBtn, iconWrapper, icon, nombre);
         }
 
-        modal.classList.remove('hidden');
+        abrirModal('servicioConfirmModal');
     };
 
     /**
      * Cierra modal de confirmación
      */
     window.closeServicioConfirmModal = function () {
-        const modal = document.getElementById('servicioConfirmModal');
-        modal.classList.add('hidden');
+        // Ocultar con Flowbite (remueve backdrop y restaura scroll)
+        cerrarModal('servicioConfirmModal');
     };
 
     /**
