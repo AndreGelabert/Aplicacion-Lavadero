@@ -200,16 +200,13 @@
      * Carga parcial de tabla
      */
     function loadTablePartial(url) {
-        fetch(url)
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(response => response.text())
             .then(html => {
                 const container = document.getElementById('paquete-table-container');
-                if (container) {
-                    container.innerHTML = html;
-                }
+                if (container) container.innerHTML = html;
             })
-            .catch(error => {
-                console.error('Error cargando tabla:', error);
+            .catch(() => {
                 showTableMessage('Error al cargar los datos', 'error');
             });
     }
@@ -591,7 +588,52 @@
     window.editPaquete = function (id) {
         window.location.href = `/PaqueteServicio/Index?editId=${id}`;
     };
-
+    // =====================================
+    // UTILIDADES DE MODAL (compatibles con Flowbite)
+    // =====================================
+    function getFlowbiteModal(modalEl) {
+        if (!modalEl || typeof window !== 'object' || typeof window.Modal === 'undefined') return null;
+        const opts = { backdrop: 'dynamic', closable: true };
+        try {
+            if (typeof Modal?.getInstance === 'function') {
+                const existing = Modal.getInstance(modalEl);
+                if (existing) return existing;
+            }
+            if (typeof Modal?.getOrCreateInstance === 'function') {
+                return Modal.getOrCreateInstance(modalEl, opts);
+            }
+            return new Modal(modalEl, opts);
+        } catch { return null; }
+    }
+    function abrirModal(id) {
+        const m = document.getElementById(id);
+        if (!m) return;
+        try {
+            const inst = getFlowbiteModal(m);
+            if (inst?.show) { inst.show(); return; }
+        } catch { }
+        m.classList.remove('hidden');
+        m.setAttribute('aria-hidden', 'false');
+    }
+    function cerrarModal(id) {
+        const m = document.getElementById(id);
+        if (!m) return;
+        let closed = false;
+        try {
+            const inst = getFlowbiteModal(m);
+            if (inst?.hide) { inst.hide(); closed = true; }
+        } catch { }
+        try {
+            const backdrop = document.querySelector('[modal-backdrop]');
+            if (backdrop) { backdrop.click(); closed = true; }
+        } catch { }
+        if (!closed) {
+            m.classList.add('hidden');
+            m.setAttribute('aria-hidden', 'true');
+            document.querySelectorAll('[modal-backdrop]').forEach(b => b.remove());
+            document.body.classList.remove('overflow-hidden');
+        }
+    }
     // =====================================
     // MODAL DE CONFIRMACIÓN
     // =====================================
@@ -599,7 +641,6 @@
      * Abre modal de confirmación para paquetes
      */
     window.openPaqueteConfirmModal = function (tipoAccion, id, nombre) {
-        const modal = document.getElementById('paqueteConfirmModal');
         const title = document.getElementById('paqueteConfirmTitle');
         const msg = document.getElementById('paqueteConfirmMessage');
         const submitBtn = document.getElementById('paqueteConfirmSubmit');
@@ -608,35 +649,41 @@
         const iconWrapper = document.getElementById('paqueteConfirmIconWrapper');
         const icon = document.getElementById('paqueteConfirmIcon');
 
+        if (!(form && idInput && submitBtn && title && msg && iconWrapper && icon)) return;
         idInput.value = id;
 
         if (tipoAccion === 'desactivar') {
             title.textContent = 'Desactivar Paquete';
-            msg.textContent = `¿Está seguro que desea desactivar el paquete "${nombre}"?`;
+            msg.innerHTML = '¿Confirma desactivar el paquete <strong>' + (window.SiteModule?.escapeHtml?.(nombre) || nombre) + '</strong>?';
             form.action = '/PaqueteServicio/DeactivatePaquete';
-            submitBtn.textContent = 'Sí, desactivar';
+            submitBtn.textContent = 'Desactivar';
             submitBtn.className = 'py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900';
             iconWrapper.className = 'w-12 h-12 rounded-full bg-red-100 dark:bg-red-900 p-2 flex items-center justify-center mx-auto mb-3.5';
-            icon.className = 'w-8 h-8 text-red-500 dark:text-red-400';
+            icon.setAttribute('fill', 'currentColor');
+            icon.setAttribute('viewBox', '0 0 20 20');
+            icon.setAttribute('class', 'w-8 h-8 text-red-600 dark:text-red-400');
+            icon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.293a1 1 0 00-1.414-1.414L10 7.586 7.707 5.293a1 1 0 00-1.414 1.414L8.586 10l-2.293 2.293a1 1 0 001.414 1.414L10 12.414l2.293 2.293a1 1 0 001.414-1.414L11.414 10l2.293-2.293z" clip-rule="evenodd"/>`;
         } else {
             title.textContent = 'Reactivar Paquete';
-            msg.textContent = `¿Está seguro que desea reactivar el paquete "${nombre}"?`;
+            msg.innerHTML = '¿Confirma reactivar el paquete <strong>' + (window.SiteModule?.escapeHtml?.(nombre) || nombre) + '</strong>?';
             form.action = '/PaqueteServicio/ReactivatePaquete';
-            submitBtn.textContent = 'Sí, reactivar';
+            submitBtn.textContent = 'Reactivar';
             submitBtn.className = 'py-2 px-3 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900';
             iconWrapper.className = 'w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 p-2 flex items-center justify-center mx-auto mb-3.5';
-            icon.className = 'w-8 h-8 text-green-500 dark:text-green-400';
+            icon.setAttribute('fill', 'currentColor');
+            icon.setAttribute('viewBox', '0 0 24 24');
+            icon.setAttribute('class', 'w-8 h-8 text-green-500 dark:text-green-400');
+            icon.innerHTML = `<path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd"/>`;
         }
 
-        modal.classList.remove('hidden');
+        abrirModal('paqueteConfirmModal');
     };
 
     /**
      * Cierra modal de confirmación
      */
     window.closePaqueteConfirmModal = function () {
-        const modal = document.getElementById('paqueteConfirmModal');
-        modal.classList.add('hidden');
+        cerrarModal('paqueteConfirmModal');
     };
 
     /**

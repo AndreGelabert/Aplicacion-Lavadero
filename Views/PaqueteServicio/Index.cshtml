@@ -22,29 +22,20 @@
             <h1 class="text-2xl md:block font-semibold text-gray-900 dark:text-white">
                 Paquetes de Servicios
             </h1>
-            <div class="flex gap-2">
-                <!-- Botón de volver a servicios -->
-                <a href="@Url.Action("Index", "Servicio")" class="text-white inline-flex items-center bg-gray-600 hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-3 py-2 text-center dark:bg-gray-500 dark:hover:bg-gray-600 dark:focus:ring-gray-800">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"></path>
-                    </svg>
-                    Volver a Servicios
-                </a>
-                <!-- Botón de ayuda -->
-                <button data-popover-target="popover-click" data-popover-trigger="click" type="button" class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-2 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"></path>
-                    </svg>
-                </button>
-                <div data-popover id="popover-click" role="tooltip" class="absolute z-10 invisible inline-block w-64 text-sm text-gray-500 transition-opacity duration-300 bg-white border border-gray-200 rounded-lg shadow-xs opacity-0 dark:text-gray-400 dark:border-gray-600 dark:bg-gray-800">
-                    <div class="px-3 py-2 bg-gray-100 border-b border-gray-200 rounded-t-lg dark:border-gray-600 dark:bg-gray-700">
-                        <h3 class="font-semibold text-gray-900 dark:text-white">Ayuda</h3>
-                    </div>
-                    <div class="px-3 py-2">
-                        <p>En esta página puedes crear, modificar y gestionar paquetes de servicios (combos). Un paquete agrupa 2 o más servicios con un descuento aplicado, ahorrando tiempo y dinero al cliente.</p>
-                    </div>
-                    <div data-popper-arrow></div>
+            <!-- Botón de ayuda -->
+            <button data-popover-target="popover-click" data-popover-trigger="click" type="button" class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-2 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"></path>
+                </svg>
+            </button>
+            <div data-popover id="popover-click" role="tooltip" class="absolute z-10 invisible inline-block w-64 text-sm text-gray-500 transition-opacity duration-300 bg-white border border-gray-200 rounded-lg shadow-xs opacity-0 dark:text-gray-400 dark:border-gray-600 dark:bg-gray-800">
+                <div class="px-3 py-2 bg-gray-100 border-b border-gray-200 rounded-t-lg dark:border-gray-600 dark:bg-gray-700">
+                    <h3 class="font-semibold text-gray-900 dark:text-white">Ayuda</h3>
                 </div>
+                <div class="px-3 py-2">
+                    <p>En esta página puedes crear, modificar y gestionar paquetes de servicios (combos). Un paquete agrupa 2 o más servicios con un descuento aplicado, ahorrando tiempo y dinero al cliente.</p>
+                </div>
+                <div data-popper-arrow></div>
             </div>
         </div>
 
@@ -62,20 +53,22 @@
             </h2>
             <div id="accordion-flush-body-1" class="hidden" aria-labelledby="accordion-flush-heading-1">
                 <div class="py-2 border-b border-gray-200 dark:border-gray-700">
-                    <!-- Modal body -->
                     <div id="paquete-form-container">
                         @await Html.PartialAsync("_PaqueteServicioForm", ViewBag.EditPaquete as Firebase.Models.PaqueteServicio)
                     </div>
                 </div>
             </div>
         </div>
-
+        <!-- Mensajes -->
+        <div id="table-message-container" class="hidden p-4 mb-4 mx-4 text-sm rounded-lg" role="alert">
+            <span id="table-message-text"></span>
+        </div>
         <!-- Sección de Filtros y Búsqueda -->
         <div class="flex flex-col md:flex-row items-center justify-between space-y-3 md:space-y-0 md:space-x-4 p-4 border-b dark:border-gray-600">
             <div class="w-full md:w-1/2">
                 <form class="flex items-center" id="search-form" onsubmit="event.preventDefault();">
                     <label for="simple-search" class="sr-only">Buscar</label>
-                    <div class="relative w-full">
+                    <div class="relative w-96">
                         <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                             <svg aria-hidden="true" class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="currentColor" viewbox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                                 <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
@@ -86,6 +79,13 @@
                 </form>
             </div>
             <div class="w-full md:w-auto flex flex-col md:flex-row space-y-2 md:space-y-0 items-stretch md:items-center justify-end md:space-x-3 flex-shrink-0">
+                <!-- Botón de volver a servicios -->
+                <a href="@Url.Action("Index", "Servicio")" class="text-white inline-flex items-center bg-gray-600 hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-3 py-2 text-center dark:bg-gray-500 dark:hover:bg-gray-600 dark:focus:ring-gray-800">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"></path>
+                    </svg>
+                    Volver a Servicios
+                </a>
                 <button id="filterDropdownButton" data-dropdown-toggle="filterDropdown" class="w-full md:w-auto flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700" type="button">
                     <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="h-4 w-4 mr-2 text-gray-400" viewbox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
@@ -98,10 +98,7 @@
                 <div id="filterDropdown" class="z-50 hidden bg-white rounded-lg shadow-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
                     <form method="get" asp-action="Index" id="filterForm" class="p-4">
                         <input type="hidden" name="pageNumber" value="1" />
-
-                        <!-- Layout horizontal con grid -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 min-w-[500px]">
-                            <!-- Columna 1: Estado -->
                             <div>
                                 <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
                                     Estado
@@ -121,8 +118,6 @@
                                     </label>
                                 </div>
                             </div>
-
-                            <!-- Columna 2: Tipo de Vehículo -->
                             <div>
                                 <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
                                     Tipo de Vehículo
@@ -143,8 +138,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Botones de acción -->
                         <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
                             <button type="button" onclick="clearAllFilters()"
                                     class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
@@ -165,15 +158,9 @@
             @await Html.PartialAsync("_PaqueteServicioTable", Model)
         </div>
 
-        <!-- Mensajes -->
-        <div id="table-message-container" class="hidden p-4 mb-4 mx-4 text-sm rounded-lg" role="alert">
-            <span id="table-message-text"></span>
-        </div>
-
         <!-- Modal reutilizable de confirmación para paquetes -->
         <div id="paqueteConfirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
             <div class="relative p-4 w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg sm:p-5 text-center">
-                <!-- Botón de cierre -->
                 <button type="button"
                         class="absolute top-2.5 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 dark:hover:bg-gray-600 dark:hover:text-white"
                         onclick="closePaqueteConfirmModal()">
@@ -183,14 +170,12 @@
                     <span class="sr-only">Cerrar</span>
                 </button>
 
-                <!-- Ícono dinámico -->
                 <div id="paqueteConfirmIconWrapper" class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 p-2 flex items-center justify-center mx-auto mb-3.5">
                     <svg id="paqueteConfirmIcon" xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-8 h-8 text-yellow-500 dark:text-yellow-400" viewBox="0 0 24 24">
                         <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-.75 4.5a.75.75 0 0 1 1.5 0v6a.75.75 0 0 1-1.5 0v-6Zm0 9a.75.75 0 0 1 1.5 0v1.5a.75.75 0 0 1-1.5 0V15.75Z" clip-rule="evenodd" />
                     </svg>
                 </div>
 
-                <!-- Título y mensaje dinámico -->
                 <h3 id="paqueteConfirmTitle" class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                     Confirmar acción
                 </h3>
@@ -198,19 +183,17 @@
                     ¿Está seguro?
                 </p>
 
-                <!-- Formulario dinámico -->
                 <form id="paqueteConfirmForm" method="post" onsubmit="return submitPaqueteEstado(this);">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" id="paqueteConfirmId" />
 
                     <div class="flex justify-center items-center space-x-4">
-                        <!-- Cancelar -->
                         <button type="button"
-                                onclick="closePaqueteConfirmModal()"
+                                onclick="closePaqueteConfirmModal()
+"
                                 class="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-300 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">
                             Cancelar
                         </button>
-                        <!-- Confirmar -->
                         <button id="paqueteConfirmSubmit"
                                 type="submit"
                                 class="py-2 px-3 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900">
@@ -222,14 +205,4 @@
         </div>
     </div>
 </section>
-
-@section Scripts {
-    <script src="~/js/paqueteservicio.js" asp-append-version="true"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (window.PageModules && window.PageModules.paquetes) {
-                window.PageModules.paquetes.init();
-            }
-        });
-    </script>
-}
+<script src="~/js/paqueteservicio.js" asp-append-version="true"></script>
