@@ -41,14 +41,23 @@ public class PaqueteServicioService
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
-        string sortOrder = null)
+        string sortOrder = null,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        int? tiempoMin = null,
+        int? tiempoMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosMin = null,
+        int? serviciosMax = null)
     {
         ValidarParametrosPaginacion(pageNumber, pageSize);
 
         sortBy ??= ORDEN_DEFECTO;
         sortOrder ??= DIRECCION_DEFECTO;
 
-        var paquetes = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, sortBy, sortOrder);
+        var paquetes = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, sortBy, sortOrder,
+            precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosMin, serviciosMax);
 
         return AplicarPaginacion(paquetes, pageNumber, pageSize);
     }
@@ -59,12 +68,21 @@ public class PaqueteServicioService
     public async Task<int> ObtenerTotalPaginas(
         List<string> estados,
         List<string> tiposVehiculo,
-        int pageSize)
+        int pageSize,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        int? tiempoMin = null,
+        int? tiempoMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosMin = null,
+        int? serviciosMax = null)
     {
         if (pageSize <= 0)
             throw new ArgumentException("El tamaño de página debe ser mayor a 0", nameof(pageSize));
 
-        var totalPaquetes = await ObtenerTotalPaquetes(estados, tiposVehiculo);
+        var totalPaquetes = await ObtenerTotalPaquetes(estados, tiposVehiculo,
+            precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosMin, serviciosMax);
         return (int)Math.Ceiling(totalPaquetes / (double)pageSize);
     }
 
@@ -92,9 +110,18 @@ public class PaqueteServicioService
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
-        string sortOrder = null)
+        string sortOrder = null,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        int? tiempoMin = null,
+        int? tiempoMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosMin = null,
+        int? serviciosMax = null)
     {
-        var baseFiltrada = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, sortBy, sortOrder);
+        var baseFiltrada = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, sortBy, sortOrder,
+            precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosMin, serviciosMax);
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -111,10 +138,19 @@ public class PaqueteServicioService
     public async Task<int> ObtenerTotalPaquetesBusqueda(
         string searchTerm,
         List<string> estados,
-        List<string> tiposVehiculo)
+        List<string> tiposVehiculo,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        int? tiempoMin = null,
+        int? tiempoMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosMin = null,
+        int? serviciosMax = null)
     {
         estados = ConfigurarEstadosDefecto(estados);
-        var baseFiltrada = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, ORDEN_DEFECTO, DIRECCION_DEFECTO);
+        var baseFiltrada = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, ORDEN_DEFECTO, DIRECCION_DEFECTO,
+            precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosMin, serviciosMax);
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -122,6 +158,39 @@ public class PaqueteServicioService
         }
 
         return baseFiltrada.Count;
+    }
+
+    /// <summary>
+    /// Obtiene el rango de precio (min y max) para los paquetes que cumplen con los filtros actuales
+    /// excluyendo el propio filtro de precio.
+    /// </summary>
+    public async Task<(decimal? min, decimal? max)> ObtenerRangoPrecio(
+        List<string> estados,
+        List<string> tiposVehiculo,
+        string searchTerm,
+        int? tiempoMin = null,
+        int? tiempoMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosMin = null,
+        int? serviciosMax = null)
+    {
+        estados = ConfigurarEstadosDefecto(estados);
+        // No aplicar precioMin/precioMax aquí
+        var paquetes = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, ORDEN_DEFECTO, DIRECCION_DEFECTO,
+            null, null, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosMin, serviciosMax);
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            paquetes = AplicarBusqueda(paquetes, searchTerm);
+        }
+
+        if (paquetes == null || paquetes.Count == 0)
+            return (null, null);
+
+        var min = paquetes.Min(p => p.Precio);
+        var max = paquetes.Max(p => p.Precio);
+        return (min, max);
     }
     #endregion
 
@@ -242,7 +311,15 @@ public class PaqueteServicioService
         List<string> estados,
         List<string> tiposVehiculo,
         string sortBy,
-        string sortOrder)
+        string sortOrder,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        int? tiempoMin = null,
+        int? tiempoMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosMin = null,
+        int? serviciosMax = null)
     {
         estados = ConfigurarEstadosDefecto(estados);
 
@@ -254,6 +331,7 @@ public class PaqueteServicioService
             .ToList();
 
         paquetes = AplicarFiltroTipoVehiculo(paquetes, tiposVehiculo);
+        paquetes = AplicarFiltrosRango(paquetes, precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosMin, serviciosMax);
 
         return AplicarOrdenamiento(paquetes, sortBy, sortOrder);
     }
@@ -263,7 +341,15 @@ public class PaqueteServicioService
     /// </summary>
     private async Task<int> ObtenerTotalPaquetes(
         List<string> estados,
-        List<string> tiposVehiculo)
+        List<string> tiposVehiculo,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        int? tiempoMin = null,
+        int? tiempoMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosMin = null,
+        int? serviciosMax = null)
     {
         estados = ConfigurarEstadosDefecto(estados);
 
@@ -271,20 +357,11 @@ public class PaqueteServicioService
 
         var snapshot = await query.GetSnapshotAsync();
         var paquetes = snapshot.Documents
-            .Select(doc => new PaqueteConteo
-            {
-                TipoVehiculo = doc.ContainsField("TipoVehiculo")
-                    ? doc.GetValue<string>("TipoVehiculo")
-                    : ""
-            })
+            .Select(MapearDocumentoAPaquete)
             .ToList();
 
-        if (tiposVehiculo != null && tiposVehiculo.Any())
-        {
-            paquetes = paquetes
-                .Where(p => tiposVehiculo.Contains(p.TipoVehiculo))
-                .ToList();
-        }
+        paquetes = AplicarFiltroTipoVehiculo(paquetes, tiposVehiculo);
+        paquetes = AplicarFiltrosRango(paquetes, precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosMin, serviciosMax);
 
         return paquetes.Count;
     }
@@ -335,6 +412,37 @@ public class PaqueteServicioService
     }
 
     /// <summary>
+    /// Aplica filtros de rango a la lista de paquetes.
+    /// </summary>
+    private static List<PaqueteServicio> AplicarFiltrosRango(
+        List<PaqueteServicio> paquetes,
+        decimal? precioMin,
+        decimal? precioMax,
+        int? tiempoMin,
+        int? tiempoMax,
+        decimal? descuentoMin,
+        decimal? descuentoMax,
+        int? serviciosMin,
+        int? serviciosMax)
+    {
+        IEnumerable<PaqueteServicio> q = paquetes;
+
+        if (precioMin.HasValue) q = q.Where(p => p.Precio >= precioMin.Value);
+        if (precioMax.HasValue) q = q.Where(p => p.Precio <= precioMax.Value);
+
+        if (tiempoMin.HasValue) q = q.Where(p => p.TiempoEstimado >= tiempoMin.Value);
+        if (tiempoMax.HasValue) q = q.Where(p => p.TiempoEstimado <= tiempoMax.Value);
+
+        if (descuentoMin.HasValue) q = q.Where(p => p.PorcentajeDescuento >= descuentoMin.Value);
+        if (descuentoMax.HasValue) q = q.Where(p => p.PorcentajeDescuento <= descuentoMax.Value);
+
+        if (serviciosMin.HasValue) q = q.Where(p => (p.ServiciosIds?.Count ??0) >= serviciosMin.Value);
+        if (serviciosMax.HasValue) q = q.Where(p => (p.ServiciosIds?.Count ??0) <= serviciosMax.Value);
+
+        return q.ToList();
+    }
+
+    /// <summary>
     /// Aplica ordenamiento a una lista de paquetes.
     /// </summary>
     private static List<PaqueteServicio> AplicarOrdenamiento(List<PaqueteServicio> paquetes, string sortBy, string sortOrder)
@@ -350,6 +458,7 @@ public class PaqueteServicioService
             "TiempoEstimado" => p => p.TiempoEstimado,
             "Estado" => p => p.Estado,
             "PorcentajeDescuento" => p => p.PorcentajeDescuento,
+            "CantidadServicios" => p => (p.ServiciosIds?.Count ??0),
             _ => p => p.Nombre
         };
 
@@ -535,4 +644,33 @@ public class PaqueteServicioService
         public string TipoVehiculo { get; set; }
     }
     #endregion
+
+    /// <summary>
+    /// Devuelve los valores distintos de cantidad de servicios presentes en todos los paquetes.
+    /// </summary>
+    public async Task<List<int>> ObtenerValoresCantidadServicios()
+    {
+        var snapshot = await _firestore.Collection(COLLECTION_NAME).GetSnapshotAsync();
+        var counts = snapshot.Documents
+            .Select(d =>
+            {
+                try
+                {
+                    if (d.ContainsField("ServiciosIds"))
+                    {
+                        var arr = d.GetValue<List<object>>("ServiciosIds");
+                        return arr?.Count ??0;
+                    }
+                    return 0;
+                }
+                catch { return 0; }
+            })
+            .Distinct()
+            .OrderBy(n => n)
+            .ToList();
+
+        // Filtrar 0 ya que un paquete válido debe tener 2+ servicios
+        counts = counts.Where(c => c > 0).ToList();
+        return counts;
+    }
 }

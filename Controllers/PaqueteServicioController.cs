@@ -45,7 +45,12 @@ public class PaqueteServicioController : Controller
         int pageSize = 10,
         string editId = null,
         string sortBy = null,
-        string sortOrder = null)
+        string sortOrder = null,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosCantidad = null)
     {
         estados = ConfigurarEstadosDefecto(estados);
 
@@ -53,12 +58,17 @@ public class PaqueteServicioController : Controller
         sortOrder ??= "asc";
 
         var (paquetes, currentPage, totalPages, visiblePages) = await ObtenerDatosPaquetes(
-            estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
+            estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder,
+            precioMin, precioMax, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
 
         var tiposVehiculoList = await CargarListaTiposVehiculo();
+        var cantidadesServicios = await _paqueteServicioService.ObtenerValoresCantidadServicios();
 
         ConfigurarViewBag(estados, tiposVehiculo, tiposVehiculoList,
-            pageSize, currentPage, totalPages, visiblePages, sortBy, sortOrder);
+            pageSize, currentPage, totalPages, visiblePages, sortBy, sortOrder,
+            precioMin, precioMax, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
+        ViewBag.CantidadesServicios = cantidadesServicios;
+        ViewBag.ServiciosCantidad = serviciosCantidad;
 
         await ConfigurarFormulario(editId);
 
@@ -128,7 +138,12 @@ public class PaqueteServicioController : Controller
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
-        string sortOrder = null)
+        string sortOrder = null,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosCantidad = null)
     {
         estados = ConfigurarEstadosDefecto(estados);
 
@@ -136,10 +151,10 @@ public class PaqueteServicioController : Controller
         sortOrder ??= "asc";
 
         var paquetes = await _paqueteServicioService.BuscarPaquetes(
-            searchTerm, estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
-
+            searchTerm, estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder,
+            precioMin, precioMax, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
         var totalPaquetes = await _paqueteServicioService.ObtenerTotalPaquetesBusqueda(
-            searchTerm, estados, tiposVehiculo);
+            searchTerm, estados, tiposVehiculo, precioMin, precioMax, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
 
         var totalPages = Math.Max((int)Math.Ceiling(totalPaquetes / (double)pageSize), 1);
 
@@ -151,6 +166,12 @@ public class PaqueteServicioController : Controller
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
         ViewBag.SearchTerm = searchTerm;
+        ViewBag.PrecioMin = precioMin;
+        ViewBag.PrecioMax = precioMax;
+        ViewBag.DescuentoMin = descuentoMin;
+        ViewBag.DescuentoMax = descuentoMax;
+        ViewBag.ServiciosCantidad = serviciosCantidad;
+        ViewBag.CantidadesServicios = await _paqueteServicioService.ObtenerValoresCantidadServicios();
 
         return PartialView("_PaqueteServicioTable", paquetes);
     }
@@ -165,15 +186,23 @@ public class PaqueteServicioController : Controller
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
-        string sortOrder = null)
+        string sortOrder = null,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosCantidad = null)
     {
         estados = ConfigurarEstadosDefecto(estados);
 
         sortBy ??= "Nombre";
         sortOrder ??= "asc";
 
-        var paquetes = await _paqueteServicioService.ObtenerPaquetes(estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
-        var totalPages = await _paqueteServicioService.ObtenerTotalPaginas(estados, tiposVehiculo, pageSize);
+        var paquetes = await _paqueteServicioService.ObtenerPaquetes(
+            estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder,
+            precioMin, precioMax, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
+        var totalPages = await _paqueteServicioService.ObtenerTotalPaginas(
+            estados, tiposVehiculo, pageSize, precioMin, precioMax, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
         totalPages = Math.Max(totalPages, 1);
 
         ViewBag.CurrentPage = pageNumber;
@@ -183,8 +212,38 @@ public class PaqueteServicioController : Controller
         ViewBag.TiposVehiculo = tiposVehiculo;
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
+        ViewBag.PrecioMin = precioMin;
+        ViewBag.PrecioMax = precioMax;
+        ViewBag.DescuentoMin = descuentoMin;
+        ViewBag.DescuentoMax = descuentoMax;
+        ViewBag.ServiciosCantidad = serviciosCantidad;
+        ViewBag.CantidadesServicios = await _paqueteServicioService.ObtenerValoresCantidadServicios();
 
         return PartialView("_PaqueteServicioTable", paquetes);
+    }
+
+    /// <summary>
+    /// Devuelve dinámicamente el rango de precio posible para los filtros actuales (sin aplicar precioMin/Max)
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> PriceRange(
+        List<string> estados,
+        List<string> tiposVehiculo,
+        string searchTerm,
+        decimal? descuentoMin,
+        decimal? descuentoMax,
+        int? serviciosCantidad)
+    {
+        try
+        {
+            var (min, max) = await _paqueteServicioService.ObtenerRangoPrecio(
+                estados, tiposVehiculo, searchTerm, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
+            return Json(new { success = true, min, max });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
     }
     #endregion
 
@@ -266,10 +325,16 @@ public class PaqueteServicioController : Controller
     /// </summary>
     private async Task<(List<PaqueteServicio> paquetes, int currentPage, int totalPages, List<int> visiblePages)>
         ObtenerDatosPaquetes(List<string> estados, List<string> tiposVehiculo,
-        int pageNumber, int pageSize, string sortBy, string sortOrder)
+        int pageNumber, int pageSize, string sortBy, string sortOrder,
+        decimal? precioMin, decimal? precioMax, int? tiempoMin, int? tiempoMax,
+        decimal? descuentoMin, decimal? descuentoMax, int? serviciosCantidadMin, int? serviciosCantidadMax)
     {
-        var paquetes = await _paqueteServicioService.ObtenerPaquetes(estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
-        var totalPages = Math.Max(await _paqueteServicioService.ObtenerTotalPaginas(estados, tiposVehiculo, pageSize), 1);
+        var paquetes = await _paqueteServicioService.ObtenerPaquetes(
+            estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder,
+            precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosCantidadMin, serviciosCantidadMax);
+        var totalPages = Math.Max(await _paqueteServicioService.ObtenerTotalPaginas(
+            estados, tiposVehiculo, pageSize,
+            precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosCantidadMin, serviciosCantidadMax), 1);
         var currentPage = Math.Clamp(pageNumber, 1, totalPages);
         var visiblePages = GetVisiblePages(currentPage, totalPages);
 
@@ -453,7 +518,9 @@ public class PaqueteServicioController : Controller
         List<string> estados, List<string> tiposVehiculo,
         List<string> tiposVehiculoList,
         int pageSize, int currentPage, int totalPages, List<int> visiblePages,
-        string sortBy, string sortOrder)
+        string sortBy, string sortOrder,
+        decimal? precioMin, decimal? precioMax, int? tiempoMin, int? tiempoMax,
+        decimal? descuentoMin, decimal? descuentoMax, int? serviciosMin, int? serviciosMax)
     {
         ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = visiblePages;
@@ -464,6 +531,14 @@ public class PaqueteServicioController : Controller
         ViewBag.PageSize = pageSize;
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
+        ViewBag.PrecioMin = precioMin;
+        ViewBag.PrecioMax = precioMax;
+        ViewBag.TiempoMin = tiempoMin;
+        ViewBag.TiempoMax = tiempoMax;
+        ViewBag.DescuentoMin = descuentoMin;
+        ViewBag.DescuentoMax = descuentoMax;
+        ViewBag.ServiciosMin = serviciosMin;
+        ViewBag.ServiciosMax = serviciosMax;
     }
 
     /// <summary>
