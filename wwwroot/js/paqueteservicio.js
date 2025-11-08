@@ -824,7 +824,7 @@
  return false;
  };
 
- // CORRECCIÓN: clearAllFilters ahora REALMENTE limpia todo
+    // CORRECCIÓN: clearAllFilters sigue sin funcionar correctamente
  window.clearAllFilters = function () {
  const filterForm = document.getElementById('filterForm');
  if (!filterForm) return;
