@@ -98,10 +98,11 @@
                 <div id="filterDropdown" class="z-50 hidden bg-white rounded-lg shadow-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
                     <form method="get" asp-action="Index" id="filterForm" class="p-4">
                         <input type="hidden" name="pageNumber" value="1" />
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 min-w-[700px]">
+                        <!-- Grid compacto con fuentes text-sm (normales) -->
+                        <div class="grid grid-cols-5 gap-3 min-w-[1000px]">
                             <!-- Estado -->
                             <div>
-                                <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                <h6 class="mb-2 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-1">
                                     Estado
                                 </h6>
                                 <div class="space-y-2 text-sm">
@@ -121,10 +122,10 @@
                             </div>
                             <!-- Tipo de Vehículo -->
                             <div>
-                                <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
-                                    Tipo de Vehículo
+                                <h6 class="mb-2 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-1">
+                                    Tipo Vehículo
                                 </h6>
-                                <div class="space-y-2 max-h-40 overflow-y-auto text-sm">
+                                <div class="space-y-2 max-h-32 overflow-y-auto text-sm">
                                     @if (ViewBag.TodosLosTiposVehiculo != null)
                                     {
                                         @foreach (var tipo in ViewBag.TodosLosTiposVehiculo)
@@ -141,46 +142,46 @@
                             </div>
                             <!-- Precio Final -->
                             <div>
-                                <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                <h6 class="mb-2 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-1">
                                     Precio Final
                                 </h6>
-                                <div class="grid grid-cols-2 gap-2 text-sm">
+                                <div class="space-y-2 text-sm">
                                     <div>
-                                        <label for="precioMin" class="block mb-1 text-gray-700 dark:text-gray-300">Mínimo</label>
-                                        <input type="number" step="0.01" name="precioMin" id="precioMin" value="@(ViewBag.PrecioMin ?? "")" class="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 dark:bg-gray-600 dark:border-gray-500 dark:text-white" />
+                                        <label for="precioMin" class="block mb-1 text-gray-700 dark:text-gray-300">Mín</label>
+                                        <input type="number" step="0.01" name="precioMin" id="precioMin" value="@(ViewBag.PrecioMin ?? "")" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 dark:bg-gray-600 dark:border-gray-500 dark:text-white" />
                                         <p id="precioMin-help" class="mt-1 text-xs text-gray-500"></p>
                                     </div>
                                     <div>
-                                        <label for="precioMax" class="block mb-1 text-gray-700 dark:text-gray-300">Máximo</label>
-                                        <input type="number" step="0.01" name="precioMax" id="precioMax" value="@(ViewBag.PrecioMax ?? "")" class="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 dark:bg-gray-600 dark:border-gray-500 dark:text-white" />
+                                        <label for="precioMax" class="block mb-1 text-gray-700 dark:text-gray-300">Máx</label>
+                                        <input type="number" step="0.01" name="precioMax" id="precioMax" value="@(ViewBag.PrecioMax ?? "")" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 dark:bg-gray-600 dark:border-gray-500 dark:text-white" />
                                         <p id="precioMax-help" class="mt-1 text-xs text-gray-500"></p>
                                     </div>
                                 </div>
                             </div>
                             <!-- % Descuento -->
                             <div>
-                                <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
-                                    % Descuento
+                                <h6 class="mb-2 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-1">
+                                    % Desc.
                                 </h6>
-                                <div class="grid grid-cols-2 gap-2 text-sm">
+                                <div class="space-y-2 text-sm">
                                     <div>
-                                        <label for="descuentoMin" class="block mb-1 text-gray-700 dark:text-gray-300">Mínimo</label>
-                                        <input type="number" step="0.01" min="0" max="100" name="descuentoMin" id="descuentoMin" value="@(ViewBag.DescuentoMin ?? "")" class="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 dark:bg-gray-600 dark:border-gray-500 dark:text-white" />
+                                        <label for="descuentoMin" class="block mb-1 text-gray-700 dark:text-gray-300">Mín</label>
+                                        <input type="number" step="0.01" min="0" max="100" name="descuentoMin" id="descuentoMin" value="@(ViewBag.DescuentoMin ?? "")" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 dark:bg-gray-600 dark:border-gray-500 dark:text-white" />
                                     </div>
                                     <div>
-                                        <label for="descuentoMax" class="block mb-1 text-gray-700 dark:text-gray-300">Máximo</label>
-                                        <input type="number" step="0.01" min="0" max="100" name="descuentoMax" id="descuentoMax" value="@(ViewBag.DescuentoMax ?? "")" class="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 dark:bg-gray-600 dark:border-gray-500 dark:text-white" />
+                                        <label for="descuentoMax" class="block mb-1 text-gray-700 dark:text-gray-300">Máx</label>
+                                        <input type="number" step="0.01" min="0" max="100" name="descuentoMax" id="descuentoMax" value="@(ViewBag.DescuentoMax ?? "")" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 dark:bg-gray-600 dark:border-gray-500 dark:text-white" />
                                     </div>
                                 </div>
                             </div>
-                            <!-- Cantidad de Servicios (select único) -->
+                            <!-- Cantidad de Servicios -->
                             <div>
-                                <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
-                                    Cant. de Servicios
+                                <h6 class="mb-2 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-1">
+                                    Cant. Serv.
                                 </h6>
                                 <div class="text-sm">
                                     <label for="serviciosCantidad" class="block mb-1 text-gray-700 dark:text-gray-300">Cantidad</label>
-                                    <select name="serviciosCantidad" id="serviciosCantidad" class="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg p-2 dark:bg-gray-600 dark:border-gray-500 dark:text-white">
+                                    <select name="serviciosCantidad" id="serviciosCantidad" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 dark:bg-gray-600 dark:border-gray-500 dark:text-white">
                                         <option value="">Cualquiera</option>
                                         @if (ViewBag.CantidadesServicios is List<int> cantList)
                                         {
@@ -200,8 +201,9 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
-                            <button type="button" onclick="clearAllFilters()"
+                        <!-- Botones de acción -->
+                        <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
+                            <button type="button" id="clearFiltersBtn"
                                     class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
                                 Limpiar filtros
                             </button>

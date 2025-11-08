@@ -32,6 +32,7 @@
  window.CommonUtils?.setupDefaultFilterForm();
  setupDynamicPriceHints();
  setupServiciosCantidadListener();
+ setupClearFiltersButton();
  checkEditMode();
  initializeForm();
  setupDropdownClickOutside();
@@ -45,6 +46,19 @@
  initializePaquetesPage();
  }
  });
+
+ // NUEVO: binding robusto al botón limpiar filtros
+ function setupClearFiltersButton() {
+ const clearBtn = document.getElementById('clearFiltersBtn');
+ if (!clearBtn) return;
+ if (clearBtn.hasAttribute('data-setup')) return;
+ clearBtn.addEventListener('click', (e) => {
+ e.preventDefault();
+ e.stopPropagation();
+ clearAllFilters();
+ });
+ clearBtn.setAttribute('data-setup', 'true');
+ }
 
  // Nuevos listeners para selects de cantidad servicios
  function setupServiciosCantidadListener() {
@@ -356,8 +370,8 @@
  // Filtrar servicios por texto de búsqueda
  let serviciosFiltrados = servicios;
  if (filterText) {
- const searchLower = filterText.toLowerCase();
- serviciosFiltrados = servicios.filter(s => 
+   const searchLower = filterText.toLowerCase();
+   serviciosFiltrados = servicios.filter(s => 
  (s.nombre && s.nombre.toLowerCase().includes(searchLower)) ||
  (s.tipo && s.tipo.toLowerCase().includes(searchLower))
  );
@@ -388,6 +402,8 @@
  html += `<div class="mb-2">
  <h6 class="text-xs font-semibold text-gray-700 dark:text-gray-300 px-2 py-1 bg-gray-100 dark:bg-gray-600">${tipo}</h6>
  <div class="space-y-1">`;
+
+
  
  serviciosPorTipo[tipo].forEach(servicio => {
  const isSelected = servicioSeleccionadoDropdown?.id === servicio.id;
@@ -483,7 +499,7 @@
  updateResumen();
  renderServiciosDropdown(serviciosDisponibles, '');
  };
-
+ 
  /**
  * Remueve un servicio de la lista de seleccionados
  */
@@ -808,21 +824,32 @@
  return false;
  };
 
- // =====================================
- // FILTROS
- // =====================================
- /**
- * Limpia todos los filtros
- */
+ // CORRECCIÓN: clearAllFilters ahora REALMENTE limpia todo
  window.clearAllFilters = function () {
  const filterForm = document.getElementById('filterForm');
- if (filterForm) {
- const checkboxes = filterForm.querySelectorAll('input[type="checkbox"]');
- checkboxes.forEach(cb => cb.checked = false);
+ if (!filterForm) return;
 
- const numbers = filterForm.querySelectorAll('input[type="number"]');
- numbers.forEach(n => n.value = '');
- }
+ // 1) Desmarcar checkboxes
+ filterForm.querySelectorAll('input[type="checkbox"]').forEach(cb => { 
+ cb.checked = false; 
+ });
+ 
+ // 2) Vaciar inputs numéricos
+ filterForm.querySelectorAll('input[type="number"]').forEach(n => { 
+ n.value = ''; 
+ });
+ 
+ // 3) Restablecer selects al primer option (vacío)
+ filterForm.querySelectorAll('select').forEach(sel => { 
+ sel.selectedIndex = 0; 
+ });
+ 
+ // 4) Resetear el hidden de pageNumber
+ const pageHidden = filterForm.querySelector('input[name="pageNumber"]');
+ if (pageHidden) pageHidden.value = '1';
+
+ // 5) Disparar recarga de tabla limpia
+ reloadPaqueteTable(1);
  };
 
  // =====================================
