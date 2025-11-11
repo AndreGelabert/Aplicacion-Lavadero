@@ -30,6 +30,7 @@
         setupDescriptionAutoGrow();
         setupFormMessageHandler();
         setupSearchWithDebounce();
+        setupFilterFormSubmit(); // nuevo: manejar submit de filtros
         window.CommonUtils?.setupDefaultFilterForm();
         checkEditMode(); // Verificar si estamos en modo edición
     }
@@ -283,7 +284,7 @@
     }
 
     /**
-     * Obtiene la página actual de la tabla
+     * Obtiene la página current de la tabla
      */
     function getCurrentTablePage() {
         return parseInt(document.getElementById('servicio-table-container')?.dataset.currentPage || '1');
@@ -1216,18 +1217,18 @@
                 }
 
                 if (result.valid) {
-                    showServicioMessage('success', result.msg || 'Operación exitosa.', 4000);
+                    showServicioMessage('success', result.msg || 'Operación exitosa.',4000);
                     reloadServicioTable(1);
                 } else {
                     const summary = document.getElementById('servicio-validation-summary');
-                    if (summary && summary.textContent.trim().length > 0) {
+                    if (summary && summary.textContent.trim().length >0) {
                         summary.classList.remove('hidden');
                     }
-                    showServicioMessage('error', 'Revise los errores del formulario.', 8000);
+                    showServicioMessage('error', 'Revise los errores del formulario.',8000);
                 }
             })
             .catch(e => {
-                showServicioMessage('error', 'Error de comunicación con el servidor.', 8000);
+                showServicioMessage('error', 'Error de comunicación con el servidor.',8000);
             });
 
         return false;
@@ -1559,6 +1560,42 @@
             event.preventDefault();
             agregarEtapa();
         }
+    }
+
+    // =====================================
+    // FILTROS (SUBMIT AJAX)
+    // =====================================
+    function setupFilterFormSubmit() {
+        const form = document.getElementById('filterForm');
+        if (!form || form.dataset.submitSetup === 'true') return;
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Reiniciar paginación
+            const pg = form.querySelector('input[name="pageNumber"]');
+            if (pg) pg.value = '1';
+
+            // Persistir término de búsqueda actual (si hay)
+            const searchInput = document.getElementById('simple-search');
+            if (searchInput) currentSearchTerm = searchInput.value.trim();
+
+            // Cerrar dropdown de filtros si está abierto
+            const dd = document.getElementById('filterDropdown');
+            if (dd) dd.classList.add('hidden');
+
+            // Recargar tabla con nuevos filtros
+            reloadServicioTable(1);
+
+            // Limpiar query string para evitar acumulación de parámetros
+            if (history.replaceState) history.replaceState(null, '', window.location.pathname);
+
+            // Mensaje informativo
+            showTableMessage('info', 'Filtros aplicados.');
+        });
+
+        form.dataset.submitSetup = 'true';
     }
 
 })();

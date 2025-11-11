@@ -79,7 +79,7 @@ const SiteModule = {
         if (activoCheckbox && !isAuditoria) {
             activoCheckbox.checked = true;
         }
-    }
+    },
 
     // =====================================
     // FILTRADO DE TABLAS
