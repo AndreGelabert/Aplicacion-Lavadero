@@ -1038,7 +1038,7 @@
         if (!alertEl) return;
 
         // Asegurar visibilidad para el usuario
-        try { alertEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {}
+        try { alertEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { }
 
         tableMsgTimeout = setTimeout(() => {
             alertEl.classList.add('opacity-0');
@@ -1095,6 +1095,64 @@
             const field = document.getElementById(item.id);
             if (field) item.action(field);
         });
+    };
+
+    /**
+ * Limpia filtros propios de la vista de Servicios y recarga la tabla
+ * - Delegamos la restauración del estado "Activo" al clearAllFilters global
+ * - Limpiamos otros campos del formulario sin tocar los checkboxes de estados
+ * - Reseteamos búsqueda y estado interno
+ * - Cerramos dropdown si está abierto
+ * - Removemos parámetros de la URL (history.replaceState)
+ */
+    window.clearServicioFilters = function () {
+        const filterForm = document.getElementById('filterForm');
+
+        if (filterForm) {
+            // Limpiar inputs de texto / number / search que NO sean los de estados
+            filterForm.querySelectorAll('input').forEach(inp => {
+                const type = (inp.type || '').toLowerCase();
+                if (inp.name === 'estados') return; // mantener estados para que clearAllFilters los gestione
+                if (['hidden', 'submit', 'button', 'checkbox', 'radio'].includes(type)) return;
+                inp.value = '';
+            });
+
+            // Limpiar checkboxes distintos a 'estados' (si hubiera otros)
+            filterForm.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                if (cb.name !== 'estados') cb.checked = false;
+            });
+
+            // Limpiar selects (si el panel tiene alguno distinto a estados)
+            filterForm.querySelectorAll('select').forEach(sel => {
+                sel.selectedIndex = 0;
+            });
+        }
+
+        // Restaurar estados (marca "Activo" según lógica global)
+        if (typeof window.clearAllFilters === 'function') {
+            window.clearAllFilters();
+        }
+
+        // Limpiar búsqueda y estado interno
+        const searchInput = document.getElementById('simple-search');
+        if (searchInput) searchInput.value = '';
+        currentSearchTerm = '';
+
+        // Cerrar dropdown de filtros si está abierto
+        const filterDropdown = document.getElementById('filterDropdown');
+        if (filterDropdown && !filterDropdown.classList.contains('hidden')) {
+            filterDropdown.classList.add('hidden');
+        }
+
+        // Limpiar parámetros de la URL (solo deja la ruta base)
+        if (window.history && typeof window.history.replaceState === 'function') {
+            window.history.replaceState(null, '', window.location.pathname);
+        }
+
+        // Recargar tabla con página 1 y filtros limpios
+        reloadServicioTable(1);
+
+        showTableMessage('info', 'Filtros restablecidos.');
     };
 
     /**
@@ -1289,7 +1347,7 @@
     // =====================================
     // GESTIÓN DE ETAPAS
     // =====================================
-    
+
     /**
      * Variable global para almacenar las etapas en memoria
      */
@@ -1403,7 +1461,7 @@
     /**
      * Elimina una etapa de la lista
      */
-    window.eliminarEtapa = function(etapaId) {
+    window.eliminarEtapa = function (etapaId) {
         etapasEnMemoria = etapasEnMemoria.filter(e => e.Id !== etapaId);
         renderEtapasList();
     };
@@ -1458,7 +1516,7 @@
     function renderEtapasList() {
         const container = document.getElementById('etapas-list');
         if (!container) return;
-        
+
         if (etapasEnMemoria.length === 0) {
             container.innerHTML = `
                 <div class="text-center text-gray-500 dark:text-gray-400 py-8">
@@ -1467,7 +1525,7 @@
             `;
             return;
         }
-        
+
         container.innerHTML = etapasEnMemoria.map((etapa, index) => `
             <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
                 <div class="flex items-center gap-3">

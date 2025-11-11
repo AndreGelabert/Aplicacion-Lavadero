@@ -70,38 +70,16 @@ const SiteModule = {
         const form = document.getElementById('filterForm');
         if (!form) return;
 
-        // Limpiar checkboxes
-        const checkboxes = form.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach(cb => cb.checked = false);
+        // Desmarcar todos los estados
+        form.querySelectorAll('input[name="estados"][type="checkbox"]').forEach(cb => cb.checked = false);
 
-        // Limpiar campos de fecha (para auditoría)
-        const dateInputs = form.querySelectorAll('input[type="date"]');
-        dateInputs.forEach(input => input.value = '');
-
-        // Marcar "Activo" por defecto solo en páginas que lo requieran
-        const activoCheckbox = form.querySelector('input[value="Activo"]');
-        if (activoCheckbox && !window.location.pathname.includes('Auditoria')) {
+        // Marcar "Activo" por defecto, excepto en Auditoría
+        const activoCheckbox = form.querySelector('input[name="estados"][value="Activo"]');
+        const isAuditoria = window.location.pathname.toLowerCase().includes('auditoria');
+        if (activoCheckbox && !isAuditoria) {
             activoCheckbox.checked = true;
         }
-
-        // Restablecer ordenamiento a valores por defecto
-        const sortByInput = document.getElementById('current-sort-by');
-        const sortOrderInput = document.getElementById('current-sort-order');
-
-        if (sortByInput && sortOrderInput) {
-            // Valores por defecto según la página
-            if (window.location.pathname.includes('Auditoria')) {
-                sortByInput.value = 'Timestamp';
-                sortOrderInput.value = 'desc';
-            } else {
-                sortByInput.value = 'Nombre';
-                sortOrderInput.value = 'asc';
-            }
-        }
-
-        // Enviar el formulario para aplicar los filtros limpios
-        form.submit();
-    },
+    }
 
     // =====================================
     // FILTRADO DE TABLAS
