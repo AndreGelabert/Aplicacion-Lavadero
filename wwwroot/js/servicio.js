@@ -277,6 +277,11 @@
                 cont.innerHTML = html;
                 const cp = document.getElementById('current-page-value')?.value;
                 if (cp) cont.dataset.currentPage = cp;
+                // REINICIALIZAR FILTROS TRAS REEMPLAZO DINÁMICO
+                window.CommonUtils?.setupDefaultFilterForm?.();
+                // Si usas Flowbite para dropdown/modals dinámicos:
+                if (typeof initModals === 'function') { initModals(); }
+                if (typeof initDropdowns === 'function') { initDropdowns(); }
             })
             .catch(e => {
                 showTableMessage('error', 'Error cargando la tabla.');
@@ -1149,7 +1154,9 @@
         if (window.history && typeof window.history.replaceState === 'function') {
             window.history.replaceState(null, '', window.location.pathname);
         }
-
+        // Re-inicializar lógica de filtros tras limpieza
+        window.CommonUtils?.setupDefaultFilterForm?.();
+        if (typeof initDropdowns === 'function') { initDropdowns(); }
         // Recargar tabla con página 1 y filtros limpios
         reloadServicioTable(1);
 

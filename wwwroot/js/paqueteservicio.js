@@ -134,6 +134,9 @@
             document.getElementById('filterDropdown')?.classList.add('hidden');
 
             // 8) Recargar
+            // Re-inicializar lógica de filtros tras limpieza (evita primer clic perdido)
+            window.CommonUtils?.setupDefaultFilterForm?.();
+            if (typeof initDropdowns === 'function') { initDropdowns(); }
             reloadPaqueteTable(1);
 
             // 9) Recalcular hints
@@ -216,7 +219,9 @@
 
                     const currentPageHidden = document.getElementById('current-page-value')?.value;
                     if (currentPageHidden && container) container.dataset.currentPage = currentPageHidden;
-
+                    // Re-inicializar filtros/dropdowns tras reemplazo dinámico
+                    window.CommonUtils?.setupDefaultFilterForm?.();
+                    if (typeof initDropdowns === 'function') { initDropdowns(); }
                     // Recalcular hints tras pintar
                     if (typeof window.refreshPriceRangeHints === 'function') {
                         setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 80);

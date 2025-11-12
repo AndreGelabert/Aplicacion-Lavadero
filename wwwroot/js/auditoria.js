@@ -196,6 +196,9 @@
                 cont.innerHTML = html;
                 const cp = document.getElementById('current-page-value')?.value;
                 if (cp) cont.dataset.currentPage = cp;
+                // Re-inicializar filtros/dropdowns tras reemplazo dinámico
+                window.CommonUtils?.setupDefaultFilterForm?.();
+                if (typeof initDropdowns === 'function') { initDropdowns(); }
             })
             .catch(e => {
                 console.error('Error cargando la tabla:', e);
@@ -393,7 +396,9 @@
         if (window.history && typeof window.history.replaceState === 'function') {
             window.history.replaceState(null, '', window.location.pathname);
         }
-
+        // Re-inicializar lógica de filtros tras limpieza (evita el primer clic perdido)
+        window.CommonUtils?.setupDefaultFilterForm?.();
+        if (typeof initDropdowns === 'function') { initDropdowns(); }
         // Recargar tabla página1
         reloadAuditoriaTable(1);
 
