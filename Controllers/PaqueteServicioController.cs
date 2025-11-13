@@ -500,9 +500,10 @@ public class PaqueteServicioController : Controller
             ModelState.AddModelError("Nombre", "El nombre solo puede contener letras y espacios.");
         }
 
-        if (paquete.PorcentajeDescuento < 0 || paquete.PorcentajeDescuento > 100)
+        // Validación ajustada:5..95
+        if (paquete.PorcentajeDescuento < 5 || paquete.PorcentajeDescuento > 95)
         {
-            ModelState.AddModelError("PorcentajeDescuento", "El porcentaje de descuento debe estar entre 0 y 100.");
+            ModelState.AddModelError("PorcentajeDescuento", "El porcentaje de descuento debe estar entre 5 y 95.");
         }
 
         if (paquete.ServiciosIds == null || paquete.ServiciosIds.Count < 2)

@@ -1,514 +1,554 @@
-    /**
-     * ================================================
-     * PAQUETESERVICIO.JS - Página Paquetes de Servicios
-     * ================================================
-     * - Filtros: sólo aplican con submit (Aplicar).
-     * - Búsqueda: debounce (500ms).
-     * - Limpiar: usa clearAllFilters() (site.js) para estados y limpia el resto local.
-     * - Mensajes: contenedores autogenerados y robustos.
-     * - Hints de precio: recalculan al iniciar, aplicar, limpiar, búsqueda y tras recargar la tabla.
-     */
+/**
+ * ================================================
+ * PAQUETESERVICIO.JS - Página Paquetes de Servicios
+ * ================================================
+ * - Estructura alineada a servicio.js: búsqueda debounce, helpers de orden,
+ *   recarga de tabla con filtros/orden, y reemplazo de formulario tras submit.
+ * - Mantiene: selector de servicios, hints de precio, step de descuento.
+ */
 
-    (function () {
-        'use strict';
+(function () {
+    'use strict';
 
-        let paqueteMsgTimeout = null;
-        let tableMsgTimeout = null;
-        let searchTimeout = null;
-        let currentSearchTerm = '';
+    let paqueteMsgTimeout = null;
+    let tableMsgTimeout = null;
+    let searchTimeout = null;
+    let currentSearchTerm = '';
 
-        let serviciosDisponibles = [];
-        let serviciosSeleccionados = [];
-        let servicioSeleccionadoDropdown = null;
+    let serviciosDisponibles = [];
+    let serviciosSeleccionados = [];
+    let servicioSeleccionadoDropdown = null;
 
-        window.PageModules = window.PageModules || {};
-        window.PageModules.paquetes = { init: initializePaquetesPage };
+    window.PageModules = window.PageModules || {};
+    window.PageModules.paquetes = { init: initializePaquetesPage };
 
-        document.addEventListener('DOMContentLoaded', () => {
-            try { window.PageModules?.paquetes?.init(); } catch { initializePaquetesPage(); }
-        });
+    document.addEventListener('DOMContentLoaded', () => {
+        try { window.PageModules?.paquetes?.init(); } catch { initializePaquetesPage(); }
+    });
 
-        function initializePaquetesPage() {
-            setupFormMessageHandler();
-            setupSearchWithDebounce();
-            window.CommonUtils?.setupDefaultFilterForm();
-            setupDynamicPriceHints();
-            setupFilterFormSubmit();
-            setupClearFiltersButton();
-            checkEditMode();
-            initializeForm();
-            setupDropdownClickOutside();
-        }
+    function initializePaquetesPage() {
+        setupFormMessageHandler();
+        setupSearchWithDebounce();
+        window.CommonUtils?.setupDefaultFilterForm();
+        setupDynamicPriceHints();
+        setupFilterFormSubmit();
+        setupClearFiltersButton();
+        checkEditMode();
+        initializeForm();
+        setupDropdownClickOutside();
+        setupDescuentoStep();
+    }
 
-        // ===================== Aplicar filtros =====================
-        function setupFilterFormSubmit() {
-            const form = document.getElementById('filterForm');
-            if (!form || form.dataset.submitSetup === 'true') return;
+    // ===================== Helpers de orden =====================
+    function getCurrentSort() {
+        return {
+            sortBy: document.getElementById('current-sort-by')?.value || 'Nombre',
+            sortOrder: document.getElementById('current-sort-order')?.value || 'asc'
+        };
+    }
 
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
+    // ===================== Búsqueda (debounce) =================
+    function setupSearchWithDebounce() {
+        const searchInput = document.getElementById('simple-search');
+        if (!searchInput) return;
 
-                const pg = form.querySelector('input[name="pageNumber"]');
-                if (pg) pg.value = '1';
+        // Clonar para limpiar listeners previos
+        const newSearchInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
 
-                const searchInput = document.getElementById('simple-search');
-                currentSearchTerm = searchInput?.value.trim() || '';
+        // Estado inicial desde servidor si aplicaba
+        currentSearchTerm = newSearchInput.value?.trim() || '';
 
-                document.getElementById('filterDropdown')?.classList.add('hidden');
-                if (history.replaceState) history.replaceState(null, '', '/PaqueteServicio/Index');
+        newSearchInput.addEventListener('input', function () {
+            const term = this.value.trim();
+            if (searchTimeout) clearTimeout(searchTimeout);
 
+            if (term === '') {
+                // limpiar estado y volver a la tabla base
+                currentSearchTerm = '';
                 reloadPaqueteTable(1);
-                showTableMessage('info', 'Filtros aplicados.');
-
+                // refrescar hints cuando vuelve a base
                 if (typeof window.refreshPriceRangeHints === 'function') {
-                    setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 150);
+                    setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 120);
                 }
-            });
+                return;
+            }
 
-            form.dataset.submitSetup = 'true';
+            searchTimeout = setTimeout(() => {
+                performServerSearch(term);
+                if (typeof window.refreshPriceRangeHints === 'function') {
+                    setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 120);
+                }
+            }, 500);
+        });
+    }
+
+    function performServerSearch(searchTerm) {
+        currentSearchTerm = searchTerm;
+
+        const form = document.getElementById('filterForm');
+        const params = new URLSearchParams();
+
+        if (form) {
+            const fd = new FormData(form);
+            for (const [k, v] of fd.entries()) params.append(k, v);
         }
 
-        // ===================== Limpiar filtros =====================
-        function setupClearFiltersButton() {
-            // Soporta diferentes selectores por seguridad
-            const btn = document.getElementById('clearFiltersBtn')
-                || document.querySelector('[data-action="clear-filters"]')
-                || document.querySelector('[data-clear="filters"]');
-            if (!btn || btn.dataset.setup === 'true') return;
+        const { sortBy, sortOrder } = getCurrentSort();
+        params.set('searchTerm', searchTerm);
+        params.set('pageNumber', '1');
+        params.set('sortBy', sortBy);
+        params.set('sortOrder', sortOrder);
 
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                clearPaqueteFilters();
-            });
+        const url = '/PaqueteServicio/SearchPartial?' + params.toString();
+        loadTablePartial(url);
+    }
 
-            btn.dataset.setup = 'true';
-        }
+    // ===================== Aplicar filtros =====================
+    function setupFilterFormSubmit() {
+        const form = document.getElementById('filterForm');
+        if (!form || form.dataset.submitSetup === 'true') return;
 
-        function clearPaqueteFilters() {
-            const form = document.getElementById('filterForm');
-            if (!form) return;
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
 
-            // 1) Estados con clearAllFilters (o fallback)
-            try {
-                if (typeof window.clearAllFilters === 'function') {
-                    window.clearAllFilters();
-                } else {
-                    form.querySelectorAll('input[name="estados"][type="checkbox"]').forEach(cb => cb.checked = false);
-                    form.querySelector('input[name="estados"][value="Activo"]')?.setAttribute('checked', 'checked');
-                }
-            } catch { /* no-op */ }
+            const pg = form.querySelector('input[name="pageNumber"]');
+            if (pg) pg.value = '1';
 
-            // 2) Búsqueda
             const searchInput = document.getElementById('simple-search');
-            if (searchInput) searchInput.value = '';
-            currentSearchTerm = '';
-            if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
+            if (searchInput) currentSearchTerm = searchInput.value.trim();
 
-            // 3) Campos propios
-            form.querySelectorAll('input[type="number"]').forEach(n => {
-                n.value = '';
-                n.removeAttribute('min');
-                n.removeAttribute('max');
-            });
-            form.querySelectorAll('select').forEach(sel => sel.selectedIndex = 0);
+            const dd = document.getElementById('filterDropdown');
+            if (dd) dd.classList.add('hidden');
 
-            // 4) Paginación/orden
-            setHiddenValue('pageNumber', '1');
-            setHiddenValue('current-sort-by', 'Nombre');
-            setHiddenValue('current-sort-order', 'asc');
-
-            // 5) URL limpia
-            if (history.replaceState) history.replaceState({}, document.title, '/PaqueteServicio/Index');
-
-            // 6) Hints visuales
-            ensureHelpElements();
-            document.getElementById('precioMin-help').textContent = '';
-            document.getElementById('precioMax-help').textContent = '';
-            document.getElementById('precioMin')?.removeAttribute('min');
-            document.getElementById('precioMax')?.removeAttribute('max');
-
-            // 7) Cerrar dropdown
-            document.getElementById('filterDropdown')?.classList.add('hidden');
-
-            // 8) Recargar
-            // Re-inicializar lógica de filtros tras limpieza (evita primer clic perdido)
-            window.CommonUtils?.setupDefaultFilterForm?.();
-            if (typeof initDropdowns === 'function') { initDropdowns(); }
             reloadPaqueteTable(1);
 
-            // 9) Recalcular hints
+            if (history.replaceState) history.replaceState(null, '', window.location.pathname);
+
+            showTableMessage('info', 'Filtros aplicados.');
+
             if (typeof window.refreshPriceRangeHints === 'function') {
                 setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 150);
             }
+        });
 
-            showTableMessage('info', 'Filtros restablecidos.');
-        }
+        form.dataset.submitSetup = 'true';
+    }
 
-        // ===================== Búsqueda (debounce) =================
-        function setupSearchWithDebounce() {
-            const original = document.getElementById('simple-search');
-            if (!original) return;
-            const searchInput = original.cloneNode(true);
-            original.parentNode.replaceChild(searchInput, original);
+    // ===================== Limpiar filtros =====================
+    function setupClearFiltersButton() {
+        const btn = document.getElementById('clearFiltersBtn')
+            || document.querySelector('[data-action="clear-filters"]')
+            || document.querySelector('[data-clear="filters"]');
+        if (!btn || btn.dataset.setup === 'true') return;
 
-            currentSearchTerm = searchInput.value?.trim() || '';
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            clearPaqueteFilters();
+        });
 
-            searchInput.addEventListener('input', function () {
-                const term = this.value.trim();
-                if (searchTimeout) clearTimeout(searchTimeout);
+        btn.dataset.setup = 'true';
+    }
 
-                if (term === '') {
-                    currentSearchTerm = '';
-                    reloadPaqueteTable(1);
-                    // refrescar hints al volver a estado base
-                    if (typeof window.refreshPriceRangeHints === 'function') {
-                        setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 120);
-                    }
-                    return;
-                }
-
-                searchTimeout = setTimeout(() => {
-                    currentSearchTerm = term;
-                    reloadPaqueteTable(1);
-                    if (typeof window.refreshPriceRangeHints === 'function') {
-                        setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 120);
-                    }
-                }, 500);
-            });
-        }
-
-        // ===================== Reload tabla ========================
-        function buildBaseParams() {
-            const form = document.getElementById('filterForm');
-            const params = new URLSearchParams();
-
-            if (form) {
-                const fd = new FormData(form);
-                for (const [k, v] of fd.entries()) params.append(k, v);
-            }
-
-            params.set('sortBy', document.getElementById('current-sort-by')?.value || 'Nombre');
-            params.set('sortOrder', document.getElementById('current-sort-order')?.value || 'asc');
-
-            return params;
-        }
-
-        function reloadPaqueteTable(pageNumber) {
-            const params = buildBaseParams();
-            params.set('pageNumber', String(pageNumber));
-
-            let url;
-            if (currentSearchTerm) {
-                params.set('searchTerm', currentSearchTerm);
-                url = '/PaqueteServicio/SearchPartial?' + params.toString();
+    function clearPaqueteFilters() {
+        const form = document.getElementById('filterForm');
+        if (!form) return;
+        try {
+            if (typeof window.clearAllFilters === 'function') {
+                window.clearAllFilters();
             } else {
-                url = '/PaqueteServicio/TablePartial?' + params.toString();
+                form.querySelectorAll('input[name="estados"][type="checkbox"]').forEach(cb => cb.checked = false);
+                form.querySelector('input[name="estados"][value="Activo"]')?.setAttribute('checked', 'checked');
             }
-            loadTablePartial(url);
+        } catch { }
+
+        const searchInput = document.getElementById('simple-search');
+        if (searchInput) searchInput.value = '';
+        currentSearchTerm = '';
+        if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
+
+        form.querySelectorAll('input[type="number"]').forEach(n => {
+            n.value = '';
+            n.removeAttribute('min');
+            n.removeAttribute('max');
+        });
+        form.querySelectorAll('select').forEach(sel => sel.selectedIndex = 0);
+
+        setHiddenValue('pageNumber', '1');
+        setHiddenValue('current-sort-by', 'Nombre');
+        setHiddenValue('current-sort-order', 'asc');
+
+        if (history.replaceState) history.replaceState({}, document.title, '/PaqueteServicio/Index');
+
+        ensureHelpElements();
+        document.getElementById('precioMin-help').textContent = '';
+        document.getElementById('precioMax-help').textContent = '';
+        document.getElementById('precioMin')?.removeAttribute('min');
+        document.getElementById('precioMax')?.removeAttribute('max');
+
+        document.getElementById('filterDropdown')?.classList.add('hidden');
+
+        window.CommonUtils?.setupDefaultFilterForm?.();
+        setupDescuentoStep();
+        if (typeof initDropdowns === 'function') { initDropdowns(); }
+
+        reloadPaqueteTable(1);
+
+        if (typeof window.refreshPriceRangeHints === 'function') {
+            setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 150);
         }
 
-        function loadTablePartial(url) {
-            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                .then(r => r.text())
-                .then(html => {
-                    const container = document.getElementById('paquete-table-container');
-                    if (container) container.innerHTML = html;
+        showTableMessage('info', 'Filtros restablecidos.');
+    }
 
-                    const currentPageHidden = document.getElementById('current-page-value')?.value;
-                    if (currentPageHidden && container) container.dataset.currentPage = currentPageHidden;
-                    // Re-inicializar filtros/dropdowns tras reemplazo dinámico
-                    window.CommonUtils?.setupDefaultFilterForm?.();
-                    if (typeof initDropdowns === 'function') { initDropdowns(); }
-                    // Recalcular hints tras pintar
-                    if (typeof window.refreshPriceRangeHints === 'function') {
-                        setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 80);
-                    }
-                })
-                .catch((err) => {
-                    console.error('loadTablePartial error:', err);
-                    showTableMessage('error', 'Error al cargar los datos');
+    // ===================== Reload tabla ========================
+    function buildBaseParams() {
+        const form = document.getElementById('filterForm');
+        const params = new URLSearchParams();
+
+        if (form) {
+            const fd = new FormData(form);
+            for (const [k, v] of fd.entries()) params.append(k, v);
+        }
+
+        const { sortBy, sortOrder } = getCurrentSort();
+        params.set('sortBy', sortBy);
+        params.set('sortOrder', sortOrder);
+
+        return params;
+    }
+
+    function reloadPaqueteTable(pageNumber) {
+        const params = buildBaseParams();
+        params.set('pageNumber', String(pageNumber));
+
+        let url;
+        if (currentSearchTerm && currentSearchTerm.trim().length > 0) {
+            params.set('searchTerm', currentSearchTerm.trim());
+            url = '/PaqueteServicio/SearchPartial?' + params.toString();
+        } else {
+            url = '/PaqueteServicio/TablePartial?' + params.toString();
+        }
+        loadTablePartial(url);
+    }
+
+    function loadTablePartial(url) {
+        const bust = (url.includes('?') ? '&' : '?') + '_=' + Date.now();
+        fetch(url + bust, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Cache-Control': 'no-cache' },
+            cache: 'no-store'
+        })
+            .then(r => r.text())
+            .then(html => {
+                const container = document.getElementById('paquete-table-container');
+                if (container) container.innerHTML = html;
+
+                const currentPageHidden = document.getElementById('current-page-value')?.value;
+                if (currentPageHidden && container) container.dataset.currentPage = currentPageHidden;
+
+                // Re-inicializar tras reemplazo dinámico (como en servicio.js)
+                window.CommonUtils?.setupDefaultFilterForm?.();
+                setupDescuentoStep();
+                if (typeof initDropdowns === 'function') { initDropdowns(); }
+
+                if (typeof window.refreshPriceRangeHints === 'function') {
+                    setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 80);
+                }
+            })
+            .catch((err) => {
+                console.error('loadTablePartial error:', err);
+                showTableMessage('error', 'Error al cargar los datos');
+            });
+    }
+
+    function setHiddenValue(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    }
+
+    // Exponer funciones de tabla como en servicio.js
+    window.changePage = (page) => reloadPaqueteTable(page);
+
+    window.sortTable = function (sortBy) {
+        const currentSortBy = document.getElementById('current-sort-by')?.value || 'Nombre';
+        const currentSortOrder = document.getElementById('current-sort-order')?.value || 'asc';
+
+        const newOrder = (currentSortBy === sortBy) ? (currentSortOrder === 'asc' ? 'desc' : 'asc') : 'asc';
+
+        setHiddenValue('current-sort-by', sortBy);
+        setHiddenValue('current-sort-order', newOrder);
+
+        reloadPaqueteTable(1);
+    };
+
+    window.getCurrentTablePage = function () {
+        return parseInt(document.getElementById('paquete-table-container')?.dataset.currentPage || '1');
+    };
+
+    // ===================== Hints de precio =====================
+    function setupDynamicPriceHints() {
+        const form = document.getElementById('filterForm');
+        if (!form) return;
+
+        ensureHelpElements();
+
+        const precioMinEl = document.getElementById('precioMin');
+        const precioMaxEl = document.getElementById('precioMax');
+        const helpMin = document.getElementById('precioMin-help');
+        const helpMax = document.getElementById('precioMax-help');
+
+        async function refreshPriceRangeHints() {
+            try {
+                const params = new URLSearchParams();
+                const fd = new FormData(form);
+                for (const [k, v] of fd.entries()) {
+                    if (['precioMin', 'precioMax', 'pageNumber'].includes(k)) continue;
+                    params.append(k, v);
+                }
+                if (currentSearchTerm) params.append('searchTerm', currentSearchTerm);
+
+                const resp = await fetch('/PaqueteServicio/PriceRange?' + params.toString(), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
                 });
-        }
 
-        function setHiddenValue(id, value) {
-            const el = document.getElementById(id);
-            if (el) el.value = value;
-        }
+                let data;
+                try { data = await resp.json(); }
+                catch { data = null; }
 
-        window.changePage = (page) => reloadPaqueteTable(page);
-        window.sortTable = function (sortBy) {
-            const currentSortBy = document.getElementById('current-sort-by')?.value;
-            const currentSortOrder = document.getElementById('current-sort-order')?.value || 'asc';
-            const newOrder = (currentSortBy === sortBy) ? (currentSortOrder === 'asc' ? 'desc' : 'asc') : 'asc';
-            setHiddenValue('current-sort-by', sortBy);
-            setHiddenValue('current-sort-order', newOrder);
-            reloadPaqueteTable(1);
-        };
+                if (data?.success) {
+                    const fmt = (n) => (typeof n === 'number' ? n.toFixed(2) : (n != null ? parseFloat(n).toFixed(2) : ''));
+                    helpMin.textContent = (data.min != null) ? `Mín. permitido: $${fmt(data.min)}` : '';
+                    helpMax.textContent = (data.max != null) ? `Máx. permitido: $${fmt(data.max)}` : '';
 
-        // ===================== Hints de precio =====================
-        function setupDynamicPriceHints() {
-            const form = document.getElementById('filterForm');
-            if (!form) return;
-
-            ensureHelpElements();
-
-            const precioMinEl = document.getElementById('precioMin');
-            const precioMaxEl = document.getElementById('precioMax');
-            const helpMin = document.getElementById('precioMin-help');
-            const helpMax = document.getElementById('precioMax-help');
-
-            async function refreshPriceRangeHints() {
-                try {
-                    const params = new URLSearchParams();
-                    const fd = new FormData(form);
-                    for (const [k, v] of fd.entries()) {
-                        if (['precioMin', 'precioMax', 'pageNumber'].includes(k)) continue;
-                        params.append(k, v);
-                    }
-                    if (currentSearchTerm) params.append('searchTerm', currentSearchTerm);
-
-                    const resp = await fetch('/PaqueteServicio/PriceRange?' + params.toString(), {
-                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-                    });
-
-                    let data;
-                    try { data = await resp.json(); }
-                    catch { data = null; }
-
-                    if (data?.success) {
-                        const fmt = (n) => (typeof n === 'number' ? n.toFixed(2) : (n != null ? parseFloat(n).toFixed(2) : ''));
-                        helpMin.textContent = (data.min != null) ? `Mín. permitido: $${fmt(data.min)}` : '';
-                        helpMax.textContent = (data.max != null) ? `Máx. permitido: $${fmt(data.max)}` : '';
-
-                        if (precioMinEl && data.min != null) precioMinEl.setAttribute('min', data.min); else precioMinEl?.removeAttribute('min');
-                        if (precioMaxEl && data.max != null) precioMaxEl.setAttribute('max', data.max); else precioMaxEl?.removeAttribute('max');
-                    } else {
-                        helpMin.textContent = '';
-                        helpMax.textContent = '';
-                        precioMinEl?.removeAttribute('min');
-                        precioMaxEl?.removeAttribute('max');
-                    }
-                } catch (err) {
-                    console.debug('PriceRange hints error:', err);
+                    if (precioMinEl && data.min != null) precioMinEl.setAttribute('min', data.min); else precioMinEl?.removeAttribute('min');
+                    if (precioMaxEl && data.max != null) precioMaxEl.setAttribute('max', data.max); else precioMaxEl?.removeAttribute('max');
+                } else {
                     helpMin.textContent = '';
                     helpMax.textContent = '';
                     precioMinEl?.removeAttribute('min');
                     precioMaxEl?.removeAttribute('max');
                 }
-            }
-
-            // Exponer global
-            window.refreshPriceRangeHints = refreshPriceRangeHints;
-
-            // Inicial
-            refreshPriceRangeHints();
-
-            // Campos relevantes
-            const watched = [
-                'input[name="estados"]',
-                'input[name="tiposVehiculo"]',
-                '#descuentoMin', '#descuentoMax',
-                '#serviciosCantidad'
-            ];
-            watched.forEach(sel =>
-                document.querySelectorAll(sel).forEach(el => {
-                    el.addEventListener('change', refreshPriceRangeHints);
-                    el.addEventListener('input', refreshPriceRangeHints);
-                })
-            );
-
-            // Búsqueda: refrescar tras debounce aproximado
-            const search = document.getElementById('simple-search');
-            if (search) search.addEventListener('input', () => setTimeout(refreshPriceRangeHints, 550));
-        }
-
-        // Garantiza la existencia de los elementos de ayuda bajo los inputs de precio
-        function ensureHelpElements() {
-            const min = document.getElementById('precioMin');
-            const max = document.getElementById('precioMax');
-            if (min && !document.getElementById('precioMin-help')) {
-                const help = document.createElement('p');
-                help.id = 'precioMin-help';
-                help.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
-                min.parentNode.insertBefore(help, min.nextSibling);
-            }
-            if (max && !document.getElementById('precioMax-help')) {
-                const help = document.createElement('p');
-                help.id = 'precioMax-help';
-                help.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
-                max.parentNode.insertBefore(help, max.nextSibling);
+            } catch (err) {
+                console.debug('PriceRange hints error:', err);
+                helpMin.textContent = '';
+                helpMax.textContent = '';
+                precioMinEl?.removeAttribute('min');
+                precioMaxEl?.removeAttribute('max');
             }
         }
 
-        // ===================== UI =====================
-        function checkEditMode() {
-            const formTitle = document.getElementById('form-title');
-            if (formTitle?.textContent.includes('Editando')) {
-                document.getElementById('accordion-flush-body-1')?.classList.remove('hidden');
-            }
+        // Exponer global
+        window.refreshPriceRangeHints = refreshPriceRangeHints;
+
+        // Inicial
+        refreshPriceRangeHints();
+
+        // Campos relevantes
+        const watched = [
+            'input[name="estados"]',
+            'input[name="tiposVehiculo"]',
+            '#descuentoMin', '#descuentoMax',
+            '#serviciosCantidad'
+        ];
+        watched.forEach(sel =>
+            document.querySelectorAll(sel).forEach(el => {
+                el.addEventListener('change', refreshPriceRangeHints);
+                el.addEventListener('input', refreshPriceRangeHints);
+            })
+        );
+
+        // Búsqueda: refrescar tras debounce aproximado
+        const search = document.getElementById('simple-search');
+        if (search) search.addEventListener('input', () => setTimeout(refreshPriceRangeHints, 550));
+    }
+
+    // Garantiza la existencia de los elementos de ayuda bajo los inputs de precio
+    function ensureHelpElements() {
+        const min = document.getElementById('precioMin');
+        const max = document.getElementById('precioMax');
+        if (min && !document.getElementById('precioMin-help')) {
+            const help = document.createElement('p');
+            help.id = 'precioMin-help';
+            help.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
+            min.parentNode.insertBefore(help, min.nextSibling);
         }
-
-        function setupFormMessageHandler() {
-            document.addEventListener('input', (e) => {
-                if (e.target.closest('#paquete-form')) hidePaqueteMessage();
-            });
+        if (max && !document.getElementById('precioMax-help')) {
+            const help = document.createElement('p');
+            help.id = 'precioMax-help';
+            help.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
+            max.parentNode.insertBefore(help, max.nextSibling);
         }
+    }
 
-        function setupDropdownClickOutside() {
-            document.addEventListener('click', (e) => {
-                const dropdown = document.getElementById('servicio-dropdown');
-                const searchInput = document.getElementById('servicio-search');
-                if (dropdown && !dropdown.contains(e.target) && e.target !== searchInput) {
-                    dropdown.classList.add('hidden');
-                }
-            });
+    // ===================== UI =====================
+    function checkEditMode() {
+        const formTitle = document.getElementById('form-title');
+        if (formTitle?.textContent.includes('Editando')) {
+            document.getElementById('accordion-flush-body-1')?.classList.remove('hidden');
         }
+    }
 
-        // ===================== Selector de servicios =====================
-        window.loadServiciosPorTipoVehiculo = async function () {
-            const tipoVehiculo = document.getElementById('TipoVehiculo')?.value;
-            const cont = document.getElementById('servicio-selector-container');
+    function setupFormMessageHandler() {
+        document.addEventListener('input', (e) => {
+            if (e.target.closest('#paquete-form')) hidePaqueteMessage();
+        });
+    }
 
-            if (!tipoVehiculo) {
-                cont?.classList.add('hidden');
-                serviciosDisponibles = [];
-                serviciosSeleccionados = [];
-                updateResumen();
-                return;
-            }
-            try {
-                const resp = await fetch(`/PaqueteServicio/ObtenerServiciosPorTipoVehiculo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`);
-                const data = await resp.json();
-                if (data.success) {
-                    serviciosDisponibles = data.servicios;
-                    cont?.classList.remove('hidden');
-                    renderServiciosDropdown(serviciosDisponibles);
-                } else {
-                    cont?.classList.add('hidden');
-                    showPaqueteMessage(data.message || 'No hay servicios disponibles', 'error');
-                }
-            } catch {
-                cont?.classList.add('hidden');
-                showPaqueteMessage('Error al cargar servicios', 'error');
-            }
-        };
-
-        function renderServiciosDropdown(servicios, filterText = '') {
-            const target = document.getElementById('servicio-dropdown-content');
-            if (!target) return;
-
-            if (!Array.isArray(servicios) || servicios.length === 0) {
-                target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No hay servicios disponibles</p>';
-                return;
-            }
-
-            let lista = servicios;
-            if (filterText) {
-                const lower = filterText.toLowerCase();
-                lista = lista.filter(s =>
-                    (s.nombre && s.nombre.toLowerCase().includes(lower)) ||
-                    (s.tipo && s.tipo.toLowerCase().includes(lower))
-                );
-            }
-            lista = lista.filter(s => !serviciosSeleccionados.some(sel => sel.id === s.id));
-
-            if (lista.length === 0) {
-                target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No se encontraron servicios</p>';
-                return;
-            }
-
-            const grupos = {};
-            lista.forEach(s => (grupos[s.tipo] ||= []).push(s));
-
-            let html = '';
-            Object.keys(grupos).sort().forEach(tipo => {
-                html += `<div class="mb-2">
-                <h6 class="text-xs font-semibold text-gray-700 dark:text-gray-300 px-2 py-1 bg-gray-100 dark:bg-gray-600">${tipo}</h6>
-                <div class="space-y-1">`;
-                grupos[tipo].forEach(s => {
-                    const active = servicioSeleccionadoDropdown?.id === s.id ? 'bg-blue-100 dark:bg-blue-900' : '';
-                    html += `<div class="px-2 py-2 hover:bg-gray-100 dark:hoverbg-gray-600 cursor-pointer ${active}" onclick="selectServicioFromDropdown('${s.id}')">
-                            <div class="text-sm font-medium text-gray-900 dark:text-white">${s.nombre}</div>
-                         </div>`;
-                });
-                html += '</div></div>';
-            });
-
-            target.innerHTML = html;
-        }
-
-        window.showServicioDropdown = function () {
+    function setupDropdownClickOutside() {
+        document.addEventListener('click', (e) => {
             const dropdown = document.getElementById('servicio-dropdown');
             const searchInput = document.getElementById('servicio-search');
-            if (dropdown && serviciosDisponibles.length) {
-                renderServiciosDropdown(serviciosDisponibles, searchInput?.value || '');
-                dropdown.classList.remove('hidden');
+            if (dropdown && !dropdown.contains(e.target) && e.target !== searchInput) {
+                dropdown.classList.add('hidden');
             }
-        };
+        });
+    }
 
-        window.filterServiciosDropdown = function (txt) {
-            renderServiciosDropdown(serviciosDisponibles, txt);
-            document.getElementById('servicio-dropdown')?.classList.remove('hidden');
-        };
+    // ===================== Selector de servicios =====================
+    window.loadServiciosPorTipoVehiculo = async function () {
+        const tipoVehiculo = document.getElementById('TipoVehiculo')?.value;
+        const cont = document.getElementById('servicio-selector-container');
 
-        window.selectServicioFromDropdown = function (id) {
-            const s = serviciosDisponibles.find(x => x.id === id);
-            if (!s) return;
-            servicioSeleccionadoDropdown = s;
-            renderServiciosDropdown(serviciosDisponibles, document.getElementById('servicio-search')?.value || '');
-            const searchInput = document.getElementById('servicio-search');
-            if (searchInput) searchInput.value = s.nombre;
-        };
-
-        window.agregarServicioSeleccionado = function () {
-            if (!servicioSeleccionadoDropdown) {
-                showPaqueteMessage('Debe seleccionar un servicio del listado', 'error');
-                return;
+        if (!tipoVehiculo) {
+            cont?.classList.add('hidden');
+            serviciosDisponibles = [];
+            serviciosSeleccionados = [];
+            updateResumen();
+            return;
+        }
+        try {
+            const resp = await fetch(`/PaqueteServicio/ObtenerServiciosPorTipoVehiculo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`);
+            const data = await resp.json();
+            if (data.success) {
+                serviciosDisponibles = data.servicios;
+                cont?.classList.remove('hidden');
+                renderServiciosDropdown(serviciosDisponibles);
+            } else {
+                cont?.classList.add('hidden');
+                showPaqueteMessage(data.message || 'No hay servicios disponibles', 'error');
             }
-            const tipo = servicioSeleccionadoDropdown.tipo;
-            if (serviciosSeleccionados.some(s => s.tipo === tipo)) {
-                showPaqueteMessage('Solo puede seleccionar un servicio de cada tipo', 'error');
-                return;
-            }
-            serviciosSeleccionados.push({
-                id: servicioSeleccionadoDropdown.id,
-                nombre: servicioSeleccionadoDropdown.nombre,
-                tipo: servicioSeleccionadoDropdown.tipo,
-                precio: servicioSeleccionadoDropdown.precio,
-                tiempoEstimado: servicioSeleccionadoDropdown.tiempoEstimado
+        } catch {
+            cont?.classList.add('hidden');
+            showPaqueteMessage('Error al cargar servicios', 'error');
+        }
+    };
+
+    function renderServiciosDropdown(servicios, filterText = '') {
+        const target = document.getElementById('servicio-dropdown-content');
+        if (!target) return;
+
+        if (!Array.isArray(servicios) || servicios.length === 0) {
+            target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No hay servicios disponibles</p>';
+            return;
+        }
+
+        let lista = servicios;
+        if (filterText) {
+            const lower = filterText.toLowerCase();
+            lista = lista.filter(s =>
+                (s.nombre && s.nombre.toLowerCase().includes(lower)) ||
+                (s.tipo && s.tipo.toLowerCase().includes(lower))
+            );
+        }
+        lista = lista.filter(s => !serviciosSeleccionados.some(sel => sel.id === s.id));
+
+        if (lista.length === 0) {
+            target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No se encontraron servicios</p>';
+            return;
+        }
+
+        const grupos = {};
+        lista.forEach(s => (grupos[s.tipo] ||= []).push(s));
+
+        let html = '';
+        Object.keys(grupos).sort().forEach(tipo => {
+            html += `<div class="mb-2">
+                <h6 class="text-xs font-semibold text-gray-700 dark:text-gray-300 px-2 py-1 bg-gray-100 dark:bg-gray-600">${tipo}</h6>
+                <div class="space-y-1">`;
+            grupos[tipo].forEach(s => {
+                const active = servicioSeleccionadoDropdown?.id === s.id ? 'bg-blue-100 dark:bg-blue-900' : '';
+                html += `<div class="px-2 py-2 hover:bg-gray-100 dark:hoverbg-gray-600 cursor-pointer ${active}" onclick="selectServicioFromDropdown('${s.id}')">
+                            <div class="text-sm font-medium text-gray-900 dark:text-white">${s.nombre}</div>
+                         </div>`;
             });
-            servicioSeleccionadoDropdown = null;
-            const searchInput = document.getElementById('servicio-search');
-            if (searchInput) searchInput.value = '';
-            document.getElementById('servicio-dropdown')?.classList.add('hidden');
-            updateServiciosSeleccionadosList();
-            updateResumen();
-            renderServiciosDropdown(serviciosDisponibles);
-        };
+            html += '</div></div>';
+        });
 
-        window.removerServicioSeleccionado = function (id) {
-            serviciosSeleccionados = serviciosSeleccionados.filter(s => s.id !== id);
-            updateServiciosSeleccionadosList();
-            updateResumen();
-            renderServiciosDropdown(serviciosDisponibles, document.getElementById('servicio-search')?.value || '');
-        };
+        target.innerHTML = html;
+    }
 
-        function updateServiciosSeleccionadosList() {
-            const container = document.getElementById('servicios-seleccionados-container');
-            const list = document.getElementById('servicios-seleccionados-list');
-            if (!(container && list)) return;
+    window.showServicioDropdown = function () {
+        const dropdown = document.getElementById('servicio-dropdown');
+        const searchInput = document.getElementById('servicio-search');
+        if (dropdown && serviciosDisponibles.length) {
+            renderServiciosDropdown(serviciosDisponibles, searchInput?.value || '');
+            dropdown.classList.remove('hidden');
+        }
+    };
 
-            if (serviciosSeleccionados.length === 0) {
-                container.classList.add('hidden');
-                list.innerHTML = '';
-                return;
-            }
-            container.classList.remove('hidden');
+    window.filterServiciosDropdown = function (txt) {
+        renderServiciosDropdown(serviciosDisponibles, txt);
+        document.getElementById('servicio-dropdown')?.classList.remove('hidden');
+    };
 
-            list.innerHTML = '<ul class="space-y-2">' + serviciosSeleccionados.map(s => `
+    window.selectServicioFromDropdown = function (id) {
+        const s = serviciosDisponibles.find(x => x.id === id);
+        if (!s) return;
+        servicioSeleccionadoDropdown = s;
+        renderServiciosDropdown(serviciosDisponibles, document.getElementById('servicio-search')?.value || '');
+        const searchInput = document.getElementById('servicio-search');
+        if (searchInput) searchInput.value = s.nombre;
+    };
+
+    window.agregarServicioSeleccionado = function () {
+        if (!servicioSeleccionadoDropdown) {
+            showPaqueteMessage('Debe seleccionar un servicio del listado', 'error');
+            return;
+        }
+        const tipo = servicioSeleccionadoDropdown.tipo;
+        if (serviciosSeleccionados.some(s => s.tipo === tipo)) {
+            showPaqueteMessage('Solo puede seleccionar un servicio de cada tipo', 'error');
+            return;
+        }
+        serviciosSeleccionados.push({
+            id: servicioSeleccionadoDropdown.id,
+            nombre: servicioSeleccionadoDropdown.nombre,
+            tipo: servicioSeleccionadoDropdown.tipo,
+            precio: servicioSeleccionadoDropdown.precio,
+            tiempoEstimado: servicioSeleccionadoDropdown.tiempoEstimado
+        });
+        servicioSeleccionadoDropdown = null;
+        const searchInput = document.getElementById('servicio-search');
+        if (searchInput) searchInput.value = '';
+        document.getElementById('servicio-dropdown')?.classList.add('hidden');
+        updateServiciosSeleccionadosList();
+        updateResumen();
+        renderServiciosDropdown(serviciosDisponibles);
+    };
+
+    window.removerServicioSeleccionado = function (id) {
+        serviciosSeleccionados = serviciosSeleccionados.filter(s => s.id !== id);
+        updateServiciosSeleccionadosList();
+        updateResumen();
+        renderServiciosDropdown(serviciosDisponibles, document.getElementById('servicio-search')?.value || '');
+    };
+
+    function updateServiciosSeleccionadosList() {
+        const container = document.getElementById('servicios-seleccionados-container');
+        const list = document.getElementById('servicios-seleccionados-list');
+        if (!(container && list)) return;
+
+        if (serviciosSeleccionados.length === 0) {
+            container.classList.add('hidden');
+            list.innerHTML = '';
+            return;
+        }
+        container.classList.remove('hidden');
+
+        list.innerHTML = '<ul class="space-y-2">' + serviciosSeleccionados.map(s => `
             <li class="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600">
                 <div>
                     <span class="font-medium text-gray-900 dark:text-white">${s.nombre}</span>
@@ -526,291 +566,235 @@
                     </button>
                 </div>
             </li>`).join('') + '</ul>';
+    }
+
+    window.calcularPrecioYTiempo = function () { updateResumen(); };
+
+    function updateResumen() {
+        const descuento = parseFloat(document.getElementById('PorcentajeDescuento')?.value || 0);
+        const precioTotal = serviciosSeleccionados.reduce((sum, s) => sum + s.precio, 0);
+        const descuentoMonto = precioTotal * (descuento / 100);
+        const precioFinal = precioTotal - descuentoMonto;
+        const tiempoTotal = serviciosSeleccionados.reduce((sum, s) => sum + s.tiempoEstimado, 0);
+
+        setText('precio-total-sin-descuento', '$' + precioTotal.toFixed(2));
+        setText('precio-final', '$' + precioFinal.toFixed(2));
+        setText('tiempo-total', tiempoTotal + ' min');
+
+        setValue('Precio', precioFinal.toFixed(2));
+        setValue('TiempoEstimado', tiempoTotal);
+    }
+
+    function setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
+    function setValue(id, value) { const el = document.getElementById(id); if (el) el.value = value; }
+
+    // ===================== Form AJAX =====================
+    window.submitPaqueteAjax = function (form, event) {
+        if (event) event.preventDefault();
+
+        if (serviciosSeleccionados.length < 2) {
+            showPaqueteMessage('Debe seleccionar al menos 2 servicios', 'error');
+            document.getElementById('servicios-error')?.classList.remove('hidden');
+            return false;
         }
+        document.getElementById('servicios-error')?.classList.add('hidden');
 
-        window.calcularPrecioYTiempo = function () { updateResumen(); };
+        const serviciosIdsJson = document.getElementById('ServiciosIdsJson');
+        if (serviciosIdsJson) serviciosIdsJson.value = JSON.stringify(serviciosSeleccionados.map(s => s.id));
 
-        function updateResumen() {
-            const descuento = parseFloat(document.getElementById('PorcentajeDescuento')?.value || 0);
-            const precioTotal = serviciosSeleccionados.reduce((sum, s) => sum + s.precio, 0);
-            const descuentoMonto = precioTotal * (descuento / 100);
-            const precioFinal = precioTotal - descuentoMonto;
-            const tiempoTotal = serviciosSeleccionados.reduce((sum, s) => sum + s.tiempoEstimado, 0);
-
-            setText('precio-total-sin-descuento', '$' + precioTotal.toFixed(2));
-            setText('precio-final', '$' + precioFinal.toFixed(2));
-            setText('tiempo-total', tiempoTotal + ' min');
-
-            setValue('Precio', precioFinal.toFixed(2));
-            setValue('TiempoEstimado', tiempoTotal);
-        }
-
-        function setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
-        function setValue(id, value) { const el = document.getElementById(id); if (el) el.value = value; }
-
-        // ===================== Form AJAX =====================
-        window.submitPaqueteAjax = function (form, event) {
-            if (event) event.preventDefault();
-
-            if (serviciosSeleccionados.length < 2) {
-                showPaqueteMessage('Debe seleccionar al menos 2 servicios', 'error');
-                document.getElementById('servicios-error')?.classList.remove('hidden');
-                return false;
-            }
-            document.getElementById('servicios-error')?.classList.add('hidden');
-
-            const serviciosIdsJson = document.getElementById('ServiciosIdsJson');
-            if (serviciosIdsJson) serviciosIdsJson.value = JSON.stringify(serviciosSeleccionados.map(s => s.id));
-
-            const formData = new FormData(form);
-            fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        const formData = new FormData(form);
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(resp => {
+                const isValid = resp.headers.get('X-Form-Valid') === 'true';
+                const message = resp.headers.get('X-Form-Message');
+                return resp.text().then(html => ({ isValid, message, html, ok: resp.ok, status: resp.status }));
             })
-                .then(resp => {
-                    const isValid = resp.headers.get('X-Form-Valid') === 'true';
-                    const message = resp.headers.get('X-Form-Message');
-                    return resp.text().then(html => ({ isValid, message, html }));
-                })
-                .then(result => {
-                    if (result.isValid) {
-                        showPaqueteMessage(result.message || 'Operación exitosa', 'success');
-                        limpiarFormularioPaquete();
-                        reloadPaqueteTable(1);
-                        setTimeout(() => {
-                            document.getElementById('accordion-flush-body-1')?.classList.add('hidden');
-                        }, 1800);
-                    } else {
-                        document.getElementById('paquete-form-container').innerHTML = result.html;
-                        initializeForm();
-                    }
-                })
-                .catch(() => showPaqueteMessage('Error al procesar la solicitud', 'error'));
+            .then(result => {
+                // Reemplazar SIEMPRE el formulario (estilo servicio.js)
+                const cont = document.getElementById('paquete-form-container');
+                if (cont) cont.innerHTML = result.html;
 
-            return false;
-        };
+                // Re-inicializar los ganchos del formulario y step de descuento
+                initializeForm();
+                setupDescuentoStep();
 
-        window.limpiarFormularioPaquete = function () {
-            const form = document.getElementById('paquete-form');
-            if (!form) return;
-            if (form.dataset.edit === 'True') {
-                window.location.href = '/PaqueteServicio/Index';
-                return;
-            }
-            form.reset();
-            serviciosSeleccionados = [];
-            serviciosDisponibles = [];
-            servicioSeleccionadoDropdown = null;
-            updateServiciosSeleccionadosList();
-            updateResumen();
-            resetServiceDropdown();
-            hidePaqueteMessage();
-        };
-
-        function resetServiceDropdown() {
-            document.getElementById('servicio-selector-container')?.classList.add('hidden');
-            const searchInput = document.getElementById('servicio-search');
-            if (searchInput) searchInput.value = '';
-            document.getElementById('servicio-dropdown')?.classList.add('hidden');
-        }
-
-        // ===================== Modales =====================
-        function getFlowbiteModal(modalEl) {
-            if (!modalEl || typeof Modal === 'undefined') return null;
-            try {
-                if (typeof Modal.getInstance === 'function') {
-                    const inst = Modal.getInstance(modalEl);
-                    if (inst) return inst;
+                if (!result.ok) {
+                    console.error('HTTP error submitPaqueteAjax:', result.status);
+                    showPaqueteMessage('Error al procesar la solicitud', 'error');
+                    return;
                 }
-                if (typeof Modal.getOrCreateInstance === 'function')
-                    return Modal.getOrCreateInstance(modalEl, { backdrop: 'dynamic', closable: true });
-                return new Modal(modalEl, { backdrop: 'dynamic', closable: true });
-            } catch { return null; }
-        }
 
-        function abrirModal(id) {
-            const el = document.getElementById(id);
-            if (!el) return;
-            const inst = getFlowbiteModal(el);
-            if (inst?.show) inst.show();
-            else {
-                el.classList.remove('hidden');
-                el.setAttribute('aria-hidden', 'false');
-            }
-        }
+                if (result.isValid) {
+                    showPaqueteMessage(result.message || 'Operación exitosa', 'success');
+                    // Ir a página 1 para asegurar visibilidad
+                    setHiddenValue('pageNumber', '1');
 
-        function cerrarModal(id) {
-            const el = document.getElementById(id);
-            if (!el) return;
-            let closed = false;
-            try {
-                const inst = getFlowbiteModal(el);
-                if (inst?.hide) { inst.hide(); closed = true; }
-            } catch { }
-            if (!closed) {
-                el.classList.add('hidden');
-                el.setAttribute('aria-hidden', 'true');
-                document.querySelectorAll('[modal-backdrop]')?.forEach(b => b.remove());
-                document.body.classList.remove('overflow-hidden');
-            }
-        }
+                    // Limpiar búsqueda y estado de búsqueda
+                    const searchEl = document.getElementById('simple-search');
+                    if (searchEl) searchEl.value = '';
+                    currentSearchTerm = '';
 
-        window.openPaqueteConfirmModal = function (tipoAccion, id, nombre) {
-            const title = document.getElementById('paqueteConfirmTitle');
-            const msg = document.getElementById('paqueteConfirmMessage');
-            const submitBtn = document.getElementById('paqueteConfirmSubmit');
-            const form = document.getElementById('paqueteConfirmForm');
-            const idInput = document.getElementById('paqueteConfirmId');
-            const iconWrapper = document.getElementById('paqueteConfirmIconWrapper');
-            const icon = document.getElementById('paqueteConfirmIcon');
-            if (!(title && msg && submitBtn && form && idInput && iconWrapper && icon)) return;
-
-            idInput.value = id;
-
-            if (tipoAccion === 'desactivar') {
-                title.textContent = 'Desactivar Paquete';
-                msg.innerHTML = `¿Confirma desactivar el paquete <strong>${(window.SiteModule?.escapeHtml?.(nombre) || nombre)}</strong>?`;
-                form.action = '/PaqueteServicio/DeactivatePaquete';
-                submitBtn.textContent = 'Desactivar';
-                submitBtn.className = 'py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900';
-                iconWrapper.className = 'w-12 h-12 rounded-full bg-red-100 dark:bg-red-900 p-2 flex items-center justify-center mx-auto mb-3.5';
-                icon.className = 'w-8 h-8 text-red-600 dark:text-red-400';
-                icon.innerHTML = '<path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.707-11.293a1 1 0 0 0-1.414-1.414L10 7.586 8.707 6.293a1 1 0 0 0-1.414 1.414L8.586 9l-1.293 1.293a1 1 0 1 0 1.414 1.414L10 10.414l1.293 1.293a1 1 0 0 0 1.414-1.414L11.414 9l1.293-1.293Z" clip-rule="evenodd" />';
-            } else {
-                title.textContent = 'Reactivar Paquete';
-                msg.innerHTML = `¿Confirma reactivar el paquete <strong>${(window.SiteModule?.escapeHtml?.(nombre) || nombre)}</strong>?`;
-                form.action = '/PaqueteServicio/ReactivatePaquete';
-                submitBtn.textContent = 'Reactivar';
-                submitBtn.className = 'py-2 px-3 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900';
-                iconWrapper.className = 'w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 p-2 flex items-center justify-center mx-auto mb-3.5';
-                icon.className = 'w-8 h-8 text-green-500 dark:text-green-400';
-                icon.innerHTML = '<path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 0 0-1.22-.872l-3.236 4.53-1.624-1.624a.75.75 0 0 0-1.06 1.06l2.252 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />';
-            }
-
-            abrirModal('paqueteConfirmModal');
-        };
-
-        window.closePaqueteConfirmModal = () => cerrarModal('paqueteConfirmModal');
-
-        window.submitPaqueteEstado = function (form) {
-            const fd = new FormData(form);
-            fetch(form.action, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                .then(r => {
-                    if (!r.ok) throw new Error('Estado');
-                    window.closePaqueteConfirmModal();
-                    const msg = form.action.includes('DeactivatePaquete')
-                        ? 'Paquete desactivado correctamente.'
-                        : 'Paquete reactivado correctamente.';
-                    showTableMessage('success', msg);
+                    // Recargar tabla
                     reloadPaqueteTable(1);
-                })
-                .catch(() => showTableMessage('error', 'Error procesando la operación.'));
-            return false;
-        };
 
-        // ===================== Mensajería =====================
-        function showPaqueteMessage(message, type) {
-            const existing = document.getElementById('form-message-container');
-            let container = existing;
-            let textEl;
-            if (!existing) {
-                container = document.createElement('div');
-                container.id = 'form-message-container';
-                container.className = 'm-4';
-                textEl = document.createElement('div');
-                textEl.id = 'form-message-text';
-                container.appendChild(textEl);
-                const formWrap = document.getElementById('paquete-form-container') || document.body;
-                formWrap.prepend(container);
-            } else {
-                textEl = document.getElementById('form-message-text');
-            }
-
-            textEl.textContent = message;
-            container.className = `m-4 p-4 mb-4 text-sm rounded-lg ${type === 'success'
-                ? 'text-green-800 bg-green-50 dark:bg-gray-800 dark:text-green-400'
-                : type === 'info'
-                    ? 'text-blue-800 bg-blue-50 dark:bg-gray-800 dark:text-blue-400'
-                    : 'text-red-800 bg-red-50 dark:bg-gray-800 dark:text-red-400'}`;
-
-            container.classList.remove('hidden');
-
-            if (paqueteMsgTimeout) clearTimeout(paqueteMsgTimeout);
-            paqueteMsgTimeout = setTimeout(() => container.classList.add('hidden'), 5000);
-        }
-
-        function hidePaqueteMessage() {
-            document.getElementById('form-message-container')?.classList.add('hidden');
-        }
-
-        function showTableMessage(typeOrMsg, msgOrType, disappearMs = 5000) {
-            // Normaliza llamadas en ambos órdenes
-            let type = typeOrMsg, msg = msgOrType;
-            const allowed = ['success', 'info', 'error'];
-            if (!allowed.includes(typeOrMsg) && allowed.includes(msgOrType)) {
-                type = msgOrType;
-                msg = typeOrMsg;
-            }
-
-            let container = document.getElementById('paquete-table-messages');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'paquete-table-messages';
-                container.className = 'mb-4';
-                const tableWrapper = document.getElementById('paquete-table-container');
-                if (tableWrapper?.parentNode) {
-                    tableWrapper.parentNode.insertBefore(container, tableWrapper);
+                    setTimeout(() => {
+                        document.getElementById('accordion-flush-body-1')?.classList.add('hidden');
+                    }, 1800);
                 } else {
-                    document.body.prepend(container);
+                    showPaqueteMessage('Revise los errores del formulario.', 'error');
                 }
+            })
+            .catch(err => {
+                console.error('Network/parse error submitPaqueteAjax:', err);
+                showPaqueteMessage('Error al procesar la solicitud', 'error');
+            });
+
+        return false;
+    };
+
+    // ===================== DESCUENTO: step configurable =====================
+    function getDescuentoStep() {
+        let raw = (window.AppConfig?.descuentoStep) ?? document.getElementById('PorcentajeDescuento')?.dataset?.step ?? 5;
+        let step = parseInt(raw, 10);
+        if (isNaN(step) || step < 5) step = 5; // mínimo 5%
+        return step;
+    }
+
+    function setupDescuentoStep() {
+        const step = getDescuentoStep();
+        const clampAndSnap = (el) => {
+            if (!el) return;
+            let v = parseFloat(el.value);
+            if (isNaN(v)) return;
+            // Limitar rango 5..95
+            v = Math.max(5, Math.min(95, v));
+            let snapped = Math.round(v / step) * step;
+            if (snapped < 5) snapped = 5;
+            if (snapped > 95) snapped = 95;
+            el.value = String(snapped);
+        };
+        const wire = (el) => {
+            if (!el) return;
+            el.setAttribute('min', '5');
+            el.setAttribute('max', '95');
+            el.setAttribute('step', String(step));
+            if (!el.dataset.stepSetup) {
+                el.addEventListener('blur', () => clampAndSnap(el));
+                el.addEventListener('change', () => clampAndSnap(el));
+                el.dataset.stepSetup = 'true';
             }
-            if (tableMsgTimeout) { clearTimeout(tableMsgTimeout); tableMsgTimeout = null; }
+        };
+        wire(document.getElementById('PorcentajeDescuento'));
+        wire(document.getElementById('descuentoMin'));
+        wire(document.getElementById('descuentoMax'));
+    }
 
-            const color =
-                type === 'success' ? { bg: 'green-50', text: 'green-800', dark: 'green-400', border: 'green-300' } :
-                    type === 'info' ? { bg: 'blue-50', text: 'blue-800', dark: 'blue-400', border: 'blue-300' } :
-                        { bg: 'red-50', text: 'red-800', dark: 'red-400', border: 'red-300' };
+    // ===================== Mensajería =====================
+    function showPaqueteMessage(message, type) {
+        const existing = document.getElementById('form-message-container');
+        let container = existing;
+        let textEl;
+        if (!existing) {
+            container = document.createElement('div');
+            container.id = 'form-message-container';
+            container.className = 'm-4';
+            textEl = document.createElement('div');
+            textEl.id = 'form-message-text';
+            container.appendChild(textEl);
+            const formWrap = document.getElementById('paquete-form-container') || document.body;
+            formWrap.prepend(container);
+        } else {
+            textEl = document.getElementById('form-message-text');
+        }
 
-            container.innerHTML = `<div class="opacity-100 transition-opacity duration-700
+        textEl.textContent = message;
+        container.className = `m-4 p-4 mb-4 text-sm rounded-lg ${type === 'success'
+            ? 'text-green-800 bg-green-50 dark:bg-gray-800 dark:text-green-400'
+            : type === 'info'
+                ? 'text-blue-800 bg-blue-50 dark:bg-gray-800 dark:text-blue-400'
+                : 'text-red-800 bg-red-50 dark:bg-gray-800 dark:text-red-400'}`;
+
+        container.classList.remove('hidden');
+
+        if (paqueteMsgTimeout) clearTimeout(paqueteMsgTimeout);
+        paqueteMsgTimeout = setTimeout(() => container.classList.add('hidden'), 5000);
+    }
+
+    function hidePaqueteMessage() {
+        document.getElementById('form-message-container')?.classList.add('hidden');
+    }
+
+    function showTableMessage(typeOrMsg, msgOrType, disappearMs = 5000) {
+        // Normaliza llamadas en ambos órdenes
+        let type = typeOrMsg, msg = msgOrType;
+        const allowed = ['success', 'info', 'error'];
+        if (!allowed.includes(typeOrMsg) && allowed.includes(msgOrType)) {
+            type = msgOrType;
+            msg = typeOrMsg;
+        }
+
+        let container = document.getElementById('paquete-table-messages');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'paquete-table-messages';
+            container.className = 'mb-4';
+            const tableWrapper = document.getElementById('paquete-table-container');
+            if (tableWrapper?.parentNode) {
+                tableWrapper.parentNode.insertBefore(container, tableWrapper);
+            } else {
+                document.body.prepend(container);
+            }
+        }
+        if (tableMsgTimeout) { clearTimeout(tableMsgTimeout); tableMsgTimeout = null; }
+
+        const color =
+            type === 'success' ? { bg: 'green-50', text: 'green-800', dark: 'green-400', border: 'green-300' } :
+                type === 'info' ? { bg: 'blue-50', text: 'blue-800', dark: 'blue-400', border: 'blue-300' } :
+                    { bg: 'red-50', text: 'red-800', dark: 'red-400', border: 'red-300' };
+
+        container.innerHTML = `<div class="opacity-100 transition-opacity duration-700
                 p-4 mb-4 text-sm rounded-lg border
                 bg-${color.bg} text-${color.text} border-${color.border}
                 dark:bg-gray-800 dark:text-${color.dark}">
                 ${msg}
             </div>`;
 
-            try { container.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { }
+        try { container.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { }
 
-            tableMsgTimeout = setTimeout(() => {
-                const alertEl = container.firstElementChild;
-                if (alertEl) {
-                    alertEl.classList.add('opacity-0');
-                    setTimeout(() => { try { alertEl.remove(); } catch { } }, 700);
-                }
-            }, disappearMs);
-        }
+        tableMsgTimeout = setTimeout(() => {
+            const alertEl = container.firstElementChild;
+            if (alertEl) {
+                alertEl.classList.add('opacity-0');
+                setTimeout(() => { try { alertEl.remove(); } catch { } }, 700);
+            }
+        }, disappearMs);
+    }
 
-        // ===================== Inicial (modo edición) =====================
-        function initializeForm() {
-            if (!(window.paqueteEditData?.serviciosIds?.length)) return;
-            const tipoVehiculo = document.getElementById('TipoVehiculo')?.value;
-            if (!tipoVehiculo) return;
+    // ===================== Inicial (modo edición) =====================
+    function initializeForm() {
+        if (!(window.paqueteEditData?.serviciosIds?.length)) return;
+        const tipoVehiculo = document.getElementById('TipoVehiculo')?.value;
+        if (!tipoVehiculo) return;
 
-            loadServiciosPorTipoVehiculo().then(() => {
-                window.paqueteEditData.serviciosIds.forEach(id => {
-                    const s = serviciosDisponibles.find(x => x.id === id);
-                    if (!s) return;
-                    serviciosSeleccionados.push({
-                        id: s.id,
-                        nombre: s.nombre,
-                        tipo: s.tipo,
-                        precio: s.precio,
-                        tiempoEstimado: s.tiempoEstimado
-                    });
+        loadServiciosPorTipoVehiculo().then(() => {
+            window.paqueteEditData.serviciosIds.forEach(id => {
+                const s = serviciosDisponibles.find(x => x.id === id);
+                if (!s) return;
+                serviciosSeleccionados.push({
+                    id: s.id,
+                    nombre: s.nombre,
+                    tipo: s.tipo,
+                    precio: s.precio,
+                    tiempoEstimado: s.tiempoEstimado
                 });
-                updateServiciosSeleccionadosList();
-                updateResumen();
             });
-        }
+            updateServiciosSeleccionadosList();
+            updateResumen();
+        });
+    }
 
-    })();
+})();

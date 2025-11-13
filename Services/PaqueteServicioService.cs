@@ -522,34 +522,32 @@ public class PaqueteServicioService
         if (string.IsNullOrWhiteSpace(paquete.TipoVehiculo))
             errores.Add("El tipo de vehículo no puede estar vacío");
 
-        if (paquete.PorcentajeDescuento < 0 || paquete.PorcentajeDescuento > 100)
-            errores.Add("El porcentaje de descuento debe estar entre 0 y 100");
+        // Validación ajustada:5..95
+        if (paquete.PorcentajeDescuento <5 || paquete.PorcentajeDescuento >95)
+            errores.Add("El porcentaje de descuento debe estar entre5 y95");
 
-        if (paquete.ServiciosIds == null || paquete.ServiciosIds.Count < 2)
-            errores.Add("El paquete debe incluir al menos 2 servicios");
+        if (paquete.ServiciosIds == null || paquete.ServiciosIds.Count <2)
+            errores.Add("El paquete debe incluir al menos2 servicios");
 
         // Validar servicios
-        if (paquete.ServiciosIds != null && paquete.ServiciosIds.Count >= 2)
+        if (paquete.ServiciosIds != null && paquete.ServiciosIds.Count >=2)
         {
             var servicios = await ObtenerServiciosDePaquete(paquete.ServiciosIds);
 
             if (servicios.Count != paquete.ServiciosIds.Count)
                 errores.Add("Algunos servicios seleccionados no existen");
 
-            // Verificar que todos sean del mismo tipo de vehículo
             var tiposVehiculo = servicios.Select(s => s.TipoVehiculo).Distinct().ToList();
-            if (tiposVehiculo.Count > 1)
+            if (tiposVehiculo.Count >1)
                 errores.Add("Todos los servicios deben ser para el mismo tipo de vehículo");
 
-            if (tiposVehiculo.Count == 1 && tiposVehiculo[0] != paquete.TipoVehiculo)
+            if (tiposVehiculo.Count ==1 && tiposVehiculo[0] != paquete.TipoVehiculo)
                 errores.Add("El tipo de vehículo del paquete debe coincidir con el de los servicios");
 
-            // Verificar que no haya dos servicios del mismo tipo
             var tiposServicio = servicios.Select(s => s.Tipo).ToList();
             if (tiposServicio.Count != tiposServicio.Distinct().Count())
                 errores.Add("No puede haber más de un servicio del mismo tipo en el paquete");
 
-            // Verificar que todos los servicios estén activos
             var serviciosInactivos = servicios.Where(s => s.Estado != "Activo").ToList();
             if (serviciosInactivos.Any())
                 errores.Add("Todos los servicios del paquete deben estar activos");

@@ -166,13 +166,13 @@
                                 <div class="space-y-2 text-sm">
                                     <div>
                                         <label for="descuentoMin" class="block mb-1 text-gray-700 dark:text-gray-300">Mín</label>
-                                        <input type="number" step="0.01" min="0" max="100" name="descuentoMin" id="descuentoMin" value="@(ViewBag.DescuentoMin ?? "")" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 dark:bg-gray-600 dark:border-gray-500 dark:text-white" />
+                                        <input type="number" step="@((int?)ViewBag.DescuentoStep ??5)" min="5" max="95" name="descuentoMin" id="descuentoMin" value="@(ViewBag.DescuentoMin ?? "")" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 dark:bg-gray-600 dark:border-gray-500 dark:text-white" />
                                         <!-- Placeholder para alinear con Precio Final -->
                                         <p id="descuentoMin-help" class="mt-1 text-xs text-gray-500 invisible">algo</p>
                                     </div>
                                     <div>
                                         <label for="descuentoMax" class="block mb-1 text-gray-700 dark:text-gray-300">Máx</label>
-                                        <input type="number" step="0.01" min="0" max="100" name="descuentoMax" id="descuentoMax" value="@(ViewBag.DescuentoMax ?? "")" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 dark:bg-gray-600 dark:border-gray-500 dark:text-white" />
+                                        <input type="number" step="@((int?)ViewBag.DescuentoStep ??5)" min="5" max="95" name="descuentoMax" id="descuentoMax" value="@(ViewBag.DescuentoMax ?? "")" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 dark:bg-gray-600 dark:border-gray-500 dark:text-white" />
                                         <!-- Placeholder para alinear con Precio Final -->
                                         <p id="descuentoMax-help" class="mt-1 text-xs text-gray-500 invisible">algo</p>
                                     </div>
