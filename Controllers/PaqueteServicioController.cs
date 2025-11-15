@@ -273,11 +273,29 @@ public class PaqueteServicioController : Controller
     public async Task<IActionResult> FormPartial(string id)
     {
         await CargarListasForm();
-        PaqueteServicio paquete = null;
-        if (!string.IsNullOrEmpty(id))
-            paquete = await _paqueteServicioService.ObtenerPaquete(id);
 
-        return PartialView("_PaqueteServicioForm", paquete);
+        if (!string.IsNullOrEmpty(id))
+        {
+            var paquete = await _paqueteServicioService.ObtenerPaquete(id);
+
+            // Título vía header
+            Response.Headers["X-Form-Title"] = "Editando un Paquete de Servicios";
+
+            ViewBag.FormTitle = "Editando un Paquete de Servicios";
+            ViewBag.SubmitButtonText = "Guardar";
+            ViewBag.ClearButtonText = "Cancelar";
+            ViewBag.FormAction = "ActualizarPaqueteAjax";
+            return PartialView("_PaqueteServicioForm", paquete);
+        }
+
+        // Modo creación
+        Response.Headers["X-Form-Title"] = "Registrando un Paquete de Servicios";
+
+        ViewBag.FormTitle = "Registrando un Paquete de Servicios";
+        ViewBag.SubmitButtonText = "Registrar";
+        ViewBag.ClearButtonText = "Limpiar Campos";
+        ViewBag.FormAction = "CrearPaqueteAjax";
+        return PartialView("_PaqueteServicioForm", null);
     }
 
     /// <summary>
@@ -456,16 +474,35 @@ public class PaqueteServicioController : Controller
         {
             Response.Headers["X-Form-Valid"] = "false";
             await CargarListasForm();
+
+            var title = paquete?.Id == null
+                ? "Registrando un Paquete de Servicios"
+                : "Editando un Paquete de Servicios";
+
+            Response.Headers["X-Form-Title"] = title;
+
+            ViewBag.FormTitle = title;
+            ViewBag.FormAction = paquete?.Id == null ? "CrearPaqueteAjax" : "ActualizarPaqueteAjax";
+
             return PartialView("_PaqueteServicioForm", paquete);
         }
 
         await RegistrarEvento(accionAuditoria, paquete.Id, "PaqueteServicio");
+
         Response.Headers["X-Form-Valid"] = "true";
         Response.Headers["X-Form-Message"] = resultado.MensajeExito;
+
+        // Éxito → volver a modo creación
+        Response.Headers["X-Form-Title"] = "Registrando un Paquete de Servicios";
+
         await CargarListasForm();
+        ViewBag.FormTitle = "Registrando un Paquete de Servicios";
+        ViewBag.SubmitButtonText = "Registrar";
+        ViewBag.ClearButtonText = "Limpiar Campos";
+        ViewBag.FormAction = "CrearPaqueteAjax";
+
         return PartialView("_PaqueteServicioForm", null);
     }
-
     /// <summary>
     /// Maneja excepciones en operaciones AJAX devolviendo el formulario parcial con errores.
     /// </summary>

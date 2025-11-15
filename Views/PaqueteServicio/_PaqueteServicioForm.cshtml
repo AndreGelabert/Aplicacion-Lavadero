@@ -10,7 +10,8 @@
     <input type="hidden" name="Id" id="Id" value="@(Model?.Id)" />
     <input type="hidden" name="Estado" value="@(Model?.Estado ?? "Activo")" />
     <input type="hidden" name="ServiciosIdsJson" id="ServiciosIdsJson" value="" />
-
+    <!-- IDs de servicios del paquete para inicialización en JS (sin scripts embebidos) -->
+    <input type="hidden" id="PaqueteServiciosIdsData" value="@(Model != null && Model.ServiciosIds != null ? string.Join(",", Model.ServiciosIds) : "")" />
     <div class="grid gap-4 m-4 grid-cols-4">
         <!-- Nombre -->
         <div class="col-span-2">
@@ -150,17 +151,4 @@
             @clearText
         </button>
     </div>
-
-    @section Scripts {
-        <script asp-append-version="true">
-            // Variables globales para el paquete en edición
-            window.paqueteEditData = @Html.Raw(Model != null ? System.Text.Json.JsonSerializer.Serialize(new {
-                id = Model.Id,
-                nombre = Model.Nombre,
-                tipoVehiculo = Model.TipoVehiculo,
-                porcentajeDescuento = Model.PorcentajeDescuento,
-                serviciosIds = Model.ServiciosIds
-            }) : "null");
-        </script>
-    }
 </form>

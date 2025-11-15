@@ -1,45 +1,123 @@
 /**
  * ================================================
- * PAQUETESERVICIO.JS - Página Paquetes de Servicios
+ * PAQUETESERVICIO.JS - FUNCIONALIDAD PÁGINA PAQUETES
  * ================================================
- * - Estructura alineada a servicio.js: búsqueda debounce, helpers de orden,
- *   recarga de tabla con filtros/orden, y reemplazo de formulario tras submit.
- * - Mantiene: selector de servicios, hints de precio, step de descuento.
+ * Responsabilidades:
+ *  - Búsqueda con debounce y ordenamiento de tabla.
+ *  - Filtros y recarga parcial (tabla y formulario).
+ *  - Formulario AJAX crear/actualizar.
+ *  - Selector dinámico de servicios por tipo de vehículo.
+ *  - Cálculo y visualización de precio final y tiempo estimado.
+ *  - Hints dinámicos de rangos de precio.
+ *  - Gestión de activación/desactivación (modal de confirmación).
+ *  - Paso de descuento normalizado.
+ *
+ * Estilo alineado a servicio.js: secciones claras, helpers reutilizables,
+ * mínima exposición global (solo funciones llamadas desde HTML).
  */
 
 (function () {
     'use strict';
 
-    let paqueteMsgTimeout = null;
+    // ===================== Estado interno =====================
+    let formMsgTimeout = null;
     let tableMsgTimeout = null;
     let searchTimeout = null;
-    let currentSearchTerm = '';
 
+    let currentSearchTerm = '';
     let serviciosDisponibles = [];
     let serviciosSeleccionados = [];
     let servicioSeleccionadoDropdown = null;
 
+    // ===================== Inicialización del módulo =====================
     window.PageModules = window.PageModules || {};
     window.PageModules.paquetes = { init: initializePaquetesPage };
 
     document.addEventListener('DOMContentLoaded', () => {
-        try { window.PageModules?.paquetes?.init(); } catch { initializePaquetesPage(); }
+        try { window.PageModules?.paquetes?.init(); }
+        catch { initializePaquetesPage(); }
     });
 
+    /**
+     * Inicializa el comportamiento principal de la página de Paquetes
+     */
     function initializePaquetesPage() {
         setupFormMessageHandler();
         setupSearchWithDebounce();
-        window.CommonUtils?.setupDefaultFilterForm();
-        setupDynamicPriceHints();
         setupFilterFormSubmit();
         setupClearFiltersButton();
-        checkEditMode();
-        initializeForm();
         setupDropdownClickOutside();
+        setupDynamicPriceHints();
         setupDescuentoStep();
+        window.CommonUtils?.setupDefaultFilterForm();
+        checkEditMode();
+        initializeFormFromHidden();
     }
 
-    // ===================== Helpers de orden =====================
+    // ===================== Modo edición (acordeón) =====================
+
+    /**
+     * Abre el acordeón si el título indica modo edición.
+     */
+    function checkEditMode() {
+        const formTitle = document.getElementById('form-title');
+        if (formTitle?.textContent.includes('Editando')) {
+            const acc = document.getElementById('accordion-flush-body-1');
+            if (acc) acc.classList.remove('hidden');
+        }
+    }
+
+    // ===================== Búsqueda (debounce) =====================
+
+    /**
+     * Configura la búsqueda de tabla con debouncing.
+     */
+    function setupSearchWithDebounce() {
+        const searchInput = document.getElementById('simple-search');
+        if (!searchInput) return;
+
+        const cloned = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(cloned, searchInput);
+
+        currentSearchTerm = cloned.value?.trim() || '';
+
+        cloned.addEventListener('input', function () {
+            const term = this.value.trim();
+            if (searchTimeout) clearTimeout(searchTimeout);
+
+            if (term === '') {
+                currentSearchTerm = '';
+                reloadPaqueteTable(1);
+                schedulePriceHintsRefresh();
+                return;
+            }
+            searchTimeout = setTimeout(() => {
+                performServerSearch(term);
+                schedulePriceHintsRefresh();
+            }, 500);
+        });
+    }
+
+    /**
+     * Realiza búsqueda en servidor preservando filtros actuales.
+     * @param {string} searchTerm
+     */
+    function performServerSearch(searchTerm) {
+        currentSearchTerm = searchTerm;
+        const params = buildFilterParams();
+        const { sortBy, sortOrder } = getCurrentSort();
+        params.set('searchTerm', searchTerm);
+        params.set('pageNumber', '1');
+        params.set('sortBy', sortBy);
+        params.set('sortOrder', sortOrder);
+        loadTablePartial('/PaqueteServicio/SearchPartial?' + params.toString());
+    }
+
+    // ===================== Ordenamiento tabla =====================
+
+    /**
+     * Obtiene el orden actual de la tabla desde inputs ocultos.
+     */
     function getCurrentSort() {
         return {
             sortBy: document.getElementById('current-sort-by')?.value || 'Nombre',
@@ -47,183 +125,45 @@
         };
     }
 
-    // ===================== Búsqueda (debounce) =================
-    function setupSearchWithDebounce() {
-        const searchInput = document.getElementById('simple-search');
-        if (!searchInput) return;
-
-        // Clonar para limpiar listeners previos
-        const newSearchInput = searchInput.cloneNode(true);
-        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
-
-        // Estado inicial desde servidor si aplicaba
-        currentSearchTerm = newSearchInput.value?.trim() || '';
-
-        newSearchInput.addEventListener('input', function () {
-            const term = this.value.trim();
-            if (searchTimeout) clearTimeout(searchTimeout);
-
-            if (term === '') {
-                // limpiar estado y volver a la tabla base
-                currentSearchTerm = '';
-                reloadPaqueteTable(1);
-                // refrescar hints cuando vuelve a base
-                if (typeof window.refreshPriceRangeHints === 'function') {
-                    setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 120);
-                }
-                return;
-            }
-
-            searchTimeout = setTimeout(() => {
-                performServerSearch(term);
-                if (typeof window.refreshPriceRangeHints === 'function') {
-                    setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 120);
-                }
-            }, 500);
-        });
-    }
-
-    function performServerSearch(searchTerm) {
-        currentSearchTerm = searchTerm;
-
-        const form = document.getElementById('filterForm');
-        const params = new URLSearchParams();
-
-        if (form) {
-            const fd = new FormData(form);
-            for (const [k, v] of fd.entries()) params.append(k, v);
-        }
-
-        const { sortBy, sortOrder } = getCurrentSort();
-        params.set('searchTerm', searchTerm);
-        params.set('pageNumber', '1');
-        params.set('sortBy', sortBy);
-        params.set('sortOrder', sortOrder);
-
-        const url = '/PaqueteServicio/SearchPartial?' + params.toString();
-        loadTablePartial(url);
-    }
-
-    // ===================== Aplicar filtros =====================
-    function setupFilterFormSubmit() {
-        const form = document.getElementById('filterForm');
-        if (!form || form.dataset.submitSetup === 'true') return;
-
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const pg = form.querySelector('input[name="pageNumber"]');
-            if (pg) pg.value = '1';
-
-            const searchInput = document.getElementById('simple-search');
-            if (searchInput) currentSearchTerm = searchInput.value.trim();
-
-            const dd = document.getElementById('filterDropdown');
-            if (dd) dd.classList.add('hidden');
-
-            reloadPaqueteTable(1);
-
-            if (history.replaceState) history.replaceState(null, '', window.location.pathname);
-
-            showTableMessage('info', 'Filtros aplicados.');
-
-            if (typeof window.refreshPriceRangeHints === 'function') {
-                setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 150);
-            }
-        });
-
-        form.dataset.submitSetup = 'true';
-    }
-
-    // ===================== Limpiar filtros =====================
-    function setupClearFiltersButton() {
-        const btn = document.getElementById('clearFiltersBtn')
-            || document.querySelector('[data-action="clear-filters"]')
-            || document.querySelector('[data-clear="filters"]');
-        if (!btn || btn.dataset.setup === 'true') return;
-
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            clearPaqueteFilters();
-        });
-
-        btn.dataset.setup = 'true';
-    }
-
-    function clearPaqueteFilters() {
-        const form = document.getElementById('filterForm');
-        if (!form) return;
-        try {
-            if (typeof window.clearAllFilters === 'function') {
-                window.clearAllFilters();
-            } else {
-                form.querySelectorAll('input[name="estados"][type="checkbox"]').forEach(cb => cb.checked = false);
-                form.querySelector('input[name="estados"][value="Activo"]')?.setAttribute('checked', 'checked');
-            }
-        } catch { }
-
-        const searchInput = document.getElementById('simple-search');
-        if (searchInput) searchInput.value = '';
-        currentSearchTerm = '';
-        if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
-
-        form.querySelectorAll('input[type="number"]').forEach(n => {
-            n.value = '';
-            n.removeAttribute('min');
-            n.removeAttribute('max');
-        });
-        form.querySelectorAll('select').forEach(sel => sel.selectedIndex = 0);
-
-        setHiddenValue('pageNumber', '1');
-        setHiddenValue('current-sort-by', 'Nombre');
-        setHiddenValue('current-sort-order', 'asc');
-
-        if (history.replaceState) history.replaceState({}, document.title, '/PaqueteServicio/Index');
-
-        ensureHelpElements();
-        document.getElementById('precioMin-help').textContent = '';
-        document.getElementById('precioMax-help').textContent = '';
-        document.getElementById('precioMin')?.removeAttribute('min');
-        document.getElementById('precioMax')?.removeAttribute('max');
-
-        document.getElementById('filterDropdown')?.classList.add('hidden');
-
-        window.CommonUtils?.setupDefaultFilterForm?.();
-        setupDescuentoStep();
-        if (typeof initDropdowns === 'function') { initDropdowns(); }
-
+    /**
+     * Cambia el orden de la tabla y recarga.
+     * @param {string} sortBy
+     */
+    window.sortTable = function (sortBy) {
+        const currentSortBy = document.getElementById('current-sort-by')?.value || 'Nombre';
+        const currentSortOrder = document.getElementById('current-sort-order')?.value || 'asc';
+        const newOrder = (currentSortBy === sortBy) ? (currentSortOrder === 'asc' ? 'desc' : 'asc') : 'asc';
+        setHiddenValue('current-sort-by', sortBy);
+        setHiddenValue('current-sort-order', newOrder);
         reloadPaqueteTable(1);
+    };
 
-        if (typeof window.refreshPriceRangeHints === 'function') {
-            setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 150);
-        }
+    // ===================== Filtros y recarga de tabla =====================
 
-        showTableMessage('info', 'Filtros restablecidos.');
-    }
-
-    // ===================== Reload tabla ========================
-    function buildBaseParams() {
+    /**
+     * Construye un objeto plano con los parámetros del formulario de filtros.
+     */
+    function buildFilterParams() {
         const form = document.getElementById('filterForm');
         const params = new URLSearchParams();
-
-        if (form) {
-            const fd = new FormData(form);
-            for (const [k, v] of fd.entries()) params.append(k, v);
+        if (!form) return params;
+        const fd = new FormData(form);
+        for (const [k, v] of fd.entries()) {
+            params.append(k, v); // preserva múltiples valores (checkboxes 'estados')
         }
-
-        const { sortBy, sortOrder } = getCurrentSort();
-        params.set('sortBy', sortBy);
-        params.set('sortOrder', sortOrder);
-
         return params;
     }
 
-    function reloadPaqueteTable(pageNumber) {
-        const params = buildBaseParams();
-        params.set('pageNumber', String(pageNumber));
+    /**
+     * Recarga la tabla de paquetes considerando filtros, orden y búsqueda.
+     * @param {number} page
+     */
+    function reloadPaqueteTable(page) {
+        const params = buildFilterParams();
+        params.set('pageNumber', String(page));
+        const { sortBy, sortOrder } = getCurrentSort();
+        params.set('sortBy', sortBy);
+        params.set('sortOrder', sortOrder);
 
         let url;
         if (currentSearchTerm && currentSearchTerm.trim().length > 0) {
@@ -235,9 +175,13 @@
         loadTablePartial(url);
     }
 
+    /**
+     * Carga la tabla parcial vía fetch y reinstala ganchos necesarios.
+     * @param {string} url
+     */
     function loadTablePartial(url) {
-        const bust = (url.includes('?') ? '&' : '?') + '_=' + Date.now();
-        fetch(url + bust, {
+        const antiCache = (url.includes('?') ? '&' : '?') + '_=' + Date.now();
+        fetch(url + antiCache, {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Cache-Control': 'no-cache' },
             cache: 'no-store'
         })
@@ -245,60 +189,161 @@
             .then(html => {
                 const container = document.getElementById('paquete-table-container');
                 if (container) container.innerHTML = html;
+                const cp = document.getElementById('current-page-value')?.value;
+                if (cp && container) container.dataset.currentPage = cp;
 
-                const currentPageHidden = document.getElementById('current-page-value')?.value;
-                if (currentPageHidden && container) container.dataset.currentPage = currentPageHidden;
-
-                // Re-inicializar tras reemplazo dinámico (como en servicio.js)
                 window.CommonUtils?.setupDefaultFilterForm?.();
                 setupDescuentoStep();
-                if (typeof initDropdowns === 'function') { initDropdowns(); }
-
-                if (typeof window.refreshPriceRangeHints === 'function') {
-                    setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 80);
-                }
+                if (typeof initDropdowns === 'function') initDropdowns();
+                schedulePriceHintsRefresh();
             })
-            .catch((err) => {
+            .catch(err => {
                 console.error('loadTablePartial error:', err);
-                showTableMessage('error', 'Error al cargar los datos');
+                showTableMessage('error', 'Error al cargar los datos.');
             });
     }
 
+    /**
+     * Cambia de página la tabla (expuesto globalmente).
+     * @param {number} page
+     */
+    window.changePage = (page) => reloadPaqueteTable(page);
+
+    /**
+     * Obtiene el número de página actual de la tabla.
+     */
+    window.getCurrentTablePage = function () {
+        return parseInt(document.getElementById('paquete-table-container')?.dataset.currentPage || '1');
+    };
+
+    /**
+     * Intercepta el submit de filtros para aplicar y recargar tabla.
+     */
+    function setupFilterFormSubmit() {
+        const form = document.getElementById('filterForm');
+        if (!form || form.dataset.submitSetup === 'true') return;
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const pg = form.querySelector('input[name="pageNumber"]');
+            if (pg) pg.value = '1';
+            const searchInput = document.getElementById('simple-search');
+            if (searchInput) currentSearchTerm = searchInput.value.trim();
+            document.getElementById('filterDropdown')?.classList.add('hidden');
+            reloadPaqueteTable(1);
+            if (history.replaceState) history.replaceState(null, '', window.location.pathname);
+            showTableMessage('info', 'Filtros aplicados.');
+            schedulePriceHintsRefresh();
+        });
+        form.dataset.submitSetup = 'true';
+    }
+
+    /**
+     * Configura el botón de limpiar filtros.
+     */
+    function setupClearFiltersButton() {
+        const btn = document.getElementById('clearFiltersBtn') ||
+            document.querySelector('[data-action="clear-filters"]') ||
+            document.querySelector('[data-clear="filters"]');
+        if (!btn || btn.dataset.setup === 'true') return;
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            clearPaqueteFilters();
+        });
+        btn.dataset.setup = 'true';
+    }
+
+    /**
+     * Limpia el formulario de creación/edición de paquete.
+     */
+    window.limpiarFormularioPaquete = function () {
+        const form = document.getElementById('paquete-form');
+        if (!form) return;
+        try { form.reset(); } catch { }
+        serviciosSeleccionados = [];
+        updateServiciosSeleccionadosList();
+        updateResumen();
+        document.getElementById('servicio-dropdown')?.classList.add('hidden');
+        document.getElementById('accordion-flush-body-1')?.classList.add('hidden');
+        hideFormMessage();
+    };
+
+    /**
+     * Limpia los filtros de la tabla y recarga a estado base.
+     */
+    function clearPaqueteFilters() {
+        const form = document.getElementById('filterForm');
+        if (!form) return;
+
+        try {
+            if (typeof window.clearAllFilters === 'function') {
+                window.clearAllFilters();
+            } else {
+                form.querySelectorAll('input[name="estados"][type="checkbox"]').forEach(cb => cb.checked = false);
+                form.querySelector('input[name="estados"][value="Activo"]')?.setAttribute('checked', 'checked');
+            }
+        } catch { }
+
+        // Limpiar campos numéricos y selects
+        form.querySelectorAll('input[type="number"]').forEach(inp => {
+            inp.value = '';
+            inp.removeAttribute('min');
+            inp.removeAttribute('max');
+        });
+        form.querySelectorAll('select').forEach(sel => sel.selectedIndex = 0);
+
+        // Limpiar búsqueda
+        const searchInput = document.getElementById('simple-search');
+        if (searchInput) searchInput.value = '';
+        currentSearchTerm = '';
+        if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
+
+        setHiddenValue('pageNumber', '1');
+        setHiddenValue('current-sort-by', 'Nombre');
+        setHiddenValue('current-sort-order', 'asc');
+
+        if (history.replaceState) history.replaceState({}, document.title, '/PaqueteServicio/Index');
+
+        // Limpiar hints
+        ensureHelpElements();
+        document.getElementById('precioMin-help').textContent = '';
+        document.getElementById('precioMax-help').textContent = '';
+        document.getElementById('precioMin')?.removeAttribute('min');
+        document.getElementById('precioMax')?.removeAttribute('max');
+
+        document.getElementById('filterDropdown')?.classList.add('hidden');
+
+        window.CommonUtils?.setupDefaultFilterForm?.();
+        setupDescuentoStep();
+        if (typeof initDropdowns === 'function') initDropdowns();
+
+        reloadPaqueteTable(1);
+        schedulePriceHintsRefresh();
+        showTableMessage('info', 'Filtros restablecidos.');
+    }
+
+    /**
+     * Establece el valor de un input hidden.
+     * @param {string} id
+     * @param {string} value
+     */
     function setHiddenValue(id, value) {
         const el = document.getElementById(id);
         if (el) el.value = value;
     }
 
-    // Exponer funciones de tabla como en servicio.js
-    window.changePage = (page) => reloadPaqueteTable(page);
+    // ===================== Hints dinámicos de precio =====================
 
-    window.sortTable = function (sortBy) {
-        const currentSortBy = document.getElementById('current-sort-by')?.value || 'Nombre';
-        const currentSortOrder = document.getElementById('current-sort-order')?.value || 'asc';
-
-        const newOrder = (currentSortBy === sortBy) ? (currentSortOrder === 'asc' ? 'desc' : 'asc') : 'asc';
-
-        setHiddenValue('current-sort-by', sortBy);
-        setHiddenValue('current-sort-order', newOrder);
-
-        reloadPaqueteTable(1);
-    };
-
-    window.getCurrentTablePage = function () {
-        return parseInt(document.getElementById('paquete-table-container')?.dataset.currentPage || '1');
-    };
-
-    // ===================== Hints de precio =====================
+    /**
+     * Configura y escucha cambios para actualizar hints de rango de precio.
+     */
     function setupDynamicPriceHints() {
         const form = document.getElementById('filterForm');
         if (!form) return;
 
         ensureHelpElements();
-
-        const precioMinEl = document.getElementById('precioMin');
-        const precioMaxEl = document.getElementById('precioMax');
-        const helpMin = document.getElementById('precioMin-help');
-        const helpMax = document.getElementById('precioMax-help');
 
         async function refreshPriceRangeHints() {
             try {
@@ -315,14 +360,19 @@
                 });
 
                 let data;
-                try { data = await resp.json(); }
-                catch { data = null; }
+                try { data = await resp.json(); } catch { data = null; }
+
+                const precioMinEl = document.getElementById('precioMin');
+                const precioMaxEl = document.getElementById('precioMax');
+                const helpMin = document.getElementById('precioMin-help');
+                const helpMax = document.getElementById('precioMax-help');
 
                 if (data?.success) {
-                    const fmt = (n) => (typeof n === 'number' ? n.toFixed(2) : (n != null ? parseFloat(n).toFixed(2) : ''));
-                    helpMin.textContent = (data.min != null) ? `Mín. permitido: $${fmt(data.min)}` : '';
-                    helpMax.textContent = (data.max != null) ? `Máx. permitido: $${fmt(data.max)}` : '';
-
+                    const fmt = (n) => (typeof n === 'number'
+                        ? n.toFixed(2)
+                        : (n != null ? parseFloat(n).toFixed(2) : ''));
+                    helpMin.textContent = data.min != null ? `Mín. permitido: $${fmt(data.min)}` : '';
+                    helpMax.textContent = data.max != null ? `Máx. permitido: $${fmt(data.max)}` : '';
                     if (precioMinEl && data.min != null) precioMinEl.setAttribute('min', data.min); else precioMinEl?.removeAttribute('min');
                     if (precioMaxEl && data.max != null) precioMaxEl.setAttribute('max', data.max); else precioMaxEl?.removeAttribute('max');
                 } else {
@@ -331,41 +381,48 @@
                     precioMinEl?.removeAttribute('min');
                     precioMaxEl?.removeAttribute('max');
                 }
-            } catch (err) {
-                console.debug('PriceRange hints error:', err);
-                helpMin.textContent = '';
-                helpMax.textContent = '';
-                precioMinEl?.removeAttribute('min');
-                precioMaxEl?.removeAttribute('max');
+            } catch {
+                // Fallback limpio
+                document.getElementById('precioMin-help').textContent = '';
+                document.getElementById('precioMax-help').textContent = '';
+                document.getElementById('precioMin')?.removeAttribute('min');
+                document.getElementById('precioMax')?.removeAttribute('max');
             }
         }
 
-        // Exponer global
+        // Exponer para refrescos programados
         window.refreshPriceRangeHints = refreshPriceRangeHints;
-
-        // Inicial
         refreshPriceRangeHints();
 
-        // Campos relevantes
-        const watched = [
+        // Watchers
+        const watchedSelectors = [
             'input[name="estados"]',
             'input[name="tiposVehiculo"]',
             '#descuentoMin', '#descuentoMax',
             '#serviciosCantidad'
         ];
-        watched.forEach(sel =>
+        watchedSelectors.forEach(sel => {
             document.querySelectorAll(sel).forEach(el => {
                 el.addEventListener('change', refreshPriceRangeHints);
                 el.addEventListener('input', refreshPriceRangeHints);
-            })
-        );
-
-        // Búsqueda: refrescar tras debounce aproximado
+            });
+        });
         const search = document.getElementById('simple-search');
         if (search) search.addEventListener('input', () => setTimeout(refreshPriceRangeHints, 550));
     }
 
-    // Garantiza la existencia de los elementos de ayuda bajo los inputs de precio
+    /**
+     * Programa un refresco de los hints de precio (debounced).
+     */
+    function schedulePriceHintsRefresh() {
+        if (typeof window.refreshPriceRangeHints === 'function') {
+            setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 120);
+        }
+    }
+
+    /**
+     * Asegura la existencia de elementos "help" bajo inputs de precio.
+     */
     function ensureHelpElements() {
         const min = document.getElementById('precioMin');
         const max = document.getElementById('precioMax');
@@ -383,31 +440,11 @@
         }
     }
 
-    // ===================== UI =====================
-    function checkEditMode() {
-        const formTitle = document.getElementById('form-title');
-        if (formTitle?.textContent.includes('Editando')) {
-            document.getElementById('accordion-flush-body-1')?.classList.remove('hidden');
-        }
-    }
+    // ===================== Selector dinámico de servicios =====================
 
-    function setupFormMessageHandler() {
-        document.addEventListener('input', (e) => {
-            if (e.target.closest('#paquete-form')) hidePaqueteMessage();
-        });
-    }
-
-    function setupDropdownClickOutside() {
-        document.addEventListener('click', (e) => {
-            const dropdown = document.getElementById('servicio-dropdown');
-            const searchInput = document.getElementById('servicio-search');
-            if (dropdown && !dropdown.contains(e.target) && e.target !== searchInput) {
-                dropdown.classList.add('hidden');
-            }
-        });
-    }
-
-    // ===================== Selector de servicios =====================
+    /**
+     * Carga servicios según tipo de vehículo (AJAX) y prepara dropdown filtrable.
+     */
     window.loadServiciosPorTipoVehiculo = async function () {
         const tipoVehiculo = document.getElementById('TipoVehiculo')?.value;
         const cont = document.getElementById('servicio-selector-container');
@@ -428,14 +465,19 @@
                 renderServiciosDropdown(serviciosDisponibles);
             } else {
                 cont?.classList.add('hidden');
-                showPaqueteMessage(data.message || 'No hay servicios disponibles', 'error');
+                showFormMessage('No hay servicios disponibles para el tipo seleccionado.', 'error');
             }
         } catch {
             cont?.classList.add('hidden');
-            showPaqueteMessage('Error al cargar servicios', 'error');
+            showFormMessage('Error al cargar servicios.', 'error');
         }
     };
 
+    /**
+     * Renderiza el dropdown de servicios, agrupado por tipo y filtrable.
+     * @param {Array} servicios
+     * @param {string} filterText
+     */
     function renderServiciosDropdown(servicios, filterText = '') {
         const target = document.getElementById('servicio-dropdown-content');
         if (!target) return;
@@ -466,12 +508,13 @@
         let html = '';
         Object.keys(grupos).sort().forEach(tipo => {
             html += `<div class="mb-2">
-                <h6 class="text-xs font-semibold text-gray-700 dark:text-gray-300 px-2 py-1 bg-gray-100 dark:bg-gray-600">${tipo}</h6>
-                <div class="space-y-1">`;
+                        <h6 class="text-xs font-semibold text-gray-700 dark:text-gray-300 px-2 py-1 bg-gray-100 dark:bg-gray-600">${tipo}</h6>
+                        <div class="space-y-1">`;
             grupos[tipo].forEach(s => {
                 const active = servicioSeleccionadoDropdown?.id === s.id ? 'bg-blue-100 dark:bg-blue-900' : '';
-                html += `<div class="px-2 py-2 hover:bg-gray-100 dark:hoverbg-gray-600 cursor-pointer ${active}" onclick="selectServicioFromDropdown('${s.id}')">
-                            <div class="text-sm font-medium text-gray-900 dark:text-white">${s.nombre}</div>
+                html += `<div class="px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer ${active}"
+                             onclick="selectServicioFromDropdown('${s.id}')">
+                             <div class="text-sm font-medium text-gray-900 dark:text-white">${escapeHtml(s.nombre)}</div>
                          </div>`;
             });
             html += '</div></div>';
@@ -480,6 +523,9 @@
         target.innerHTML = html;
     }
 
+    /**
+     * Muestra el dropdown del selector de servicios.
+     */
     window.showServicioDropdown = function () {
         const dropdown = document.getElementById('servicio-dropdown');
         const searchInput = document.getElementById('servicio-search');
@@ -489,11 +535,19 @@
         }
     };
 
+    /**
+     * Filtra el dropdown de servicios por texto.
+     * @param {string} txt
+     */
     window.filterServiciosDropdown = function (txt) {
         renderServiciosDropdown(serviciosDisponibles, txt);
         document.getElementById('servicio-dropdown')?.classList.remove('hidden');
     };
 
+    /**
+     * Selecciona un servicio desde el dropdown (pre-selección).
+     * @param {string} id
+     */
     window.selectServicioFromDropdown = function (id) {
         const s = serviciosDisponibles.find(x => x.id === id);
         if (!s) return;
@@ -503,14 +557,17 @@
         if (searchInput) searchInput.value = s.nombre;
     };
 
+    /**
+     * Agrega el servicio seleccionado a la lista del paquete.
+     */
     window.agregarServicioSeleccionado = function () {
         if (!servicioSeleccionadoDropdown) {
-            showPaqueteMessage('Debe seleccionar un servicio del listado', 'error');
+            showFormMessage('Debe seleccionar un servicio del listado.', 'error');
             return;
         }
         const tipo = servicioSeleccionadoDropdown.tipo;
         if (serviciosSeleccionados.some(s => s.tipo === tipo)) {
-            showPaqueteMessage('Solo puede seleccionar un servicio de cada tipo', 'error');
+            showFormMessage('Solo puede seleccionar un servicio de cada tipo.', 'error');
             return;
         }
         serviciosSeleccionados.push({
@@ -529,6 +586,10 @@
         renderServiciosDropdown(serviciosDisponibles);
     };
 
+    /**
+     * Quita un servicio de la lista seleccionada del paquete.
+     * @param {string} id
+     */
     window.removerServicioSeleccionado = function (id) {
         serviciosSeleccionados = serviciosSeleccionados.filter(s => s.id !== id);
         updateServiciosSeleccionadosList();
@@ -536,6 +597,9 @@
         renderServiciosDropdown(serviciosDisponibles, document.getElementById('servicio-search')?.value || '');
     };
 
+    /**
+     * Renderiza la lista de servicios seleccionados.
+     */
     function updateServiciosSeleccionadosList() {
         const container = document.getElementById('servicios-seleccionados-container');
         const list = document.getElementById('servicios-seleccionados-list');
@@ -551,15 +615,16 @@
         list.innerHTML = '<ul class="space-y-2">' + serviciosSeleccionados.map(s => `
             <li class="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600">
                 <div>
-                    <span class="font-medium text-gray-900 dark:text-white">${s.nombre}</span>
-                    <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">(${s.tipo})</span>
+                    <span class="font-medium text-gray-900 dark:text-white">${escapeHtml(s.nombre)}</span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">(${escapeHtml(s.tipo)})</span>
                 </div>
                 <div class="flex items-center gap-3">
                     <div class="text-right">
                         <div class="text-sm font-medium text-gray-900 dark:text-white">$${s.precio.toFixed(2)}</div>
                         <div class="text-xs text-gray-500 dark:text-gray-400">${s.tiempoEstimado} min</div>
                     </div>
-                    <button type="button" onclick="removerServicioSeleccionado('${s.id}')" class="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" title="Quitar servicio">
+                    <button type="button" onclick="removerServicioSeleccionado('${s.id}')"
+                            class="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" title="Quitar servicio">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                             <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
                         </svg>
@@ -568,13 +633,18 @@
             </li>`).join('') + '</ul>';
     }
 
+    /**
+     * Dispara el recálculo de precio/tiempo (expuesto global).
+     */
     window.calcularPrecioYTiempo = function () { updateResumen(); };
 
+    /**
+     * Calcula y actualiza precio total, final (con descuento) y tiempo total.
+     */
     function updateResumen() {
         const descuento = parseFloat(document.getElementById('PorcentajeDescuento')?.value || 0);
         const precioTotal = serviciosSeleccionados.reduce((sum, s) => sum + s.precio, 0);
-        const descuentoMonto = precioTotal * (descuento / 100);
-        const precioFinal = precioTotal - descuentoMonto;
+        const precioFinal = precioTotal - (precioTotal * (descuento / 100));
         const tiempoTotal = serviciosSeleccionados.reduce((sum, s) => sum + s.tiempoEstimado, 0);
 
         setText('precio-total-sin-descuento', '$' + precioTotal.toFixed(2));
@@ -585,15 +655,38 @@
         setValue('TiempoEstimado', tiempoTotal);
     }
 
-    function setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
-    function setValue(id, value) { const el = document.getElementById(id); if (el) el.value = value; }
+    /**
+     * Asigna texto a un elemento por id si existe.
+     * @param {string} id
+     * @param {string} text
+     */
+    function setText(id, text) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    }
 
-    // ===================== Form AJAX =====================
+    /**
+     * Asigna valor a un input por id si existe.
+     * @param {string} id
+     * @param {string|number} value
+     */
+    function setValue(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    }
+
+    // ===================== Formulario AJAX (crear/actualizar) =====================
+
+    /**
+     * Envía el formulario de paquete por AJAX y reemplaza el parcial.
+     * @param {HTMLFormElement} form
+     * @param {SubmitEvent} event
+     */
     window.submitPaqueteAjax = function (form, event) {
         if (event) event.preventDefault();
 
         if (serviciosSeleccionados.length < 2) {
-            showPaqueteMessage('Debe seleccionar al menos 2 servicios', 'error');
+            showFormMessage('Debe seleccionar al menos 2 servicios.', 'error');
             document.getElementById('servicios-error')?.classList.remove('hidden');
             return false;
         }
@@ -603,78 +696,238 @@
         if (serviciosIdsJson) serviciosIdsJson.value = JSON.stringify(serviciosSeleccionados.map(s => s.id));
 
         const formData = new FormData(form);
-        fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
+        fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(resp => {
                 const isValid = resp.headers.get('X-Form-Valid') === 'true';
-                const message = resp.headers.get('X-Form-Message');
-                return resp.text().then(html => ({ isValid, message, html, ok: resp.ok, status: resp.status }));
+                const msg = resp.headers.get('X-Form-Message');
+                const title = resp.headers.get('X-Form-Title');
+                return resp.text().then(html => ({ html, isValid, msg, title, ok: resp.ok, status: resp.status }));
             })
             .then(result => {
-                // Reemplazar SIEMPRE el formulario (estilo servicio.js)
                 const cont = document.getElementById('paquete-form-container');
                 if (cont) cont.innerHTML = result.html;
+                {
+                    const titleSpan = document.getElementById('form-title');
+                    if (titleSpan) {
+                        if (result.title && result.title.trim().length) {
+                            titleSpan.textContent = result.title; // usar SIEMPRE lo del controlador
+                        } else {
+                            // Fallback robusto por si no llega el header
+                            const isEdit = !!document.getElementById('Id')?.value;
+                            titleSpan.textContent = isEdit ? 'Editando un Paquete de Servicios'
+                                : 'Registrando un Paquete de Servicios';
+                        }
+                    }
+                }
 
-                // Re-inicializar los ganchos del formulario y step de descuento
-                initializeForm();
+                initializeFormFromHidden();
                 setupDescuentoStep();
 
                 if (!result.ok) {
                     console.error('HTTP error submitPaqueteAjax:', result.status);
-                    showPaqueteMessage('Error al procesar la solicitud', 'error');
+                    showFormMessage('Error al procesar la solicitud.', 'error');
                     return;
                 }
 
                 if (result.isValid) {
-                    showPaqueteMessage(result.message || 'Operación exitosa', 'success');
-                    // Ir a página 1 para asegurar visibilidad
-                    setHiddenValue('pageNumber', '1');
-
-                    // Limpiar búsqueda y estado de búsqueda
+                    showFormMessage(result.msg || 'Operación exitosa.', 'success');
+                    // Reset búsqueda
                     const searchEl = document.getElementById('simple-search');
                     if (searchEl) searchEl.value = '';
                     currentSearchTerm = '';
-
-                    // Recargar tabla
+                    setHiddenValue('pageNumber', '1');
                     reloadPaqueteTable(1);
 
                     setTimeout(() => {
                         document.getElementById('accordion-flush-body-1')?.classList.add('hidden');
-                    }, 1800);
+                    }, 1500);
                 } else {
-                    showPaqueteMessage('Revise los errores del formulario.', 'error');
+                    showFormMessage('Revise los errores del formulario.', 'error');
                 }
             })
             .catch(err => {
                 console.error('Network/parse error submitPaqueteAjax:', err);
-                showPaqueteMessage('Error al procesar la solicitud', 'error');
+                showFormMessage('Error al procesar la solicitud.', 'error');
             });
 
         return false;
     };
 
-    // ===================== DESCUENTO: step configurable =====================
+    // ===================== Edición (carga parcial del formulario) =====================
+
+    /**
+     * Carga el formulario parcial (edición) y reinstala hooks.
+     * @param {string} id
+     */
+    window.editPaquete = function (id) {
+        const url = '/PaqueteServicio/FormPartial?id=' + encodeURIComponent(id);
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(async r => {
+                const srvTitle = r.headers.get('X-Form-Title');
+                const html = await r.text();
+                const cont = document.getElementById('paquete-form-container');
+                if (cont) cont.innerHTML = html;
+                {
+                    const titleSpan = document.getElementById('form-title');
+                    if (titleSpan) {
+                        if (srvTitle && srvTitle.trim().length) {
+                            titleSpan.textContent = srvTitle; // usar lo del controlador
+                        } else {
+                            // Fallback si el header no vino
+                            const isEdit = !!document.getElementById('Id')?.value;
+                            titleSpan.textContent = isEdit ? 'Editando un Paquete de Servicios'
+                                : 'Registrando un Paquete de Servicios';
+                        }
+                    }
+                }
+                setupDescuentoStep();
+                initializeFormFromHidden();
+                const accBody = document.getElementById('accordion-flush-body-1');
+                if (accBody) accBody.classList.remove('hidden');
+            })
+            .catch(err => console.error('Error cargando formulario de paquete:', err));
+    };
+
+    /**
+     * Reconstruye la selección de servicios desde el hidden (modo edición).
+     */
+    function initializeFormFromHidden() {
+        const hidden = document.getElementById('PaqueteServiciosIdsData');
+        const raw = hidden?.value?.trim();
+        const ids = raw ? raw.split(',').map(x => x.trim()).filter(x => x) : [];
+        if (!ids.length) return;
+        const tipoVehiculo = document.getElementById('TipoVehiculo')?.value;
+        if (!tipoVehiculo) return;
+
+        serviciosSeleccionados = [];
+        loadServiciosPorTipoVehiculo().then(() => {
+            ids.forEach(id => {
+                const s = serviciosDisponibles.find(x => x.id === id);
+                if (!s) return;
+                serviciosSeleccionados.push({
+                    id: s.id,
+                    nombre: s.nombre,
+                    tipo: s.tipo,
+                    precio: s.precio,
+                    tiempoEstimado: s.tiempoEstimado
+                });
+            });
+            updateServiciosSeleccionadosList();
+            updateResumen();
+            const acc = document.getElementById('accordion-flush-body-1');
+            if (acc && acc.classList.contains('hidden')) acc.classList.remove('hidden');
+        });
+    }
+
+    // ===================== Activar / Desactivar (modal confirmación) =====================
+
+    /**
+     * Abre el modal de confirmación (Flowbite + íconos correctos).
+     * @param {'desactivar'|'reactivar'} tipoAccion
+     * @param {string} id
+     * @param {string} nombre
+     */
+    window.openPaqueteConfirmModal = function (tipoAccion, id, nombre) {
+        const modalId = 'paqueteConfirmModal';
+        const modal = document.getElementById(modalId);
+        const title = document.getElementById('paqueteConfirmTitle');
+        const message = document.getElementById('paqueteConfirmMessage');
+        const idInput = document.getElementById('paqueteConfirmId');
+        const submitBtn = document.getElementById('paqueteConfirmSubmit');
+        const form = document.getElementById('paqueteConfirmForm');
+        const iconWrapper = document.getElementById('paqueteConfirmIconWrapper');
+        const icon = document.getElementById('paqueteConfirmIcon');
+
+        const esDesactivar = tipoAccion === 'desactivar';
+
+        // Título y mensaje
+        title.textContent = esDesactivar ? 'Desactivar Paquete' : 'Reactivar Paquete';
+        message.innerHTML = esDesactivar
+            ? '¿Confirma desactivar el paquete <strong>' + (window.SiteModule?.escapeHtml?.(nombre) || escapeHtml(nombre)) + '</strong>?'
+            : '¿Confirma reactivar el paquete <strong>' + (window.SiteModule?.escapeHtml?.(nombre) || escapeHtml(nombre)) + '</strong>?';
+
+        // Hidden id y acción
+        idInput.value = id;
+        form.action = esDesactivar ? '/PaqueteServicio/DeactivatePaquete' : '/PaqueteServicio/ReactivatePaquete';
+
+        // Botón y estilos
+        submitBtn.textContent = esDesactivar ? 'Desactivar' : 'Reactivar';
+        submitBtn.className = esDesactivar
+            ? 'py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900'
+            : 'py-2 px-3 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900';
+
+        // Ícono (estilo Servicios)
+        if (esDesactivar) {
+            iconWrapper.className = 'w-12 h-12 rounded-full bg-red-100 dark:bg-red-900 p-2 flex items-center justify-center mx-auto mb-3.5';
+            icon.setAttribute('fill', 'currentColor');
+            icon.setAttribute('viewBox', '0 0 20 20');
+            icon.setAttribute('class', 'w-8 h-8 text-red-600 dark:text-red-400');
+            icon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.293a1 1 0 00-1.414-1.414L10 7.586 7.707 5.293a1 1 0 00-1.414 1.414L8.586 10l-2.293 2.293a1 1 0 001.414 1.414L10 12.414l2.293 2.293a1 1 0 001.414-1.414L11.414 10l2.293-2.293z" clip-rule="evenodd"/>`;
+        } else {
+            iconWrapper.className = 'w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 p-2 flex items-center justify-center mx-auto mb-3.5';
+            icon.setAttribute('fill', 'currentColor');
+            icon.setAttribute('viewBox', '0 0 24 24');
+            icon.setAttribute('class', 'w-8 h-8 text-green-500 dark:text-green-400');
+            icon.innerHTML = `<path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd"/>`;
+        }
+
+        // Mostrar con Flowbite (backdrop)
+        abrirModal(modalId);
+    };
+
+    /**
+     * Cierra el modal de confirmación de paquetes (usa Flowbite si disponible).
+     */
+    window.closePaqueteConfirmModal = function () {
+        cerrarModal('paqueteConfirmModal');
+    };
+
+    /**
+     * Envía el cambio de estado (activar/desactivar) vía AJAX.
+     * @param {HTMLFormElement} form
+     */
+    window.submitPaqueteEstado = function (form) {
+        const fd = new FormData(form);
+        fetch(form.action, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => {
+                if (!r.ok) throw new Error('Estado HTTP ' + r.status);
+                const accion = form.action.includes('Deactivate') ? 'desactivado' : 'reactivado';
+                showTableMessage('success', `Paquete ${accion} correctamente.`);
+                closePaqueteConfirmModal();
+                reloadPaqueteTable(window.getCurrentTablePage ? window.getCurrentTablePage() : 1);
+            })
+            .catch(err => {
+                console.error('submitPaqueteEstado error:', err);
+                showTableMessage('error', 'No se pudo completar la acción.');
+                closePaqueteConfirmModal();
+            });
+        return false;
+    };
+
+    // ===================== Paso de descuento =====================
+
+    /**
+     * Obtiene el step de descuento desde config o dataset (mínimo 5).
+     */
     function getDescuentoStep() {
         let raw = (window.AppConfig?.descuentoStep) ?? document.getElementById('PorcentajeDescuento')?.dataset?.step ?? 5;
         let step = parseInt(raw, 10);
-        if (isNaN(step) || step < 5) step = 5; // mínimo 5%
+        if (isNaN(step) || step < 5) step = 5;
         return step;
     }
 
+    /**
+     * Aplica restricciones y normalización de step en inputs de descuento.
+     */
     function setupDescuentoStep() {
         const step = getDescuentoStep();
-        const clampAndSnap = (el) => {
+        const normalize = (el) => {
             if (!el) return;
             let v = parseFloat(el.value);
             if (isNaN(v)) return;
-            // Limitar rango 5..95
             v = Math.max(5, Math.min(95, v));
             let snapped = Math.round(v / step) * step;
-            if (snapped < 5) snapped = 5;
-            if (snapped > 95) snapped = 95;
+            snapped = Math.max(5, Math.min(95, snapped));
             el.value = String(snapped);
         };
         const wire = (el) => {
@@ -683,8 +936,8 @@
             el.setAttribute('max', '95');
             el.setAttribute('step', String(step));
             if (!el.dataset.stepSetup) {
-                el.addEventListener('blur', () => clampAndSnap(el));
-                el.addEventListener('change', () => clampAndSnap(el));
+                el.addEventListener('blur', () => normalize(el));
+                el.addEventListener('change', () => normalize(el));
                 el.dataset.stepSetup = 'true';
             }
         };
@@ -694,7 +947,13 @@
     }
 
     // ===================== Mensajería =====================
-    function showPaqueteMessage(message, type) {
+
+    /**
+     * Muestra un mensaje inline en el formulario (auto-ocultable).
+     * @param {'success'|'info'|'error'} type
+     * @param {string} message
+     */
+    function showFormMessage(message, type) {
         const existing = document.getElementById('form-message-container');
         let container = existing;
         let textEl;
@@ -705,8 +964,7 @@
             textEl = document.createElement('div');
             textEl.id = 'form-message-text';
             container.appendChild(textEl);
-            const formWrap = document.getElementById('paquete-form-container') || document.body;
-            formWrap.prepend(container);
+            (document.getElementById('paquete-form-container') || document.body).prepend(container);
         } else {
             textEl = document.getElementById('form-message-text');
         }
@@ -716,27 +974,28 @@
             ? 'text-green-800 bg-green-50 dark:bg-gray-800 dark:text-green-400'
             : type === 'info'
                 ? 'text-blue-800 bg-blue-50 dark:bg-gray-800 dark:text-blue-400'
-                : 'text-red-800 bg-red-50 dark:bg-gray-800 dark:text-red-400'}`;
+                : 'text-red-800 bg-red-50 dark:bg-gray-800 dark:text-red-400'
+            }`;
 
         container.classList.remove('hidden');
-
-        if (paqueteMsgTimeout) clearTimeout(paqueteMsgTimeout);
-        paqueteMsgTimeout = setTimeout(() => container.classList.add('hidden'), 5000);
+        if (formMsgTimeout) clearTimeout(formMsgTimeout);
+        formMsgTimeout = setTimeout(() => container.classList.add('hidden'), 5000);
     }
 
-    function hidePaqueteMessage() {
+    /**
+     * Oculta el mensaje del formulario (si existe).
+     */
+    function hideFormMessage() {
         document.getElementById('form-message-container')?.classList.add('hidden');
     }
 
-    function showTableMessage(typeOrMsg, msgOrType, disappearMs = 5000) {
-        // Normaliza llamadas en ambos órdenes
-        let type = typeOrMsg, msg = msgOrType;
-        const allowed = ['success', 'info', 'error'];
-        if (!allowed.includes(typeOrMsg) && allowed.includes(msgOrType)) {
-            type = msgOrType;
-            msg = typeOrMsg;
-        }
-
+    /**
+     * Muestra un mensaje sobre la tabla con animación y autohide.
+     * @param {'success'|'info'|'error'} type
+     * @param {string} msg
+     * @param {number} disappearMs
+     */
+    function showTableMessage(type, msg, disappearMs = 5000) {
         let container = document.getElementById('paquete-table-messages');
         if (!container) {
             container = document.createElement('div');
@@ -757,11 +1016,11 @@
                     { bg: 'red-50', text: 'red-800', dark: 'red-400', border: 'red-300' };
 
         container.innerHTML = `<div class="opacity-100 transition-opacity duration-700
-                p-4 mb-4 text-sm rounded-lg border
-                bg-${color.bg} text-${color.text} border-${color.border}
-                dark:bg-gray-800 dark:text-${color.dark}">
-                ${msg}
-            </div>`;
+            p-4 mb-4 text-sm rounded-lg border
+            bg-${color.bg} text-${color.text} border-${color.border}
+            dark:bg-gray-800 dark:text-${color.dark}">
+            ${escapeHtml(msg)}
+        </div>`;
 
         try { container.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { }
 
@@ -774,27 +1033,119 @@
         }, disappearMs);
     }
 
-    // ===================== Inicial (modo edición) =====================
-    function initializeForm() {
-        if (!(window.paqueteEditData?.serviciosIds?.length)) return;
-        const tipoVehiculo = document.getElementById('TipoVehiculo')?.value;
-        if (!tipoVehiculo) return;
-
-        loadServiciosPorTipoVehiculo().then(() => {
-            window.paqueteEditData.serviciosIds.forEach(id => {
-                const s = serviciosDisponibles.find(x => x.id === id);
-                if (!s) return;
-                serviciosSeleccionados.push({
-                    id: s.id,
-                    nombre: s.nombre,
-                    tipo: s.tipo,
-                    precio: s.precio,
-                    tiempoEstimado: s.tiempoEstimado
-                });
-            });
-            updateServiciosSeleccionadosList();
-            updateResumen();
+    /**
+     * Oculta mensajes del formulario cuando se edita algún campo del mismo.
+     */
+    function setupFormMessageHandler() {
+        document.addEventListener('input', (e) => {
+            if (e.target.closest('#paquete-form')) hideFormMessage();
         });
+    }
+
+    // ===================== Utilidades varias =====================
+
+    /**
+     * Cierra el dropdown de servicios si se hace click fuera.
+     */
+    function setupDropdownClickOutside() {
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('servicio-dropdown');
+            const searchInput = document.getElementById('servicio-search');
+            if (dropdown && !dropdown.contains(e.target) && e.target !== searchInput) {
+                dropdown.classList.add('hidden');
+            }
+        });
+    }
+
+    /**
+     * Escapa HTML para prevenir XSS en inserciones de texto.
+     * @param {string} text
+     */
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ===================== Flowbite modals (backdrop) =====================
+
+    /**
+     * Obtiene o crea una instancia Flowbite Modal para un elemento.
+     * Compatible con Flowbite 2.x (getInstance/getOrCreateInstance).
+     * @param {HTMLElement} modalEl
+     */
+    function getFlowbiteModal(modalEl) {
+        if (!modalEl || typeof window !== 'object' || typeof window.Modal === 'undefined') return null;
+        const opts = { backdrop: 'dynamic', closable: true };
+        if (typeof Modal.getInstance === 'function') {
+            const existing = Modal.getInstance(modalEl);
+            if (existing) return existing;
+        }
+        if (typeof Modal.getOrCreateInstance === 'function') {
+            return Modal.getOrCreateInstance(modalEl, opts);
+        }
+        try { return new Modal(modalEl, opts); } catch { return null; }
+    }
+
+    /**
+     * Abre un modal por id, usando Flowbite si está disponible.
+     * @param {string} modalId
+     */
+    function abrirModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+
+        try {
+            const inst = getFlowbiteModal(modal);
+            if (inst && typeof inst.show === 'function') {
+                inst.show(); // Flowbite crea y maneja el backdrop
+                return;
+            }
+        } catch { /* no-op */ }
+
+        // Fallback mínimo
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
+    /**
+     * Cierra un modal por id, intentando limpiar backdrop y restaurar scroll.
+     * @param {string} modalId
+     */
+    function cerrarModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+
+        let closed = false;
+
+        // 1) API Flowbite
+        try {
+            const inst = getFlowbiteModal(modal);
+            if (inst && typeof inst.hide === 'function') {
+                inst.hide();
+                closed = true;
+            }
+        } catch { /* no-op */ }
+
+        // 2) Click en backdrop si existe
+        try {
+            const backdrop = document.querySelector('[modal-backdrop]');
+            if (backdrop) {
+                backdrop.click();
+                closed = true;
+            }
+        } catch { /* no-op */ }
+
+        // 3) Click en elementos con data-modal-hide="..."
+        try {
+            document.querySelectorAll(`[data-modal-hide="${modalId}"]`).forEach(btn => btn.click());
+        } catch { /* no-op */ }
+
+        // 4) Fallback final
+        modal.classList.add('hidden');
+        modal.setAttribute('aria-hidden', 'true');
+        document.querySelectorAll('[modal-backdrop]').forEach(b => b.remove());
+        document.body.classList.remove('overflow-hidden');
     }
 
 })();
