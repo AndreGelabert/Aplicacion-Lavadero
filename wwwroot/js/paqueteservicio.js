@@ -28,6 +28,7 @@
     let serviciosDisponibles = [];
     let serviciosSeleccionados = [];
     let servicioSeleccionadoDropdown = null;
+    let ultimoTipoVehiculoSeleccionado = null;
 
     // ===================== Inicialización del módulo =====================
     window.PageModules = window.PageModules || {};
@@ -50,6 +51,9 @@
         setupDynamicPriceHints();
         setupDescuentoStep();
         window.CommonUtils?.setupDefaultFilterForm();
+        protegerTipoVehiculoEnEdicion();
+        setupTipoVehiculoChangeHandler();
+        initializeFormFromHidden();
         checkEditMode();
         initializeFormFromHidden();
     }
@@ -263,12 +267,10 @@
         const form = document.getElementById('paquete-form');
         if (!form) return;
 
-        // Reset básico (revierte a valores cargados en el parcial)
         try { form.reset(); } catch { }
 
-        // Limpiezas explícitas (modo edición -> dejar todo en estado "nuevo")
         const clearValue = (id) => { const el = document.getElementById(id); if (el) el.value = ''; };
-        clearValue('Id'); // oculto Id (evitar permanecer en modo edición)
+        clearValue('Id');
         clearValue('Nombre');
         clearValue('PorcentajeDescuento');
         clearValue('Precio');
@@ -276,39 +278,26 @@
         clearValue('PaqueteServiciosIdsData');
         clearValue('ServiciosIdsJson');
 
-        // Select TipoVehiculo al primer option
         const tipoVehiculoSel = document.getElementById('TipoVehiculo');
-        if (tipoVehiculoSel) {
-            tipoVehiculoSel.selectedIndex = 0;
-        }
+        if (tipoVehiculoSel) tipoVehiculoSel.selectedIndex = 0;
 
-        // Ocultar selector de servicios y vaciar arrays
         serviciosDisponibles = [];
         serviciosSeleccionados = [];
+        ultimoTipoVehiculoSeleccionado = null; // NUEVO: resetear tipo de vehículo
+
         updateServiciosSeleccionadosList();
 
-        // Ocultar contenedor selector si existe
         document.getElementById('servicio-selector-container')?.classList.add('hidden');
-
-        // Limpiar búsqueda dentro del selector de servicios
         const servicioSearch = document.getElementById('servicio-search');
         if (servicioSearch) servicioSearch.value = '';
         document.getElementById('servicio-dropdown')?.classList.add('hidden');
-
-        // Limpiar posible error visual de servicios
         document.getElementById('servicios-error')?.classList.add('hidden');
 
-        // Recalcular resumen con todo vacío
         updateResumen();
 
-        // Cerrar acordeón
-        document.getElementById('accordion-flush-body-1')?.classList.add('hidden');
-
-        // Forzar título a modo "Registro"
         const titleSpan = document.getElementById('form-title');
         if (titleSpan) titleSpan.textContent = 'Registrando un Paquete de Servicios';
 
-        // Mensajes fuera
         hideFormMessage();
     };
 
@@ -324,35 +313,31 @@
             const cont = document.getElementById('paquete-form-container');
             if (cont) cont.innerHTML = html;
 
-            // Título (si no llega header, fallback a creación)
             const titleSpan = document.getElementById('form-title');
             if (titleSpan) titleSpan.textContent = srvTitle?.trim() || 'Registrando un Paquete de Servicios';
 
-            // Reset de estado local (sale de modo edición)
+            // Reset de estado local
             serviciosDisponibles = [];
             serviciosSeleccionados = [];
             servicioSeleccionadoDropdown = null;
+            ultimoTipoVehiculoSeleccionado = null; // NUEVO: resetear tipo de vehículo
+
             updateServiciosSeleccionadosList();
             updateResumen();
 
-            // Ocultar selector y dropdown
             document.getElementById('servicio-selector-container')?.classList.add('hidden');
             document.getElementById('servicio-dropdown')?.classList.add('hidden');
-
-            // Ocultar errores visuales de servicios
             document.getElementById('servicios-error')?.classList.add('hidden');
 
-            // Re-aplicar restricciones de descuento y cualquier hook del nuevo parcial
             setupDescuentoStep();
+            protegerTipoVehiculoEnEdicion();
+            setupTipoVehiculoChangeHandler();
             initializeFormFromHidden();
 
-            // Cerrar acordeón (volver al estado inicial de la página)
             document.getElementById('accordion-flush-body-1')?.classList.add('hidden');
-
             hideFormMessage();
         } catch (e) {
             console.error('cancelarEdicionPaquete error:', e);
-            // Fallback: limpiar y forzar acción de creación
             limpiarFormularioPaquete();
             const form = document.getElementById('paquete-form');
             if (form) form.action = '/PaqueteServicio/CrearPaqueteAjax';
@@ -541,23 +526,71 @@
         const tipoVehiculo = document.getElementById('TipoVehiculo')?.value;
         const cont = document.getElementById('servicio-selector-container');
 
+        // Si no hay tipo seleccionado, ocultar y limpiar todo
         if (!tipoVehiculo) {
             cont?.classList.add('hidden');
             serviciosDisponibles = [];
             serviciosSeleccionados = [];
+            ultimoTipoVehiculoSeleccionado = null;
+
+            // Limpiar campos ocultos
+            const hiddenIds = document.getElementById('PaqueteServiciosIdsData');
+            if (hiddenIds) hiddenIds.value = '';
+            const jsonIds = document.getElementById('ServiciosIdsJson');
+            if (jsonIds) jsonIds.value = '[]';
+
+            // Limpiar UI
+            document.getElementById('servicio-search')?.setAttribute('value', '');
+            document.getElementById('servicio-dropdown')?.classList.add('hidden');
+            document.getElementById('servicios-error')?.classList.add('hidden');
+
+            updateServiciosSeleccionadosList();
             updateResumen();
             return;
         }
+
+        // VALIDACIÓN: Si cambió el tipo de vehículo Y ya había servicios seleccionados
+        if (ultimoTipoVehiculoSeleccionado !== null &&
+            ultimoTipoVehiculoSeleccionado !== tipoVehiculo &&
+            serviciosSeleccionados.length > 0) {
+
+            // Limpiar servicios seleccionados
+            serviciosSeleccionados = [];
+
+            // Limpiar campos ocultos
+            const hiddenIds = document.getElementById('PaqueteServiciosIdsData');
+            if (hiddenIds) hiddenIds.value = '';
+            const jsonIds = document.getElementById('ServiciosIdsJson');
+            if (jsonIds) jsonIds.value = '[]';
+
+            // Limpiar UI
+            const searchInput = document.getElementById('servicio-search');
+            if (searchInput) searchInput.value = '';
+            document.getElementById('servicio-dropdown')?.classList.add('hidden');
+            document.getElementById('servicios-error')?.classList.add('hidden');
+
+            updateServiciosSeleccionadosList();
+            updateResumen();
+
+            // Mostrar mensaje informativo
+            showFormMessage('Se limpiaron los servicios seleccionados al cambiar el tipo de vehículo.', 'info');
+        }
+
+        // Cargar servicios del nuevo tipo
         try {
             const resp = await fetch(`/PaqueteServicio/ObtenerServiciosPorTipoVehiculo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`);
             const data = await resp.json();
+
             if (data.success) {
                 serviciosDisponibles = data.servicios;
                 cont?.classList.remove('hidden');
                 renderServiciosDropdown(serviciosDisponibles);
+                // Actualizar el tipo de vehículo registrado
+                ultimoTipoVehiculoSeleccionado = tipoVehiculo;
             } else {
                 cont?.classList.add('hidden');
                 showFormMessage('No hay servicios disponibles para el tipo seleccionado.', 'error');
+                ultimoTipoVehiculoSeleccionado = tipoVehiculo;
             }
         } catch {
             cont?.classList.add('hidden');
@@ -798,22 +831,23 @@
             .then(result => {
                 const cont = document.getElementById('paquete-form-container');
                 if (cont) cont.innerHTML = result.html;
-                {
-                    const titleSpan = document.getElementById('form-title');
-                    if (titleSpan) {
-                        if (result.title && result.title.trim().length) {
-                            titleSpan.textContent = result.title; // usar SIEMPRE lo del controlador
-                        } else {
-                            // Fallback robusto por si no llega el header
-                            const isEdit = !!document.getElementById('Id')?.value;
-                            titleSpan.textContent = isEdit ? 'Editando un Paquete de Servicios'
-                                : 'Registrando un Paquete de Servicios';
-                        }
+
+                const titleSpan = document.getElementById('form-title');
+                if (titleSpan) {
+                    if (result.title && result.title.trim().length) {
+                        titleSpan.textContent = result.title;
+                    } else {
+                        const isEdit = !!document.getElementById('Id')?.value;
+                        titleSpan.textContent = isEdit ? 'Editando un Paquete de Servicios'
+                            : 'Registrando un Paquete de Servicios';
                     }
                 }
 
-                initializeFormFromHidden();
+                // NUEVO: reinstalar handler de tipo de vehículo
                 setupDescuentoStep();
+                protegerTipoVehiculoEnEdicion();
+                setupTipoVehiculoChangeHandler();
+                initializeFormFromHidden();
 
                 if (!result.ok) {
                     console.error('HTTP error submitPaqueteAjax:', result.status);
@@ -823,7 +857,6 @@
 
                 if (result.isValid) {
                     showFormMessage(result.msg || 'Operación exitosa.', 'success');
-                    // Reset búsqueda
                     const searchEl = document.getElementById('simple-search');
                     if (searchEl) searchEl.value = '';
                     currentSearchTerm = '';
@@ -859,21 +892,24 @@
                 const html = await r.text();
                 const cont = document.getElementById('paquete-form-container');
                 if (cont) cont.innerHTML = html;
-                {
-                    const titleSpan = document.getElementById('form-title');
-                    if (titleSpan) {
-                        if (srvTitle && srvTitle.trim().length) {
-                            titleSpan.textContent = srvTitle; // usar lo del controlador
-                        } else {
-                            // Fallback si el header no vino
-                            const isEdit = !!document.getElementById('Id')?.value;
-                            titleSpan.textContent = isEdit ? 'Editando un Paquete de Servicios'
-                                : 'Registrando un Paquete de Servicios';
-                        }
+
+                const titleSpan = document.getElementById('form-title');
+                if (titleSpan) {
+                    if (srvTitle && srvTitle.trim().length) {
+                        titleSpan.textContent = srvTitle;
+                    } else {
+                        const isEdit = !!document.getElementById('Id')?.value;
+                        titleSpan.textContent = isEdit ? 'Editando un Paquete de Servicios'
+                            : 'Registrando un Paquete de Servicios';
                     }
                 }
+
+                // NUEVO: reinstalar handler de tipo de vehículo
                 setupDescuentoStep();
+                protegerTipoVehiculoEnEdicion();
+                setupTipoVehiculoChangeHandler();
                 initializeFormFromHidden();
+
                 const accBody = document.getElementById('accordion-flush-body-1');
                 if (accBody) accBody.classList.remove('hidden');
             })
@@ -1158,7 +1194,75 @@
         div.textContent = text;
         return div.innerHTML;
     }
+    function setupTipoVehiculoChangeHandler() {
+        const tipoVehiculoSelect = document.getElementById('TipoVehiculo');
+        if (!tipoVehiculoSelect) return;
 
+        // NUEVO: Si está protegido (modo edición), no enganchar eventos
+        if (tipoVehiculoSelect.dataset.protected === 'true') {
+            return;
+        }
+
+        if (tipoVehiculoSelect.dataset.changeSetup === 'true') return;
+
+        tipoVehiculoSelect.addEventListener('change', () => {
+            try {
+                window.loadServiciosPorTipoVehiculo();
+            } catch (e) {
+                console.error('Error al cargar servicios:', e);
+            }
+        });
+
+        tipoVehiculoSelect.dataset.changeSetup = 'true';
+    }
+    /**
+    * NUEVO: Protege el campo TipoVehiculo en modo edición
+    */
+    function protegerTipoVehiculoEnEdicion() {
+        const tipoVehiculoSelect = document.getElementById('TipoVehiculo');
+        const form = document.getElementById('paquete-form');
+
+        if (!tipoVehiculoSelect || !form) return;
+
+        const isEdit = form.dataset.edit === 'True' || form.dataset.edit === 'true';
+
+        if (isEdit) {
+            // 1. Deshabilitar el select
+            tipoVehiculoSelect.disabled = true;
+
+            // 2. Aplicar estilos visuales
+            tipoVehiculoSelect.classList.add('cursor-not-allowed', 'opacity-60');
+
+            // 3. Remover el evento onchange si existe
+            tipoVehiculoSelect.onchange = null;
+            tipoVehiculoSelect.removeAttribute('onchange');
+
+            // 4. Prevenir cualquier intento de cambio mediante eventos
+            ['change', 'input', 'click', 'mousedown', 'keydown'].forEach(eventType => {
+                tipoVehiculoSelect.addEventListener(eventType, function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    return false;
+                }, true);
+            });
+
+            // 5. Congelar la propiedad disabled
+            try {
+                Object.defineProperty(tipoVehiculoSelect, 'disabled', {
+                    value: true,
+                    writable: false,
+                    configurable: false
+                });
+            } catch (e) {
+                // Algunos navegadores no permiten esto, pero los eventos anteriores lo cubren
+                console.log('No se pudo congelar la propiedad disabled, pero el select está protegido por eventos');
+            }
+
+            // 6. Marcar como protegido para evitar que setupTipoVehiculoChangeHandler lo modifique
+            tipoVehiculoSelect.dataset.protected = 'true';
+        }
+    }
     // ===================== Flowbite modals (backdrop) =====================
 
     /**

@@ -488,6 +488,13 @@ public class PaqueteServicioController : Controller
             return ResultadoOperacion.CrearError("No se pudo encontrar el paquete a actualizar.");
         }
 
+        // VALIDACIÓN: Prevenir cambio de tipo de vehículo
+        if (!string.Equals(paqueteActual.TipoVehiculo, paquete.TipoVehiculo, StringComparison.OrdinalIgnoreCase))
+        {
+            ModelState.AddModelError("TipoVehiculo", "No se puede cambiar el tipo de vehículo de un paquete existente.");
+            return ResultadoOperacion.CrearError("No se puede cambiar el tipo de vehículo de un paquete existente. Si necesita cambiar el tipo de vehículo, debe crear un nuevo paquete.");
+        }
+
         if (await _paqueteServicioService.ExistePaqueteConNombre(paquete.Nombre, paquete.Id))
         {
             var mensaje = $"Ya existe un paquete con el nombre '{paquete.Nombre}'.";
