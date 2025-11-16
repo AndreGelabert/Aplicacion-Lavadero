@@ -2,6 +2,9 @@ using Firebase.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Linq; // agregado para LINQ
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 /// <summary>
 /// Controlador para la gestión de paquetes de servicios del lavadero.
@@ -69,6 +72,10 @@ public class PaqueteServicioController : Controller
             precioMin, precioMax, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
         ViewBag.CantidadesServicios = cantidadesServicios;
         ViewBag.ServiciosCantidad = serviciosCantidad;
+
+        // NUEVO: calcular precios y tiempos dinámicamente para la tabla
+        ViewBag.PreciosFinales = await CalcularPreciosFinalesAsync(paquetes);
+        ViewBag.TiemposTotales = await CalcularTiemposAsync(paquetes);
 
         await ConfigurarFormulario(editId);
 
@@ -173,6 +180,10 @@ public class PaqueteServicioController : Controller
         ViewBag.ServiciosCantidad = serviciosCantidad;
         ViewBag.CantidadesServicios = await _paqueteServicioService.ObtenerValoresCantidadServicios();
 
+        // NUEVO: calcular precios y tiempos dinámicamente para la tabla parcial
+        ViewBag.PreciosFinales = await CalcularPreciosFinalesAsync(paquetes);
+        ViewBag.TiemposTotales = await CalcularTiemposAsync(paquetes);
+
         return PartialView("_PaqueteServicioTable", paquetes);
     }
 
@@ -218,6 +229,10 @@ public class PaqueteServicioController : Controller
         ViewBag.DescuentoMax = descuentoMax;
         ViewBag.ServiciosCantidad = serviciosCantidad;
         ViewBag.CantidadesServicios = await _paqueteServicioService.ObtenerValoresCantidadServicios();
+
+        // NUEVO: calcular precios y tiempos dinámicamente para la tabla parcial
+        ViewBag.PreciosFinales = await CalcularPreciosFinalesAsync(paquetes);
+        ViewBag.TiemposTotales = await CalcularTiemposAsync(paquetes);
 
         return PartialView("_PaqueteServicioTable", paquetes);
     }
@@ -388,6 +403,41 @@ public class PaqueteServicioController : Controller
             ViewBag.ClearButtonText = "Limpiar Campos";
             ViewBag.FormAction = "CrearPaqueteAjax";
         }
+    }
+
+    // Helpers de cálculo para el controlador: calcular precios/tiempos dinámicamente
+    private async Task<Dictionary<string, decimal>> CalcularPreciosFinalesAsync(IEnumerable<PaqueteServicio> paquetes)
+    {
+        var list = paquetes?.ToList() ?? new List<PaqueteServicio>();
+        var dict = new Dictionary<string, decimal>();
+        foreach (var p in list)
+        {
+            try
+            {
+                var servicios = await _paqueteServicioService.ObtenerServiciosDePaquete(p.ServiciosIds);
+                var suma = servicios?.Sum(s => s.Precio) ?? 0m;
+                var descuento = suma * (p.PorcentajeDescuento / 100m);
+                dict[p.Id] = suma - descuento;
+            }
+            catch { dict[p.Id] = 0m; }
+        }
+        return dict;
+    }
+
+    private async Task<Dictionary<string, int>> CalcularTiemposAsync(IEnumerable<PaqueteServicio> paquetes)
+    {
+        var list = paquetes?.ToList() ?? new List<PaqueteServicio>();
+        var dict = new Dictionary<string, int>();
+        foreach (var p in list)
+        {
+            try
+            {
+                var servicios = await _paqueteServicioService.ObtenerServiciosDePaquete(p.ServiciosIds);
+                dict[p.Id] = servicios?.Sum(s => s.TiempoEstimado) ?? 0;
+            }
+            catch { dict[p.Id] = 0; }
+        }
+        return dict;
     }
 
     /// <summary>

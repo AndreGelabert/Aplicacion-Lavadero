@@ -256,18 +256,110 @@
     }
 
     /**
-     * Limpia el formulario de creación/edición de paquete.
-     */
+    * Limpia el formulario de creación/edición de paquete y sale de modo edición.
+    * Resetea completamente valores que el reset nativo no deja en blanco (porque provienen del parcial cargado en edición).
+    */
     window.limpiarFormularioPaquete = function () {
         const form = document.getElementById('paquete-form');
         if (!form) return;
+
+        // Reset básico (revierte a valores cargados en el parcial)
         try { form.reset(); } catch { }
+
+        // Limpiezas explícitas (modo edición -> dejar todo en estado "nuevo")
+        const clearValue = (id) => { const el = document.getElementById(id); if (el) el.value = ''; };
+        clearValue('Id'); // oculto Id (evitar permanecer en modo edición)
+        clearValue('Nombre');
+        clearValue('PorcentajeDescuento');
+        clearValue('Precio');
+        clearValue('TiempoEstimado');
+        clearValue('PaqueteServiciosIdsData');
+        clearValue('ServiciosIdsJson');
+
+        // Select TipoVehiculo al primer option
+        const tipoVehiculoSel = document.getElementById('TipoVehiculo');
+        if (tipoVehiculoSel) {
+            tipoVehiculoSel.selectedIndex = 0;
+        }
+
+        // Ocultar selector de servicios y vaciar arrays
+        serviciosDisponibles = [];
         serviciosSeleccionados = [];
         updateServiciosSeleccionadosList();
-        updateResumen();
+
+        // Ocultar contenedor selector si existe
+        document.getElementById('servicio-selector-container')?.classList.add('hidden');
+
+        // Limpiar búsqueda dentro del selector de servicios
+        const servicioSearch = document.getElementById('servicio-search');
+        if (servicioSearch) servicioSearch.value = '';
         document.getElementById('servicio-dropdown')?.classList.add('hidden');
+
+        // Limpiar posible error visual de servicios
+        document.getElementById('servicios-error')?.classList.add('hidden');
+
+        // Recalcular resumen con todo vacío
+        updateResumen();
+
+        // Cerrar acordeón
         document.getElementById('accordion-flush-body-1')?.classList.add('hidden');
+
+        // Forzar título a modo "Registro"
+        const titleSpan = document.getElementById('form-title');
+        if (titleSpan) titleSpan.textContent = 'Registrando un Paquete de Servicios';
+
+        // Mensajes fuera
         hideFormMessage();
+    };
+
+    // Opción: función semántica para botón "Cancelar"
+    window.cancelarEdicionPaquete = async function () {
+        try {
+            const resp = await fetch('/PaqueteServicio/FormPartial', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const srvTitle = resp.headers.get('X-Form-Title');
+            const html = await resp.text();
+
+            const cont = document.getElementById('paquete-form-container');
+            if (cont) cont.innerHTML = html;
+
+            // Título (si no llega header, fallback a creación)
+            const titleSpan = document.getElementById('form-title');
+            if (titleSpan) titleSpan.textContent = srvTitle?.trim() || 'Registrando un Paquete de Servicios';
+
+            // Reset de estado local (sale de modo edición)
+            serviciosDisponibles = [];
+            serviciosSeleccionados = [];
+            servicioSeleccionadoDropdown = null;
+            updateServiciosSeleccionadosList();
+            updateResumen();
+
+            // Ocultar selector y dropdown
+            document.getElementById('servicio-selector-container')?.classList.add('hidden');
+            document.getElementById('servicio-dropdown')?.classList.add('hidden');
+
+            // Ocultar errores visuales de servicios
+            document.getElementById('servicios-error')?.classList.add('hidden');
+
+            // Re-aplicar restricciones de descuento y cualquier hook del nuevo parcial
+            setupDescuentoStep();
+            initializeFormFromHidden();
+
+            // Cerrar acordeón (volver al estado inicial de la página)
+            document.getElementById('accordion-flush-body-1')?.classList.add('hidden');
+
+            hideFormMessage();
+        } catch (e) {
+            console.error('cancelarEdicionPaquete error:', e);
+            // Fallback: limpiar y forzar acción de creación
+            limpiarFormularioPaquete();
+            const form = document.getElementById('paquete-form');
+            if (form) form.action = '/PaqueteServicio/CrearPaqueteAjax';
+            const submitBtn = document.querySelector('#paquete-form [type="submit"]');
+            if (submitBtn) submitBtn.textContent = 'Registrar';
+        }
+        return false;
     };
 
     /**
@@ -862,7 +954,7 @@
             icon.setAttribute('fill', 'currentColor');
             icon.setAttribute('viewBox', '0 0 20 20');
             icon.setAttribute('class', 'w-8 h-8 text-red-600 dark:text-red-400');
-            icon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.293a1 1 0 00-1.414-1.414L10 7.586 7.707 5.293a1 1 0 00-1.414 1.414L8.586 10l-2.293 2.293a1 1 0 001.414 1.414L10 12.414l2.293 2.293a1 1 0 001.414-1.414L11.414 10l2.293-2.293z" clip-rule="evenodd"/>`;
+            icon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.293a1 1 0 00-1.414-1.414L10 7.586 7.707 5.293a1 1 0 00-1.414 1.414L8.586 10l-2.293 2.293a1 1 0 001.414 1.414L10 12.414l2.293 2.293a1 1 0 001.414-1.414L11.414 10l2.293-2.293a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd"/>`;
         } else {
             iconWrapper.className = 'w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 p-2 flex items-center justify-center mx-auto mb-3.5';
             icon.setAttribute('fill', 'currentColor');
