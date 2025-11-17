@@ -18,6 +18,7 @@ public class PaqueteServicioController : Controller
     private readonly ServicioService _servicioService;
     private readonly TipoVehiculoService _tipoVehiculoService;
     private readonly AuditService _auditService;
+    private readonly ConfiguracionService _configuracionService;
 
     /// <summary>
     /// Crea una nueva instancia del controlador de paquetes de servicios.
@@ -26,12 +27,14 @@ public class PaqueteServicioController : Controller
         PaqueteServicioService paqueteServicioService,
         ServicioService servicioService,
         TipoVehiculoService tipoVehiculoService,
-        AuditService auditService)
+        AuditService auditService,
+        ConfiguracionService configuracionService)
     {
         _paqueteServicioService = paqueteServicioService;
         _servicioService = servicioService;
         _tipoVehiculoService = tipoVehiculoService;
         _auditService = auditService;
+        _configuracionService = configuracionService;
     }
     #endregion
 
@@ -77,6 +80,10 @@ public class PaqueteServicioController : Controller
         // OPTIMIZADO: Calcular solo una vez y reutilizar en la vista
         ViewBag.PreciosFinales = await CalcularPreciosFinalesAsync(paquetes);
         ViewBag.TiemposTotales = await CalcularTiemposAsync(paquetes);
+
+        // Cargar el paso de descuento desde la configuración
+        var descuentoStep = await _configuracionService.ObtenerPaquetesDescuentoStep();
+        ViewBag.DescuentoStep = descuentoStep >= 5 ? descuentoStep : 5;
 
         await ConfigurarFormulario(editId);
 
@@ -641,7 +648,11 @@ public class PaqueteServicioController : Controller
     /// </summary>
     private async Task CargarListasForm()
     {
-    ViewBag.TodosLosTiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+        ViewBag.TodosLosTiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+        
+        // Cargar el paso de descuento desde la configuración
+        var descuentoStep = await _configuracionService.ObtenerPaquetesDescuentoStep();
+        ViewBag.DescuentoStep = descuentoStep >= 5 ? descuentoStep : 5;
     }
     #endregion
 }

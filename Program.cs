@@ -9,6 +9,7 @@ using System.Globalization;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddMemoryCache();
 
 // Configuraci�n de autenticaci�n
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -96,6 +97,7 @@ builder.Services.AddScoped<ServicioService>();
 builder.Services.AddScoped<TipoServicioService>();
 builder.Services.AddScoped<TipoVehiculoService>();
 builder.Services.AddScoped<PaqueteServicioService>();
+builder.Services.AddScoped<ConfiguracionService>();
 builder.Services.AddHttpClient<Firebase.Services.AuthenticationService>();
 builder.Services.AddScoped<Firebase.Services.AuthenticationService>();
 

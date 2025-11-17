@@ -1,0 +1,222 @@
+@model Firebase.Models.Configuracion
+@{
+    ViewData["Title"] = "Configuración del Sistema";
+}
+
+<section class="bg-gray-50 dark:bg-gray-900">
+    <div class="mx-auto bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-visible">
+        <!-- Encabezado -->
+        <div class="p-2 flex justify-between items-center rounded-t border-b dark:border-gray-600">
+            <h1 class="text-2xl md:block font-semibold text-gray-900 dark:text-white">
+                Configuración del Sistema
+            </h1>
+            <!-- Botón de ayuda -->
+            <button data-popover-target="popover-help" data-popover-trigger="click" type="button" class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-2 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"></path>
+                </svg>
+            </button>
+            <div data-popover id="popover-help" role="tooltip" class="absolute z-10 invisible inline-block w-64 text-sm text-gray-500 transition-opacity duration-300 bg-white border border-gray-200 rounded-lg shadow-xs opacity-0 dark:text-gray-400 dark:border-gray-600 dark:bg-gray-800">
+                <div class="px-3 py-2 bg-gray-100 border-b border-gray-200 rounded-t-lg dark:border-gray-600 dark:bg-gray-700">
+                    <h3 class="font-semibold text-gray-900 dark:text-white">Ayuda</h3>
+                </div>
+                <div class="px-3 py-2">
+                    <p>En esta página puedes configurar diversos parámetros del sistema como descuentos, horarios de operación, capacidad del lavadero, y más.</p>
+                </div>
+                <div data-popper-arrow></div>
+            </div>
+        </div>
+
+        <!-- Mensajes de éxito/error -->
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="p-4 m-4 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400" role="alert">
+                <svg class="inline w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+                @TempData["SuccessMessage"]
+            </div>
+        }
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="p-4 m-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400" role="alert">
+                <svg class="inline w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                </svg>
+                @TempData["ErrorMessage"]
+            </div>
+        }
+
+        <!-- Formulario de Configuración -->
+        <form asp-action="Actualizar" method="post" class="p-4">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="FechaActualizacion" />
+            <input type="hidden" asp-for="ActualizadoPor" />
+
+            <!-- Sección 1: Descuentos por Cancelación Anticipada -->
+            <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                    Descuentos por Cancelación Anticipada
+                </h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Configure el beneficio que recibirán los usuarios al cancelar sus citas con anticipación.
+                </p>
+                
+                <div class="grid gap-4 grid-cols-1 md:grid-cols-3">
+                    <div>
+                        <label asp-for="CancelacionAnticipadaDescuento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Descuento (%)
+                        </label>
+                        <input type="number" asp-for="CancelacionAnticipadaDescuento" 
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                               min="0" max="100" step="1" required />
+                        <span asp-validation-for="CancelacionAnticipadaDescuento" class="text-red-600 text-xs"></span>
+                    </div>
+                    
+                    <div>
+                        <label asp-for="CancelacionAnticipadaHorasMinimas" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Horas Mínimas de Anticipación
+                        </label>
+                        <input type="number" asp-for="CancelacionAnticipadaHorasMinimas" 
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                               min="1" max="168" step="1" required />
+                        <span asp-validation-for="CancelacionAnticipadaHorasMinimas" class="text-red-600 text-xs"></span>
+                    </div>
+                    
+                    <div>
+                        <label asp-for="CancelacionAnticipadaValidezDias" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Validez del Descuento (días)
+                        </label>
+                        <input type="number" asp-for="CancelacionAnticipadaValidezDias" 
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                               min="1" max="365" step="1" required />
+                        <span asp-validation-for="CancelacionAnticipadaValidezDias" class="text-red-600 text-xs"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección 2: Configuración de Paquetes de Servicios -->
+            <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                    Paquetes de Servicios
+                </h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Configure el incremento/paso para el campo de descuento en paquetes de servicios.
+                </p>
+                
+                <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
+                    <div>
+                        <label asp-for="PaquetesDescuentoStep" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Paso de Descuento (%)
+                        </label>
+                        <input type="number" asp-for="PaquetesDescuentoStep" 
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                               min="5" max="50" step="1" required />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Define los incrementos permitidos para los descuentos (ej: 5% permite 5%, 10%, 15%, etc.)
+                        </p>
+                        <span asp-validation-for="PaquetesDescuentoStep" class="text-red-600 text-xs"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección 3: Horarios de Operación -->
+            <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                    Horarios de Operación
+                </h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Configure los días y horarios en los que el lavadero opera. 
+                    Formato: HH:MM-HH:MM (ej: 09:00-18:00) o HH:MM-HH:MM,HH:MM-HH:MM para horarios divididos. Use "CERRADO" para días no operativos.
+                </p>
+                
+                <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
+                    @{
+                        var diasSemana = new[] { "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo" };
+                    }
+                    @foreach (var dia in diasSemana)
+                    {
+                        <div>
+                            <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                                @dia
+                            </label>
+                            <input type="text" name="HorariosOperacion[@dia]" 
+                                   value="@(Model.HorariosOperacion.ContainsKey(dia) ? Model.HorariosOperacion[dia] : "CERRADO")"
+                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                                   placeholder="09:00-18:00 o CERRADO" required />
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Sección 4: Capacidad del Lavadero -->
+            <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                    Capacidad del Lavadero
+                </h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Configure la cantidad máxima de lavados/citas que se pueden aceptar simultáneamente.
+                </p>
+                
+                <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
+                    <div>
+                        <label asp-for="CapacidadMaximaConcurrente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Capacidad Máxima Concurrente
+                        </label>
+                        <input type="number" asp-for="CapacidadMaximaConcurrente" 
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                               min="1" max="100" step="1" required />
+                        <span asp-validation-for="CapacidadMaximaConcurrente" class="text-red-600 text-xs"></span>
+                    </div>
+                    
+                    <div>
+                        <label asp-for="ConsiderarEmpleadosActivos" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Considerar Empleados Activos
+                        </label>
+                        <div class="flex items-center">
+                            <input type="checkbox" asp-for="ConsiderarEmpleadosActivos" 
+                                   class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600" />
+                            <label asp-for="ConsiderarEmpleadosActivos" class="ml-2 text-sm text-gray-900 dark:text-gray-300">
+                                Limitar capacidad según empleados activos
+                            </label>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Si está activado, la capacidad efectiva será el mínimo entre la capacidad configurada y el número de empleados activos.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información de última actualización -->
+            @if (Model.FechaActualizacion.HasValue)
+            {
+                <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Última actualización:</strong> @Model.FechaActualizacion.Value.ToString("dd/MM/yyyy HH:mm")
+                        @if (!string.IsNullOrEmpty(Model.ActualizadoPor))
+                        {
+                            <span> por @Model.ActualizadoPor</span>
+                        }
+                    </p>
+                </div>
+            }
+
+            <!-- Botones de acción -->
+            <div class="flex justify-end gap-2">
+                <a href="@Url.Action("Index", "Lavados")" 
+                   class="text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700">
+                    Cancelar
+                </a>
+                <button type="submit" 
+                        class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">
+                    Guardar Configuración
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
