@@ -1,0 +1,171 @@
+@model Firebase.Models.PaqueteServicio
+@{
+    var edit = Model != null && !string.IsNullOrWhiteSpace(Model.Id);
+    string formAction = edit ? Url.Action("ActualizarPaqueteAjax", "PaqueteServicio") : Url.Action("CrearPaqueteAjax", "PaqueteServicio");
+    string submitText = edit ? "Guardar" : "Registrar";
+    string clearText = edit ? "Cancelar" : "Limpiar Campos";
+}
+<form id="paquete-form" data-edit="@edit" method="post" action="@formAction" onsubmit="return submitPaqueteAjax(this, event);">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="Id" id="Id" value="@(Model?.Id)" />
+    <input type="hidden" name="Estado" value="@(Model?.Estado ?? "Activo")" />
+    <input type="hidden" name="ServiciosIdsJson" id="ServiciosIdsJson" value="" />
+    <!-- IDs de servicios del paquete para inicialización en JS (sin scripts embebidos) -->
+    <input type="hidden" id="PaqueteServiciosIdsData" value="@(Model != null && Model.ServiciosIds != null ? string.Join(",", Model.ServiciosIds) : "")" />
+    <div class="grid gap-4 m-4 grid-cols-4">
+        <!-- Nombre -->
+        <div class="col-span-2">
+            <label for="Nombre" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre del Paquete</label>
+            <input type="text" name="Nombre" id="Nombre"
+                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                   placeholder="Nombre del paquete"
+                   value="@(Model?.Nombre)"
+                   pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ+\s]+"
+                   title="Solo se permiten letras y espacios"
+                   required>
+            <span asp-validation-for="Nombre" class="text-red-600 text-xs"></span>
+        </div>
+
+        <!-- Tipo de Vehículo -->
+        <div>
+            <label for="TipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Vehículo</label>
+            <select name="TipoVehiculo" id="TipoVehiculo"
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")"
+                    required
+                    @(edit ? "disabled" : "")
+                    @(edit ? "" : "onchange=\"loadServiciosPorTipoVehiculo()\"")>
+                <option value="">Seleccione...</option>
+                @foreach (var tipo in (ViewBag.TodosLosTiposVehiculo as List<string>) ?? new List<string>())
+                {
+                    if (Model?.TipoVehiculo != null && string.Equals(Model.TipoVehiculo, tipo, StringComparison.OrdinalIgnoreCase))
+                    {
+                        <option value="@tipo" selected>@tipo</option>
+                    }
+                    else
+                    {
+                        <option value="@tipo">@tipo</option>
+                    }
+                }
+            </select>
+            @if (edit)
+            {
+                <!-- Hidden input para enviar el valor cuando está disabled -->
+                <input type="hidden" name="TipoVehiculo" value="@Model.TipoVehiculo" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                    No se puede cambiar el tipo de vehículo al editar un paquete
+                </p>
+            }
+            <span asp-validation-for="TipoVehiculo" class="text-red-600 text-xs"></span>
+        </div>
+
+        <!-- Porcentaje de Descuento -->
+        <div>
+            <label for="PorcentajeDescuento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Descuento (%)</label>
+            <input type="number" name="PorcentajeDescuento" id="PorcentajeDescuento"
+                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                   placeholder="Minimo 5% y maximo 95%"
+                   value="@(Model != null ? Model.PorcentajeDescuento.ToString(System.Globalization.CultureInfo.InvariantCulture) : ((int?)ViewBag.DescuentoStep ??5).ToString())"
+                   min="5" max="95" step="@((int?)ViewBag.DescuentoStep ??5)" data-step="@((int?)ViewBag.DescuentoStep ??5)" required
+                   onchange="calcularPrecioYTiempo()" />
+            <span asp-validation-for="PorcentajeDescuento" class="text-red-600 text-xs"></span>
+        </div>
+    </div>
+
+    <!-- Sección de Servicios -->
+    <div class="m-4">
+        <div class="mb-3">
+            <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Servicios del Paquete (mínimo 2)</label>
+            <div class="bg-gray-50 border border-gray-300 rounded-lg p-3 dark:bg-gray-700 dark:border-gray-600">
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Seleccione el tipo de vehículo para ver los servicios disponibles</p>
+                
+                <!-- Nueva interfaz de selección de servicios -->
+                <div id="servicio-selector-container" class="hidden">
+                    <div class="flex gap-2 mb-3">
+                        <!-- Dropdown filtrable de servicios -->
+                        <div class="flex-1 relative">
+                            <input type="text" 
+                                   id="servicio-search" 
+                                   placeholder="Buscar servicio por nombre..."
+                                   class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white"
+                                   autocomplete="off"
+                                   onfocus="showServicioDropdown()"
+                                   oninput="filterServiciosDropdown(this.value)">
+                            
+                            <!-- Dropdown de servicios agrupados -->
+                            <div id="servicio-dropdown" 
+                                 class="hidden absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+                                <div id="servicio-dropdown-content" class="p-2">
+                                    <!-- Los servicios se renderizan aquí dinámicamente -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Botón Agregar -->
+                        <button type="button" 
+                                onclick="agregarServicioSeleccionado()" 
+                                id="btn-agregar-servicio"
+                                class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none dark:focus:ring-blue-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 inline mr-1">
+                                <path fill-rule="evenodd" d="M12 3.75a.75.75 0 01.75.75v6.75h6.75a.75.75 0 010 1.5h-6.75v6.75a.75.75 0 01-1.5 0v-6.75H4.5a.75.75 0 010-1.5h6.75V4.5a.75.75 0 01.75-.75z" clip-rule="evenodd" />
+                            </svg>
+                            Agregar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <span id="servicios-error" class="text-red-600 text-xs hidden">Debe seleccionar al menos 2 servicios</span>
+        </div>
+
+        <!-- Servicios Seleccionados -->
+        <div id="servicios-seleccionados-container" class="hidden mb-4">
+            <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Servicios Seleccionados</label>
+            <div id="servicios-seleccionados-list" class="bg-gray-50 border border-gray-300 rounded-lg p-3 dark:bg-gray-700 dark:border-gray-600">
+                <!-- Lista de servicios seleccionados -->
+            </div>
+        </div>
+
+        <!-- Resumen del Paquete -->
+        <div class="grid grid-cols-3 gap-4 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
+            <div>
+                <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Precio Total (sin descuento)</label>
+                <div id="precio-total-sin-descuento" class="text-lg font-bold text-gray-900 dark:text-white">$0.00</div>
+            </div>
+            <div>
+                <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Precio Final (con descuento)</label>
+                <div id="precio-final" class="text-lg font-bold text-green-600 dark:text-green-400">$0.00</div>
+                <input type="hidden" name="Precio" id="Precio" value="0" />
+            </div>
+            <div>
+                <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Tiempo Estimado Total</label>
+                <div id="tiempo-total" class="text-lg font-bold text-gray-900 dark:text-white">0 min</div>
+                <input type="hidden" name="TiempoEstimado" id="TiempoEstimado" value="0" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensajes de Validación -->
+    <div id="form-message-container" class="hidden m-4 p-4 mb-4 text-sm rounded-lg" role="alert">
+        <span id="form-message-text"></span>
+    </div>
+
+    <!-- Botones de Acción -->
+    <div class="flex justify-end gap-2 m-4">
+        <button type="submit" id="submit-button" class="text-white inline-flex items-center bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
+                <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+            </svg>
+            @submitText
+        </button>
+        <button type="button"
+                class="text-white inline-flex items-center bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900 font-medium rounded-lg text-sm px-2 py-1 text-center"
+                onclick="@(Model == null ? "limpiarFormularioPaquete()" : "cancelarEdicionPaquete()")">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
+                <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
+            </svg>
+            @(Model == null ? "Limpiar Campos" : "Cancelar")
+        </button>
+    </div>
+</form>

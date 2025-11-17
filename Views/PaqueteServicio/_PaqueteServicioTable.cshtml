@@ -1,4 +1,4 @@
-﻿@model List<Firebase.Models.Servicio>
+@model List<Firebase.Models.PaqueteServicio>
 <input type="hidden" id="current-page-value" value="@ViewBag.CurrentPage" />
 <input type="hidden" id="current-sort-by" value="@(ViewBag.SortBy ?? "Nombre")" />
 <input type="hidden" id="current-sort-order" value="@(ViewBag.SortOrder ?? "asc")" />
@@ -19,28 +19,6 @@
             </th>
             <th class="px-4 py-3 select-none">
                 <div class="flex items-center gap-1">
-                    <span>Precio</span>
-                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('Precio')">
-                        <svg class="w-4 h-4 @(ViewBag.SortBy == "Precio" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
-                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
-                        </svg>
-                    </div>
-                </div>
-            </th>
-            <th class="px-4 py-3 select-none">
-                <div class="flex items-center gap-1">
-                    <span>Tipo Servicio</span>
-                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('Tipo')">
-                        <svg class="w-4 h-4 @(ViewBag.SortBy == "Tipo" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
-                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
-                        </svg>
-                    </div>
-                </div>
-            </th>
-            <th class="px-4 py-3 select-none">
-                <div class="flex items-center gap-1">
                     <span>Tipo Vehículo</span>
                     <div class="sort-icon-container cursor-pointer" onclick="sortTable('TipoVehiculo')">
                         <svg class="w-4 h-4 @(ViewBag.SortBy == "TipoVehiculo" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
@@ -52,21 +30,42 @@
             </th>
             <th class="px-4 py-3 select-none">
                 <div class="flex items-center gap-1">
-                    <span>Tiempo Est.</span>
-                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('TiempoEstimado')">
-                        <svg class="w-4 h-4 @(ViewBag.SortBy == "TiempoEstimado" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                    <span>Cant. Servicios</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('CantidadServicios')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "CantidadServicios" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
                              fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
                         </svg>
                     </div>
                 </div>
             </th>
-            <!-- Nueva columna: Cantidad de etapas -->
             <th class="px-4 py-3 select-none">
                 <div class="flex items-center gap-1">
-                    <span>Cant. etapas</span>
-                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('EtapasCount')">
-                        <svg class="w-4 h-4 @(ViewBag.SortBy == "EtapasCount" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                    <span>Descuento</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('PorcentajeDescuento')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "PorcentajeDescuento" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Precio Final</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('Precio')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "Precio" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Tiempo Est.</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('TiempoEstimado')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "TiempoEstimado" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
                              fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
                         </svg>
@@ -90,46 +89,66 @@
     <tbody>
         @if (Model.Any())
         {
-            foreach (var s in Model)
+            foreach (var p in Model)
             {
                 <tr class="border-b dark:border-gray-700">
-                    <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap dark:text-white">@s.Nombre</td>
-                    <td class="px-4 py-3">@s.Precio.ToString("C")</td>
-                    <td class="px-4 py-3">@s.Tipo</td>
-                    <td class="px-4 py-3">@s.TipoVehiculo</td>
+                    <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap dark:text-white">@p.Nombre</td>
+                    <td class="px-4 py-3">@p.TipoVehiculo</td>
+                    <td class="px-4 py-3">@p.ServiciosIds.Count</td>
                     <td class="px-4 py-3">
-                        @if (s.TiempoEstimado >= 60)
-                        {
-                            var horas = (s.TiempoEstimado / 60.0).ToString("0.##");
-                            <div class="flex flex-col items-start">
-                                <span class="font-medium">@horas hs</span>
-                                <span class="text-xs text-gray-500 dark:text-gray-400">(@s.TiempoEstimado min)</span>
-                            </div>
-                        }
-                        else
-                        {
-                            <span>@s.TiempoEstimado min</span>
-                        }
+                        <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-0.5 rounded dark:bg-purple-900 dark:text-purple-300">
+                            @p.PorcentajeDescuento.ToString("0.##")%
+                        </span>
                     </td>
-                    <td class="px-4 py-3">@((s.Etapas?.Count) ?? 0)</td>
+                    <td class="px-4 py-3 font-semibold">
+                        @{
+                            decimal precioFinalRender = p.Precio; // fallback
+                            if (ViewBag.PreciosFinales is IDictionary<string, decimal> precios && precios.ContainsKey(p.Id))
+                            {
+                                precioFinalRender = precios[p.Id];
+                            }
+                        }
+                        @precioFinalRender.ToString("C")
+                    </td>
                     <td class="px-4 py-3">
-                        @if (s.Estado == "Activo")
+      @{
+       var tiempoRender = p.TiempoEstimado;
+   if (ViewBag.TiemposTotales is IDictionary<string, int> tiempos && tiempos.ContainsKey(p.Id))
+   {
+    tiempoRender = tiempos[p.Id];
+     }
+if (tiempoRender >= 60)
+{
+    var horas = (tiempoRender / 60.0).ToString("0.##");
+<div class="flex flex-col items-start">
+<span class="font-medium">@horas hs</span>
+   <span class="text-xs text-gray-500 dark:text-gray-400">(@tiempoRender min)</span>
+     </div>
+       }
+  else
+           {
+    <span>@tiempoRender min</span>
+        }
+      }
+  </td>
+       <td class="px-4 py-3">
+                        @if (p.Estado == "Activo")
                         {
-                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-green-900 dark:text-green-300">Activo</span>
+                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded dark:bg-green-900 dark:text-green-300">Activo</span>
                         }
                         else
                         {
-                            <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-red-900 dark:text-red-300">Inactivo</span>
+                            <span class="bg-red-100 text-red-800 text-xs font-medium px-2 py-0.5 rounded dark:bg-red-900 dark:text-red-300">Inactivo</span>
                         }
                     </td>
                     <td class="px-4 py-3 w-1/6 whitespace-nowrap text-center">
                         <div class="flex items-center justify-center gap-2">
-                            @if (s.Estado == "Inactivo")
+                            @if (p.Estado == "Inactivo")
                             {
                                 <button type="button"
                                         class="p-1.5 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
                                         title="Reactivar"
-                                        onclick="openServicioConfirmModal('reactivar','@s.Id','@s.Nombre')">
+                                        onclick="openPaqueteConfirmModal('reactivar','@p.Id','@Html.Encode(p.Nombre)')">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
                                         <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
                                     </svg>
@@ -140,7 +159,7 @@
                                 <button type="button"
                                         class="p-1.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
                                         title="Editar"
-                                        onclick="loadServicioForm('@s.Id')">
+                                        onclick="editPaquete('@p.Id')">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"></path>
                                     </svg>
@@ -148,7 +167,7 @@
                                 <button type="button"
                                         class="p-1.5 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
                                         title="Desactivar"
-                                        onclick="openServicioConfirmModal('desactivar','@s.Id','@s.Nombre')">
+                                        onclick="openPaqueteConfirmModal('desactivar','@p.Id','@Html.Encode(p.Nombre)')">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path>
                                     </svg>
@@ -162,8 +181,8 @@
         else
         {
             <tr>
-                <td colspan="8" class="text-center py-4 text-gray-500 dark:text-gray-400">
-                    No hay datos para mostrar.
+                <td colspan="9" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                    No se encontraron paquetes de servicios con los filtros aplicados.
                 </td>
             </tr>
         }
@@ -171,7 +190,6 @@
 </table>
 <!-- Paginación -->
 <nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">
-    <!-- Texto de estado -->
     <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
         Mostrando página
         <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.CurrentPage</span>
@@ -179,13 +197,12 @@
         <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.TotalPages</span>
     </span>
 
-    <!-- Controles de paginación -->
     <ul class="inline-flex items-stretch -space-x-px">
         <!-- Botón Anterior -->
         <li>
             @if (ViewBag.CurrentPage > 1)
             {
-                <button onclick="reloadServicioTable(@(ViewBag.CurrentPage - 1))"
+                <button onclick="changePage(@(ViewBag.CurrentPage - 1))"
                         class="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-500 bg-white rounded-l-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
                     <span class="sr-only">Anterior</span>
                     <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
@@ -215,7 +232,7 @@
                 }
                 else
                 {
-                    <button onclick="reloadServicioTable(@pageNum)"
+                    <button onclick="changePage(@pageNum)"
                             class="flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
                         @pageNum
                     </button>
@@ -227,7 +244,7 @@
         <li>
             @if (ViewBag.CurrentPage < ViewBag.TotalPages)
             {
-                <button onclick="reloadServicioTable(@(ViewBag.CurrentPage + 1))"
+                <button onclick="changePage(@(ViewBag.CurrentPage + 1))"
                         class="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-500 bg-white rounded-r-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
                     <span class="sr-only">Siguiente</span>
                     <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
@@ -245,4 +262,4 @@
             }
         </li>
     </ul>
-</nav>
+</nav></nav>

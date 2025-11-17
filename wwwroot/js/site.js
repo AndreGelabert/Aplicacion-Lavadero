@@ -70,37 +70,15 @@ const SiteModule = {
         const form = document.getElementById('filterForm');
         if (!form) return;
 
-        // Limpiar checkboxes
-        const checkboxes = form.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach(cb => cb.checked = false);
+        // Desmarcar todos los estados
+        form.querySelectorAll('input[name="estados"][type="checkbox"]').forEach(cb => cb.checked = false);
 
-        // Limpiar campos de fecha (para auditoría)
-        const dateInputs = form.querySelectorAll('input[type="date"]');
-        dateInputs.forEach(input => input.value = '');
-
-        // Marcar "Activo" por defecto solo en páginas que lo requieran
-        const activoCheckbox = form.querySelector('input[value="Activo"]');
-        if (activoCheckbox && !window.location.pathname.includes('Auditoria')) {
+        // Marcar "Activo" por defecto, excepto en Auditoría
+        const activoCheckbox = form.querySelector('input[name="estados"][value="Activo"]');
+        const isAuditoria = window.location.pathname.toLowerCase().includes('auditoria');
+        if (activoCheckbox && !isAuditoria) {
             activoCheckbox.checked = true;
         }
-
-        // Restablecer ordenamiento a valores por defecto
-        const sortByInput = document.getElementById('current-sort-by');
-        const sortOrderInput = document.getElementById('current-sort-order');
-
-        if (sortByInput && sortOrderInput) {
-            // Valores por defecto según la página
-            if (window.location.pathname.includes('Auditoria')) {
-                sortByInput.value = 'Timestamp';
-                sortOrderInput.value = 'desc';
-            } else {
-                sortByInput.value = 'Nombre';
-                sortOrderInput.value = 'asc';
-            }
-        }
-
-        // Enviar el formulario para aplicar los filtros limpios
-        form.submit();
     },
 
     // =====================================
@@ -294,6 +272,55 @@ const SiteModule = {
     autoGrow(element) {
         element.style.height = '2.5rem';
         element.style.height = (element.scrollHeight) + 'px';
+    },
+
+    // =====================================
+    // FORMATEO DE TIEMPO
+    // =====================================
+
+    /**
+     * Convierte minutos a formato legible con horas cuando ≥ 60 minutos.
+     * @param {number} minutos - Tiempo en minutos
+     * @param {boolean} returnHtml - Si true, devuelve HTML con formato secundario
+     * @returns {string} Tiempo formateado
+  * 
+     * Ejemplos:
+  * - formatTiempo(45) → "45 min"
+     * - formatTiempo(60) → "1 hs" (con "(60 min)" en HTML)
+     * - formatTiempo(90) → "1.5 hs" (con "(90 min)" en HTML)
+     * - formatTiempo(125) → "2.08 hs" (con "(125 min)" en HTML)
+     */
+    formatTiempo(minutos, returnHtml = true) {
+    if (!minutos || minutos < 0) return returnHtml ? '<span>0 min</span>' : '0 min';
+        
+        // Si es menos de 60 minutos, mostrar solo minutos
+if (minutos < 60) {
+      return returnHtml 
+     ? `<span>${minutos} min</span>` 
+      : `${minutos} min`;
+    }
+
+        // Convertir a horas (con 2 decimales)
+     const horas = (minutos / 60).toFixed(2);
+     const horasDisplay = horas.endsWith('.00') ? horas.slice(0, -3) : horas;
+
+        if (returnHtml) {
+ return `<div class="flex flex-col items-start">
+       <span class="font-medium">${horasDisplay} hs</span>
+   <span class="text-xs text-gray-500 dark:text-gray-400">(${minutos} min)</span>
+   </div>`;
+   }
+      
+      return `${horasDisplay} hs (${minutos} min)`;
+    },
+
+    /**
+     * Versión simplificada sin HTML (para inputs, tooltips, etc.)
+     * @param {number} minutos - Tiempo en minutos
+ * @returns {string} Tiempo formateado sin HTML
+     */
+    formatTiempoSimple(minutos) {
+        return this.formatTiempo(minutos, false);
     }
 };
 
