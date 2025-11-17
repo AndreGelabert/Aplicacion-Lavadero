@@ -97,7 +97,20 @@
                     <td class="px-4 py-3">@s.Precio.ToString("C")</td>
                     <td class="px-4 py-3">@s.Tipo</td>
                     <td class="px-4 py-3">@s.TipoVehiculo</td>
-                    <td class="px-4 py-3">@s.TiempoEstimado min</td>
+                    <td class="px-4 py-3">
+                        @if (s.TiempoEstimado >= 60)
+                        {
+                            var horas = (s.TiempoEstimado / 60.0).ToString("0.##");
+                            <div class="flex flex-col items-start">
+                                <span class="font-medium">@horas hs</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">(@s.TiempoEstimado min)</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <span>@s.TiempoEstimado min</span>
+                        }
+                    </td>
                     <td class="px-4 py-3">@((s.Etapas?.Count) ?? 0)</td>
                     <td class="px-4 py-3">
                         @if (s.Estado == "Activo")

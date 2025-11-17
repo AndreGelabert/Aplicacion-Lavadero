@@ -111,16 +111,27 @@
                         @precioFinalRender.ToString("C")
                     </td>
                     <td class="px-4 py-3">
-                        @{
-                            var tiempoRender = p.TiempoEstimado;
-                            if (ViewBag.TiemposTotales is IDictionary<string, int> tiempos && tiempos.ContainsKey(p.Id))
-                            {
-                                tiempoRender = tiempos[p.Id];
-                            }
-                        }
-                        @tiempoRender min
-                    </td>
-                    <td class="px-4 py-3">
+      @{
+       var tiempoRender = p.TiempoEstimado;
+   if (ViewBag.TiemposTotales is IDictionary<string, int> tiempos && tiempos.ContainsKey(p.Id))
+   {
+    tiempoRender = tiempos[p.Id];
+     }
+if (tiempoRender >= 60)
+{
+    var horas = (tiempoRender / 60.0).ToString("0.##");
+<div class="flex flex-col items-start">
+<span class="font-medium">@horas hs</span>
+   <span class="text-xs text-gray-500 dark:text-gray-400">(@tiempoRender min)</span>
+     </div>
+       }
+  else
+           {
+    <span>@tiempoRender min</span>
+        }
+      }
+  </td>
+       <td class="px-4 py-3">
                         @if (p.Estado == "Activo")
                         {
                             <span class="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded dark:bg-green-900 dark:text-green-300">Activo</span>
@@ -251,4 +262,4 @@
             }
         </li>
     </ul>
-</nav>
+</nav></nav>

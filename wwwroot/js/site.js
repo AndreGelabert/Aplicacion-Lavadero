@@ -272,6 +272,55 @@ const SiteModule = {
     autoGrow(element) {
         element.style.height = '2.5rem';
         element.style.height = (element.scrollHeight) + 'px';
+    },
+
+    // =====================================
+    // FORMATEO DE TIEMPO
+    // =====================================
+
+    /**
+     * Convierte minutos a formato legible con horas cuando ≥ 60 minutos.
+     * @param {number} minutos - Tiempo en minutos
+     * @param {boolean} returnHtml - Si true, devuelve HTML con formato secundario
+     * @returns {string} Tiempo formateado
+  * 
+     * Ejemplos:
+  * - formatTiempo(45) → "45 min"
+     * - formatTiempo(60) → "1 hs" (con "(60 min)" en HTML)
+     * - formatTiempo(90) → "1.5 hs" (con "(90 min)" en HTML)
+     * - formatTiempo(125) → "2.08 hs" (con "(125 min)" en HTML)
+     */
+    formatTiempo(minutos, returnHtml = true) {
+    if (!minutos || minutos < 0) return returnHtml ? '<span>0 min</span>' : '0 min';
+        
+        // Si es menos de 60 minutos, mostrar solo minutos
+if (minutos < 60) {
+      return returnHtml 
+     ? `<span>${minutos} min</span>` 
+      : `${minutos} min`;
+    }
+
+        // Convertir a horas (con 2 decimales)
+     const horas = (minutos / 60).toFixed(2);
+     const horasDisplay = horas.endsWith('.00') ? horas.slice(0, -3) : horas;
+
+        if (returnHtml) {
+ return `<div class="flex flex-col items-start">
+       <span class="font-medium">${horasDisplay} hs</span>
+   <span class="text-xs text-gray-500 dark:text-gray-400">(${minutos} min)</span>
+   </div>`;
+   }
+      
+      return `${horasDisplay} hs (${minutos} min)`;
+    },
+
+    /**
+     * Versión simplificada sin HTML (para inputs, tooltips, etc.)
+     * @param {number} minutos - Tiempo en minutos
+ * @returns {string} Tiempo formateado sin HTML
+     */
+    formatTiempoSimple(minutos) {
+        return this.formatTiempo(minutos, false);
     }
 };
 

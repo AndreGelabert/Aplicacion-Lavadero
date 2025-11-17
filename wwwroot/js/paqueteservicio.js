@@ -728,65 +728,71 @@
     function updateServiciosSeleccionadosList() {
         const container = document.getElementById('servicios-seleccionados-container');
         const list = document.getElementById('servicios-seleccionados-list');
-        if (!(container && list)) return;
+      if (!(container && list)) return;
 
         if (serviciosSeleccionados.length === 0) {
-            container.classList.add('hidden');
-            list.innerHTML = '';
-            return;
+   container.classList.add('hidden');
+ list.innerHTML = '';
+        return;
         }
         container.classList.remove('hidden');
 
         // Generar HTML con numeración y drag handles
         list.innerHTML = '<ul class="space-y-2" id="servicios-sortable-list">' +
-            serviciosSeleccionados.map((s, index) => `
-            <li draggable="true" 
+  serviciosSeleccionados.map((s, index) => {
+// NUEVO: Formatear tiempo usando helper global
+      const tiempoFormateado = window.SiteModule?.formatTiempoSimple?.(s.tiempoEstimado) 
+      || (s.tiempoEstimado + ' min');
+
+                return `
+     <li draggable="true" 
                 data-servicio-id="${s.id}"
-                data-index="${index}"
-                class="servicio-item flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500 transition-colors cursor-move">
-                
-                <!-- Drag Handle Icon -->
-                <div class="drag-handle flex-shrink-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300" title="Arrastrar para reordenar">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                        <path d="M8 5a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm0 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm0 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm12-14a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm0 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm0 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"/>
-                    </svg>
-                </div>
+            data-index="${index}"
+              class="servicio-item flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500 transition-colors cursor-move">
+      
+          <!-- Drag Handle Icon -->
+      <div class="drag-handle flex-shrink-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300" title="Arrastrar para reordenar">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+ <path d="M8 5a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm0 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm0 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm12-14a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm0 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm0 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"/>
+ </svg>
+    </div>
 
-                <!-- Número de orden -->
+<!-- Número de orden -->
                 <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full font-bold text-sm">
-                    ${index + 1}
-                </div>
+       ${index + 1}
+     </div>
 
-                <!-- Información del servicio -->
-                <div class="flex-1 min-w-0">
-                    <div class="font-medium text-gray-900 dark:text-white truncate">${escapeHtml(s.nombre)}</div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400">(${escapeHtml(s.tipo)})</div>
-                </div>
+          <!-- Información del servicio -->
+       <div class="flex-1 min-w-0">
+    <div class="font-medium text-gray-900 dark:text-white truncate">${escapeHtml(s.nombre)}</div>
+   <div class="text-sm text-gray-500 dark:text-gray-400">(${escapeHtml(s.tipo)})</div>
+       </div>
 
-                <!-- Precio y tiempo -->
-                <div class="flex-shrink-0 text-right">
-                    <div class="text-sm font-medium text-gray-900 dark:text-white">$${s.precio.toFixed(2)}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">${s.tiempoEstimado} min</div>
-                </div>
+         <!-- Precio y tiempo -->
+           <div class="flex-shrink-0 text-right">
+      <div class="text-sm font-medium text-gray-900 dark:text-white">$${s.precio.toFixed(2)}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">${tiempoFormateado}</div>
+    </div>
 
-                <!-- Botón eliminar -->
-                <button type="button" 
-                        onclick="event.stopPropagation(); removerServicioSeleccionado('${s.id}')"
-                        class="flex-shrink-0 p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" 
-                        title="Quitar servicio">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                        <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
-                    </svg>
-                </button>
-            </li>
-        `).join('') +
-            '</ul>' +
+          <!-- Botón eliminar -->
+  <button type="button" 
+                onclick="event.stopPropagation(); removerServicioSeleccionado('${s.id}')"
+   class="flex-shrink-0 p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" 
+    title="Quitar servicio">
+           <svg xmlns="http://www.w3.length="20" fill="currentColor" class="w-5 h-5">
+   <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
+       </svg>
+        </button>
+</li>
+        `;
+            }).join('') +
+        '</ul>' +
             '<p class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">' +
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">' +
             '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />' +
             '</svg>' +
             'Arrastra los servicios para cambiar su orden de ejecución' +
-            '</p>';
+       '</p>';
 
         // Configurar drag and drop
         setupDragAndDrop();
@@ -975,13 +981,17 @@
      */
     function updateResumen() {
         const descuento = parseFloat(document.getElementById('PorcentajeDescuento')?.value || 0);
-        const precioTotal = serviciosSeleccionados.reduce((sum, s) => sum + s.precio, 0);
+      const precioTotal = serviciosSeleccionados.reduce((sum, s) => sum + s.precio, 0);
         const precioFinal = precioTotal - (precioTotal * (descuento / 100));
-        const tiempoTotal = serviciosSeleccionados.reduce((sum, s) => sum + s.tiempoEstimado, 0);
+    const tiempoTotal = serviciosSeleccionados.reduce((sum, s) => sum + s.tiempoEstimado, 0);
 
-        setText('precio-total-sin-descuento', '$' + precioTotal.toFixed(2));
+      setText('precio-total-sin-descuento', '$' + precioTotal.toFixed(2));
         setText('precio-final', '$' + precioFinal.toFixed(2));
-        setText('tiempo-total', tiempoTotal + ' min');
+        
+// NUEVO: Usar helper global para formatear tiempo
+        const tiempoFormateado = window.SiteModule?.formatTiempo?.(tiempoTotal, true) 
+            || (tiempoTotal + ' min');
+        document.getElementById('tiempo-total').innerHTML = tiempoFormateado;
 
         setValue('Precio', precioFinal.toFixed(2));
         setValue('TiempoEstimado', tiempoTotal);
@@ -1205,7 +1215,7 @@ setupTipoVehiculoChangeHandler();
             icon.setAttribute('fill', 'currentColor');
             icon.setAttribute('viewBox', '0 0 20 20');
             icon.setAttribute('class', 'w-8 h-8 text-red-600 dark:text-red-400');
-            icon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.293a1 1 0 00-1.414-1.414L10 7.586 7.707 5.293a1 1 0 00-1.414 1.414L8.586 10l-2.293 2.293a1 1 0 001.414 1.414L10 12.414l2.293 2.293a1 1 0 001.414-1.414L11.414 10l2.293-2.293a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd"/>`;
+            icon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.293a1 1 0 00-1.414-1.414L10 7.586 7.707 5.293a1 1 0 00-1.414 1.414L8.586 10l-2.293 2.293a1 1 0 001.414 1.414L10 12.414l2.293 2.293a1 1 0 001.414-1.414L13.06 12l2.293-2.293a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd"/>`;
         } else {
             iconWrapper.className = 'w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 p-2 flex items-center justify-center mx-auto mb-3.5';
             icon.setAttribute('fill', 'currentColor');
