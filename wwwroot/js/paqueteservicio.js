@@ -737,25 +737,232 @@
         }
         container.classList.remove('hidden');
 
-        list.innerHTML = '<ul class="space-y-2">' + serviciosSeleccionados.map(s => `
-            <li class="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600">
-                <div>
-                    <span class="font-medium text-gray-900 dark:text-white">${escapeHtml(s.nombre)}</span>
-                    <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">(${escapeHtml(s.tipo)})</span>
+        // Generar HTML con numeración y drag handles
+        list.innerHTML = '<ul class="space-y-2" id="servicios-sortable-list">' +
+            serviciosSeleccionados.map((s, index) => `
+            <li draggable="true" 
+                data-servicio-id="${s.id}"
+                data-index="${index}"
+                class="servicio-item flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500 transition-colors cursor-move">
+                
+                <!-- Drag Handle Icon -->
+                <div class="drag-handle flex-shrink-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300" title="Arrastrar para reordenar">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                        <path d="M8 5a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm0 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm0 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm12-14a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm0 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm0 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"/>
+                    </svg>
                 </div>
-                <div class="flex items-center gap-3">
-                    <div class="text-right">
-                        <div class="text-sm font-medium text-gray-900 dark:text-white">$${s.precio.toFixed(2)}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">${s.tiempoEstimado} min</div>
-                    </div>
-                    <button type="button" onclick="removerServicioSeleccionado('${s.id}')"
-                            class="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" title="Quitar servicio">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                            <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
+
+                <!-- Número de orden -->
+                <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full font-bold text-sm">
+                    ${index + 1}
                 </div>
-            </li>`).join('') + '</ul>';
+
+                <!-- Información del servicio -->
+                <div class="flex-1 min-w-0">
+                    <div class="font-medium text-gray-900 dark:text-white truncate">${escapeHtml(s.nombre)}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">(${escapeHtml(s.tipo)})</div>
+                </div>
+
+                <!-- Precio y tiempo -->
+                <div class="flex-shrink-0 text-right">
+                    <div class="text-sm font-medium text-gray-900 dark:text-white">$${s.precio.toFixed(2)}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">${s.tiempoEstimado} min</div>
+                </div>
+
+                <!-- Botón eliminar -->
+                <button type="button" 
+                        onclick="event.stopPropagation(); removerServicioSeleccionado('${s.id}')"
+                        class="flex-shrink-0 p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" 
+                        title="Quitar servicio">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                        <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </li>
+        `).join('') +
+            '</ul>' +
+            '<p class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">' +
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">' +
+            '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />' +
+            '</svg>' +
+            'Arrastra los servicios para cambiar su orden de ejecución' +
+            '</p>';
+
+        // Configurar drag and drop
+        setupDragAndDrop();
+    }
+
+    /**
+    * Configura la funcionalidad de drag and drop para reordenar servicios.
+    */
+    function setupDragAndDrop() {
+        const list = document.getElementById('servicios-sortable-list');
+        if (!list) return;
+
+        const items = document.querySelectorAll('.servicio-item');
+        let draggedElement = null;
+        let placeholder = null;
+
+        items.forEach(item => {
+            // Dragstart - cuando empieza el arrastre
+            item.addEventListener('dragstart', function (e) {
+                draggedElement = this;
+                this.style.opacity = '0.4';
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', this.innerHTML);
+
+                // Crear placeholder visual
+                setTimeout(() => {
+                    placeholder = document.createElement('li');
+                    placeholder.className = 'servicio-placeholder h-16 border-2 border-dashed border-blue-400 dark:border-blue-600 rounded bg-blue-50 dark:bg-blue-900/20';
+
+                    // Insertar placeholder después del elemento arrastrado
+                    if (draggedElement.nextSibling) {
+                        list.insertBefore(placeholder, draggedElement.nextSibling);
+                    } else {
+                        list.appendChild(placeholder);
+                    }
+
+                    // Ocultar el elemento original
+                    draggedElement.style.display = 'none';
+                }, 0);
+            });
+
+            // Dragend - cuando termina el arrastre
+            item.addEventListener('dragend', function (e) {
+                this.style.opacity = '1';
+                this.style.display = 'flex';
+
+                // Limpiar placeholder
+                if (placeholder && placeholder.parentNode) {
+                    placeholder.parentNode.removeChild(placeholder);
+                }
+
+                // Remover highlights
+                document.querySelectorAll('.servicio-item').forEach(i => {
+                    i.classList.remove('bg-blue-50', 'dark:bg-blue-900/20');
+                });
+
+                draggedElement = null;
+                placeholder = null;
+            });
+
+            // Dragover - permitir drop
+            item.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+
+                if (draggedElement === this || !draggedElement || !placeholder) return;
+
+                // Determinar si insertar antes o después basándonos en la posición del mouse
+                const rect = this.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+
+                if (e.clientY < midpoint) {
+                    // Insertar antes
+                    list.insertBefore(placeholder, this);
+                } else {
+                    // Insertar después
+                    if (this.nextSibling) {
+                        list.insertBefore(placeholder, this.nextSibling);
+                    } else {
+                        list.appendChild(placeholder);
+                    }
+                }
+            });
+
+            // Drop - cuando se suelta
+            item.addEventListener('drop', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (!draggedElement || !placeholder) return;
+
+                // Insertar el elemento en la posición del placeholder
+                if (placeholder.parentNode) {
+                    placeholder.parentNode.insertBefore(draggedElement, placeholder);
+                    placeholder.parentNode.removeChild(placeholder);
+                }
+
+                // Mostrar el elemento
+                draggedElement.style.display = 'flex';
+
+                // Reconstruir orden
+                actualizarOrdenServicios();
+            });
+        });
+
+        // **CRÍTICO: Eventos en el contenedor de la lista**
+        list.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+
+            if (!draggedElement || !placeholder) return;
+
+            // Si el mouse está sobre un espacio vacío, mover el placeholder
+            const afterElement = getDragAfterElement(list, e.clientY);
+
+            if (afterElement == null) {
+                list.appendChild(placeholder);
+            } else {
+                list.insertBefore(placeholder, afterElement);
+            }
+        });
+
+        list.addEventListener('drop', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (!draggedElement || !placeholder) return;
+
+            // Insertar el elemento en la posición del placeholder
+            if (placeholder.parentNode) {
+                placeholder.parentNode.insertBefore(draggedElement, placeholder);
+                placeholder.parentNode.removeChild(placeholder);
+            }
+
+            // Mostrar el elemento
+            draggedElement.style.display = 'flex';
+
+            // Reconstruir orden
+            actualizarOrdenServicios();
+        });
+
+        /**
+         * Determina el elemento después del cual se debe insertar el placeholder
+         * basándose en la posición Y del mouse
+         */
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.servicio-item:not(.opacity-40)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        /**
+         * Reconstruye el array serviciosSeleccionados según el orden actual del DOM
+         */
+        function actualizarOrdenServicios() {
+            const allItems = Array.from(list.children).filter(el => el.classList.contains('servicio-item'));
+            const newOrder = allItems.map(el => {
+                const id = el.getAttribute('data-servicio-id');
+                return serviciosSeleccionados.find(s => s.id === id);
+            }).filter(s => s !== undefined);
+
+            serviciosSeleccionados = newOrder;
+
+            // Re-renderizar con nuevo orden
+            updateServiciosSeleccionadosList();
+            updateResumen();
+        }
     }
 
     /**
