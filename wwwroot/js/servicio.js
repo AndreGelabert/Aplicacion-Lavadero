@@ -1172,35 +1172,45 @@
         const url = '/Servicio/FormPartial' + (id ? ('?id=' + encodeURIComponent(id)) : '');
 
         fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(r => r.text())
-            .then(html => {
-                document.getElementById('servicio-form-container').innerHTML = html;
-                setupFormValidation();
+    .then(r => r.text())
+        .then(html => {
+    document.getElementById('servicio-form-container').innerHTML = html;
+            setupFormValidation();
 
-                const desc = document.getElementById('Descripcion');
-                if (desc) window.SiteModule?.autoGrow(desc);
+            const desc = document.getElementById('Descripcion');
+    if (desc) window.SiteModule?.autoGrow(desc);
 
-                const isEdit = !!document.getElementById('Id')?.value;
-                const titleSpan = document.getElementById('form-title');
-                if (titleSpan) {
-                    titleSpan.textContent = isEdit ? 'Editando un Servicio' : 'Registrando un Servicio';
-                }
+       const isEdit = !!document.getElementById('Id')?.value;
+      const titleSpan = document.getElementById('form-title');
+            if (titleSpan) {
+titleSpan.textContent = isEdit ? 'Editando un Servicio' : 'Registrando un Servicio';
+   }
 
-                // Proteger ambos selects
-                protegerTipoVehiculoEnEdicion();
-                protegerTipoServicioEnEdicion();
+ // Proteger ambos selects
+          protegerTipoVehiculoEnEdicion();
+            protegerTipoServicioEnEdicion();
 
-                const accordionBody = document.getElementById('accordion-flush-body-1');
-                if (accordionBody) {
-                    if (isEdit) {
-                        accordionBody.classList.remove('hidden');
-                    } else {
-                        accordionBody.classList.add('hidden');
-                    }
-                }
-            })
-            .catch(e => console.error('Error cargando formulario:', e));
-    };
+const accordionBody = document.getElementById('accordion-flush-body-1');
+    if (accordionBody) {
+        if (isEdit) {
+        accordionBody.classList.remove('hidden');
+  } else {
+          accordionBody.classList.add('hidden');
+     }
+    }
+
+    // NUEVO: Scroll automático hacia el formulario si es edición
+    if (isEdit) {
+        setTimeout(() => {
+            const formContainer = document.getElementById('accordion-flush');
+            if (formContainer) {
+         formContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+             }
+        }, 100);
+      }
+     })
+        .catch(e => console.error('Error cargando formulario:', e));
+};
 
     /**
      * Envía formulario de servicio via AJAX
@@ -1218,40 +1228,40 @@
             const msg = resp.headers.get('X-Form-Message');
             return resp.text().then(html => ({ html, valid, msg }));
         })
-        .then(result => {
-            document.getElementById('servicio-form-container').innerHTML = result.html;
-            setupFormValidation();
+            .then(result => {
+                document.getElementById('servicio-form-container').innerHTML = result.html;
+                setupFormValidation();
 
-            const desc = document.getElementById('Descripcion');
-            if (desc) window.SiteModule?.autoGrow(desc);
+                const desc = document.getElementById('Descripcion');
+                if (desc) window.SiteModule?.autoGrow(desc);
 
-            const isEdit = !!document.getElementById('Id')?.value;
-            const titleSpan = document.getElementById('form-title');
-            if (titleSpan) {
-                titleSpan.textContent = isEdit ? 'Editando un Servicio' : 'Registrando un Servicio';
-            }
-            
-            // Proteger ambos selects
-            protegerTipoVehiculoEnEdicion();
-            protegerTipoServicioEnEdicion(); // AGREGAR ESTA LÍNEA
-            
-            if (result.valid) {
-                showServicioMessage('success', result.msg || 'Operación exitosa.', 4000);
-                reloadServicioTable(1);
-            } else {
-                const summary = document.getElementById('servicio-validation-summary');
-                if (summary && summary.textContent.trim().length > 0) {
-                    summary.classList.remove('hidden');
+                const isEdit = !!document.getElementById('Id')?.value;
+                const titleSpan = document.getElementById('form-title');
+                if (titleSpan) {
+                    titleSpan.textContent = isEdit ? 'Editando un Servicio' : 'Registrando un Servicio';
                 }
-                showServicioMessage('error', 'Revise los errores del formulario.', 8000);
-            }
-        })
-        .catch(e => {
-            showServicioMessage('error', 'Error de comunicación con el servidor.', 8000);
-        });
 
-    return false;
-};
+                // Proteger ambos selects
+                protegerTipoVehiculoEnEdicion();
+                protegerTipoServicioEnEdicion(); // AGREGAR ESTA LÍNEA
+
+                if (result.valid) {
+                    showServicioMessage('success', result.msg || 'Operación exitosa.', 4000);
+                    reloadServicioTable(1);
+                } else {
+                    const summary = document.getElementById('servicio-validation-summary');
+                    if (summary && summary.textContent.trim().length > 0) {
+                        summary.classList.remove('hidden');
+                    }
+                    showServicioMessage('error', 'Revise los errores del formulario.', 8000);
+                }
+            })
+            .catch(e => {
+                showServicioMessage('error', 'Error de comunicación con el servidor.', 8000);
+            });
+
+        return false;
+    };
 
     /**
      * Abre modal de confirmación para servicios

@@ -887,33 +887,41 @@
     window.editPaquete = function (id) {
         const url = '/PaqueteServicio/FormPartial?id=' + encodeURIComponent(id);
         fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(async r => {
-                const srvTitle = r.headers.get('X-Form-Title');
-                const html = await r.text();
-                const cont = document.getElementById('paquete-form-container');
-                if (cont) cont.innerHTML = html;
+          .then(async r => {
+const srvTitle = r.headers.get('X-Form-Title');
+       const html = await r.text();
+      const cont = document.getElementById('paquete-form-container');
+            if (cont) cont.innerHTML = html;
 
-                const titleSpan = document.getElementById('form-title');
-                if (titleSpan) {
-                    if (srvTitle && srvTitle.trim().length) {
-                        titleSpan.textContent = srvTitle;
-                    } else {
-                        const isEdit = !!document.getElementById('Id')?.value;
-                        titleSpan.textContent = isEdit ? 'Editando un Paquete de Servicios'
-                            : 'Registrando un Paquete de Servicios';
-                    }
-                }
+        const titleSpan = document.getElementById('form-title');
+    if (titleSpan) {
+ if (srvTitle && srvTitle.trim().length) {
+         titleSpan.textContent = srvTitle;
+         } else {
+     const isEdit = !!document.getElementById('Id')?.value;
+ titleSpan.textContent = isEdit ? 'Editando un Paquete de Servicios'
+      : 'Registrando un Paquete de Servicios';
+ }
+    }
 
-                // NUEVO: reinstalar handler de tipo de vehículo
-                setupDescuentoStep();
-                protegerTipoVehiculoEnEdicion();
-                setupTipoVehiculoChangeHandler();
-                initializeFormFromHidden();
+      // reinstalar handler de tipo de vehículo
+   setupDescuentoStep();
+        protegerTipoVehiculoEnEdicion();
+setupTipoVehiculoChangeHandler();
+   initializeFormFromHidden();
 
-                const accBody = document.getElementById('accordion-flush-body-1');
-                if (accBody) accBody.classList.remove('hidden');
-            })
-            .catch(err => console.error('Error cargando formulario de paquete:', err));
+         const accBody = document.getElementById('accordion-flush-body-1');
+        if (accBody) accBody.classList.remove('hidden');
+
+            // NUEVO: Scroll automático hacia el formulario
+    setTimeout(() => {
+        const formContainer = document.getElementById('accordion-flush');
+       if (formContainer) {
+         formContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+            }, 100);
+        })
+        .catch(err => console.error('Error cargando formulario de paquete:', err));
     };
 
     /**
