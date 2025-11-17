@@ -39,6 +39,7 @@ public class PaqueteServicioController : Controller
 
     /// <summary>
     /// Página principal de paquetes de servicios con filtros, orden y paginación.
+    /// OPTIMIZADO: Calcula precios/tiempos una sola vez.
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> Index(
@@ -73,7 +74,7 @@ public class PaqueteServicioController : Controller
         ViewBag.CantidadesServicios = cantidadesServicios;
         ViewBag.ServiciosCantidad = serviciosCantidad;
 
-        // NUEVO: calcular precios y tiempos dinámicamente para la tabla
+        // OPTIMIZADO: Calcular solo una vez y reutilizar en la vista
         ViewBag.PreciosFinales = await CalcularPreciosFinalesAsync(paquetes);
         ViewBag.TiemposTotales = await CalcularTiemposAsync(paquetes);
 
@@ -136,6 +137,7 @@ public class PaqueteServicioController : Controller
 
     /// <summary>
     /// Busca paquetes por término de búsqueda (parcial para actualización dinámica).
+    /// OPTIMIZADO con caché.
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> SearchPartial(
@@ -180,15 +182,16 @@ public class PaqueteServicioController : Controller
         ViewBag.ServiciosCantidad = serviciosCantidad;
         ViewBag.CantidadesServicios = await _paqueteServicioService.ObtenerValoresCantidadServicios();
 
-        // NUEVO: calcular precios y tiempos dinámicamente para la tabla parcial
-        ViewBag.PreciosFinales = await CalcularPreciosFinalesAsync(paquetes);
-        ViewBag.TiemposTotales = await CalcularTiemposAsync(paquetes);
+        // OPTIMIZADO: Usar caché
+        ViewBag.PreciosFinales = await _paqueteServicioService.CalcularPreciosAsync(paquetes);
+        ViewBag.TiemposTotales = await _paqueteServicioService.CalcularTiemposAsync(paquetes);
 
         return PartialView("_PaqueteServicioTable", paquetes);
     }
 
     /// <summary>
     /// Devuelve la tabla parcial (sin búsqueda) con filtros y orden.
+    /// OPTIMIZADO con caché.
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> TablePartial(
@@ -230,12 +233,12 @@ public class PaqueteServicioController : Controller
         ViewBag.ServiciosCantidad = serviciosCantidad;
         ViewBag.CantidadesServicios = await _paqueteServicioService.ObtenerValoresCantidadServicios();
 
-        // NUEVO: calcular precios y tiempos dinámicamente para la tabla parcial
-        ViewBag.PreciosFinales = await CalcularPreciosFinalesAsync(paquetes);
-        ViewBag.TiemposTotales = await CalcularTiemposAsync(paquetes);
+        // OPTIMIZADO: Usar caché
+        ViewBag.PreciosFinales = await _paqueteServicioService.CalcularPreciosAsync(paquetes);
+        ViewBag.TiemposTotales = await _paqueteServicioService.CalcularTiemposAsync(paquetes);
 
         return PartialView("_PaqueteServicioTable", paquetes);
-    }
+ }
 
     /// <summary>
     /// Devuelve dinámicamente el rango de precio posible para los filtros actuales (sin aplicar precioMin/Max)
@@ -405,39 +408,26 @@ public class PaqueteServicioController : Controller
         }
     }
 
-    // Helpers de cálculo para el controlador: calcular precios/tiempos dinámicamente
+    #endregion
+
+    #region Métodos Privados - Cálculos y Operaciones Optimizadas
+
+    /// <summary>
+    /// OPTIMIZADO: Calcula precios finales usando el servicio con caché.
+    /// </summary>
     private async Task<Dictionary<string, decimal>> CalcularPreciosFinalesAsync(IEnumerable<PaqueteServicio> paquetes)
     {
-        var list = paquetes?.ToList() ?? new List<PaqueteServicio>();
-        var dict = new Dictionary<string, decimal>();
-        foreach (var p in list)
-        {
-            try
-            {
-                var servicios = await _paqueteServicioService.ObtenerServiciosDePaquete(p.ServiciosIds);
-                var suma = servicios?.Sum(s => s.Precio) ?? 0m;
-                var descuento = suma * (p.PorcentajeDescuento / 100m);
-                dict[p.Id] = suma - descuento;
-            }
-            catch { dict[p.Id] = 0m; }
-        }
-        return dict;
+        // El servicio ya maneja caché y batch loading
+        return await _paqueteServicioService.CalcularPreciosAsync(paquetes);
     }
 
+    /// <summary>
+    /// OPTIMIZADO: Calcula tiempos totales usando el servicio con caché.
+    /// </summary>
     private async Task<Dictionary<string, int>> CalcularTiemposAsync(IEnumerable<PaqueteServicio> paquetes)
     {
-        var list = paquetes?.ToList() ?? new List<PaqueteServicio>();
-        var dict = new Dictionary<string, int>();
-        foreach (var p in list)
-        {
-            try
-            {
-                var servicios = await _paqueteServicioService.ObtenerServiciosDePaquete(p.ServiciosIds);
-                dict[p.Id] = servicios?.Sum(s => s.TiempoEstimado) ?? 0;
-            }
-            catch { dict[p.Id] = 0; }
-        }
-        return dict;
+        // El servicio ya maneja caché y batch loading
+        return await _paqueteServicioService.CalcularTiemposAsync(paquetes);
     }
 
     /// <summary>
@@ -651,7 +641,7 @@ public class PaqueteServicioController : Controller
     /// </summary>
     private async Task CargarListasForm()
     {
-        ViewBag.TodosLosTiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+    ViewBag.TodosLosTiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
     }
     #endregion
 }
