@@ -123,11 +123,48 @@ public class PaqueteServicioService
         var baseFiltrada = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, sortBy, sortOrder,
             precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosMin, serviciosMax);
 
-        // Búsqueda: si es numérica, comparar contra valores calculados (precio/tiempo); si no, textual.
+        // Búsqueda con sufijos especiales
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             var term = searchTerm.Trim();
-            if (decimal.TryParse(term, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var numeroDecimal))
+
+            // Búsqueda por tiempo exacto con sufijo "min" (ej: "35 min" o "35min")
+            if (term.EndsWith("min", StringComparison.OrdinalIgnoreCase))
+            {
+                var numStr = term.Substring(0, term.Length - 3).Trim();
+                if (int.TryParse(numStr, out var tiempoExacto))
+                {
+                    var tiempos = await CalcularTiemposAsync(baseFiltrada);
+                    baseFiltrada = baseFiltrada.Where(p =>
+                        tiempos.TryGetValue(p.Id, out var tiempo) && tiempo == tiempoExacto
+                    ).ToList();
+                }
+                else
+                {
+                    // Si no se puede parsear, no hay coincidencias
+                    baseFiltrada = new List<PaqueteServicio>();
+                }
+            }
+            // Búsqueda por descuento exacto con sufijo "%" (ej: "15%" o "15 %")
+            else if (term.EndsWith("%"))
+            {
+                var numStr = term.Substring(0, term.Length - 1).Trim();
+                if (decimal.TryParse(numStr, System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture, out var descuentoExacto))
+                {
+                    baseFiltrada = baseFiltrada.Where(p =>
+                        Math.Abs(p.PorcentajeDescuento - descuentoExacto) < 0.0001m
+                    ).ToList();
+                }
+                else
+                {
+                    // Si no se puede parsear, no hay coincidencias
+                    baseFiltrada = new List<PaqueteServicio>();
+                }
+            }
+            // Búsqueda numérica general (precio/tiempo/descuento sin sufijo)
+            else if (decimal.TryParse(term, System.Globalization.NumberStyles.Number,
+                System.Globalization.CultureInfo.InvariantCulture, out var numeroDecimal))
             {
                 var precios = await CalcularPreciosAsync(baseFiltrada);
                 var tiempos = await CalcularTiemposAsync(baseFiltrada);
@@ -138,6 +175,7 @@ public class PaqueteServicioService
                     Math.Abs(p.PorcentajeDescuento - numeroDecimal) < 0.0001m
                 ).ToList();
             }
+            // Búsqueda textual
             else
             {
                 baseFiltrada = AplicarBusqueda(baseFiltrada, term);
@@ -171,7 +209,42 @@ public class PaqueteServicioService
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             var term = searchTerm.Trim();
-            if (decimal.TryParse(term, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var numeroDecimal))
+
+            // Búsqueda por tiempo exacto con sufijo "min"
+            if (term.EndsWith("min", StringComparison.OrdinalIgnoreCase))
+            {
+                var numStr = term.Substring(0, term.Length - 3).Trim();
+                if (int.TryParse(numStr, out var tiempoExacto))
+                {
+                    var tiempos = await CalcularTiemposAsync(baseFiltrada);
+                    baseFiltrada = baseFiltrada.Where(p =>
+                        tiempos.TryGetValue(p.Id, out var tiempo) && tiempo == tiempoExacto
+                    ).ToList();
+                }
+                else
+                {
+                    baseFiltrada = new List<PaqueteServicio>();
+                }
+            }
+            // Búsqueda por descuento exacto con sufijo "%"
+            else if (term.EndsWith("%"))
+            {
+                var numStr = term.Substring(0, term.Length - 1).Trim();
+                if (decimal.TryParse(numStr, System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture, out var descuentoExacto))
+                {
+                    baseFiltrada = baseFiltrada.Where(p =>
+                        Math.Abs(p.PorcentajeDescuento - descuentoExacto) < 0.0001m
+                    ).ToList();
+                }
+                else
+                {
+                    baseFiltrada = new List<PaqueteServicio>();
+                }
+            }
+            // Búsqueda numérica general
+            else if (decimal.TryParse(term, System.Globalization.NumberStyles.Number,
+                System.Globalization.CultureInfo.InvariantCulture, out var numeroDecimal))
             {
                 var precios = await CalcularPreciosAsync(baseFiltrada);
                 var tiempos = await CalcularTiemposAsync(baseFiltrada);
@@ -182,6 +255,7 @@ public class PaqueteServicioService
                     Math.Abs(p.PorcentajeDescuento - numeroDecimal) < 0.0001m
                 ).ToList();
             }
+            // Búsqueda textual
             else
             {
                 baseFiltrada = AplicarBusqueda(baseFiltrada, term);
