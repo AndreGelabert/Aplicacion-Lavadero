@@ -32,6 +32,8 @@
         setupSearchWithDebounce();
         setupFilterFormSubmit(); // nuevo: manejar submit de filtros
         window.CommonUtils?.setupDefaultFilterForm();
+        protegerTipoVehiculoEnEdicion();
+        protegerTipoServicioEnEdicion();
         checkEditMode(); // Verificar si estamos en modo edición
     }
 
@@ -1178,17 +1180,23 @@
                 const desc = document.getElementById('Descripcion');
                 if (desc) window.SiteModule?.autoGrow(desc);
 
-                // Actualizar título
                 const isEdit = !!document.getElementById('Id')?.value;
                 const titleSpan = document.getElementById('form-title');
                 if (titleSpan) {
                     titleSpan.textContent = isEdit ? 'Editando un Servicio' : 'Registrando un Servicio';
                 }
 
-                // Abrir acordeón
+                // Proteger ambos selects
+                protegerTipoVehiculoEnEdicion();
+                protegerTipoServicioEnEdicion();
+
                 const accordionBody = document.getElementById('accordion-flush-body-1');
-                if (accordionBody && accordionBody.classList.contains('hidden')) {
-                    accordionBody.classList.remove('hidden');
+                if (accordionBody) {
+                    if (isEdit) {
+                        accordionBody.classList.remove('hidden');
+                    } else {
+                        accordionBody.classList.add('hidden');
+                    }
                 }
             })
             .catch(e => console.error('Error cargando formulario:', e));
@@ -1198,48 +1206,52 @@
      * Envía formulario de servicio via AJAX
      */
     window.submitServicioAjax = function (form) {
-        const formData = new FormData(form);
+    const formData = new FormData(form);
 
-        fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+        .then(resp => {
+            const valid = resp.headers.get('X-Form-Valid') === 'true';
+            const msg = resp.headers.get('X-Form-Message');
+            return resp.text().then(html => ({ html, valid, msg }));
         })
-            .then(resp => {
-                const valid = resp.headers.get('X-Form-Valid') === 'true';
-                const msg = resp.headers.get('X-Form-Message');
-                return resp.text().then(html => ({ html, valid, msg }));
-            })
-            .then(result => {
-                document.getElementById('servicio-form-container').innerHTML = result.html;
-                setupFormValidation();
+        .then(result => {
+            document.getElementById('servicio-form-container').innerHTML = result.html;
+            setupFormValidation();
 
-                const desc = document.getElementById('Descripcion');
-                if (desc) window.SiteModule?.autoGrow(desc);
+            const desc = document.getElementById('Descripcion');
+            if (desc) window.SiteModule?.autoGrow(desc);
 
-                const isEdit = !!document.getElementById('Id')?.value;
-                const titleSpan = document.getElementById('form-title');
-                if (titleSpan) {
-                    titleSpan.textContent = isEdit ? 'Editando un Servicio' : 'Registrando un Servicio';
+            const isEdit = !!document.getElementById('Id')?.value;
+            const titleSpan = document.getElementById('form-title');
+            if (titleSpan) {
+                titleSpan.textContent = isEdit ? 'Editando un Servicio' : 'Registrando un Servicio';
+            }
+            
+            // Proteger ambos selects
+            protegerTipoVehiculoEnEdicion();
+            protegerTipoServicioEnEdicion(); // AGREGAR ESTA LÍNEA
+            
+            if (result.valid) {
+                showServicioMessage('success', result.msg || 'Operación exitosa.', 4000);
+                reloadServicioTable(1);
+            } else {
+                const summary = document.getElementById('servicio-validation-summary');
+                if (summary && summary.textContent.trim().length > 0) {
+                    summary.classList.remove('hidden');
                 }
+                showServicioMessage('error', 'Revise los errores del formulario.', 8000);
+            }
+        })
+        .catch(e => {
+            showServicioMessage('error', 'Error de comunicación con el servidor.', 8000);
+        });
 
-                if (result.valid) {
-                    showServicioMessage('success', result.msg || 'Operación exitosa.',4000);
-                    reloadServicioTable(1);
-                } else {
-                    const summary = document.getElementById('servicio-validation-summary');
-                    if (summary && summary.textContent.trim().length >0) {
-                        summary.classList.remove('hidden');
-                    }
-                    showServicioMessage('error', 'Revise los errores del formulario.',8000);
-                }
-            })
-            .catch(e => {
-                showServicioMessage('error', 'Error de comunicación con el servidor.',8000);
-            });
-
-        return false;
-    };
+    return false;
+};
 
     /**
      * Abre modal de confirmación para servicios
@@ -1351,6 +1363,134 @@
     window.limpiarModalTipoServicio = limpiarModalTipoServicio;
     window.limpiarModalTipoVehiculo = limpiarModalTipoVehiculo;
     window.cerrarModal = cerrarModal;
+
+    // =====================================
+    // PROTECCIÓN TIPO VEHÍCULO EN EDICIÓN
+    // =====================================
+
+    /**
+     * Protege el campo TipoVehiculo en modo edición
+     */
+    function protegerTipoVehiculoEnEdicion() {
+        const tipoVehiculoSelect = document.getElementById('TipoVehiculo');
+        const form = document.getElementById('servicio-form');
+
+        if (!tipoVehiculoSelect || !form) return;
+
+        const isEdit = form.dataset.edit === 'True' || form.dataset.edit === 'true';
+
+        if (isEdit) {
+            // 1. Deshabilitar el select
+            tipoVehiculoSelect.disabled = true;
+
+            // 2. Aplicar estilos visuales
+            tipoVehiculoSelect.classList.add('cursor-not-allowed', 'opacity-60');
+
+            // 3. Prevenir cualquier intento de cambio mediante eventos
+            ['change', 'input', 'click', 'mousedown', 'keydown'].forEach(eventType => {
+                tipoVehiculoSelect.addEventListener(eventType, function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    return false;
+                }, true);
+            });
+
+            // 4. Congelar la propiedad disabled
+            try {
+                Object.defineProperty(tipoVehiculoSelect, 'disabled', {
+                    value: true,
+                    writable: false,
+                    configurable: false
+                });
+            } catch (e) {
+                console.log('No se pudo congelar la propiedad disabled, pero el select está protegido por eventos');
+            }
+
+            // 5. Marcar como protegido
+            tipoVehiculoSelect.dataset.protected = 'true';
+
+            // 6. Deshabilitar también los botones de agregar/eliminar tipo de vehículo
+            const btnAgregar = document.querySelector('[data-modal-target="tipoVehiculoModal"]');
+            const btnEliminar = document.querySelector('[data-modal-target="eliminarTipoVehiculoModal"]');
+
+            if (btnAgregar) {
+                btnAgregar.disabled = true;
+                btnAgregar.classList.add('opacity-50', 'cursor-not-allowed');
+                btnAgregar.onclick = (e) => { e.preventDefault(); return false; };
+            }
+
+            if (btnEliminar) {
+                btnEliminar.disabled = true;
+                btnEliminar.classList.add('opacity-50', 'cursor-not-allowed');
+                btnEliminar.onclick = (e) => { e.preventDefault(); return false; };
+            }
+        }
+    }
+
+    // =====================================
+    // PROTECCIÓN TIPO SERVICIO EN EDICIÓN
+    // =====================================
+
+    /**
+     * Protege el campo Tipo (Tipo de Servicio) en modo edición
+     */
+    function protegerTipoServicioEnEdicion() {
+        const tipoServicioSelect = document.getElementById('Tipo');
+        const form = document.getElementById('servicio-form');
+
+        if (!tipoServicioSelect || !form) return;
+
+        const isEdit = form.dataset.edit === 'True' || form.dataset.edit === 'true';
+
+        if (isEdit) {
+            // 1. Deshabilitar el select
+            tipoServicioSelect.disabled = true;
+
+            // 2. Aplicar estilos visuales
+            tipoServicioSelect.classList.add('cursor-not-allowed', 'opacity-60');
+
+            // 3. Prevenir cualquier intento de cambio mediante eventos
+            ['change', 'input', 'click', 'mousedown', 'keydown'].forEach(eventType => {
+                tipoServicioSelect.addEventListener(eventType, function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    return false;
+                }, true);
+            });
+
+            // 4. Congelar la propiedad disabled
+            try {
+                Object.defineProperty(tipoServicioSelect, 'disabled', {
+                    value: true,
+                    writable: false,
+                    configurable: false
+                });
+            } catch (e) {
+                console.log('No se pudo congelar la propiedad disabled del tipo de servicio, pero está protegido por eventos');
+            }
+
+            // 5. Marcar como protegido
+            tipoServicioSelect.dataset.protected = 'true';
+
+            // 6. Deshabilitar también los botones de agregar/eliminar tipo de servicio
+            const btnAgregar = document.querySelector('[data-modal-target="defaultModal"]');
+            const btnEliminar = document.querySelector('[data-modal-target="eliminarTipoModal"]');
+
+            if (btnAgregar) {
+                btnAgregar.disabled = true;
+                btnAgregar.classList.add('opacity-50', 'cursor-not-allowed');
+                btnAgregar.onclick = (e) => { e.preventDefault(); return false; };
+            }
+
+            if (btnEliminar) {
+                btnEliminar.disabled = true;
+                btnEliminar.classList.add('opacity-50', 'cursor-not-allowed');
+                btnEliminar.onclick = (e) => { e.preventDefault(); return false; };
+            }
+        }
+    }
 
     // =====================================
     // GESTIÓN DE ETAPAS

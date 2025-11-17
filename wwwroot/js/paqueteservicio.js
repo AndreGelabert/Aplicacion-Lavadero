@@ -863,9 +863,9 @@
                     setHiddenValue('pageNumber', '1');
                     reloadPaqueteTable(1);
 
-                    setTimeout(() => {
-                        document.getElementById('accordion-flush-body-1')?.classList.add('hidden');
-                    }, 1500);
+                    //setTimeout(() => {
+                    //    document.getElementById('accordion-flush-body-1')?.classList.add('hidden');
+                    //}, 1500);
                 } else {
                     showFormMessage('Revise los errores del formulario.', 'error');
                 }
