@@ -2,6 +2,9 @@ using Firebase.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Linq; // agregado para LINQ
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 /// <summary>
 /// Controlador para la gestión de paquetes de servicios del lavadero.
@@ -36,6 +39,7 @@ public class PaqueteServicioController : Controller
 
     /// <summary>
     /// Página principal de paquetes de servicios con filtros, orden y paginación.
+    /// OPTIMIZADO: Calcula precios/tiempos una sola vez.
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> Index(
@@ -45,7 +49,12 @@ public class PaqueteServicioController : Controller
         int pageSize = 10,
         string editId = null,
         string sortBy = null,
-        string sortOrder = null)
+        string sortOrder = null,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosCantidad = null)
     {
         estados = ConfigurarEstadosDefecto(estados);
 
@@ -53,12 +62,21 @@ public class PaqueteServicioController : Controller
         sortOrder ??= "asc";
 
         var (paquetes, currentPage, totalPages, visiblePages) = await ObtenerDatosPaquetes(
-            estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
+            estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder,
+            precioMin, precioMax, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
 
         var tiposVehiculoList = await CargarListaTiposVehiculo();
+        var cantidadesServicios = await _paqueteServicioService.ObtenerValoresCantidadServicios();
 
         ConfigurarViewBag(estados, tiposVehiculo, tiposVehiculoList,
-            pageSize, currentPage, totalPages, visiblePages, sortBy, sortOrder);
+            pageSize, currentPage, totalPages, visiblePages, sortBy, sortOrder,
+            precioMin, precioMax, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
+        ViewBag.CantidadesServicios = cantidadesServicios;
+        ViewBag.ServiciosCantidad = serviciosCantidad;
+
+        // OPTIMIZADO: Calcular solo una vez y reutilizar en la vista
+        ViewBag.PreciosFinales = await CalcularPreciosFinalesAsync(paquetes);
+        ViewBag.TiemposTotales = await CalcularTiemposAsync(paquetes);
 
         await ConfigurarFormulario(editId);
 
@@ -119,6 +137,7 @@ public class PaqueteServicioController : Controller
 
     /// <summary>
     /// Busca paquetes por término de búsqueda (parcial para actualización dinámica).
+    /// OPTIMIZADO con caché.
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> SearchPartial(
@@ -128,7 +147,12 @@ public class PaqueteServicioController : Controller
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
-        string sortOrder = null)
+        string sortOrder = null,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosCantidad = null)
     {
         estados = ConfigurarEstadosDefecto(estados);
 
@@ -136,10 +160,10 @@ public class PaqueteServicioController : Controller
         sortOrder ??= "asc";
 
         var paquetes = await _paqueteServicioService.BuscarPaquetes(
-            searchTerm, estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
-
+            searchTerm, estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder,
+            precioMin, precioMax, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
         var totalPaquetes = await _paqueteServicioService.ObtenerTotalPaquetesBusqueda(
-            searchTerm, estados, tiposVehiculo);
+            searchTerm, estados, tiposVehiculo, precioMin, precioMax, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
 
         var totalPages = Math.Max((int)Math.Ceiling(totalPaquetes / (double)pageSize), 1);
 
@@ -151,12 +175,23 @@ public class PaqueteServicioController : Controller
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
         ViewBag.SearchTerm = searchTerm;
+        ViewBag.PrecioMin = precioMin;
+        ViewBag.PrecioMax = precioMax;
+        ViewBag.DescuentoMin = descuentoMin;
+        ViewBag.DescuentoMax = descuentoMax;
+        ViewBag.ServiciosCantidad = serviciosCantidad;
+        ViewBag.CantidadesServicios = await _paqueteServicioService.ObtenerValoresCantidadServicios();
+
+        // OPTIMIZADO: Usar caché
+        ViewBag.PreciosFinales = await _paqueteServicioService.CalcularPreciosAsync(paquetes);
+        ViewBag.TiemposTotales = await _paqueteServicioService.CalcularTiemposAsync(paquetes);
 
         return PartialView("_PaqueteServicioTable", paquetes);
     }
 
     /// <summary>
     /// Devuelve la tabla parcial (sin búsqueda) con filtros y orden.
+    /// OPTIMIZADO con caché.
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> TablePartial(
@@ -165,15 +200,23 @@ public class PaqueteServicioController : Controller
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
-        string sortOrder = null)
+        string sortOrder = null,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosCantidad = null)
     {
         estados = ConfigurarEstadosDefecto(estados);
 
         sortBy ??= "Nombre";
         sortOrder ??= "asc";
 
-        var paquetes = await _paqueteServicioService.ObtenerPaquetes(estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
-        var totalPages = await _paqueteServicioService.ObtenerTotalPaginas(estados, tiposVehiculo, pageSize);
+        var paquetes = await _paqueteServicioService.ObtenerPaquetes(
+            estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder,
+            precioMin, precioMax, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
+        var totalPages = await _paqueteServicioService.ObtenerTotalPaginas(
+            estados, tiposVehiculo, pageSize, precioMin, precioMax, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
         totalPages = Math.Max(totalPages, 1);
 
         ViewBag.CurrentPage = pageNumber;
@@ -183,8 +226,42 @@ public class PaqueteServicioController : Controller
         ViewBag.TiposVehiculo = tiposVehiculo;
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
+        ViewBag.PrecioMin = precioMin;
+        ViewBag.PrecioMax = precioMax;
+        ViewBag.DescuentoMin = descuentoMin;
+        ViewBag.DescuentoMax = descuentoMax;
+        ViewBag.ServiciosCantidad = serviciosCantidad;
+        ViewBag.CantidadesServicios = await _paqueteServicioService.ObtenerValoresCantidadServicios();
+
+        // OPTIMIZADO: Usar caché
+        ViewBag.PreciosFinales = await _paqueteServicioService.CalcularPreciosAsync(paquetes);
+        ViewBag.TiemposTotales = await _paqueteServicioService.CalcularTiemposAsync(paquetes);
 
         return PartialView("_PaqueteServicioTable", paquetes);
+ }
+
+    /// <summary>
+    /// Devuelve dinámicamente el rango de precio posible para los filtros actuales (sin aplicar precioMin/Max)
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> PriceRange(
+        List<string> estados,
+        List<string> tiposVehiculo,
+        string searchTerm,
+        decimal? descuentoMin,
+        decimal? descuentoMax,
+        int? serviciosCantidad)
+    {
+        try
+        {
+            var (min, max) = await _paqueteServicioService.ObtenerRangoPrecio(
+                estados, tiposVehiculo, searchTerm, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
+            return Json(new { success = true, min, max });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
     }
     #endregion
 
@@ -214,11 +291,29 @@ public class PaqueteServicioController : Controller
     public async Task<IActionResult> FormPartial(string id)
     {
         await CargarListasForm();
-        PaqueteServicio paquete = null;
-        if (!string.IsNullOrEmpty(id))
-            paquete = await _paqueteServicioService.ObtenerPaquete(id);
 
-        return PartialView("_PaqueteServicioForm", paquete);
+        if (!string.IsNullOrEmpty(id))
+        {
+            var paquete = await _paqueteServicioService.ObtenerPaquete(id);
+
+            // Título vía header
+            Response.Headers["X-Form-Title"] = "Editando un Paquete de Servicios";
+
+            ViewBag.FormTitle = "Editando un Paquete de Servicios";
+            ViewBag.SubmitButtonText = "Guardar";
+            ViewBag.ClearButtonText = "Cancelar";
+            ViewBag.FormAction = "ActualizarPaqueteAjax";
+            return PartialView("_PaqueteServicioForm", paquete);
+        }
+
+        // Modo creación
+        Response.Headers["X-Form-Title"] = "Registrando un Paquete de Servicios";
+
+        ViewBag.FormTitle = "Registrando un Paquete de Servicios";
+        ViewBag.SubmitButtonText = "Registrar";
+        ViewBag.ClearButtonText = "Limpiar Campos";
+        ViewBag.FormAction = "CrearPaqueteAjax";
+        return PartialView("_PaqueteServicioForm", null);
     }
 
     /// <summary>
@@ -266,10 +361,16 @@ public class PaqueteServicioController : Controller
     /// </summary>
     private async Task<(List<PaqueteServicio> paquetes, int currentPage, int totalPages, List<int> visiblePages)>
         ObtenerDatosPaquetes(List<string> estados, List<string> tiposVehiculo,
-        int pageNumber, int pageSize, string sortBy, string sortOrder)
+        int pageNumber, int pageSize, string sortBy, string sortOrder,
+        decimal? precioMin, decimal? precioMax, int? tiempoMin, int? tiempoMax,
+        decimal? descuentoMin, decimal? descuentoMax, int? serviciosCantidadMin, int? serviciosCantidadMax)
     {
-        var paquetes = await _paqueteServicioService.ObtenerPaquetes(estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
-        var totalPages = Math.Max(await _paqueteServicioService.ObtenerTotalPaginas(estados, tiposVehiculo, pageSize), 1);
+        var paquetes = await _paqueteServicioService.ObtenerPaquetes(
+            estados, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder,
+            precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosCantidadMin, serviciosCantidadMax);
+        var totalPages = Math.Max(await _paqueteServicioService.ObtenerTotalPaginas(
+            estados, tiposVehiculo, pageSize,
+            precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosCantidadMin, serviciosCantidadMax), 1);
         var currentPage = Math.Clamp(pageNumber, 1, totalPages);
         var visiblePages = GetVisiblePages(currentPage, totalPages);
 
@@ -305,6 +406,28 @@ public class PaqueteServicioController : Controller
             ViewBag.ClearButtonText = "Limpiar Campos";
             ViewBag.FormAction = "CrearPaqueteAjax";
         }
+    }
+
+    #endregion
+
+    #region Métodos Privados - Cálculos y Operaciones Optimizadas
+
+    /// <summary>
+    /// OPTIMIZADO: Calcula precios finales usando el servicio con caché.
+    /// </summary>
+    private async Task<Dictionary<string, decimal>> CalcularPreciosFinalesAsync(IEnumerable<PaqueteServicio> paquetes)
+    {
+        // El servicio ya maneja caché y batch loading
+        return await _paqueteServicioService.CalcularPreciosAsync(paquetes);
+    }
+
+    /// <summary>
+    /// OPTIMIZADO: Calcula tiempos totales usando el servicio con caché.
+    /// </summary>
+    private async Task<Dictionary<string, int>> CalcularTiemposAsync(IEnumerable<PaqueteServicio> paquetes)
+    {
+        // El servicio ya maneja caché y batch loading
+        return await _paqueteServicioService.CalcularTiemposAsync(paquetes);
     }
 
     /// <summary>
@@ -355,6 +478,13 @@ public class PaqueteServicioController : Controller
             return ResultadoOperacion.CrearError("No se pudo encontrar el paquete a actualizar.");
         }
 
+        // VALIDACIÓN: Prevenir cambio de tipo de vehículo
+        if (!string.Equals(paqueteActual.TipoVehiculo, paquete.TipoVehiculo, StringComparison.OrdinalIgnoreCase))
+        {
+            ModelState.AddModelError("TipoVehiculo", "No se puede cambiar el tipo de vehículo de un paquete existente.");
+            return ResultadoOperacion.CrearError("No se puede cambiar el tipo de vehículo de un paquete existente. Si necesita cambiar el tipo de vehículo, debe crear un nuevo paquete.");
+        }
+
         if (await _paqueteServicioService.ExistePaqueteConNombre(paquete.Nombre, paquete.Id))
         {
             var mensaje = $"Ya existe un paquete con el nombre '{paquete.Nombre}'.";
@@ -391,16 +521,35 @@ public class PaqueteServicioController : Controller
         {
             Response.Headers["X-Form-Valid"] = "false";
             await CargarListasForm();
+
+            var title = paquete?.Id == null
+                ? "Registrando un Paquete de Servicios"
+                : "Editando un Paquete de Servicios";
+
+            Response.Headers["X-Form-Title"] = title;
+
+            ViewBag.FormTitle = title;
+            ViewBag.FormAction = paquete?.Id == null ? "CrearPaqueteAjax" : "ActualizarPaqueteAjax";
+
             return PartialView("_PaqueteServicioForm", paquete);
         }
 
         await RegistrarEvento(accionAuditoria, paquete.Id, "PaqueteServicio");
+
         Response.Headers["X-Form-Valid"] = "true";
         Response.Headers["X-Form-Message"] = resultado.MensajeExito;
+
+        // Éxito → volver a modo creación
+        Response.Headers["X-Form-Title"] = "Registrando un Paquete de Servicios";
+
         await CargarListasForm();
+        ViewBag.FormTitle = "Registrando un Paquete de Servicios";
+        ViewBag.SubmitButtonText = "Registrar";
+        ViewBag.ClearButtonText = "Limpiar Campos";
+        ViewBag.FormAction = "CrearPaqueteAjax";
+
         return PartialView("_PaqueteServicioForm", null);
     }
-
     /// <summary>
     /// Maneja excepciones en operaciones AJAX devolviendo el formulario parcial con errores.
     /// </summary>
@@ -435,9 +584,10 @@ public class PaqueteServicioController : Controller
             ModelState.AddModelError("Nombre", "El nombre solo puede contener letras y espacios.");
         }
 
-        if (paquete.PorcentajeDescuento < 0 || paquete.PorcentajeDescuento > 100)
+        // Validación ajustada:5..95
+        if (paquete.PorcentajeDescuento < 5 || paquete.PorcentajeDescuento > 95)
         {
-            ModelState.AddModelError("PorcentajeDescuento", "El porcentaje de descuento debe estar entre 0 y 100.");
+            ModelState.AddModelError("PorcentajeDescuento", "El porcentaje de descuento debe estar entre 5 y 95.");
         }
 
         if (paquete.ServiciosIds == null || paquete.ServiciosIds.Count < 2)
@@ -453,7 +603,9 @@ public class PaqueteServicioController : Controller
         List<string> estados, List<string> tiposVehiculo,
         List<string> tiposVehiculoList,
         int pageSize, int currentPage, int totalPages, List<int> visiblePages,
-        string sortBy, string sortOrder)
+        string sortBy, string sortOrder,
+        decimal? precioMin, decimal? precioMax, int? tiempoMin, int? tiempoMax,
+        decimal? descuentoMin, decimal? descuentoMax, int? serviciosMin, int? serviciosMax)
     {
         ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = visiblePages;
@@ -464,6 +616,14 @@ public class PaqueteServicioController : Controller
         ViewBag.PageSize = pageSize;
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
+        ViewBag.PrecioMin = precioMin;
+        ViewBag.PrecioMax = precioMax;
+        ViewBag.TiempoMin = tiempoMin;
+        ViewBag.TiempoMax = tiempoMax;
+        ViewBag.DescuentoMin = descuentoMin;
+        ViewBag.DescuentoMax = descuentoMax;
+        ViewBag.ServiciosMin = serviciosMin;
+        ViewBag.ServiciosMax = serviciosMax;
     }
 
     /// <summary>
@@ -481,7 +641,7 @@ public class PaqueteServicioController : Controller
     /// </summary>
     private async Task CargarListasForm()
     {
-        ViewBag.TodosLosTiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+    ViewBag.TodosLosTiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
     }
     #endregion
 }

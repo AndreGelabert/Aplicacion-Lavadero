@@ -568,6 +568,20 @@ public class ServicioController : Controller
             return ResultadoOperacion.CrearError("No se pudo encontrar el servicio a actualizar.");
         }
 
+        // Validación: Prevenir cambio de tipo de vehículo
+        if (!string.Equals(servicioActual.TipoVehiculo, servicio.TipoVehiculo, StringComparison.OrdinalIgnoreCase))
+        {
+            ModelState.AddModelError("TipoVehiculo", "No se puede cambiar el tipo de vehículo de un servicio existente.");
+            return ResultadoOperacion.CrearError("No se puede cambiar el tipo de vehículo de un servicio existente. Si necesita cambiar el tipo de vehículo, debe crear un nuevo servicio.");
+        }
+
+        // NUEVA VALIDACIÓN: Prevenir cambio de tipo de servicio
+        if (!string.Equals(servicioActual.Tipo, servicio.Tipo, StringComparison.OrdinalIgnoreCase))
+        {
+            ModelState.AddModelError("Tipo", "No se puede cambiar el tipo de servicio de un servicio existente.");
+            return ResultadoOperacion.CrearError("No se puede cambiar el tipo de servicio de un servicio existente. Si necesita cambiar el tipo, debe crear un nuevo servicio.");
+        }
+
         if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id))
         {
             var mensaje = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'.";

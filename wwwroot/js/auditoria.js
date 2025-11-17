@@ -196,6 +196,9 @@
                 cont.innerHTML = html;
                 const cp = document.getElementById('current-page-value')?.value;
                 if (cp) cont.dataset.currentPage = cp;
+                // Re-inicializar filtros/dropdowns tras reemplazo dinámico
+                window.CommonUtils?.setupDefaultFilterForm?.();
+                if (typeof initDropdowns === 'function') { initDropdowns(); }
             })
             .catch(e => {
                 console.error('Error cargando la tabla:', e);
@@ -204,7 +207,7 @@
     }
 
     /**
-     * Obtiene la página actual de la tabla
+     * Obtiene la página currentTablePage de la tabla
      */
     function getCurrentTablePage() {
         return parseInt(document.getElementById('auditoria-table-container')?.dataset.currentPage || '1');
@@ -294,6 +297,8 @@
 
             // Recargar tabla con filtros aplicados (y búsqueda/orden actuales)
             reloadAuditoriaTable(1);
+            // Mensaje informativo
+            showMessage('info', 'Filtros aplicados.');
         });
 
         form.dataset.submitSetup = 'true';
@@ -338,6 +343,67 @@
 
     window.getCurrentTablePage = function () {
         return getCurrentTablePage();
+    };
+
+    /**
+     * Limpia filtros de la vista Auditoría y recarga la tabla
+     * - Delegamos limpieza de checkboxes de estados al clearAllFilters global (no marca "Activo" en auditoría)
+     * - Limpiamos otros campos (texto, number, date, search) excluyendo estados
+     * - Reseteamos término de búsqueda interno
+     * - Cerramos dropdown de filtros si está abierto
+     * - Limpiamos query string de la URL
+     */
+    window.clearAuditoriaFilters = function () {
+        const filterForm = document.getElementById('filterForm');
+
+        if (filterForm) {
+            // Limpiar inputs de texto / number / date / search que NO sean los de estados
+            filterForm.querySelectorAll('input').forEach(inp => {
+                const type = (inp.type || '').toLowerCase();
+                if (inp.name === 'estados') return; // dejar estados para clearAllFilters
+                if (['hidden', 'submit', 'button', 'checkbox', 'radio'].includes(type)) return;
+                if (['text', 'number', 'date', 'search'].includes(type)) inp.value = '';
+            });
+
+            // Limpiar checkboxes distintos a estados (si existieran)
+            filterForm.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                if (cb.name !== 'estados') cb.checked = false;
+            });
+
+            // Limpiar selects que no sean de estados (si existieran)
+            filterForm.querySelectorAll('select').forEach(sel => {
+                sel.selectedIndex =0;
+            });
+        }
+
+        // Restaurar estados según lógica global (en auditoría no fuerza "Activo")
+        if (typeof window.clearAllFilters === 'function') {
+            window.clearAllFilters();
+        }
+
+        // Limpiar búsqueda y estado interno
+        const searchInput = document.getElementById('simple-search');
+        if (searchInput) searchInput.value = '';
+        currentSearchTerm = '';
+
+        // Cerrar dropdown de filtros si está abierto
+        const filterDropdown = document.getElementById('filterDropdown');
+        if (filterDropdown && !filterDropdown.classList.contains('hidden')) {
+            filterDropdown.classList.add('hidden');
+        }
+
+        // Limpiar parámetros de la URL
+        if (window.history && typeof window.history.replaceState === 'function') {
+            window.history.replaceState(null, '', window.location.pathname);
+        }
+        // Re-inicializar lógica de filtros tras limpieza (evita el primer clic perdido)
+        window.CommonUtils?.setupDefaultFilterForm?.();
+        if (typeof initDropdowns === 'function') { initDropdowns(); }
+        // Recargar tabla página1
+        reloadAuditoriaTable(1);
+
+        // Mensaje informativo
+        showMessage('info', 'Filtros restablecidos.');
     };
 
 })();

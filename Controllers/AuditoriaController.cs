@@ -15,19 +15,22 @@ public class AuditoriaController : Controller
     private readonly ServicioService _servicioService;
     private readonly TipoServicioService _tipoServicioService;
     private readonly TipoVehiculoService _tipoVehiculoService;
+    private readonly PaqueteServicioService _paqueteServicioService; // NUEVO
 
     public AuditoriaController(
         AuditService auditService,
         PersonalService personalService,
         ServicioService servicioService,
         TipoServicioService tipoServicioService,
-        TipoVehiculoService tipoVehiculoService)
+        TipoVehiculoService tipoVehiculoService,
+        PaqueteServicioService paqueteServicioService) // NUEVO
     {
         _auditService = auditService;
         _personalService = personalService;
         _servicioService = servicioService;
         _tipoServicioService = tipoServicioService;
         _tipoVehiculoService = tipoVehiculoService;
+        _paqueteServicioService = paqueteServicioService; // NUEVO
     }
     #endregion
 
@@ -323,6 +326,9 @@ public class AuditoriaController : Controller
         var tipoVehIds = registros.Where(r => r.TargetType == "TipoVehiculo" && !string.IsNullOrWhiteSpace(r.TargetId))
                                   .Select(r => r.TargetId).Distinct().ToList();
 
+        var paqueteIds = registros.Where(r => r.TargetType == "PaqueteServicio" && !string.IsNullOrWhiteSpace(r.TargetId))
+                                  .Select(r => r.TargetId).Distinct().ToList(); // NUEVO
+
         // Resolver nombres de Servicio (llamadas individuales; pageSize pequeño)
         var servDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in servicioIds)
@@ -351,6 +357,18 @@ public class AuditoriaController : Controller
             catch { tipoVehDict[id] = null; }
         }
 
+        // Resolver nombres de PaqueteServicio // NUEVO
+        var paqueteDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var id in paqueteIds)
+        {
+            try
+            {
+                var p = await _paqueteServicioService.ObtenerPaquete(id);
+                paqueteDict[id] = p?.Nombre;
+            }
+            catch { paqueteDict[id] = null; }
+        }
+
         // Construir modelo de vista
         return registros.Select(r =>
         {
@@ -371,6 +389,9 @@ public class AuditoriaController : Controller
                         break;
                     case "TipoVehiculo":
                         tipoVehDict.TryGetValue(r.TargetId, out targetName);
+                        break;
+                    case "PaqueteServicio": // NUEVO
+                        paqueteDict.TryGetValue(r.TargetId, out targetName);
                         break;
                     case "Empleado":
                     case "Usuario":

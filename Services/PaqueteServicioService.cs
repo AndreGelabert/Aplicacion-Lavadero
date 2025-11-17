@@ -1,9 +1,11 @@
 using Firebase.Models;
 using Google.Cloud.Firestore;
+using Microsoft.Extensions.Caching.Memory;
 
 /// <summary>
 /// Servicio para la gestión de paquetes de servicios en Firestore.
 /// Proporciona operaciones CRUD, filtrado, paginación y validación de paquetes.
+/// OPTIMIZADO con caché en memoria para reducir consultas a Firestore.
 /// </summary>
 public class PaqueteServicioService
 {
@@ -12,21 +14,31 @@ public class PaqueteServicioService
     private const string ESTADO_DEFECTO = "Activo";
     private const string ORDEN_DEFECTO = "Nombre";
     private const string DIRECCION_DEFECTO = "asc";
+    
+    // NUEVO: Claves de caché
+    private const string CACHE_KEY_SERVICIOS = "all_servicios_activos";
+    private const int CACHE_DURATION_MINUTES = 10; // Caché por 10 minutos
     #endregion
 
     #region Dependencias
     private readonly FirestoreDb _firestore;
     private readonly ServicioService _servicioService;
+    private readonly IMemoryCache _cache; // NUEVO
 
     /// <summary>
     /// Inicializa una nueva instancia del servicio de paquetes.
     /// </summary>
     /// <param name="firestore">Instancia de la base de datos Firestore.</param>
     /// <param name="servicioService">Servicio para validar servicios incluidos en el paquete.</param>
-    public PaqueteServicioService(FirestoreDb firestore, ServicioService servicioService)
+    /// <param name="cache">Instancia de caché en memoria.</param> // NUEVO parámetro
+    public PaqueteServicioService(
+        FirestoreDb firestore, 
+      ServicioService servicioService,
+        IMemoryCache cache) // NUEVO parámetro
     {
         _firestore = firestore ?? throw new ArgumentNullException(nameof(firestore));
         _servicioService = servicioService ?? throw new ArgumentNullException(nameof(servicioService));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache)); // NUEVO
     }
     #endregion
 
@@ -41,14 +53,23 @@ public class PaqueteServicioService
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
-        string sortOrder = null)
+        string sortOrder = null,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        int? tiempoMin = null,
+        int? tiempoMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosMin = null,
+        int? serviciosMax = null)
     {
         ValidarParametrosPaginacion(pageNumber, pageSize);
 
         sortBy ??= ORDEN_DEFECTO;
         sortOrder ??= DIRECCION_DEFECTO;
 
-        var paquetes = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, sortBy, sortOrder);
+        var paquetes = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, sortBy, sortOrder,
+            precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosMin, serviciosMax);
 
         return AplicarPaginacion(paquetes, pageNumber, pageSize);
     }
@@ -59,12 +80,21 @@ public class PaqueteServicioService
     public async Task<int> ObtenerTotalPaginas(
         List<string> estados,
         List<string> tiposVehiculo,
-        int pageSize)
+        int pageSize,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        int? tiempoMin = null,
+        int? tiempoMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosMin = null,
+        int? serviciosMax = null)
     {
         if (pageSize <= 0)
             throw new ArgumentException("El tamaño de página debe ser mayor a 0", nameof(pageSize));
 
-        var totalPaquetes = await ObtenerTotalPaquetes(estados, tiposVehiculo);
+        var totalPaquetes = await ObtenerTotalPaquetes(estados, tiposVehiculo,
+            precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosMin, serviciosMax);
         return (int)Math.Ceiling(totalPaquetes / (double)pageSize);
     }
 
@@ -92,16 +122,79 @@ public class PaqueteServicioService
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
-        string sortOrder = null)
+        string sortOrder = null,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        int? tiempoMin = null,
+        int? tiempoMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosMin = null,
+        int? serviciosMax = null)
     {
-        var baseFiltrada = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, sortBy, sortOrder);
+        var baseFiltrada = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, sortBy, sortOrder,
+            precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosMin, serviciosMax);
 
+        // Búsqueda con sufijos especiales
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            baseFiltrada = AplicarBusqueda(baseFiltrada, searchTerm);
+            var term = searchTerm.Trim();
+
+            // Búsqueda por tiempo exacto con sufijo "min" (ej: "35 min" o "35min")
+            if (term.EndsWith("min", StringComparison.OrdinalIgnoreCase))
+            {
+                var numStr = term.Substring(0, term.Length - 3).Trim();
+                if (int.TryParse(numStr, out var tiempoExacto))
+                {
+                    var tiempos = await CalcularTiemposAsync(baseFiltrada);
+                    baseFiltrada = baseFiltrada.Where(p =>
+                        tiempos.TryGetValue(p.Id, out var tiempo) && tiempo == tiempoExacto
+                    ).ToList();
+                }
+                else
+                {
+                    // Si no se puede parsear, no hay coincidencias
+                    baseFiltrada = new List<PaqueteServicio>();
+                }
+            }
+            // Búsqueda por descuento exacto con sufijo "%" (ej: "15%" o "15 %")
+            else if (term.EndsWith("%"))
+            {
+                var numStr = term.Substring(0, term.Length - 1).Trim();
+                if (decimal.TryParse(numStr, System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture, out var descuentoExacto))
+                {
+                    baseFiltrada = baseFiltrada.Where(p =>
+                        Math.Abs(p.PorcentajeDescuento - descuentoExacto) < 0.0001m
+                    ).ToList();
+                }
+                else
+                {
+                    // Si no se puede parsear, no hay coincidencias
+                    baseFiltrada = new List<PaqueteServicio>();
+                }
+            }
+            // Búsqueda numérica general (precio/tiempo/descuento sin sufijo)
+            else if (decimal.TryParse(term, System.Globalization.NumberStyles.Number,
+                System.Globalization.CultureInfo.InvariantCulture, out var numeroDecimal))
+            {
+                var precios = await CalcularPreciosAsync(baseFiltrada);
+                var tiempos = await CalcularTiemposAsync(baseFiltrada);
+                var numeroEntero = (int)numeroDecimal;
+                baseFiltrada = baseFiltrada.Where(p =>
+                    (precios.TryGetValue(p.Id, out var pr) && Math.Abs(pr - numeroDecimal) < 0.0001m) ||
+                    (tiempos.TryGetValue(p.Id, out var tt) && tt == numeroEntero) ||
+                    Math.Abs(p.PorcentajeDescuento - numeroDecimal) < 0.0001m
+                ).ToList();
+            }
+            // Búsqueda textual
+            else
+            {
+                baseFiltrada = AplicarBusqueda(baseFiltrada, term);
+            }
         }
 
-        var ordenados = AplicarOrdenamiento(baseFiltrada, sortBy, sortOrder);
+        var ordenados = await AplicarOrdenamiento(baseFiltrada, sortBy, sortOrder);
         return AplicarPaginacion(ordenados, Math.Max(pageNumber, 1), Math.Max(pageSize, 1));
     }
 
@@ -111,17 +204,112 @@ public class PaqueteServicioService
     public async Task<int> ObtenerTotalPaquetesBusqueda(
         string searchTerm,
         List<string> estados,
-        List<string> tiposVehiculo)
+        List<string> tiposVehiculo,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        int? tiempoMin = null,
+        int? tiempoMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosMin = null,
+        int? serviciosMax = null)
     {
         estados = ConfigurarEstadosDefecto(estados);
-        var baseFiltrada = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, ORDEN_DEFECTO, DIRECCION_DEFECTO);
+        var baseFiltrada = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, ORDEN_DEFECTO, DIRECCION_DEFECTO,
+            precioMin, precioMax, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosMin, serviciosMax);
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            baseFiltrada = AplicarBusqueda(baseFiltrada, searchTerm);
+            var term = searchTerm.Trim();
+
+            // Búsqueda por tiempo exacto con sufijo "min"
+            if (term.EndsWith("min", StringComparison.OrdinalIgnoreCase))
+            {
+                var numStr = term.Substring(0, term.Length - 3).Trim();
+                if (int.TryParse(numStr, out var tiempoExacto))
+                {
+                    var tiempos = await CalcularTiemposAsync(baseFiltrada);
+                    baseFiltrada = baseFiltrada.Where(p =>
+                        tiempos.TryGetValue(p.Id, out var tiempo) && tiempo == tiempoExacto
+                    ).ToList();
+                }
+                else
+                {
+                    baseFiltrada = new List<PaqueteServicio>();
+                }
+            }
+            // Búsqueda por descuento exacto con sufijo "%"
+            else if (term.EndsWith("%"))
+            {
+                var numStr = term.Substring(0, term.Length - 1).Trim();
+                if (decimal.TryParse(numStr, System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture, out var descuentoExacto))
+                {
+                    baseFiltrada = baseFiltrada.Where(p =>
+                        Math.Abs(p.PorcentajeDescuento - descuentoExacto) < 0.0001m
+                    ).ToList();
+                }
+                else
+                {
+                    baseFiltrada = new List<PaqueteServicio>();
+                }
+            }
+            // Búsqueda numérica general
+            else if (decimal.TryParse(term, System.Globalization.NumberStyles.Number,
+                System.Globalization.CultureInfo.InvariantCulture, out var numeroDecimal))
+            {
+                var precios = await CalcularPreciosAsync(baseFiltrada);
+                var tiempos = await CalcularTiemposAsync(baseFiltrada);
+                var numeroEntero = (int)numeroDecimal;
+                baseFiltrada = baseFiltrada.Where(p =>
+                    (precios.TryGetValue(p.Id, out var pr) && Math.Abs(pr - numeroDecimal) < 0.0001m) ||
+                    (tiempos.TryGetValue(p.Id, out var tt) && tt == numeroEntero) ||
+                    Math.Abs(p.PorcentajeDescuento - numeroDecimal) < 0.0001m
+                ).ToList();
+            }
+            // Búsqueda textual
+            else
+            {
+                baseFiltrada = AplicarBusqueda(baseFiltrada, term);
+            }
         }
 
         return baseFiltrada.Count;
+    }
+
+    /// <summary>
+    /// Obtiene el rango de precio (min y max) para los paquetes que cumplen con los filtros actuales
+    /// excluyendo el propio filtro de precio.
+    /// </summary>
+    public async Task<(decimal? min, decimal? max)> ObtenerRangoPrecio(
+        List<string> estados,
+        List<string> tiposVehiculo,
+        string searchTerm,
+        int? tiempoMin = null,
+        int? tiempoMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosMin = null,
+        int? serviciosMax = null)
+    {
+        estados = ConfigurarEstadosDefecto(estados);
+        // No aplicar precioMin/precioMax aquí
+        var paquetes = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, ORDEN_DEFECTO, DIRECCION_DEFECTO,
+            null, null, tiempoMin, tiempoMax, descuentoMin, descuentoMax, serviciosMin, serviciosMax);
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            paquetes = AplicarBusqueda(paquetes, searchTerm);
+        }
+
+        if (paquetes == null || paquetes.Count == 0)
+            return (null, null);
+
+        var precios = await CalcularPreciosAsync(paquetes);
+        if (precios.Count == 0) return (null, null);
+        var min = precios.Min(kv => kv.Value);
+        var max = precios.Max(kv => kv.Value);
+        return (min, max);
     }
     #endregion
 
@@ -142,7 +330,7 @@ public class PaqueteServicioService
         }
 
         await ValidarPaquete(paquete);
-        await CalcularPrecioYTiempo(paquete);
+        // Ya no se persisten valores calculados (Precio/TiempoEstimado)
 
         var paqueteRef = _firestore.Collection(COLLECTION_NAME).Document();
         paquete.Id = paqueteRef.Id;
@@ -168,7 +356,7 @@ public class PaqueteServicioService
         }
 
         await ValidarPaquete(paquete);
-        await CalcularPrecioYTiempo(paquete);
+        // Ya no se persisten valores calculados (Precio/TiempoEstimado)
 
         var paqueteRef = _firestore.Collection(COLLECTION_NAME).Document(paquete.Id);
         var paqueteData = CrearDiccionarioPaquete(paquete);
@@ -212,25 +400,21 @@ public class PaqueteServicioService
 
     /// <summary>
     /// Obtiene los servicios completos de un paquete dado sus IDs.
+    /// OPTIMIZADO con batch loading.
     /// </summary>
     public async Task<List<Servicio>> ObtenerServiciosDePaquete(List<string> serviciosIds)
     {
-        var servicios = new List<Servicio>();
-        
         if (serviciosIds == null || !serviciosIds.Any())
-            return servicios;
+            return new List<Servicio>();
 
-        foreach (var id in serviciosIds)
-        {
-            var servicio = await _servicioService.ObtenerServicio(id);
-            if (servicio != null)
-            {
-                servicios.Add(servicio);
-            }
-        }
-
-        return servicios;
+        var serviciosDict = await ObtenerServiciosBatch(serviciosIds);
+    
+        return serviciosIds
+            .Where(id => serviciosDict.ContainsKey(id))
+    .Select(id => serviciosDict[id])
+      .ToList();
     }
+
     #endregion
 
     #region Métodos Privados - Consultas Base
@@ -242,7 +426,15 @@ public class PaqueteServicioService
         List<string> estados,
         List<string> tiposVehiculo,
         string sortBy,
-        string sortOrder)
+        string sortOrder,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        int? tiempoMin = null,
+        int? tiempoMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosMin = null,
+        int? serviciosMax = null)
     {
         estados = ConfigurarEstadosDefecto(estados);
 
@@ -255,7 +447,27 @@ public class PaqueteServicioService
 
         paquetes = AplicarFiltroTipoVehiculo(paquetes, tiposVehiculo);
 
-        return AplicarOrdenamiento(paquetes, sortBy, sortOrder);
+        // Calcular valores dinámicos de precio y tiempo
+        var precios = await CalcularPreciosAsync(paquetes);
+        var tiempos = await CalcularTiemposAsync(paquetes);
+
+        // Filtros por rango usando valores calculados
+        IEnumerable<PaqueteServicio> q = paquetes;
+        if (precioMin.HasValue) q = q.Where(p => precios.TryGetValue(p.Id, out var pr) && pr >= precioMin.Value);
+        if (precioMax.HasValue) q = q.Where(p => precios.TryGetValue(p.Id, out var pr) && pr <= precioMax.Value);
+        if (tiempoMin.HasValue) q = q.Where(p => tiempos.TryGetValue(p.Id, out var tt) && tt >= tiempoMin.Value);
+        if (tiempoMax.HasValue) q = q.Where(p => tiempos.TryGetValue(p.Id, out var tt) && tt <= tiempoMax.Value);
+
+        // Otros filtros (descuento y cantidad de servicios)
+        if (descuentoMin.HasValue) q = q.Where(p => p.PorcentajeDescuento >= descuentoMin.Value);
+        if (descuentoMax.HasValue) q = q.Where(p => p.PorcentajeDescuento <= descuentoMax.Value);
+        if (serviciosMin.HasValue) q = q.Where(p => (p.ServiciosIds?.Count ??0) >= serviciosMin.Value);
+        if (serviciosMax.HasValue) q = q.Where(p => (p.ServiciosIds?.Count ??0) <= serviciosMax.Value);
+
+        var listFiltrada = q.ToList();
+
+        // Ordenamiento considerando valores calculados
+        return await AplicarOrdenamiento(listFiltrada, sortBy, sortOrder, precios, tiempos);
     }
 
     /// <summary>
@@ -263,7 +475,15 @@ public class PaqueteServicioService
     /// </summary>
     private async Task<int> ObtenerTotalPaquetes(
         List<string> estados,
-        List<string> tiposVehiculo)
+        List<string> tiposVehiculo,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
+        int? tiempoMin = null,
+        int? tiempoMax = null,
+        decimal? descuentoMin = null,
+        decimal? descuentoMax = null,
+        int? serviciosMin = null,
+        int? serviciosMax = null)
     {
         estados = ConfigurarEstadosDefecto(estados);
 
@@ -271,128 +491,208 @@ public class PaqueteServicioService
 
         var snapshot = await query.GetSnapshotAsync();
         var paquetes = snapshot.Documents
-            .Select(doc => new PaqueteConteo
-            {
-                TipoVehiculo = doc.ContainsField("TipoVehiculo")
-                    ? doc.GetValue<string>("TipoVehiculo")
-                    : ""
-            })
+            .Select(MapearDocumentoAPaquete)
             .ToList();
 
-        if (tiposVehiculo != null && tiposVehiculo.Any())
-        {
-            paquetes = paquetes
-                .Where(p => tiposVehiculo.Contains(p.TipoVehiculo))
-                .ToList();
-        }
+        paquetes = AplicarFiltroTipoVehiculo(paquetes, tiposVehiculo);
 
-        return paquetes.Count;
+        var precios = await CalcularPreciosAsync(paquetes);
+        var tiempos = await CalcularTiemposAsync(paquetes);
+
+        IEnumerable<PaqueteServicio> q = paquetes;
+        if (precioMin.HasValue) q = q.Where(p => precios.TryGetValue(p.Id, out var pr) && pr >= precioMin.Value);
+        if (precioMax.HasValue) q = q.Where(p => precios.TryGetValue(p.Id, out var pr) && pr <= precioMax.Value);
+        if (tiempoMin.HasValue) q = q.Where(p => tiempos.TryGetValue(p.Id, out var tt) && tt >= tiempoMin.Value);
+        if (tiempoMax.HasValue) q = q.Where(p => tiempos.TryGetValue(p.Id, out var tt) && tt <= tiempoMax.Value);
+        if (descuentoMin.HasValue) q = q.Where(p => p.PorcentajeDescuento >= descuentoMin.Value);
+        if (descuentoMax.HasValue) q = q.Where(p => p.PorcentajeDescuento <= descuentoMax.Value);
+        if (serviciosMin.HasValue) q = q.Where(p => (p.ServiciosIds?.Count ??0) >= serviciosMin.Value);
+        if (serviciosMax.HasValue) q = q.Where(p => (p.ServiciosIds?.Count ??0) <= serviciosMax.Value);
+
+        return q.Count();
     }
     #endregion
 
-    #region Métodos Privados - Utilidades
+    #region Métodos Públicos - Cálculos Optimizados
 
     /// <summary>
-    /// Configura la lista de estados por defecto si no se especificó ninguno.
+    /// OPTIMIZADO: Calcula precios usando caché de servicios.
+    /// Carga todos los servicios necesarios en una sola consulta batch.
     /// </summary>
-    private static List<string> ConfigurarEstadosDefecto(List<string> estados)
+    public async Task<Dictionary<string, decimal>> CalcularPreciosAsync(IEnumerable<PaqueteServicio> paquetes)
     {
-        estados ??= new List<string>();
-        if (!estados.Any())
+      var list = paquetes?.ToList() ?? new List<PaqueteServicio>();
+        var result = new Dictionary<string, decimal>();
+   
+        if (!list.Any()) return result;
+
+   // OPTIMIZACIÓN: Obtener todos los servicios únicos en una sola consulta
+      var todosLosServiciosIds = list
+       .SelectMany(p => p.ServiciosIds ?? new List<string>())
+    .Distinct()
+    .ToList();
+
+        if (!todosLosServiciosIds.Any())
+      {
+       foreach (var p in list) result[p.Id] = 0m;
+  return result;
+   }
+
+        // Cargar servicios en batch con caché
+        var serviciosDict = await ObtenerServiciosBatch(todosLosServiciosIds);
+
+  // Calcular precios
+    foreach (var p in list)
+  {
+            try
+          {
+     var suma = 0m;
+    if (p.ServiciosIds != null)
         {
-            estados.Add(ESTADO_DEFECTO);
+   foreach (var id in p.ServiciosIds)
+      {
+    if (serviciosDict.TryGetValue(id, out var servicio))
+  {
+    suma += servicio.Precio;
+            }
+    }
+      }
+      var descuento = suma * (p.PorcentajeDescuento / 100m);
+  result[p.Id] = suma - descuento;
+       }
+        catch { result[p.Id] = 0m; }
         }
-        return estados;
+        
+  return result;
     }
 
     /// <summary>
-    /// Construye un query de Firestore aplicando filtros de estado.
+    /// OPTIMIZADO: Calcula tiempos usando caché de servicios.
+    /// Carga todos los servicios necesarios en una sola consulta batch.
     /// </summary>
-    private Query ConstruirQueryFiltros(List<string> estados)
+    public async Task<Dictionary<string, int>> CalcularTiemposAsync(IEnumerable<PaqueteServicio> paquetes)
     {
-        Query query = _firestore.Collection(COLLECTION_NAME);
+      var list = paquetes?.ToList() ?? new List<PaqueteServicio>();
+    var result = new Dictionary<string, int>();
+        
+        if (!list.Any()) return result;
 
-        if (estados?.Any() == true)
+     // OPTIMIZACIÓN: Obtener todos los servicios únicos en una sola consulta
+        var todosLosServiciosIds = list
+        .SelectMany(p => p.ServiciosIds ?? new List<string>())
+       .Distinct()
+  .ToList();
+
+     if (!todosLosServiciosIds.Any())
         {
-            query = query.WhereIn("Estado", estados);
-        }
+ foreach (var p in list) result[p.Id] = 0;
+       return result;
+     }
 
-        return query;
+   // Cargar servicios en batch con caché
+        var serviciosDict = await ObtenerServiciosBatch(todosLosServiciosIds);
+
+        // Calcular tiempos
+      foreach (var p in list)
+        {
+            try
+{
+         var suma = 0;
+         if (p.ServiciosIds != null)
+ {
+       foreach (var id in p.ServiciosIds)
+          {
+   if (serviciosDict.TryGetValue(id, out var servicio))
+          {
+       suma += servicio.TiempoEstimado;
+}
+      }
+     }
+      result[p.Id] = suma;
+  }
+         catch { result[p.Id] = 0; }
+  }
+  
+     return result;
+  }
+
+    #endregion
+
+    #region Métodos Privados - Utilidades y Helpers
+
+    /// <summary>
+    /// NUEVO: Obtiene múltiples servicios en batch con caché.
+    /// Reduce consultas a Firestore de N a 1 (o 0 si está en caché).
+    /// </summary>
+    private async Task<Dictionary<string, Servicio>> ObtenerServiciosBatch(List<string> serviciosIds)
+    {
+     if (serviciosIds == null || !serviciosIds.Any())
+     return new Dictionary<string, Servicio>();
+
+  // Intentar obtener del caché primero
+var cacheKey = $"servicios_batch_{string.Join("_", serviciosIds.OrderBy(x => x))}";
+      
+        if (_cache.TryGetValue<Dictionary<string, Servicio>>(cacheKey, out var cached))
+        {
+        return cached;
+   }
+
+      var result = new Dictionary<string, Servicio>();
+
+        // Firestore limita WhereIn a 10 elementos, dividir en chunks
+     const int chunkSize = 10;
+        var chunks = serviciosIds
+            .Select((id, index) => new { id, index })
+        .GroupBy(x => x.index / chunkSize)
+            .Select(g => g.Select(x => x.id).ToList())
+       .ToList();
+
+     foreach (var chunk in chunks)
+     {
+   var query = _firestore.Collection("servicios")
+          .WhereIn(FieldPath.DocumentId, chunk);
+   
+   var snapshot = await query.GetSnapshotAsync();
+
+ foreach (var doc in snapshot.Documents)
+     {
+       if (doc.Exists)
+ {
+        var servicio = MapearDocumentoAServicio(doc);
+     result[doc.Id] = servicio;
+}
+  }
+      }
+
+    // Guardar en caché por 10 minutos
+        var cacheOptions = new MemoryCacheEntryOptions()
+     .SetAbsoluteExpiration(TimeSpan.FromMinutes(CACHE_DURATION_MINUTES));
+        
+   _cache.Set(cacheKey, result, cacheOptions);
+
+   return result;
     }
 
     /// <summary>
-    /// Aplica filtro de tipo de vehículo (post-proceso).
+    /// NUEVO: Mapea documento de Firestore a Servicio.
     /// </summary>
-    private static List<PaqueteServicio> AplicarFiltroTipoVehiculo(List<PaqueteServicio> paquetes, List<string> tiposVehiculo)
+    private static Servicio MapearDocumentoAServicio(DocumentSnapshot doc)
     {
-        if (tiposVehiculo?.Any() == true)
+        return new Servicio
         {
-            return paquetes
-                .Where(p => tiposVehiculo.Contains(p.TipoVehiculo))
-                .ToList();
-        }
-        return paquetes;
-    }
-
-    /// <summary>
-    /// Aplica ordenamiento a una lista de paquetes.
-    /// </summary>
-    private static List<PaqueteServicio> AplicarOrdenamiento(List<PaqueteServicio> paquetes, string sortBy, string sortOrder)
-    {
-        sortBy ??= ORDEN_DEFECTO;
-        sortOrder = (sortOrder ?? DIRECCION_DEFECTO).Trim().ToLowerInvariant();
-
-        Func<PaqueteServicio, object> keySelector = sortBy switch
-        {
-            "Nombre" => p => p.Nombre,
-            "Precio" => p => p.Precio,
-            "TipoVehiculo" => p => p.TipoVehiculo,
-            "TiempoEstimado" => p => p.TiempoEstimado,
-            "Estado" => p => p.Estado,
-            "PorcentajeDescuento" => p => p.PorcentajeDescuento,
-            _ => p => p.Nombre
-        };
-
-        var ordered = sortOrder == "desc"
-            ? paquetes.OrderByDescending(keySelector)
-            : paquetes.OrderBy(keySelector);
-
-        return ordered.ToList();
-    }
-
-    /// <summary>
-    /// Aplica paginación a una lista en memoria.
-    /// </summary>
-    private static List<PaqueteServicio> AplicarPaginacion(List<PaqueteServicio> lista, int pageNumber, int pageSize)
-        => lista.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
-
-    /// <summary>
-    /// Aplica la lógica de búsqueda sobre una lista previamente filtrada.
-    /// </summary>
-    private static List<PaqueteServicio> AplicarBusqueda(List<PaqueteServicio> baseFiltrada, string searchTerm)
-    {
-        var term = searchTerm?.Trim() ?? string.Empty;
-        if (term.Length == 0) return baseFiltrada;
-
-        var termUpper = term.ToUpperInvariant();
-
-        // Numérico (precio/tiempo)
-        if (decimal.TryParse(term, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var numeroDecimal))
-        {
-            var numeroEntero = (int)numeroDecimal;
-            return baseFiltrada.Where(p =>
-                Math.Abs(p.Precio - numeroDecimal) < 0.0001m ||
-                p.TiempoEstimado == numeroEntero ||
-                Math.Abs(p.PorcentajeDescuento - numeroDecimal) < 0.0001m
-            ).ToList();
-        }
-
-        // Textual
-        return baseFiltrada.Where(p =>
-            (p.Nombre?.ToUpperInvariant().Contains(termUpper) ?? false) ||
-            (p.TipoVehiculo?.ToUpperInvariant().Contains(termUpper) ?? false) ||
-            (p.Estado?.ToUpperInvariant().Contains(termUpper) ?? false)
-        ).ToList();
+     Id = doc.Id,
+            Nombre = doc.GetValue<string>("Nombre"),
+ Precio = doc.ContainsField("Precio") 
+        ? (decimal)Convert.ToDouble(doc.GetValue<object>("Precio")) 
+         : 0m,
+     TiempoEstimado = doc.ContainsField("TiempoEstimado") 
+? doc.GetValue<int>("TiempoEstimado") 
+         : 0,
+        Tipo = doc.GetValue<string>("Tipo"),
+       TipoVehiculo = doc.GetValue<string>("TipoVehiculo"),
+Descripcion = doc.GetValue<string>("Descripcion"),
+ Estado = doc.GetValue<string>("Estado")
+   };
     }
 
     /// <summary>
@@ -400,89 +700,68 @@ public class PaqueteServicioService
     /// Verifica que los servicios sean válidos y cumplan las reglas.
     /// </summary>
     private async Task ValidarPaquete(PaqueteServicio paquete)
-    {
+ {
         var errores = new List<string>();
 
         if (string.IsNullOrWhiteSpace(paquete.Nombre))
-            errores.Add("El nombre del paquete no puede estar vacío");
+         errores.Add("El nombre del paquete no puede estar vacío");
 
         if (!string.IsNullOrWhiteSpace(paquete.Nombre) &&
-            !System.Text.RegularExpressions.Regex.IsMatch(paquete.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
-            errores.Add("El nombre solo puede contener letras y espacios");
+    !System.Text.RegularExpressions.Regex.IsMatch(paquete.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
+    errores.Add("El nombre solo puede contener letras y espacios");
 
         if (string.IsNullOrWhiteSpace(paquete.TipoVehiculo))
-            errores.Add("El tipo de vehículo no puede estar vacío");
+ errores.Add("El tipo de vehículo no puede estar vacío");
 
-        if (paquete.PorcentajeDescuento < 0 || paquete.PorcentajeDescuento > 100)
-            errores.Add("El porcentaje de descuento debe estar entre 0 y 100");
+        // Validación ajustada:5..95
+     if (paquete.PorcentajeDescuento <5 || paquete.PorcentajeDescuento >95)
+            errores.Add("El porcentaje de descuento debe estar entre 5 y 95");
 
-        if (paquete.ServiciosIds == null || paquete.ServiciosIds.Count < 2)
+        if (paquete.ServiciosIds == null || paquete.ServiciosIds.Count <2)
             errores.Add("El paquete debe incluir al menos 2 servicios");
 
         // Validar servicios
-        if (paquete.ServiciosIds != null && paquete.ServiciosIds.Count >= 2)
-        {
-            var servicios = await ObtenerServiciosDePaquete(paquete.ServiciosIds);
+        if (paquete.ServiciosIds != null && paquete.ServiciosIds.Count >=2)
+    {
+ var servicios = await ObtenerServiciosDePaquete(paquete.ServiciosIds);
 
             if (servicios.Count != paquete.ServiciosIds.Count)
-                errores.Add("Algunos servicios seleccionados no existen");
+          errores.Add("Algunos servicios seleccionados no existen");
 
-            // Verificar que todos sean del mismo tipo de vehículo
-            var tiposVehiculo = servicios.Select(s => s.TipoVehiculo).Distinct().ToList();
-            if (tiposVehiculo.Count > 1)
+   var tiposVehiculo = servicios.Select(s => s.TipoVehiculo).Distinct().ToList();
+     if (tiposVehiculo.Count >1)
                 errores.Add("Todos los servicios deben ser para el mismo tipo de vehículo");
 
-            if (tiposVehiculo.Count == 1 && tiposVehiculo[0] != paquete.TipoVehiculo)
-                errores.Add("El tipo de vehículo del paquete debe coincidir con el de los servicios");
+            if (tiposVehiculo.Count ==1 && tiposVehiculo[0] != paquete.TipoVehiculo)
+        errores.Add("El tipo de vehículo del paquete debe coincidir con el de los servicios");
 
-            // Verificar que no haya dos servicios del mismo tipo
-            var tiposServicio = servicios.Select(s => s.Tipo).ToList();
+  var tiposServicio = servicios.Select(s => s.Tipo).ToList();
             if (tiposServicio.Count != tiposServicio.Distinct().Count())
-                errores.Add("No puede haber más de un servicio del mismo tipo en el paquete");
+      errores.Add("No puede haber más de un servicio del mismo tipo en el paquete");
 
-            // Verificar que todos los servicios estén activos
-            var serviciosInactivos = servicios.Where(s => s.Estado != "Activo").ToList();
+      var serviciosInactivos = servicios.Where(s => s.Estado != "Activo").ToList();
             if (serviciosInactivos.Any())
-                errores.Add("Todos los servicios del paquete deben estar activos");
+              errores.Add("Todos los servicios del paquete deben estar activos");
         }
 
         if (errores.Any())
-            throw new ArgumentException($"Errores de validación: {string.Join(", ", errores)}");
-    }
-
-    /// <summary>
-    /// Calcula el precio con descuento y el tiempo estimado del paquete.
-    /// </summary>
-    private async Task CalcularPrecioYTiempo(PaqueteServicio paquete)
-    {
-        var servicios = await ObtenerServiciosDePaquete(paquete.ServiciosIds);
-
-        // Calcular suma de precios
-        var precioTotal = servicios.Sum(s => s.Precio);
-
-        // Aplicar descuento
-        var descuento = precioTotal * (paquete.PorcentajeDescuento / 100);
-        paquete.Precio = precioTotal - descuento;
-
-        // Calcular tiempo total
-        paquete.TiempoEstimado = servicios.Sum(s => s.TiempoEstimado);
+  throw new ArgumentException($"Errores de validación: {string.Join(", ", errores)}");
     }
 
     /// <summary>
     /// Crea el diccionario de datos para guardar/actualizar un paquete en Firestore.
+    /// (Sin campos calculados Precio/TiempoEstimado)
     /// </summary>
     private static Dictionary<string, object> CrearDiccionarioPaquete(PaqueteServicio paquete)
     {
-        return new Dictionary<string, object>
+  return new Dictionary<string, object>
         {
-            { "Nombre", paquete.Nombre },
-            { "Estado", paquete.Estado },
-            { "Precio", (double)paquete.Precio },
+       { "Nombre", paquete.Nombre },
+   { "Estado", paquete.Estado },
             { "PorcentajeDescuento", (double)paquete.PorcentajeDescuento },
-            { "TiempoEstimado", paquete.TiempoEstimado },
-            { "TipoVehiculo", paquete.TipoVehiculo },
-            { "ServiciosIds", paquete.ServiciosIds ?? new List<string>() }
-        };
+   { "TipoVehiculo", paquete.TipoVehiculo },
+ { "ServiciosIds", paquete.ServiciosIds ?? new List<string>() }
+  };
     }
 
     /// <summary>
@@ -491,23 +770,23 @@ public class PaqueteServicioService
     private static PaqueteServicio MapearDocumentoAPaquete(DocumentSnapshot documento)
     {
         return new PaqueteServicio
-        {
-            Id = documento.Id,
-            Nombre = documento.GetValue<string>("Nombre"),
-            Estado = documento.GetValue<string>("Estado"),
+    {
+         Id = documento.Id,
+       Nombre = documento.GetValue<string>("Nombre"),
+     Estado = documento.GetValue<string>("Estado"),
             Precio = documento.ContainsField("Precio")
-                ? (decimal)Convert.ToDouble(documento.GetValue<object>("Precio"))
-                : 0m,
+         ? (decimal)Convert.ToDouble(documento.GetValue<object>("Precio"))
+           : 0m,
             PorcentajeDescuento = documento.ContainsField("PorcentajeDescuento")
-                ? (decimal)Convert.ToDouble(documento.GetValue<object>("PorcentajeDescuento"))
-                : 0m,
+          ? (decimal)Convert.ToDouble(documento.GetValue<object>("PorcentajeDescuento"))
+        : 0m,
             TiempoEstimado = documento.ContainsField("TiempoEstimado")
-                ? documento.GetValue<int>("TiempoEstimado")
-                : 0,
+        ? documento.GetValue<int>("TiempoEstimado")
+      : 0,
             TipoVehiculo = documento.GetValue<string>("TipoVehiculo"),
             ServiciosIds = documento.ContainsField("ServiciosIds")
-                ? documento.GetValue<List<object>>("ServiciosIds").Select(o => o.ToString()).ToList()
-                : new List<string>()
+  ? documento.GetValue<List<object>>("ServiciosIds").Select(o => o.ToString()).ToList()
+        : new List<string>()
         };
     }
 
@@ -516,13 +795,142 @@ public class PaqueteServicioService
     /// </summary>
     private static void ValidarParametrosPaginacion(int pageNumber, int pageSize)
     {
-        if (pageNumber <= 0)
-            throw new ArgumentException("El número de página debe ser mayor a 0", nameof(pageNumber));
+    if (pageNumber <= 0)
+      throw new ArgumentException("El número de página debe ser mayor a 0", nameof(pageNumber));
 
-        if (pageSize <= 0)
-            throw new ArgumentException("El tamaño de página debe ser mayor a 0", nameof(pageSize));
+      if (pageSize <= 0)
+      throw new ArgumentException("El tamaño de página debe ser mayor a 0", nameof(pageSize));
     }
-    #endregion
+
+    /// <summary>
+    /// Configura la lista de estados por defecto si no se especificó ninguno.
+    /// </summary>
+    private static List<string> ConfigurarEstadosDefecto(List<string> estados)
+    {
+        estados ??= new List<string>();
+        if (!estados.Any())
+   {
+ estados.Add(ESTADO_DEFECTO);
+  }
+    return estados;
+  }
+
+    /// <summary>
+/// Construye un query de Firestore aplicando filtros de estado.
+    /// </summary>
+    private Query ConstruirQueryFiltros(List<string> estados)
+    {
+ Query query = _firestore.Collection(COLLECTION_NAME);
+
+    if (estados?.Any() == true)
+      {
+    query = query.WhereIn("Estado", estados);
+        }
+
+        return query;
+ }
+
+    /// <summary>
+    /// Aplica filtro de tipo de vehículo (post-proceso).
+  /// </summary>
+    private static List<PaqueteServicio> AplicarFiltroTipoVehiculo(List<PaqueteServicio> paquetes, List<string> tiposVehiculo)
+    {
+     if (tiposVehiculo?.Any() == true)
+        {
+    return paquetes
+      .Where(p => tiposVehiculo.Contains(p.TipoVehiculo))
+  .ToList();
+   }
+      return paquetes;
+    }
+
+    /// <summary>
+    /// Aplica ordenamiento a una lista de paquetes. Usa valores calculados si corresponden.
+  /// </summary>
+    private async Task<List<PaqueteServicio>> AplicarOrdenamiento(
+        List<PaqueteServicio> paquetes, 
+      string sortBy, 
+   string sortOrder, 
+     IDictionary<string, decimal> precios = null, 
+  IDictionary<string, int> tiempos = null)
+    {
+  sortBy ??= ORDEN_DEFECTO;
+        sortOrder = (sortOrder ?? DIRECCION_DEFECTO).Trim().ToLowerInvariant();
+
+        IOrderedEnumerable<PaqueteServicio> ordered;
+        bool desc = sortOrder == "desc";
+
+    switch (sortBy)
+        {
+      case "Precio":
+     precios ??= await CalcularPreciosAsync(paquetes);
+ordered = desc 
+      ? paquetes.OrderByDescending(p => precios.TryGetValue(p.Id, out var val) ? val : 0m)
+      : paquetes.OrderBy(p => precios.TryGetValue(p.Id, out var val) ? val : 0m);
+         break;
+     case "TiempoEstimado":
+     tiempos ??= await CalcularTiemposAsync(paquetes);
+   ordered = desc 
+     ? paquetes.OrderByDescending(p => tiempos.TryGetValue(p.Id, out var val) ? val : 0)
+        : paquetes.OrderBy(p => tiempos.TryGetValue(p.Id, out var val) ? val : 0);
+    break;
+  case "TipoVehiculo":
+      ordered = desc 
+          ? paquetes.OrderByDescending(p => p.TipoVehiculo)
+   : paquetes.OrderBy(p => p.TipoVehiculo);
+   break;
+          case "Estado":
+   ordered = desc 
+         ? paquetes.OrderByDescending(p => p.Estado)
+: paquetes.OrderBy(p => p.Estado);
+break;
+       case "PorcentajeDescuento":
+  ordered = desc 
+   ? paquetes.OrderByDescending(p => p.PorcentajeDescuento)
+     : paquetes.OrderBy(p => p.PorcentajeDescuento);
+       break;
+      case "CantidadServicios":
+      ordered = desc 
+        ? paquetes.OrderByDescending(p => (p.ServiciosIds?.Count ?? 0))
+    : paquetes.OrderBy(p => (p.ServiciosIds?.Count ?? 0));
+       break;
+case "Nombre":
+  default:
+ordered = desc 
+      ? paquetes.OrderByDescending(p => p.Nombre)
+   : paquetes.OrderBy(p => p.Nombre);
+ break;
+    }
+
+     return ordered.ToList();
+  }
+
+    /// <summary>
+    /// Aplica paginación a una lista en memoria.
+    /// </summary>
+    private static List<PaqueteServicio> AplicarPaginacion(List<PaqueteServicio> lista, int pageNumber, int pageSize)
+    {
+   return lista.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+    }
+
+  /// <summary>
+  /// Aplica la lógica de búsqueda sobre una lista previamente filtrada (textual).
+    /// </summary>
+    private static List<PaqueteServicio> AplicarBusqueda(List<PaqueteServicio> baseFiltrada, string searchTerm)
+    {
+   var term = searchTerm?.Trim() ?? string.Empty;
+        if (term.Length == 0) return baseFiltrada;
+
+  var termUpper = term.ToUpperInvariant();
+
+        return baseFiltrada.Where(p =>
+(p.Nombre?.ToUpperInvariant().Contains(termUpper) ?? false) ||
+   (p.TipoVehiculo?.ToUpperInvariant().Contains(termUpper) ?? false) ||
+      (p.Estado?.ToUpperInvariant().Contains(termUpper) ?? false)
+        ).ToList();
+    }
+
+#endregion
 
     #region Clases Auxiliares
 
@@ -535,4 +943,33 @@ public class PaqueteServicioService
         public string TipoVehiculo { get; set; }
     }
     #endregion
+
+    /// <summary>
+    /// Devuelve los valores distintos de cantidad de servicios presentes en todos los paquetes.
+    /// </summary>
+    public async Task<List<int>> ObtenerValoresCantidadServicios()
+    {
+        var snapshot = await _firestore.Collection(COLLECTION_NAME).GetSnapshotAsync();
+        var counts = snapshot.Documents
+            .Select(d =>
+            {
+                try
+                {
+                    if (d.ContainsField("ServiciosIds"))
+                    {
+                        var arr = d.GetValue<List<object>>("ServiciosIds");
+                        return arr?.Count ??0;
+                    }
+                    return 0;
+                }
+                catch { return 0; }
+            })
+            .Distinct()
+            .OrderBy(n => n)
+            .ToList();
+
+        // Filtrar 0 ya que un paquete válido debe tener 2+ servicios
+        counts = counts.Where(c => c > 0).ToList();
+        return counts;
+    }
 }
