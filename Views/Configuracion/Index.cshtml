@@ -3,6 +3,71 @@
     ViewData["Title"] = "Configuración del Sistema";
 }
 
+<!-- Agregar estilos personalizados para el modal y los botones -->
+<style>
+  /* Estilos para los botones de día del modal */
+    .dia-modal-btn {
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+      justify-content: center;
+      padding: 0;
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+    
+  .dia-modal-btn.seleccionado {
+        background-color: rgb(37, 99, 235);
+        border-color: rgb(37, 99, 235);
+    color: white;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    }
+    
+    .dia-modal-btn:hover:not(.seleccionado) {
+        background-color: rgb(239, 246, 255);
+   border-color: rgb(191, 219, 254);
+    }
+    
+    /* Animación del modal */
+    #modalHorarios:not(.hidden) {
+        animation: fadeIn 0.2s ease-out;
+ }
+    
+    @@keyframes fadeIn {
+  from {
+          opacity: 0;
+        transform: scale(0.95);
+    }
+        to {
+   opacity: 1;
+       transform: scale(1);
+        }
+    }
+    
+ /* Hover effect para las filas de resumen */
+    .horario-info:hover {
+     background-color: rgba(0, 0, 0, 0.02);
+    }
+    
+    /* Estilos para inputs de tiempo */
+ input[type="time"]::-webkit-calendar-picker-indicator {
+   cursor: pointer;
+   filter: brightness(0.9);
+    }
+  
+    /* Dark mode adjustments */
+    .dark .dia-modal-btn.seleccionado {
+        background-color: rgb(29, 78, 216);
+ border-color: rgb(29, 78, 216);
+    }
+    
+  .dark .dia-modal-btn:hover:not(.seleccionado) {
+        background-color: rgb(55, 65, 81);
+     border-color: rgb(75, 85, 99);
+    }
+</style>
+
 <section class="bg-gray-50 dark:bg-gray-900">
     <div class="mx-auto bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-visible">
         <!-- Encabezado -->
@@ -127,25 +192,103 @@
                     Horarios de Operación
                 </h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    Configure los días y horarios en los que el lavadero opera. 
-                    Formato: HH:MM-HH:MM (ej: 09:00-18:00) o HH:MM-HH:MM,HH:MM-HH:MM para horarios divididos. Use "CERRADO" para días no operativos.
+                    Seleccione los días de funcionamiento y configure los horarios de apertura y cierre.
                 </p>
+
+                <!-- Checkboxes de días de la semana -->
+                <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Días de funcionamiento</label>
+                <ul class="items-center select-none w-full text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg sm:flex dark:bg-gray-700 dark:border-gray-600 dark:text-white mb-4">
+                @{
+                    var diasSemana = new[] { 
+                        new { Id = "lunes", Nombre = "Lunes" },
+                        new { Id = "martes", Nombre = "Martes" },
+                        new { Id = "miercoles", Nombre = "Miércoles" },
+                        new { Id = "jueves", Nombre = "Jueves" },
+                        new { Id = "viernes", Nombre = "Viernes" },
+                        new { Id = "sabado", Nombre = "Sábado" },
+                        new { Id = "domingo", Nombre = "Domingo" }
+                    };
+                    var esPrimero = true;
+                }
+                @foreach (var dia in diasSemana)
+                {
+                    var clasesBorde = esPrimero ? "" : "border-t sm:border-t-0 sm:border-l";
+                    esPrimero = false;
+                    var estaAbierto = Model.HorariosOperacion.ContainsKey(dia.Nombre) && 
+                                      Model.HorariosOperacion[dia.Nombre].ToUpper() != "CERRADO";
                 
-                <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
-                    @{
-                        var diasSemana = new[] { "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo" };
-                    }
-                    @foreach (var dia in diasSemana)
-                    {
-                        <div>
-                            <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                                @dia
+                    <li class="w-full @clasesBorde border-gray-300 dark:border-gray-600">
+                        <div class="flex items-center ps-3">
+                            <input id="@dia.Id-checkbox" 
+                                   type="checkbox" 
+                                   value="@dia.Nombre"
+                                   data-dia="@dia.Nombre"
+                                   @(estaAbierto ? "checked" : "")
+                                   class="dia-checkbox w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
+                            <label for="@dia.Id-checkbox" class="w-full py-3 ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                @dia.Nombre
                             </label>
-                            <input type="text" name="HorariosOperacion[@dia]" 
-                                   value="@(Model.HorariosOperacion.ContainsKey(dia) ? Model.HorariosOperacion[dia] : "CERRADO")"
-                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                                   placeholder="09:00-18:00 o CERRADO" required />
                         </div>
+                    </li>
+                }
+                </ul>
+
+                <!-- Botones de edición masiva -->
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button type="button" 
+                            onclick="abrirModalHorarios('todos')"
+                            class="text-blue-700 hover:text-white border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 text-center dark:border-blue-500 dark:text-blue-500 dark:hover:text-white dark:hover:bg-blue-500 dark:focus:ring-blue-800">
+                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Editar todos los horarios
+                    </button>
+                    <button type="button" 
+                            onclick="abrirModalHorarios('rango')"
+                            class="text-blue-700 hover:text-white border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 text-center dark:border-blue-500 dark:text-blue-500 dark:hover:text-white dark:hover:bg-blue-500 dark:focus:ring-blue-800">
+                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Editar rango de días
+                    </button>
+                </div>
+
+                <!-- Lista de resumen de horarios -->
+                <div id="resumen-horarios" class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+         <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-600">Resumen de horarios</h3>
+            <div class="space-y-1">
+    @foreach (var dia in new[] { "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo" })
+           {
+       var horario = Model.HorariosOperacion.ContainsKey(dia) ? Model.HorariosOperacion[dia] : "CERRADO";
+         var esCerrado = horario.ToUpper() == "CERRADO";
+   
+    <div class="flex items-center py-2.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-150">
+         <span class="text-sm font-medium text-gray-900 dark:text-white w-28">@dia</span>
+   <span class="text-sm flex-1 mx-4 @(esCerrado ? "text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400")">
+    @horario
+          </span>
+           <button type="button" 
+              onclick="abrirModalHorarios('individual', '@dia')"
+       class="ml-auto text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors duration-150"
+           title="Editar horario de @dia">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+<path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+      </svg>
+  </button>
+       </div>
+          }
+            </div>
+                </div>
+
+                <!-- Hidden inputs para enviar al servidor -->
+                <div id="horarios-hidden-container">
+                    @foreach (var dia in new[] { "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo" })
+                    {
+                        var horario = Model.HorariosOperacion.ContainsKey(dia) ? Model.HorariosOperacion[dia] : "CERRADO";
+                        <input type="hidden" 
+                               name="HorariosOperacion[@dia]" 
+                               id="horario-@dia" 
+                               value="@horario" />
                     }
                 </div>
             </div>
@@ -217,6 +360,115 @@
     </div>
 </section>
 
+<!-- Modal de Edición de Horarios (estilo Google Maps) -->
+<div id="modalHorarios" tabindex="-1" aria-hidden="true"
+     class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative w-full max-w-2xl max-h-full mx-auto my-8">
+        <!-- Contenido del modal -->
+        <div class="relative bg-white rounded-2xl shadow-2xl dark:bg-gray-800">
+     <!-- Header del modal -->
+            <div class="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+        Selecciona los días y el horario
+      </h3>
+     <button type="button" onclick="cerrarModalHorarios()" class="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex justify-center items-center dark:hover:bg-gray-700 dark:hover:text-white transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+            <span class="sr-only">Cerrar modal</span>
+             </button>
+</div>
+ 
+            <!-- Body del modal -->
+      <div class="p-6 space-y-5">
+<!-- Selector de días (solo visible en modo rango) -->
+          <div id="selector-dias-rango" class="hidden">
+      <label class="block mb-3 text-sm font-medium text-gray-900 dark:text-white">
+      Seleccionar rango de días
+         </label>
+        <div class="flex items-center gap-3">
+      <select id="dia-inicio" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+             <option value="Lunes">Lunes</option>
+ <option value="Martes">Martes</option>
+      <option value="Miércoles">Miércoles</option>
+           <option value="Jueves">Jueves</option>
+     <option value="Viernes">Viernes</option>
+   <option value="Sábado">Sábado</option>
+          <option value="Domingo">Domingo</option>
+          </select>
+     <span class="text-gray-500 dark:text-gray-400 font-medium">a</span>
+    <select id="dia-fin" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+     <option value="Lunes">Lunes</option>
+      <option value="Martes">Martes</option>
+     <option value="Miércoles">Miércoles</option>
+      <option value="Jueves">Jueves</option>
+              <option value="Viernes">Viernes</option>
+        <option value="Sábado">Sábado</option>
+         <option value="Domingo">Domingo</option>
+  </select>
+        </div>
+              </div>
+
+                <!-- Botones de días del modal (para modo todos/individual) -->
+         <div id="selector-dias-modal" class="flex justify-center gap-2">
+       <button type="button" data-dia="Lunes" class="dia-modal-btn text-sm font-medium rounded-full border-2 border-gray-300 text-gray-700 hover:bg-blue-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">L</button>
+     <button type="button" data-dia="Martes" class="dia-modal-btn text-sm font-medium rounded-full border-2 border-gray-300 text-gray-700 hover:bg-blue-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">M</button>
+        <button type="button" data-dia="Miércoles" class="dia-modal-btn text-sm font-medium rounded-full border-2 border-gray-300 text-gray-700 hover:bg-blue-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">M</button>
+      <button type="button" data-dia="Jueves" class="dia-modal-btn text-sm font-medium rounded-full border-2 border-gray-300 text-gray-700 hover:bg-blue-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">J</button>
+         <button type="button" data-dia="Viernes" class="dia-modal-btn text-sm font-medium rounded-full border-2 border-gray-300 text-gray-700 hover:bg-blue-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">V</button>
+  <button type="button" data-dia="Sábado" class="dia-modal-btn text-sm font-medium rounded-full border-2 border-gray-300 text-gray-700 hover:bg-blue-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">S</button>
+          <button type="button" data-dia="Domingo" class="dia-modal-btn text-sm font-medium rounded-full border-2 border-gray-300 text-gray-700 hover:bg-blue-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">D</button>
+</div>
+
+         <!-- Opciones de estado -->
+             <div class="flex gap-6 pt-2">
+    <div class="flex items-center">
+    <input id="cerrado" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+         <label for="cerrado" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">Cerrado</label>
+        </div>
+  </div>
+
+    <!-- Contenedor de horarios -->
+        <div id="contenedor-horarios" class="space-y-3 pt-2">
+   <div class="horario-slot flex gap-3 items-end">
+     <div class="flex-1">
+       <label class="block mb-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">Apertura</label>
+       <input type="time" class="horario-apertura bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="09:00">
+                </div>
+<div class="flex-1">
+                <label class="block mb-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">Cierre</label>
+            <input type="time" class="horario-cierre bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="18:00">
+               </div>
+      <button type="button" onclick="eliminarHorario(this)" class="text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 p-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+ <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                </svg>
+</button>
+        </div>
+             </div>
+
+    <!-- Botón agregar horario -->
+                <button type="button" onclick="agregarHorario()" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20 text-sm font-medium flex items-center gap-2 px-3 py-2 rounded-lg transition-colors">
+           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+     </svg>
+       Agregar horario
+    </button>
+            </div>
+
+            <!-- Footer del modal -->
+          <div class="flex items-center justify-end gap-3 p-5 border-t border-gray-200 dark:border-gray-700">
+         <button type="button" onclick="cerrarModalHorarios()" class="text-gray-700 bg-white hover:bg-gray-50 focus:ring-4 focus:outline-none focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 border border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700 transition-colors">
+      Cancelar
+             </button>
+      <button type="button" onclick="guardarHorarios()" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 transition-colors">
+         Guardar
+            </button>
+            </div>
+ </div>
+    </div>
+</div>
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/js/configuracion.js"></script>
 }
