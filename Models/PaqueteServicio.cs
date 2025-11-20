@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Google.Cloud.Firestore;
+using Firebase.Converters;
 
 namespace Firebase.Models
 {
@@ -47,7 +48,7 @@ namespace Firebase.Models
         /// Precio total del paquete después de aplicar el descuento.
         /// Calculado como: suma de precios de servicios - (suma * porcentaje descuento / 100)
         /// </summary>
-        [FirestoreProperty]
+        [FirestoreProperty(ConverterType = typeof(DecimalConverter))]
         [Range(0, double.MaxValue, ErrorMessage = "El precio debe ser igual o mayor a 0")]
         public decimal Precio { get; set; }
 
@@ -55,7 +56,7 @@ namespace Firebase.Models
         /// Porcentaje de descuento aplicado al paquete (0-100).
         /// Se aplica sobre la suma de los precios de los servicios individuales.
         /// </summary>
-        [FirestoreProperty]
+        [FirestoreProperty(ConverterType = typeof(DecimalConverter))]
         [Range(0, 100, ErrorMessage = "El porcentaje de descuento debe estar entre 0 y 100")]
         public decimal PorcentajeDescuento { get; set; }
 

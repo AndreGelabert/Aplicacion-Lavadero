@@ -1263,37 +1263,101 @@ setupTipoVehiculoChangeHandler();
      * Obtiene el step de descuento desde config o dataset (mínimo 5).
      */
     function getDescuentoStep() {
-        let raw = (window.AppConfig?.descuentoStep) ?? document.getElementById('PorcentajeDescuento')?.dataset?.step ?? 5;
-        let step = parseInt(raw, 10);
-        if (isNaN(step) || step < 5) step = 5;
-        return step;
+        // 1. Intentar desde configuración global
+        if (window.AppConfig?.descuentoStep) {
+            let step = parseInt(window.AppConfig.descuentoStep, 10);
+            if (!isNaN(step) && step >= 1) return Math.max(step, 5);
+        }
+
+        // 2. Intentar desde ViewBag (inyectado en el HTML)
+        const stepFromViewBag = document.querySelector('[data-descuento-step]')?.dataset?.descuentoStep;
+        if (stepFromViewBag) {
+            let step = parseInt(stepFromViewBag, 10);
+            if (!isNaN(step) && step >= 1) return Math.max(step, 5);
+        }
+
+        // 3. Intentar desde el input del formulario
+        const inputStep = document.getElementById('PorcentajeDescuento')?.dataset?.step
+            || document.getElementById('PorcentajeDescuento')?.getAttribute('step');
+        if (inputStep) {
+            let step = parseInt(inputStep, 10);
+            if (!isNaN(step) && step >= 1) return Math.max(step, 5);
+        }
+
+        // 4. Fallback final: 5 (solo si nada más está definido)
+        return 5;
     }
 
     /**
-     * Aplica restricciones y normalización de step en inputs de descuento.
-     */
+ * Aplica restricciones y normalización de step en inputs de descuento.
+ * Usa el step configurado desde el servidor (mínimo permitido).
+ */
     function setupDescuentoStep() {
         const step = getDescuentoStep();
+
+        /**
+         * Normaliza un valor al step más cercano (mínimo: step configurado, máximo: 95)
+         */
         const normalize = (el) => {
             if (!el) return;
             let v = parseFloat(el.value);
-            if (isNaN(v)) return;
-            v = Math.max(5, Math.min(95, v));
+
+            // Si está vacío o inválido, no forzar normalización
+            if (isNaN(v) || el.value.trim() === '') {
+                return;
+            }
+
+            // Limitar al rango [step, 95]
+            v = Math.max(step, Math.min(95, v));
+
+            // Ajustar al step más cercano
             let snapped = Math.round(v / step) * step;
-            snapped = Math.max(5, Math.min(95, snapped));
-            el.value = String(snapped);
-        };
-        const wire = (el) => {
-            if (!el) return;
-            el.setAttribute('min', '5');
-            el.setAttribute('max', '95');
-            el.setAttribute('step', String(step));
-            if (!el.dataset.stepSetup) {
-                el.addEventListener('blur', () => normalize(el));
-                el.addEventListener('change', () => normalize(el));
-                el.dataset.stepSetup = 'true';
+
+            // Re-limitar después del snap
+            snapped = Math.max(step, Math.min(95, snapped));
+
+            // Solo actualizar si cambió (evita loops)
+            if (parseFloat(el.value) !== snapped) {
+                el.value = String(snapped);
             }
         };
+
+        /**
+         * Configura un input de descuento con atributos y listeners
+         */
+        const wire = (el) => {
+            if (!el) return;
+
+            // Configurar atributos HTML5 con mínimo dinámico
+            el.setAttribute('min', String(step));
+            el.setAttribute('max', '95');
+            el.setAttribute('step', String(step));
+
+            // Evitar duplicar listeners
+            if (el.dataset.stepSetup === 'true') return;
+
+            // Solo normalizar en blur (cuando pierde foco)
+            el.addEventListener('blur', () => {
+                normalize(el);
+
+                // Si es el campo del formulario principal, recalcular resumen
+                if (el.id === 'PorcentajeDescuento') {
+                    updateResumen();
+                }
+            });
+
+            // Para el campo del formulario (no filtros), recalcular al cambiar
+            if (el.id === 'PorcentajeDescuento') {
+                el.addEventListener('input', () => {
+                    // Recalcular en vivo sin normalizar (permite escribir)
+                    updateResumen();
+                });
+            }
+
+            el.dataset.stepSetup = 'true';
+        };
+
+        // Aplicar a todos los inputs de descuento
         wire(document.getElementById('PorcentajeDescuento'));
         wire(document.getElementById('descuentoMin'));
         wire(document.getElementById('descuentoMax'));

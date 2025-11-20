@@ -1,5 +1,6 @@
-using System.ComponentModel.DataAnnotations;
 using Google.Cloud.Firestore;
+using Firebase.Converters;
+using System.ComponentModel.DataAnnotations;
 
 namespace Firebase.Models
 {
@@ -10,21 +11,20 @@ namespace Firebase.Models
     [FirestoreData]
     public class Configuracion
     {
+        #region Configuración de Descuentos por Cancelación Anticipada
         /// <summary>
         /// Identificador único de la configuración. Usualmente "system_config".
         /// </summary>
         [FirestoreProperty]
-        public string Id { get; set; } = "system_config";
-
-        #region Configuración de Descuentos por Cancelación Anticipada
+        public string Id { get; set; } = string.Empty;
 
         /// <summary>
         /// Porcentaje o monto de descuento que recibe el usuario por cancelar anticipadamente.
         /// Ejemplo: 10 representa 10% de descuento.
         /// </summary>
-        [FirestoreProperty]
+        [FirestoreProperty(ConverterType = typeof(DecimalConverter))]
         [Range(0, 100, ErrorMessage = "El porcentaje de descuento debe estar entre 0 y 100")]
-        public decimal CancelacionAnticipadaDescuento { get; set; } = 10;
+        public decimal CancelacionAnticipadaDescuento { get; set; }
 
         /// <summary>
         /// Tiempo mínimo (en horas) antes de la cita para que se aplique el descuento por cancelación.

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.Text.RegularExpressions;
 using Google.Cloud.Firestore;
+using Firebase.Converters;
 
 namespace Firebase.Models
 {
@@ -42,7 +42,7 @@ namespace Firebase.Models
         /// Precio del servicio en la moneda local.
         /// Debe ser mayor o igual a 0. Se permite precio gratuito (0).
         /// </summary>
-        [FirestoreProperty]
+        [FirestoreProperty(ConverterType = typeof(DecimalConverter))]
         [Range(0, double.MaxValue, ErrorMessage = "El precio debe ser igual o mayor a 0")]
         public decimal Precio { get; set; }
 
