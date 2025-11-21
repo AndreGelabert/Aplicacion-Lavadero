@@ -131,9 +131,18 @@
                 @foreach (var cliente in (ViewBag.TodosLosClientes as List<Firebase.Models.Cliente>) ?? new List<Firebase.Models.Cliente>())
                 {
                     var isSelected = (Model?.ClienteId == cliente.Id) || (clienteId == cliente.Id);
-                    <option value="@cliente.Id" @(isSelected ? "selected" : "")>
-                        @cliente.NombreCompleto - @cliente.TipoDocumento: @cliente.NumeroDocumento
-                    </option>
+                    if (isSelected)
+                    {
+                        <option value="@cliente.Id" selected>
+                            @cliente.NombreCompleto - @cliente.TipoDocumento: @cliente.NumeroDocumento
+                        </option>
+                    }
+                    else
+                    {
+                        <option value="@cliente.Id">
+                            @cliente.NombreCompleto - @cliente.TipoDocumento: @cliente.NumeroDocumento
+                        </option>
+                    }
                 }
             </select>
             <span asp-validation-for="ClienteId" class="text-red-600 text-xs"></span>

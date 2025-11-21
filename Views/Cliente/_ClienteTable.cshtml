@@ -113,12 +113,12 @@
                     </button>
                 </li>
             }
-            @foreach (var page in ViewBag.VisiblePages ?? Enumerable.Range(1, ViewBag.TotalPages ?? 1))
+            @foreach (var pageNum in ViewBag.VisiblePages ?? Enumerable.Range(1, ViewBag.TotalPages ?? 1))
             {
                 <li>
-                    <button type="button" onclick="loadClientePage(@page)"
-                            class="flex items-center justify-center text-sm py-2 px-3 leading-tight @(page == ViewBag.CurrentPage ? "text-primary-600 bg-primary-50 border border-primary-300 hover:bg-primary-100 hover:text-primary-700 dark:border-gray-700 dark:bg-gray-700 dark:text-white" : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white")">
-                        @page
+                    <button type="button" onclick="loadClientePage(@pageNum)"
+                            class="flex items-center justify-center text-sm py-2 px-3 leading-tight @(pageNum == ViewBag.CurrentPage ? "text-primary-600 bg-primary-50 border border-primary-300 hover:bg-primary-100 hover:text-primary-700 dark:border-gray-700 dark:bg-gray-700 dark:text-white" : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white")">
+                        @pageNum
                     </button>
                 </li>
             }
