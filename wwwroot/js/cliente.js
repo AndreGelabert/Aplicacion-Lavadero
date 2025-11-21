@@ -217,15 +217,20 @@
 
         idInput.value = id;
 
+        // Escape HTML to prevent XSS
+        const escapedNombre = window.SiteModule?.escapeHtml ? window.SiteModule.escapeHtml(nombre) : nombre.replace(/[&<>"']/g, function(m) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+        });
+
         if (tipoAccion === 'desactivar') {
             title.textContent = 'Desactivar Cliente';
-            msg.innerHTML = '¿Confirma desactivar el cliente <strong>' + (window.SiteModule?.escapeHtml(nombre) || nombre) + '</strong>?';
+            msg.innerHTML = '¿Confirma desactivar el cliente <strong>' + escapedNombre + '</strong>?';
             form.action = '/Cliente/DeactivateCliente';
             submitBtn.textContent = 'Desactivar';
             submitBtn.className = 'py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900';
         } else {
             title.textContent = 'Reactivar Cliente';
-            msg.innerHTML = '¿Confirma reactivar el cliente <strong>' + (window.SiteModule?.escapeHtml(nombre) || nombre) + '</strong>?';
+            msg.innerHTML = '¿Confirma reactivar el cliente <strong>' + escapedNombre + '</strong>?';
             form.action = '/Cliente/ReactivateCliente';
             submitBtn.textContent = 'Reactivar';
             submitBtn.className = 'py-2 px-3 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900';

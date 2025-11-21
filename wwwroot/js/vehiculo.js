@@ -144,8 +144,11 @@
     // GESTIÓN DE FORMULARIOS
     // =====================================
     window.loadVehiculoForm = function (id) {
-        const url = '/Vehiculo/FormPartial' + (id ? ('?id=' + encodeURIComponent(id)) : '') + 
-                    (currentClienteId && !id ? ('?clienteId=' + encodeURIComponent(currentClienteId)) : '');
+        const params = new URLSearchParams();
+        if (id) params.set('id', id);
+        if (currentClienteId && !id) params.set('clienteId', currentClienteId);
+        const queryString = params.toString();
+        const url = '/Vehiculo/FormPartial' + (queryString ? '?' + queryString : '');
 
         fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => r.text())
@@ -236,15 +239,20 @@
 
         idInput.value = id;
 
+        // Escape HTML to prevent XSS
+        const escapedPlaca = window.SiteModule?.escapeHtml ? window.SiteModule.escapeHtml(placa) : placa.replace(/[&<>"']/g, function(m) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+        });
+
         if (tipoAccion === 'desactivar') {
             title.textContent = 'Desactivar Vehículo';
-            msg.innerHTML = '¿Confirma desactivar el vehículo con placa <strong>' + (window.SiteModule?.escapeHtml(placa) || placa) + '</strong>?';
+            msg.innerHTML = '¿Confirma desactivar el vehículo con placa <strong>' + escapedPlaca + '</strong>?';
             form.action = '/Vehiculo/DeactivateVehiculo';
             submitBtn.textContent = 'Desactivar';
             submitBtn.className = 'py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900';
         } else {
             title.textContent = 'Reactivar Vehículo';
-            msg.innerHTML = '¿Confirma reactivar el vehículo con placa <strong>' + (window.SiteModule?.escapeHtml(placa) || placa) + '</strong>?';
+            msg.innerHTML = '¿Confirma reactivar el vehículo con placa <strong>' + escapedPlaca + '</strong>?';
             form.action = '/Vehiculo/ReactivateVehiculo';
             submitBtn.textContent = 'Reactivar';
             submitBtn.className = 'py-2 px-3 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900';
