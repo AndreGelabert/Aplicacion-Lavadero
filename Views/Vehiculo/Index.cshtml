@@ -1,0 +1,198 @@
+@model List<Firebase.Models.Vehiculo>
+@{
+    ViewData["Title"] = "Vehículos";
+    var clienteId = ViewBag.ClienteId as string;
+}
+
+<section class="bg-gray-50 dark:bg-gray-900 p-4">
+    <div class="mx-auto bg-white dark:bg-gray-800 shadow-md sm:rounded-lg">
+        <div class="p-4 border-b dark:border-gray-600 flex justify-between items-center">
+            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
+                Vehículos @(clienteId != null ? " - Filtrado por Cliente" : "")
+            </h1>
+            @if (clienteId != null)
+            {
+                <a href="@Url.Action("Index", "Cliente")" class="text-blue-600 hover:underline">
+                    Volver a Clientes
+                </a>
+            }
+        </div>
+
+        <!-- Search and Actions -->
+        <div class="p-4 flex flex-wrap gap-4">
+            <form method="get" class="flex-1">
+                @if (clienteId != null)
+                {
+                    <input type="hidden" name="clienteId" value="@clienteId" />
+                }
+                <input type="text" 
+                       name="searchTerm" 
+                       placeholder="Buscar vehículos..." 
+                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 w-full dark:bg-gray-700 dark:border-gray-600"
+                       value="@ViewBag.SearchTerm" />
+            </form>
+            <a href="@Url.Action("Index", "Vehiculo", new { editId = "new", clienteId = clienteId })" 
+               class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                Nuevo Vehículo
+            </a>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-4 py-3">Placa</th>
+                        <th class="px-4 py-3">Tipo</th>
+                        <th class="px-4 py-3">Marca</th>
+                        <th class="px-4 py-3">Modelo</th>
+                        <th class="px-4 py-3">Color</th>
+                        <th class="px-4 py-3">Estado</th>
+                        <th class="px-4 py-3">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        @foreach (var vehiculo in Model)
+                        {
+                            <tr class="border-b dark:border-gray-600">
+                                <td class="px-4 py-3 font-semibold">@vehiculo.Placa</td>
+                                <td class="px-4 py-3">@vehiculo.TipoVehiculo</td>
+                                <td class="px-4 py-3">@vehiculo.Marca</td>
+                                <td class="px-4 py-3">@vehiculo.Modelo</td>
+                                <td class="px-4 py-3">@vehiculo.Color</td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 rounded @(vehiculo.Estado == "Activo" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800")">
+                                        @vehiculo.Estado
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 flex gap-2">
+                                    <a href="@Url.Action("Index", "Vehiculo", new { editId = vehiculo.Id, clienteId = clienteId })" 
+                                       class="text-blue-600 hover:underline">Editar</a>
+                                    <a href="@Url.Action("Index", "Cliente", new { editId = vehiculo.ClienteId })" 
+                                       class="text-green-600 hover:underline">Ver Cliente</a>
+                                    @if (vehiculo.Estado == "Activo")
+                                    {
+                                        <form method="post" asp-action="DeactivateVehiculo" asp-route-id="@vehiculo.Id" class="inline">
+                                            <button type="submit" class="text-red-600 hover:underline">Desactivar</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form method="post" asp-action="ReactivateVehiculo" asp-route-id="@vehiculo.Id" class="inline">
+                                            <button type="submit" class="text-green-600 hover:underline">Reactivar</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                                No se encontraron vehículos
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        @if (ViewBag.TotalPages > 1)
+        {
+            <div class="p-4 flex justify-center gap-2">
+                @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                {
+                    <a href="@Url.Action("Index", new { pageNumber = i, clienteId = clienteId })" 
+                       class="px-3 py-1 rounded @(i == ViewBag.CurrentPage ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300")">
+                        @i
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+@if (!string.IsNullOrEmpty(ViewBag.EditVehiculo?.Id) || ViewBag.EditVehiculo == null)
+{
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style="z-index: 1000;">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-screen overflow-y-auto">
+            <h2 class="text-xl font-semibold mb-4">@ViewBag.FormTitle</h2>
+            
+            <form method="post" asp-action="@ViewBag.FormAction">
+                @if (ViewBag.EditVehiculo != null)
+                {
+                    <input type="hidden" name="Id" value="@ViewBag.EditVehiculo.Id" />
+                    <input type="hidden" name="Placa" value="@ViewBag.EditVehiculo.Placa" />
+                    <input type="hidden" name="TipoVehiculo" value="@ViewBag.EditVehiculo.TipoVehiculo" />
+                    <input type="hidden" name="Marca" value="@ViewBag.EditVehiculo.Marca" />
+                }
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium">Placa *</label>
+                        <input type="text" name="Placa" value="@ViewBag.EditVehiculo?.Placa" 
+                               class="w-full p-2 border rounded uppercase" required 
+                               @(ViewBag.EditVehiculo != null ? "readonly" : "") />
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium">Tipo de Vehículo *</label>
+                        <select name="TipoVehiculo" class="w-full p-2 border rounded" required 
+                                @(ViewBag.EditVehiculo != null ? Html.Raw("disabled") : null)>
+                            @foreach (var tipo in ViewBag.TodosLosTiposVehiculo ?? new List<string>())
+                            {
+                                <option value="@tipo" selected="@(ViewBag.EditVehiculo?.TipoVehiculo == tipo)">@tipo</option>
+                            }
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium">Marca *</label>
+                        <input type="text" name="Marca" value="@ViewBag.EditVehiculo?.Marca" 
+                               class="w-full p-2 border rounded" required 
+                               @(ViewBag.EditVehiculo != null ? "readonly" : "") />
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium">Modelo *</label>
+                        <input type="text" name="Modelo" value="@ViewBag.EditVehiculo?.Modelo" 
+                               class="w-full p-2 border rounded" required />
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium">Color *</label>
+                        <input type="text" name="Color" value="@ViewBag.EditVehiculo?.Color" 
+                               class="w-full p-2 border rounded" required />
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium">Dueño *</label>
+                        <select name="ClienteId" class="w-full p-2 border rounded" required>
+                            <option value="">Seleccione un cliente</option>
+                            @foreach (var cliente in ViewBag.TodosLosClientes ?? new List<Firebase.Models.Cliente>())
+                            {
+                                <option value="@cliente.Id" 
+                                        selected="@(ViewBag.EditVehiculo?.ClienteId == cliente.Id || ViewBag.PreselectedClienteId == cliente.Id)">
+                                    @cliente.NombreCompleto - @cliente.NumeroDocumento
+                                </option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex gap-4">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                        @ViewBag.SubmitButtonText
+                    </button>
+                    <a href="@Url.Action("Index", new { clienteId = clienteId })" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+}

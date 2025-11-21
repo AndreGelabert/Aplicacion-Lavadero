@@ -1,0 +1,173 @@
+@model List<Firebase.Models.Cliente>
+@{
+    ViewData["Title"] = "Clientes";
+}
+
+<section class="bg-gray-50 dark:bg-gray-900 p-4">
+    <div class="mx-auto bg-white dark:bg-gray-800 shadow-md sm:rounded-lg">
+        <div class="p-4 border-b dark:border-gray-600">
+            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Clientes</h1>
+        </div>
+
+        <!-- Search and Actions -->
+        <div class="p-4 flex flex-wrap gap-4">
+            <form method="get" class="flex-1">
+                <input type="text" 
+                       name="searchTerm" 
+                       placeholder="Buscar clientes..." 
+                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2 w-full dark:bg-gray-700 dark:border-gray-600"
+                       value="@ViewBag.SearchTerm" />
+            </form>
+            <a href="@Url.Action("Index", "Cliente", new { editId = "new" })" 
+               class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                Nuevo Cliente
+            </a>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-4 py-3">Nombre</th>
+                        <th class="px-4 py-3">Documento</th>
+                        <th class="px-4 py-3">Email</th>
+                        <th class="px-4 py-3">Teléfono</th>
+                        <th class="px-4 py-3">Estado</th>
+                        <th class="px-4 py-3">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        @foreach (var cliente in Model)
+                        {
+                            <tr class="border-b dark:border-gray-600">
+                                <td class="px-4 py-3">@cliente.NombreCompleto</td>
+                                <td class="px-4 py-3">@cliente.TipoDocumento: @cliente.NumeroDocumento</td>
+                                <td class="px-4 py-3">@cliente.Email</td>
+                                <td class="px-4 py-3">@cliente.Telefono</td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 rounded @(cliente.Estado == "Activo" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800")">
+                                        @cliente.Estado
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 flex gap-2">
+                                    <a href="@Url.Action("Index", "Cliente", new { editId = cliente.Id })" 
+                                       class="text-blue-600 hover:underline">Editar</a>
+                                    <a href="@Url.Action("Index", "Vehiculo", new { clienteId = cliente.Id })" 
+                                       class="text-green-600 hover:underline">Ver Vehículos</a>
+                                    @if (cliente.Estado == "Activo")
+                                    {
+                                        <form method="post" asp-action="DeactivateCliente" asp-route-id="@cliente.Id" class="inline">
+                                            <button type="submit" class="text-red-600 hover:underline">Desactivar</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form method="post" asp-action="ReactivateCliente" asp-route-id="@cliente.Id" class="inline">
+                                            <button type="submit" class="text-green-600 hover:underline">Reactivar</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                No se encontraron clientes
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        @if (ViewBag.TotalPages > 1)
+        {
+            <div class="p-4 flex justify-center gap-2">
+                @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                {
+                    <a href="@Url.Action("Index", new { pageNumber = i })" 
+                       class="px-3 py-1 rounded @(i == ViewBag.CurrentPage ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300")">
+                        @i
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+@if (!string.IsNullOrEmpty(ViewBag.EditCliente?.Id) || ViewBag.EditCliente == null)
+{
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style="z-index: 1000;">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-screen overflow-y-auto">
+            <h2 class="text-xl font-semibold mb-4">@ViewBag.FormTitle</h2>
+            
+            <form method="post" asp-action="@ViewBag.FormAction">
+                @if (ViewBag.EditCliente != null)
+                {
+                    <input type="hidden" name="Id" value="@ViewBag.EditCliente.Id" />
+                    <input type="hidden" name="TipoDocumento" value="@ViewBag.EditCliente.TipoDocumento" />
+                    <input type="hidden" name="NumeroDocumento" value="@ViewBag.EditCliente.NumeroDocumento" />
+                }
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium">Tipo de Documento</label>
+                        <select name="TipoDocumento" class="w-full p-2 border rounded" required @(ViewBag.EditCliente != null ? Html.Raw("disabled") : null)>
+                            @foreach (var tipo in ViewBag.TodosLosTiposDocumento ?? new List<string>())
+                            {
+                                <option value="@tipo" selected="@(ViewBag.EditCliente?.TipoDocumento == tipo)">@tipo</option>
+                            }
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium">Número de Documento</label>
+                        <input type="text" name="NumeroDocumento" value="@ViewBag.EditCliente?.NumeroDocumento" 
+                               class="w-full p-2 border rounded" required @(ViewBag.EditCliente != null ? "readonly" : "") />
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium">Primer Nombre</label>
+                        <input type="text" name="PrimerNombre" 
+                               value="@(ViewBag.EditCliente?.NombreCompleto?.Split(' ').FirstOrDefault())" 
+                               class="w-full p-2 border rounded" required />
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium">Primer Apellido</label>
+                        <input type="text" name="PrimerApellido" 
+                               value="@(ViewBag.EditCliente?.NombreCompleto?.Split(' ').Skip(1).FirstOrDefault())" 
+                               class="w-full p-2 border rounded" required />
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium">Teléfono</label>
+                        <input type="tel" name="Telefono" value="@ViewBag.EditCliente?.Telefono" 
+                               class="w-full p-2 border rounded" required />
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium">Email</label>
+                        <input type="email" name="Email" value="@ViewBag.EditCliente?.Email" 
+                               class="w-full p-2 border rounded" required />
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex gap-4">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                        @ViewBag.SubmitButtonText
+                    </button>
+                    <a href="@Url.Action("Index")" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+}
