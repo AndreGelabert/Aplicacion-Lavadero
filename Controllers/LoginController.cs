@@ -10,6 +10,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using static Firebase.Models.AuthModels;
 using Firebase.Services;
+using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Controlador para la gestión de autenticación y registro de usuarios.
@@ -18,14 +19,27 @@ using Firebase.Services;
 public class LoginController : Controller
 {
     private readonly Firebase.Services.AuthenticationService _authService;
+    private readonly ConfiguracionService _configuracionService;
+    private readonly PersonalService _personalService;
+    private readonly ILogger<LoginController> _logger;
 
     /// <summary>
     /// Constructor del controlador de login.
     /// </summary>
     /// <param name="authService">Servicio de autenticación</param>
-    public LoginController(Firebase.Services.AuthenticationService authService)
+    /// <param name="configuracionService">Servicio de configuración</param>
+    /// <param name="personalService">Servicio de personal</param>
+    /// <param name="logger">Logger para diagnóstico</param>
+    public LoginController(
+    Firebase.Services.AuthenticationService authService,
+        ConfiguracionService configuracionService,
+        PersonalService personalService,
+      ILogger<LoginController> logger)
     {
         _authService = authService;
+ _configuracionService = configuracionService;
+   _personalService = personalService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -67,6 +81,9 @@ public class LoginController : Controller
                 return View("Index");
             }
 
+            // IMPORTANTE: Invalidar la cookie de sesión anterior
+            HttpContext.Response.Cookies.Delete(".AspNetCore.Session");
+
             // Usar request.RememberMe en lugar de un parámetro separado
             await SignInUserAsync(result.UserInfo!, isPersistent: request.RememberMe);
 
@@ -75,8 +92,9 @@ public class LoginController : Controller
 
             return RedirectToAction("Index", "Lavados");
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Error catastrófico durante el login.");
             ViewBag.Error = "Error al iniciar sesión. Por favor, intente de nuevo.";
             return View("Index");
         }
@@ -182,30 +200,88 @@ public class LoginController : Controller
     /// </summary>
     /// <param name="userInfo">Información del usuario</param>
     /// <param name="isPersistent">Indica si la sesión debe ser persistente</param>
-    /// <returns>Task</returns>
+  /// <returns>Task</returns>
     private async Task SignInUserAsync(UserInfo userInfo, bool isPersistent = false)
     {
-        var claims = _authService.CreateUserClaims(userInfo);
-        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-        var principal = new ClaimsPrincipal(identity);
+        // CRÍTICO: Regenerar completamente la sesión
+        // 1. Obtener el ID de sesión antiguo
+        var oldSessionId = HttpContext.Session.Id;
         
-        var authProperties = new AuthenticationProperties
+      // 2. Limpiar y eliminar la sesión actual
+        HttpContext.Session.Clear();
+        await HttpContext.Session.CommitAsync();
+        
+        // 3. Eliminar la cookie de sesión para forzar una nueva
+        Response.Cookies.Delete(".AspNetCore.Session");
+        Response.Cookies.Delete(".AspNetCore.Cookies");
+        
+        // 4. Forzar la creación de una nueva sesión cargándola
+ await HttpContext.Session.LoadAsync();
+
+  var claims = _authService.CreateUserClaims(userInfo);
+   var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+   var principal = new ClaimsPrincipal(identity);
+        
+        // Obtener configuración de duración de sesión
+int duracionSesionMinutos;
+    int duracionRecordarMeDias;
+      
+  try
         {
-            IsPersistent = isPersistent,
-            // NUEVO: Configurar tiempo de expiración diferenciado
-            ExpiresUtc = isPersistent 
-                ? DateTimeOffset.UtcNow.AddDays(7) // 7 días si marca "Recordarme"
-                : DateTimeOffset.UtcNow.AddHours(8), // 8 horas si NO marca
-            AllowRefresh = true,
-            IssuedUtc = DateTimeOffset.UtcNow
-        };
+    duracionSesionMinutos = await _configuracionService.ObtenerSesionDuracionMinutos();
+duracionRecordarMeDias = await _configuracionService.ObtenerSesionRecordarMeDias();
+   _logger.LogInformation($"Configuración obtenida - Sesión normal: {duracionSesionMinutos} min, Recordarme: {duracionRecordarMeDias} días");
+   }
+     catch (Exception ex)
+ {
+   _logger.LogWarning($"Error al obtener configuración de sesión, usando valores por defecto: {ex.Message}");
+      duracionSesionMinutos = 480; // 8 horas por defecto
+   duracionRecordarMeDias = 7; // 7 días por defecto
+     }
+
+    var authProperties = new AuthenticationProperties
+      {
+  IsPersistent = isPersistent,
+            // Configurar tiempo de expiración diferenciado según configuración
+   ExpiresUtc = isPersistent 
+  ? DateTimeOffset.UtcNow.AddDays(duracionRecordarMeDias)
+: DateTimeOffset.UtcNow.AddMinutes(duracionSesionMinutos),
+       AllowRefresh = true,
+IssuedUtc = DateTimeOffset.UtcNow
+};
+
+    _logger.LogInformation($"Usuario {userInfo.Email} - RememberMe: {isPersistent}, Expira: {authProperties.ExpiresUtc}");
+    _logger.LogInformation($"Sesión regenerada: OLD={oldSessionId}, NEW={HttpContext.Session.Id}");
 
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProperties);
         
-        // NUEVO: Inicializar tracking de actividad
-        HttpContext.Session.SetString("LastActivity", DateTime.UtcNow.ToString("O"));
-        HttpContext.Session.SetString("LoginTime", DateTime.UtcNow.ToString("O"));
-    }
+ // Inicializar tracking de actividad en la NUEVA sesión
+   HttpContext.Session.SetString("LastActivity", DateTimeOffset.UtcNow.ToString("O"));
+ HttpContext.Session.SetString("LoginTime", DateTimeOffset.UtcNow.ToString("O"));
+     await HttpContext.Session.CommitAsync();
+        
+  _logger.LogInformation($"Sesión iniciada para {userInfo.Email}, LastActivity inicializado en nueva sesión");
+
+   // Guardar preferencia de "Recordarme" en Firestore
+        try
+      {
+  _logger.LogWarning($"========== INICIO GUARDADO REMEMBERME ==========");
+      _logger.LogWarning($"UID del usuario: {userInfo.Uid}");
+   _logger.LogWarning($"Email del usuario: {userInfo.Email}");
+      _logger.LogWarning($"Valor de isPersistent: {isPersistent}");
+    
+ await _personalService.ActualizarRememberMe(userInfo.Uid, isPersistent);
+     
+  _logger.LogWarning($"========== REMEMBERME GUARDADO EXITOSAMENTE ==========");
+        }
+  catch (Exception ex)
+{
+    // Log del error pero no interrumpir el login
+      _logger.LogError($"========== ERROR AL GUARDAR REMEMBERME ==========");
+_logger.LogError($"Mensaje: {ex.Message}");
+   _logger.LogError($"Stack trace: {ex.StackTrace}");
+  }
+  }
 }
 
 /// <summary>
@@ -219,6 +295,7 @@ public class GoogleLoginRequest
     [Required]
     public required string IdToken { get; set; }
 }
+
 
 /// <summary>
 /// Modelo para las solicitudes de recuperación de contraseña.

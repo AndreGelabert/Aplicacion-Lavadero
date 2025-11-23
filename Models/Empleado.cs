@@ -46,5 +46,11 @@ namespace Firebase.Models
         /// Solo empleados con estado "Activo" pueden autenticarse.
         /// </summary>
         public required string Estado { get; set; }
+
+        /// <summary>
+        /// Indica si el empleado tiene activada la opción "Recordarme" en el login.
+        /// Se usa para mantener sesiones persistentes más largas.
+        /// </summary>
+        public bool RememberMe { get; set; } = false;
     }
 }

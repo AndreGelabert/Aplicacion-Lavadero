@@ -121,6 +121,33 @@ public class ConfiguracionService
                 config.CancelacionAnticipadaValidezDias);
     }
 
+    /// <summary>
+    /// Obtiene la duración de la sesión sin "Recordarme" en minutos.
+    /// </summary>
+    public async Task<int> ObtenerSesionDuracionMinutos()
+    {
+        var config = await ObtenerConfiguracion();
+        return config.SesionDuracionMinutos;
+    }
+
+    /// <summary>
+    /// Obtiene la duración de la sesión con "Recordarme" en días.
+    /// </summary>
+    public async Task<int> ObtenerSesionRecordarMeDias()
+    {
+        var config = await ObtenerConfiguracion();
+        return config.SesionRecordarMeDias;
+    }
+
+    /// <summary>
+    /// Obtiene el tiempo de inactividad antes del cierre automático en minutos.
+    /// </summary>
+    public async Task<int> ObtenerSesionInactividadMinutos()
+    {
+        var config = await ObtenerConfiguracion();
+        return config.SesionInactividadMinutos;
+    }
+
     #endregion
 
     #region Operaciones de Escritura
@@ -192,6 +219,9 @@ public class ConfiguracionService
             },
             CapacidadMaximaConcurrente = 5,
             ConsiderarEmpleadosActivos = true,
+            SesionDuracionMinutos = 480, // 8 horas
+            SesionRecordarMeDias = 7, // 7 días
+            SesionInactividadMinutos = 15, // 15 minutos
             FechaActualizacion = DateTime.UtcNow
         };
     }

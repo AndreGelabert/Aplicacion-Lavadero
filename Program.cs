@@ -5,34 +5,36 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Localization;
 using System.Globalization;
+using Firebase.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddMemoryCache();
 
-// Configuraci�n de autenticaci�n
+// Configuración de autenticación
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.LoginPath = "/Login/Index";
         options.LogoutPath = "/Lavados/Logout";
         options.AccessDeniedPath = "/Login/Index";
-        options.ExpireTimeSpan = TimeSpan.FromMinutes(15);
+        // La duración se configurará dinámicamente en el LoginController
+        options.ExpireTimeSpan = TimeSpan.FromHours(8); // Valor por defecto
         options.SlidingExpiration = true;
 
-        options.Events = new CookieAuthenticationEvents
+      options.Events = new CookieAuthenticationEvents
         {
-            OnValidatePrincipal = async context =>
-            {
-                if (context.Properties.ExpiresUtc.HasValue &&
-                    context.Properties.ExpiresUtc.Value < DateTimeOffset.UtcNow)
-                {
-                    context.RejectPrincipal();
-                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                }
-            }
-        };
+       OnValidatePrincipal = async context =>
+      {
+     if (context.Properties.ExpiresUtc.HasValue &&
+           context.Properties.ExpiresUtc.Value < DateTimeOffset.UtcNow)
+        {
+    context.RejectPrincipal();
+          await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+   }
+     }
+   };
     });
 
 builder.Services.AddSession(options =>
@@ -109,13 +111,14 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
+app.UseHttpsRedirection();
 app.UseRouting();
 app.UseSession();
-app.UseRequestLocalization();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRequestLocalization(); // Puede ir aquí
+app.UseSessionActivity(); // Middleware de inactividad
 
 app.MapControllerRoute(
     name: "default",
