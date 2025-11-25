@@ -254,20 +254,44 @@ public class PaqueteServicioController : Controller
     public async Task<IActionResult> PriceRange(
         List<string> estados,
         List<string> tiposVehiculo,
-        string searchTerm,
+     string searchTerm,
         decimal? descuentoMin,
         decimal? descuentoMax,
         int? serviciosCantidad)
     {
-        try
+    try
         {
-            var (min, max) = await _paqueteServicioService.ObtenerRangoPrecio(
-                estados, tiposVehiculo, searchTerm, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
+  var (min, max) = await _paqueteServicioService.ObtenerRangoPrecio(
+         estados, tiposVehiculo, searchTerm, null, null, descuentoMin, descuentoMax, serviciosCantidad, serviciosCantidad);
             return Json(new { success = true, min, max });
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = ex.Message });
+     return Json(new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Devuelve dinámicamente el rango de descuento posible para los filtros actuales (sin aplicar descuentoMin/Max)
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> DiscountRange(
+        List<string> estados,
+        List<string> tiposVehiculo,
+        string searchTerm,
+      decimal? precioMin,
+        decimal? precioMax,
+        int? serviciosCantidad)
+    {
+        try
+        {
+      var (min, max) = await _paqueteServicioService.ObtenerRangoDescuento(
+     estados, tiposVehiculo, searchTerm, precioMin, precioMax, null, null, serviciosCantidad, serviciosCantidad);
+     return Json(new { success = true, min, max });
+}
+  catch (Exception ex)
+        {
+  return Json(new { success = false, message = ex.Message });
         }
     }
     #endregion

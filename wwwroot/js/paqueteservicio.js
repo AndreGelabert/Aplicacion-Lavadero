@@ -296,7 +296,7 @@
         updateResumen();
 
         const titleSpan = document.getElementById('form-title');
-        if (titleSpan) titleSpan.textContent = 'Registrando un Paquete de Servicios';
+        if (titleSpan) titleSpan.textContent = 'Registrando un Paquete de Services';
 
         hideFormMessage();
     };
@@ -383,12 +383,23 @@
 
         if (history.replaceState) history.replaceState({}, document.title, '/PaqueteServicio/Index');
 
-        // Limpiar hints
+      // Limpiar hints de precio
         ensureHelpElements();
-        document.getElementById('precioMin-help').textContent = '';
-        document.getElementById('precioMax-help').textContent = '';
+        const helpPrecioMin = document.getElementById('precioMin-help');
+        const helpPrecioMax = document.getElementById('precioMax-help');
+     if (helpPrecioMin) helpPrecioMin.textContent = '';
+    if (helpPrecioMax) helpPrecioMax.textContent = '';
         document.getElementById('precioMin')?.removeAttribute('min');
-        document.getElementById('precioMax')?.removeAttribute('max');
+     document.getElementById('precioMax')?.removeAttribute('max');
+
+        // Limpiar hints de descuento
+        ensureDiscountHelpElements();
+        const helpDescuentoMin = document.getElementById('descuentoMin-help');
+   const helpDescuentoMax = document.getElementById('descuentoMax-help');
+        if (helpDescuentoMin) helpDescuentoMin.textContent = '';
+        if (helpDescuentoMax) helpDescuentoMax.textContent = '';
+        document.getElementById('descuentoMin')?.removeAttribute('min');
+        document.getElementById('descuentoMax')?.removeAttribute('max');
 
         document.getElementById('filterDropdown')?.classList.add('hidden');
 
@@ -414,106 +425,234 @@
     // ===================== Hints dinámicos de precio =====================
 
     /**
+     * Asegura que existan los elementos de ayuda para precio.
+     */
+    function ensureHelpElements() {
+ const precioMinInput = document.getElementById('precioMin');
+        const precioMaxInput = document.getElementById('precioMax');
+     
+        if (precioMinInput && !document.getElementById('precioMin-help')) {
+          const helpMin = document.createElement('p');
+         helpMin.id = 'precioMin-help';
+    helpMin.className = 'mt-1 text-xs text-gray-500';
+            precioMinInput.parentNode.insertBefore(helpMin, precioMinInput.nextSibling);
+    }
+        
+        if (precioMaxInput && !document.getElementById('precioMax-help')) {
+            const helpMax = document.createElement('p');
+ helpMax.id = 'precioMax-help';
+         helpMax.className = 'mt-1 text-xs text-gray-500';
+  precioMaxInput.parentNode.insertBefore(helpMax, precioMaxInput.nextSibling);
+        }
+    }
+
+    /**
      * Configura y escucha cambios para actualizar hints de rango de precio.
      */
     function setupDynamicPriceHints() {
         const form = document.getElementById('filterForm');
         if (!form) return;
 
-        ensureHelpElements();
+      ensureHelpElements();
 
         async function refreshPriceRangeHints() {
-            try {
-                const params = new URLSearchParams();
-                const fd = new FormData(form);
-                for (const [k, v] of fd.entries()) {
-                    if (['precioMin', 'precioMax', 'pageNumber'].includes(k)) continue;
-                    params.append(k, v);
-                }
-                if (currentSearchTerm) params.append('searchTerm', currentSearchTerm);
+ try {
+        const params = new URLSearchParams();
+         const fd = new FormData(form);
+     for (const [k, v] of fd.entries()) {
+     if (['precioMin', 'precioMax', 'pageNumber'].includes(k)) continue;
+params.append(k, v);
+        }
+          if (currentSearchTerm) params.append('searchTerm', currentSearchTerm);
 
-                const resp = await fetch('/PaqueteServicio/PriceRange?' + params.toString(), {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-                });
+   const resp = await fetch('/PaqueteServicio/PriceRange?' + params.toString(), {
+     headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+     });
 
-                let data;
+      let data;
                 try { data = await resp.json(); } catch { data = null; }
 
-                const precioMinEl = document.getElementById('precioMin');
-                const precioMaxEl = document.getElementById('precioMax');
+      const precioMinEl = document.getElementById('precioMin');
+         const precioMaxEl = document.getElementById('precioMax');
                 const helpMin = document.getElementById('precioMin-help');
-                const helpMax = document.getElementById('precioMax-help');
+  const helpMax = document.getElementById('precioMax-help');
 
-                if (data?.success) {
-                    const fmt = (n) => (typeof n === 'number'
-                        ? n.toFixed(2)
-                        : (n != null ? parseFloat(n).toFixed(2) : ''));
-                    helpMin.textContent = data.min != null ? `Mín. permitido: $${fmt(data.min)}` : '';
-                    helpMax.textContent = data.max != null ? `Máx. permitido: $${fmt(data.max)}` : '';
-                    if (precioMinEl && data.min != null) precioMinEl.setAttribute('min', data.min); else precioMinEl?.removeAttribute('min');
-                    if (precioMaxEl && data.max != null) precioMaxEl.setAttribute('max', data.max); else precioMaxEl?.removeAttribute('max');
-                } else {
-                    helpMin.textContent = '';
-                    helpMax.textContent = '';
-                    precioMinEl?.removeAttribute('min');
-                    precioMaxEl?.removeAttribute('max');
-                }
-            } catch {
-                // Fallback limpio
-                document.getElementById('precioMin-help').textContent = '';
-                document.getElementById('precioMax-help').textContent = '';
-                document.getElementById('precioMin')?.removeAttribute('min');
+            if (data?.success) {
+       const fmt = (n) => (typeof n === 'number'
+         ? n.toFixed(2)
+           : (n != null ? parseFloat(n).toFixed(2) : ''));
+                    
+         if (helpMin) helpMin.textContent = data.min != null ? `Mín. permitido: $${fmt(data.min)}` : '';
+     if (helpMax) helpMax.textContent = data.max != null ? `Máx. permitido: $${fmt(data.max)}` : '';
+   
+        if (precioMinEl && data.min != null) precioMinEl.setAttribute('min', data.min);
+     else precioMinEl?.removeAttribute('min');
+     
+             if (precioMaxEl && data.max != null) precioMaxEl.setAttribute('max', data.max);
+           else precioMaxEl?.removeAttribute('max');
+      } else {
+           if (helpMin) helpMin.textContent = '';
+      if (helpMax) helpMax.textContent = '';
+      precioMinEl?.removeAttribute('min');
+    precioMaxEl?.removeAttribute('max');
+  }
+            } catch (err) {
+ console.error('Error refreshPriceRangeHints:', err);
+      // Fallback limpio
+      const helpMin = document.getElementById('precioMin-help');
+        const helpMax = document.getElementById('precioMax-help');
+     if (helpMin) helpMin.textContent = '';
+        if (helpMax) helpMax.textContent = '';
+   document.getElementById('precioMin')?.removeAttribute('min');
                 document.getElementById('precioMax')?.removeAttribute('max');
-            }
-        }
+          }
+      }
 
         // Exponer para refrescos programados
         window.refreshPriceRangeHints = refreshPriceRangeHints;
-        refreshPriceRangeHints();
+ refreshPriceRangeHints();
 
-        // Watchers
+      // Watchers
+        const watchedSelectors = [
+       'input[name="estados"]',
+     'input[name="tiposVehiculo"]',
+   '#descuentoMin', '#descuentoMax',
+    '#serviciosCantidad'
+        ];
+        watchedSelectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(el => {
+           el.addEventListener('change', refreshPriceRangeHints);
+        el.addEventListener('input', refreshPriceRangeHints);
+            });
+  });
+        const search = document.getElementById('simple-search');
+        if (search) search.addEventListener('input', () => setTimeout(refreshPriceRangeHints, 550));
+    
+        // También configurar hints de descuento
+        setupDynamicDiscountHints();
+    }
+
+    /**
+     * Asegura que existan los elementos de ayuda para descuento.
+     */
+    function ensureDiscountHelpElements() {
+        const descuentoMinInput = document.getElementById('descuentoMin');
+        const descuentoMaxInput = document.getElementById('descuentoMax');
+        
+    if (descuentoMinInput && !document.getElementById('descuentoMin-help')) {
+  const helpMin = document.createElement('p');
+   helpMin.id = 'descuentoMin-help';
+            helpMin.className = 'mt-1 text-xs text-gray-500';
+            descuentoMinInput.parentNode.insertBefore(helpMin, descuentoMinInput.nextSibling);
+        }
+        
+        if (descuentoMaxInput && !document.getElementById('descuentoMax-help')) {
+    const helpMax = document.createElement('p');
+            helpMax.id = 'descuentoMax-help';
+         helpMax.className = 'mt-1 text-xs text-gray-500';
+            descuentoMaxInput.parentNode.insertBefore(helpMax, descuentoMaxInput.nextSibling);
+  }
+    }
+
+    /**
+     * Configura y escucha cambios para actualizar hints de rango de descuento.
+     */
+ function setupDynamicDiscountHints() {
+        const form = document.getElementById('filterForm');
+     if (!form) return;
+
+        ensureDiscountHelpElements();
+
+        async function refreshDiscountRangeHints() {
+            try {
+                const params = new URLSearchParams();
+                const fd = new FormData(form);
+  for (const [k, v] of fd.entries()) {
+     if (['descuentoMin', 'descuentoMax', 'pageNumber'].includes(k)) continue;
+     params.append(k, v);
+            }
+  if (currentSearchTerm) params.append('searchTerm', currentSearchTerm);
+
+    const resp = await fetch('/PaqueteServicio/DiscountRange?' + params.toString(), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+      });
+
+     let data;
+     try { data = await resp.json(); } catch { data = null; }
+
+        const descuentoMinEl = document.getElementById('descuentoMin');
+        const descuentoMaxEl = document.getElementById('descuentoMax');
+                const helpMin = document.getElementById('descuentoMin-help');
+          const helpMax = document.getElementById('descuentoMax-help');
+
+  if (data?.success) {
+           const fmt = (n) => (typeof n === 'number'
+         ? n.toFixed(0)
+    : (n != null ? Math.round(parseFloat(n)) : ''));
+   
+               if (data.min != null) {
+                     if (helpMin) helpMin.textContent = `Mín. disponible: ${fmt(data.min)}%`;
+  descuentoMinEl?.setAttribute('min', data.min);
+      } else {
+   if (helpMin) helpMin.textContent = '';
+  descuentoMinEl?.removeAttribute('min');
+     }
+           
+        if (data.max != null) {
+                if (helpMax) helpMax.textContent = `Máx. disponible: ${fmt(data.max)}%`;
+               descuentoMaxEl?.setAttribute('max', data.max);
+            } else {
+     if (helpMax) helpMax.textContent = '';
+            descuentoMaxEl?.removeAttribute('max');
+         }
+     } else {
+   if (helpMin) helpMin.textContent = '';
+           if (helpMax) helpMax.textContent = '';
+             descuentoMinEl?.removeAttribute('min');
+         descuentoMaxEl?.removeAttribute('max');
+    }
+     } catch (err) {
+   console.error('Error refreshDiscountRangeHints:', err);
+       // Fallback limpio
+                const helpMin = document.getElementById('descuentoMin-help');
+    const helpMax = document.getElementById('descuentoMax-help');
+if (helpMin) helpMin.textContent = '';
+      if (helpMax) helpMax.textContent = '';
+                document.getElementById('descuentoMin')?.removeAttribute('min');
+       document.getElementById('descuentoMax')?.removeAttribute('max');
+    }
+        }
+
+        // Exponer para refrescos programados
+        window.refreshDiscountRangeHints = refreshDiscountRangeHints;
+     refreshDiscountRangeHints();
+
+   // Watchers
         const watchedSelectors = [
             'input[name="estados"]',
-            'input[name="tiposVehiculo"]',
-            '#descuentoMin', '#descuentoMax',
+     'input[name="tiposVehiculo"]',
+  '#precioMin', '#precioMax',
             '#serviciosCantidad'
         ];
         watchedSelectors.forEach(sel => {
-            document.querySelectorAll(sel).forEach(el => {
-                el.addEventListener('change', refreshPriceRangeHints);
-                el.addEventListener('input', refreshPriceRangeHints);
+   document.querySelectorAll(sel).forEach(el => {
+        el.addEventListener('change', refreshDiscountRangeHints);
+ el.addEventListener('input', refreshDiscountRangeHints);
             });
         });
         const search = document.getElementById('simple-search');
-        if (search) search.addEventListener('input', () => setTimeout(refreshPriceRangeHints, 550));
+        if (search) search.addEventListener('input', () => setTimeout(refreshDiscountRangeHints, 550));
     }
 
     /**
-     * Programa un refresco de los hints de precio (debounced).
+   * Programa un refresco de los hints de precio y descuento (debounced).
      */
     function schedulePriceHintsRefresh() {
-        if (typeof window.refreshPriceRangeHints === 'function') {
-            setTimeout(() => { try { window.refreshPriceRangeHints(); } catch { } }, 120);
-        }
-    }
-
-    /**
-     * Asegura la existencia de elementos "help" bajo inputs de precio.
-     */
-    function ensureHelpElements() {
-        const min = document.getElementById('precioMin');
-        const max = document.getElementById('precioMax');
-        if (min && !document.getElementById('precioMin-help')) {
-            const help = document.createElement('p');
-            help.id = 'precioMin-help';
-            help.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
-            min.parentNode.insertBefore(help, min.nextSibling);
-        }
-        if (max && !document.getElementById('precioMax-help')) {
-            const help = document.createElement('p');
-            help.id = 'precioMax-help';
-            help.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
-            max.parentNode.insertBefore(help, max.nextSibling);
+   if (typeof window.refreshPriceRangeHints === 'function') {
+    setTimeout(() => { try { window.refreshPriceRangeHints(); } catch (e) { console.error('Error refreshPriceRangeHints:', e); } }, 120);
+     }
+   if (typeof window.refreshDiscountRangeHints === 'function') {
+            setTimeout(() => { try { window.refreshDiscountRangeHints(); } catch (e) { console.error('Error refreshDiscountRangeHints:', e); } }, 120);
         }
     }
 
@@ -779,7 +918,7 @@
                 onclick="event.stopPropagation(); removerServicioSeleccionado('${s.id}')"
    class="flex-shrink-0 p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" 
     title="Quitar servicio">
-           <svg xmlns="http://www.w3.length="20" fill="currentColor" class="w-5 h-5">
+           <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-5 h-5">
    <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
        </svg>
         </button>
@@ -1289,79 +1428,91 @@ setupTipoVehiculoChangeHandler();
     }
 
     /**
- * Aplica restricciones y normalización de step en inputs de descuento.
- * Usa el step configurado desde el servidor (mínimo permitido).
+ * Aplica restricciones de mínimo/máximo en inputs de descuento.
+     * El step configurado se usa para los controles +/-, pero NO para validación.
  */
     function setupDescuentoStep() {
-        const step = getDescuentoStep();
+        const minDescuento = getDescuentoStep(); // Este es el MÍNIMO y el step de los controles
 
-        /**
-         * Normaliza un valor al step más cercano (mínimo: step configurado, máximo: 95)
+   /**
+ * Valida que el valor esté dentro del rango permitido (sin forzar múltiplos)
          */
-        const normalize = (el) => {
-            if (!el) return;
-            let v = parseFloat(el.value);
+  const validate = (el) => {
+    if (!el) return;
+   let v = parseFloat(el.value);
 
-            // Si está vacío o inválido, no forzar normalización
-            if (isNaN(v) || el.value.trim() === '') {
-                return;
-            }
+       // Si está vacío o inválido, permitir (se validará en servidor)
+    if (isNaN(v) || el.value.trim() === '') {
+      return;
+     }
 
-            // Limitar al rango [step, 95]
-            v = Math.max(step, Math.min(95, v));
+         // Limitar al rango [minDescuento, 95]
+    if (v < minDescuento) {
+      el.value = String(minDescuento);
+            } else if (v > 95) {
+      el.value = '95';
+       }
+        // Si está entre min y max, aceptar cualquier valor
+     };
 
-            // Ajustar al step más cercano
-            let snapped = Math.round(v / step) * step;
-
-            // Re-limitar después del snap
-            snapped = Math.max(step, Math.min(95, snapped));
-
-            // Solo actualizar si cambió (evita loops)
-            if (parseFloat(el.value) !== snapped) {
-                el.value = String(snapped);
-            }
-        };
-
-        /**
-         * Configura un input de descuento con atributos y listeners
-         */
+     /**
+   * Configura un input de descuento con atributos y listeners
+   */
         const wire = (el) => {
-            if (!el) return;
+          if (!el) return;
 
-            // Configurar atributos HTML5 con mínimo dinámico
-            el.setAttribute('min', String(step));
-            el.setAttribute('max', '95');
-            el.setAttribute('step', String(step));
+       // Configurar atributos HTML5
+            el.setAttribute('min', String(minDescuento));
+       el.setAttribute('max', '95');
+    el.setAttribute('step', String(minDescuento)); // Para los controles +/-
 
             // Evitar duplicar listeners
-            if (el.dataset.stepSetup === 'true') return;
+   if (el.dataset.stepSetup === 'true') return;
 
-            // Solo normalizar en blur (cuando pierde foco)
-            el.addEventListener('blur', () => {
-                normalize(el);
+   // **CLAVE: Prevenir la validación HTML5 del step**
+            el.addEventListener('invalid', (e) => {
+       e.preventDefault(); // Evitar el mensaje de error del navegador
+  }, true);
 
-                // Si es el campo del formulario principal, recalcular resumen
-                if (el.id === 'PorcentajeDescuento') {
-                    updateResumen();
-                }
-            });
+     // **CLAVE: Al hacer submit del form, remover temporalmente la validación**
+         const form = el.closest('form');
+       if (form) {
+   form.addEventListener('submit', () => {
+       // El navegador no validará el step, solo min/max
+       el.removeAttribute('step');
+          // Restaurar después del submit
+        setTimeout(() => {
+      el.setAttribute('step', String(minDescuento));
+   }, 100);
+       });
+         }
 
-            // Para el campo del formulario (no filtros), recalcular al cambiar
-            if (el.id === 'PorcentajeDescuento') {
-                el.addEventListener('input', () => {
-                    // Recalcular en vivo sin normalizar (permite escribir)
-                    updateResumen();
-                });
+   // Validar en blur (cuando pierde foco)
+          el.addEventListener('blur', () => {
+   validate(el);
+
+    // Si es el campo del formulario principal, recalcular resumen
+   if (el.id === 'PorcentajeDescuento') {
+    updateResumen();
+       }
+ });
+
+   // Para el campo del formulario (no filtros), recalcular al cambiar
+          if (el.id === 'PorcentajeDescuento') {
+      el.addEventListener('input', () => {
+         // Recalcular en vivo sin validar (permite escribir)
+        updateResumen();
+ });
             }
 
-            el.dataset.stepSetup = 'true';
-        };
+      el.dataset.stepSetup = 'true';
+      };
 
-        // Aplicar a todos los inputs de descuento
-        wire(document.getElementById('PorcentajeDescuento'));
+      // Aplicar a todos los inputs de descuento
+  wire(document.getElementById('PorcentajeDescuento'));
         wire(document.getElementById('descuentoMin'));
-        wire(document.getElementById('descuentoMax'));
-    }
+   wire(document.getElementById('descuentoMax'));
+  }
 
     // ===================== Mensajería =====================
 
@@ -1472,7 +1623,7 @@ setupTipoVehiculoChangeHandler();
                 dropdown.classList.add('hidden');
             }
         });
-    }
+    };
 
     /**
      * Escapa HTML para prevenir XSS en inserciones de texto.
