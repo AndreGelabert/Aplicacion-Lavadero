@@ -60,22 +60,22 @@ class SessionWarningManager {
         // Crear contenedor de notificación con Tailwind CSS
         this.notificationElement = document.createElement('div');
         this.notificationElement.id = 'session-warning-notification';
-        this.notificationElement.className = 'fixed bottom-5 right-5 w-96 max-w-[calc(100vw-2.5rem)] bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-[9999] transform translate-x-[450px] transition-transform duration-300 ease-out opacity-0 pointer-events-none';
+        this.notificationElement.className = 'fixed bottom-5 right-5 w-96 max-w-[calc(100vw-2.5rem)] bg-yellow-50 dark:bg-yellow-900 rounded-lg shadow-lg border-2 border-yellow-400 dark:border-yellow-600 z-[9999] transform translate-x-[450px] transition-transform duration-300 ease-out opacity-0 pointer-events-none';
         this.notificationElement.innerHTML = `
             <div class="p-4 flex gap-3">
                 <div class="flex-shrink-0">
-                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center animate-pulse">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 text-white">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center animate-pulse shadow-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6 text-yellow-950 dark:text-yellow-100">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Sesión por expirar</h4>
-                    <p class="text-sm text-gray-600 dark:text-gray-300" id="session-warning-message"></p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2" id="session-countdown"></p>
+                    <h4 class="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-1">Sesión por expirar</h4>
+                    <p class="text-sm text-yellow-800 dark:text-yellow-200" id="session-warning-message"></p>
+                    <p class="text-xs text-yellow-700 dark:text-yellow-300 mt-2 font-medium" id="session-countdown"></p>
                 </div>
-                <button onclick="sessionWarning.dismissNotification()" class="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                <button onclick="sessionWarning.dismissNotification()" class="flex-shrink-0 text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-200 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
