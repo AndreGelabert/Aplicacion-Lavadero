@@ -5,20 +5,25 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Localization;
 using System.Globalization;
+using Firebase.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddMemoryCache();
 
-// Configuraci�n de autenticaci�n
+// Configuración de autenticación
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.LoginPath = "/Login/Index";
         options.LogoutPath = "/Lavados/Logout";
         options.AccessDeniedPath = "/Login/Index";
-        options.ExpireTimeSpan = TimeSpan.FromMinutes(15);
-        options.SlidingExpiration = true;
+        // La duración se configurará dinámicamente en el LoginController
+        options.ExpireTimeSpan = TimeSpan.FromHours(8); // Valor por defecto
+        options.SlidingExpiration = false; // No renovar automáticamente
+        // Cookie NO persistente por defecto (se borra al cerrar navegador)
+        options.Cookie.MaxAge = null; // null = cookie de sesión, se borra al cerrar navegador
 
         options.Events = new CookieAuthenticationEvents
         {
@@ -36,10 +41,13 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(15);
+    // Sesión expira después de la duración configurada de inactividad
+    options.IdleTimeout = TimeSpan.FromMinutes(20); // Timeout razonable para la sesión del servidor
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    // Cookie de sesión NO persistente (se borra al cerrar navegador)
+    options.Cookie.MaxAge = null; // null = cookie de sesión
 });
 
 builder.Services.Configure<RequestLocalizationOptions>(options =>
@@ -96,6 +104,7 @@ builder.Services.AddScoped<ServicioService>();
 builder.Services.AddScoped<TipoServicioService>();
 builder.Services.AddScoped<TipoVehiculoService>();
 builder.Services.AddScoped<PaqueteServicioService>();
+builder.Services.AddScoped<ConfiguracionService>();
 builder.Services.AddHttpClient<Firebase.Services.AuthenticationService>();
 builder.Services.AddScoped<Firebase.Services.AuthenticationService>();
 
@@ -107,13 +116,14 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
+app.UseHttpsRedirection();
 app.UseRouting();
 app.UseSession();
-app.UseRequestLocalization();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRequestLocalization(); // Puede ir aquí
+app.UseSessionActivity(); // Middleware de inactividad
 
 app.MapControllerRoute(
     name: "default",

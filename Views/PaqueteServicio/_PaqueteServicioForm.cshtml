@@ -66,9 +66,13 @@
             <label for="PorcentajeDescuento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Descuento (%)</label>
             <input type="number" name="PorcentajeDescuento" id="PorcentajeDescuento"
                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                   placeholder="Minimo 5% y maximo 95%"
-                   value="@(Model != null ? Model.PorcentajeDescuento.ToString(System.Globalization.CultureInfo.InvariantCulture) : ((int?)ViewBag.DescuentoStep ??5).ToString())"
-                   min="5" max="95" step="@((int?)ViewBag.DescuentoStep ??5)" data-step="@((int?)ViewBag.DescuentoStep ??5)" required
+                   placeholder="Mínimo @((int?)ViewBag.DescuentoStep ?? 5)% y máximo 95%"
+                   value="@(Model != null ? Model.PorcentajeDescuento.ToString(System.Globalization.CultureInfo.InvariantCulture) : ((int?)ViewBag.DescuentoStep ?? 5).ToString())"
+                   min="@((int?)ViewBag.DescuentoStep ?? 5)"
+                   max="95"
+                   step="@((int?)ViewBag.DescuentoStep ?? 5)"
+                   data-step="@((int?)ViewBag.DescuentoStep ?? 5)"
+                   required
                    onchange="calcularPrecioYTiempo()" />
             <span asp-validation-for="PorcentajeDescuento" class="text-red-600 text-xs"></span>
         </div>

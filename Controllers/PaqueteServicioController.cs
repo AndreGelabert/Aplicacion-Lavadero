@@ -18,6 +18,7 @@ public class PaqueteServicioController : Controller
     private readonly ServicioService _servicioService;
     private readonly TipoVehiculoService _tipoVehiculoService;
     private readonly AuditService _auditService;
+    private readonly ConfiguracionService _configuracionService;
 
     /// <summary>
     /// Crea una nueva instancia del controlador de paquetes de servicios.
@@ -26,12 +27,14 @@ public class PaqueteServicioController : Controller
         PaqueteServicioService paqueteServicioService,
         ServicioService servicioService,
         TipoVehiculoService tipoVehiculoService,
-        AuditService auditService)
+        AuditService auditService,
+        ConfiguracionService configuracionService)
     {
         _paqueteServicioService = paqueteServicioService;
         _servicioService = servicioService;
         _tipoVehiculoService = tipoVehiculoService;
         _auditService = auditService;
+        _configuracionService = configuracionService;
     }
     #endregion
 
@@ -77,6 +80,10 @@ public class PaqueteServicioController : Controller
         // OPTIMIZADO: Calcular solo una vez y reutilizar en la vista
         ViewBag.PreciosFinales = await CalcularPreciosFinalesAsync(paquetes);
         ViewBag.TiemposTotales = await CalcularTiemposAsync(paquetes);
+
+        // Cargar el paso de descuento desde la configuración
+        var descuentoStep = await _configuracionService.ObtenerPaquetesDescuentoStep();
+        ViewBag.DescuentoStep = descuentoStep >= 5 ? descuentoStep : 5;
 
         await ConfigurarFormulario(editId);
 
@@ -441,8 +448,7 @@ public class PaqueteServicioController : Controller
             ModelState.Clear();
             TryValidateModel(paquete);
         }
-
-        ValidatePaquete(paquete);
+        await ValidatePaqueteAsync(paquete);
         if (!ModelState.IsValid)
         {
             return ResultadoOperacion.CrearError("Por favor, complete todos los campos obligatorios correctamente.");
@@ -465,7 +471,7 @@ public class PaqueteServicioController : Controller
     /// </summary>
     private async Task<ResultadoOperacion> ProcesarActualizacionPaquete(PaqueteServicio paquete)
     {
-        ValidatePaquete(paquete);
+        await ValidatePaqueteAsync(paquete);
         if (!ModelState.IsValid)
         {
             return ResultadoOperacion.CrearError("Por favor, complete todos los campos obligatorios correctamente.");
@@ -575,19 +581,22 @@ public class PaqueteServicioController : Controller
     }
 
     /// <summary>
-    /// Valida campos del modelo de paquete y agrega errores a ModelState.
+    /// Valida campos del modelo de paquete considerando configuración dinámica.
     /// </summary>
-    private void ValidatePaquete(PaqueteServicio paquete)
+    private async Task ValidatePaqueteAsync(PaqueteServicio paquete)
     {
         if (!string.IsNullOrEmpty(paquete.Nombre) && !System.Text.RegularExpressions.Regex.IsMatch(paquete.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
         {
             ModelState.AddModelError("Nombre", "El nombre solo puede contener letras y espacios.");
         }
 
-        // Validación ajustada:5..95
-        if (paquete.PorcentajeDescuento < 5 || paquete.PorcentajeDescuento > 95)
+        // **CRÍTICO: Obtener mínimo desde configuración**
+        var descuentoMinimo = await _configuracionService.ObtenerPaquetesDescuentoStep();
+        descuentoMinimo = Math.Max(descuentoMinimo, 5); // Garantizar mínimo absoluto de 5
+
+        if (paquete.PorcentajeDescuento < descuentoMinimo || paquete.PorcentajeDescuento > 95)
         {
-            ModelState.AddModelError("PorcentajeDescuento", "El porcentaje de descuento debe estar entre 5 y 95.");
+            ModelState.AddModelError("PorcentajeDescuento", $"El porcentaje de descuento debe estar entre {descuentoMinimo} y 95.");
         }
 
         if (paquete.ServiciosIds == null || paquete.ServiciosIds.Count < 2)
@@ -641,7 +650,11 @@ public class PaqueteServicioController : Controller
     /// </summary>
     private async Task CargarListasForm()
     {
-    ViewBag.TodosLosTiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+        ViewBag.TodosLosTiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+        
+        // Cargar el paso de descuento desde la configuración
+        var descuentoStep = await _configuracionService.ObtenerPaquetesDescuentoStep();
+        ViewBag.DescuentoStep = descuentoStep >= 5 ? descuentoStep : 5;
     }
     #endregion
 }

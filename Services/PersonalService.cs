@@ -1,5 +1,6 @@
 using Firebase.Models;
 using Google.Cloud.Firestore;
+
 public class PersonalService
 {
     private readonly FirestoreDb _firestore;
@@ -65,5 +66,22 @@ public class PersonalService
     {
         var employeeRef = _firestore.Collection("empleados").Document(id);
         await employeeRef.UpdateAsync("Estado", nuevoEstado);
+    }
+
+    /// <summary>
+    /// Actualiza la preferencia de "Recordarme" para un empleado.
+    /// Usa SetAsync con MergeAll para crear el campo si no existe.
+    /// </summary>
+    /// <param name="id">ID del empleado</param>
+    /// <param name="rememberMe">Valor de la preferencia</param>
+    public async Task ActualizarRememberMe(string id, bool rememberMe)
+    {
+        var employeeRef = _firestore.Collection("empleados").Document(id);
+        
+        // Usar SetAsync con MergeAll - crea el campo si no existe, actualiza si existe
+        await employeeRef.SetAsync(new Dictionary<string, object>
+        {
+            { "RememberMe", rememberMe }
+        }, SetOptions.MergeAll);
     }
 }
