@@ -102,13 +102,13 @@ namespace Firebase.Models
         #region Configuración de Sesiones
 
         /// <summary>
-        /// Duración máxima de la sesión en minutos.
+        /// Duración máxima de la sesión en horas.
         /// La sesión se cerrará automáticamente al alcanzar este tiempo, incluso si el usuario está activo.
-        /// Ejemplo: 480 minutos = 8 horas
+        /// Ejemplo: 8 horas
         /// </summary>
         [FirestoreProperty]
-        [Range(5, 1440, ErrorMessage = "La duración de sesión debe estar entre 5 minutos y 24 horas (1440 minutos)")]
-        public int SesionDuracionMinutos { get; set; } = 480; // 8 horas por defecto
+        [Range(1, 24, ErrorMessage = "La duración de sesión debe estar entre 1 y 24 horas")]
+        public int SesionDuracionHoras { get; set; } = 8; // 8 horas por defecto
 
         /// <summary>
         /// Tiempo de inactividad en minutos antes de cerrar la sesión automáticamente.

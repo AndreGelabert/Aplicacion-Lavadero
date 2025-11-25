@@ -158,7 +158,7 @@ namespace Firebase.Middleware
                         }
                         catch
                         {
-                            duracionSesionMinutos = 480;
+                            duracionSesionMinutos = 480; // 8 horas por defecto
                         }
 
                         context.Session.SetString("LoginTime", DateTimeOffset.UtcNow.ToString("O"));
