@@ -93,6 +93,22 @@ public class PersonalService
     }
 
     /// <summary>
+    /// Obtiene TODOS los empleados sin aplicar filtro de estado.
+    /// Útil para auditoría y reportes donde se necesitan empleados inactivos/eliminados.
+    /// </summary>
+ /// <returns>Lista completa de todos los empleados en la base de datos.</returns>
+    public async Task<List<Empleado>> ObtenerEmpleadosSinFiltroEstado()
+    {
+        var query = _firestore.Collection(COLLECTION_NAME);
+   var snapshot = await query.GetSnapshotAsync();
+   
+        return snapshot.Documents
+     .Select(MapearDocumentoAEmpleado)
+.OrderBy(e => e.NombreCompleto)
+   .ToList();
+    }
+
+    /// <summary>
     /// Busca empleados por término de búsqueda (nombre, email, rol).
     /// </summary>
     public async Task<List<Empleado>> BuscarEmpleados(

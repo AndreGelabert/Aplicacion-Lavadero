@@ -1,12 +1,12 @@
-using Firebase.Auth;
+ï»¿using Firebase.Auth;
 using Firebase.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 /// <summary>
-/// Controlador para la gestión de personal.
-/// Incluye filtros, paginación, búsqueda, acciones AJAX y ordenamiento.
+/// Controlador para la gestiÃ³n de personal.
+/// Incluye filtros, paginaciÃ³n, bÃºsqueda, acciones AJAX y ordenamiento.
 /// </summary>
 [Authorize(Roles = "Administrador")]
 public class PersonalController : Controller
@@ -28,7 +28,7 @@ _personalService = personalService;
     #region Vistas Principales
 
     /// <summary>
- /// Página principal de personal con filtros, orden y paginación.
+ /// PÃ¡gina principal de personal con filtros, orden y paginaciÃ³n.
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> Index(
@@ -55,10 +55,10 @@ _personalService = personalService;
     }
     #endregion
 
-    #region Búsqueda y Tabla Parcial
+    #region BÃºsqueda y Tabla Parcial
 
  /// <summary>
-    /// Busca empleados por término de búsqueda (parcial para actualización dinámica).
+    /// Busca empleados por tÃ©rmino de bÃºsqueda (parcial para actualizaciÃ³n dinÃ¡mica).
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> SearchPartial(
@@ -96,7 +96,7 @@ var totalEmpleados = await _personalService.ObtenerTotalEmpleadosBusqueda(
     }
 
  /// <summary>
- /// Devuelve la tabla parcial (sin búsqueda) con filtros y orden.
+ /// Devuelve la tabla parcial (sin bÃºsqueda) with filters and order.
     /// </summary>
   [HttpGet]
     public async Task<IActionResult> TablePartial(
@@ -136,40 +136,38 @@ string sortBy = null,
 [HttpPost]
     public async Task<IActionResult> UpdateRole(string id, string newRole)
     {
- try
-      {
+        try
+  {
     await _personalService.ActualizarRol(id, newRole);
 
-            // Configurar TempData para analytics
-      TempData["RoleChangeEvent_UserId"] = id;
+            // AuditorÃ­a
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+          var userEmail = User.FindFirstValue(ClaimTypes.Email);
+     await _auditService.LogEvent(userId, userEmail, "ModificaciÃ³n de rol", id, "Empleado");
+
+            // âœ… Si es peticiÃ³n AJAX, devolver JSON sin tocar TempData
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+    return Json(new { success = true, message = "Rol actualizado correctamente." });
+         }
+
+            // Solo establecer TempData para navegaciÃ³n tradicional
+            TempData["RoleChangeEvent_UserId"] = id;
             TempData["RoleChangeEvent_NewRole"] = newRole;
-
-            // Configurar mensaje de éxito
-            TempData["Success"] = "Rol actualizado correctamente.";
-
-      // Auditoría
-     var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-     var userEmail = User.FindFirstValue(ClaimTypes.Email);
-            await _auditService.LogEvent(userId, userEmail, "Modificación de rol", id, "Empleado");
-
-            // Si es petición AJAX, devolver JSON
-   if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-          {
- return Json(new { success = true, message = "Rol actualizado correctamente." });
-}
+       TempData["Success"] = "Rol actualizado correctamente.";
         }
-        catch (Exception ex)
-        {
-            TempData["Error"] = $"Error al actualizar el rol: {ex.Message}";
+  catch (Exception ex)
+     {
+         // Si es peticiÃ³n AJAX, devolver error sin tocar TempData
+    if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+     {
+                return Json(new { success = false, message = $"Error al actualizar el rol: {ex.Message}" });
+          }
 
-        // Si es petición AJAX, devolver error
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
- {
-          return Json(new { success = false, message = $"Error al actualizar el rol: {ex.Message}" });
-    }
-      }
+       TempData["Error"] = $"Error al actualizar el rol: {ex.Message}";
+   }
 
-        return RedirectToAction("Index");
+      return RedirectToAction("Index");
     }
 
     /// <summary>
@@ -178,40 +176,38 @@ string sortBy = null,
     [HttpPost]
     public async Task<IActionResult> DeactivateEmployee(string id)
     {
-  try
-    {
-          await _personalService.CambiarEstadoEmpleado(id, "Inactivo");
+        try
+     {
+            await _personalService.CambiarEstadoEmpleado(id, "Inactivo");
 
-            // Configurar TempData para analytics
-       TempData["StateChangeEvent_UserId"] = id;
+      // AuditorÃ­a
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userEmail = User.FindFirstValue(ClaimTypes.Email);
+         await _auditService.LogEvent(userId, userEmail, "DesactivaciÃ³n de empleado", id, "Empleado");
+
+      // âœ… Si es peticiÃ³n AJAX, devolver JSON sin tocar TempData
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+         {
+             return Json(new { success = true, message = "Empleado desactivado correctamente." });
+            }
+
+            // Solo establecer TempData para navegaciÃ³n tradicional
+            TempData["StateChangeEvent_UserId"] = id;
             TempData["StateChangeEvent_NewState"] = "Inactivo";
-
-            // Configurar mensaje de éxito
             TempData["Success"] = "Empleado desactivado correctamente.";
-
-// Auditoría
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var userEmail = User.FindFirstValue(ClaimTypes.Email);
-       await _auditService.LogEvent(userId, userEmail, "Desactivación de empleado", id, "Empleado");
-
-  // Si es petición AJAX, devolver JSON
-      if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-  {
-          return Json(new { success = true, message = "Empleado desactivado correctamente." });
-      }
    }
         catch (Exception ex)
-  {
-            TempData["Error"] = $"Error al desactivar el empleado: {ex.Message}";
-
-   // Si es petición AJAX, devolver error
+    {
+       // Si es peticiÃ³n AJAX, devolver error sin tocar TempData
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-{
-  return Json(new { success = false, message = $"Error al desactivar el empleado: {ex.Message}" });
+            {
+           return Json(new { success = false, message = $"Error al desactivar: {ex.Message}" });
             }
+
+    TempData["Error"] = $"Error al desactivar el empleado: {ex.Message}";
         }
 
-     return RedirectToAction("Index");
+        return RedirectToAction("Index");
     }
 
     /// <summary>
@@ -220,44 +216,42 @@ string sortBy = null,
     [HttpPost]
     public async Task<IActionResult> ReactivateEmployee(string id)
     {
-        try
-  {
-      await _personalService.CambiarEstadoEmpleado(id, "Activo");
-
-   // Configurar TempData para analytics
- TempData["StateChangeEvent_UserId"] = id;
-     TempData["StateChangeEvent_NewState"] = "Activo";
-
-            // Configurar mensaje de éxito
-            TempData["Success"] = "Empleado reactivado correctamente.";
-
-            // Auditoría
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-          var userEmail = User.FindFirstValue(ClaimTypes.Email);
-  await _auditService.LogEvent(userId, userEmail, "Reactivación de empleado", id, "Empleado");
-
-            // Si es petición AJAX, devolver JSON
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+      try
    {
-      return Json(new { success = true, message = "Empleado reactivado correctamente." });
-          }
-        }
-     catch (Exception ex)
-        {
-    TempData["Error"] = $"Error al reactivar el empleado: {ex.Message}";
+            await _personalService.CambiarEstadoEmpleado(id, "Activo");
 
-            // Si es petición AJAX, devolver error
+       // AuditorÃ­a
+         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+      var userEmail = User.FindFirstValue(ClaimTypes.Email);
+   await _auditService.LogEvent(userId, userEmail, "ReactivaciÃ³n de empleado", id, "Empleado");
+
+            // âœ… Si es peticiÃ³n AJAX, devolver JSON sin tocar TempData
     if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-    {
-           return Json(new { success = false, message = $"Error al reactivar el empleado: {ex.Message}" });
+  {
+      return Json(new { success = true, message = "Empleado reactivado correctamente." });
             }
- }
+
+            // Solo establecer TempData para navegaciÃ³n tradicional
+            TempData["StateChangeEvent_UserId"] = id;
+     TempData["StateChangeEvent_NewState"] = "Activo";
+         TempData["Success"] = "Empleado reactivado correctamente.";
+  }
+catch (Exception ex)
+        {
+   // Si es peticiÃ³n AJAX, devolver error sin tocar TempData
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+         return Json(new { success = false, message = $"Error al reactivar: {ex.Message}" });
+}
+
+       TempData["Error"] = $"Error al reactivar el empleado: {ex.Message}";
+        }
 
         return RedirectToAction("Index");
     }
     #endregion
 
-    #region Métodos Privados - Procesamiento de Negocio
+    #region MÃ©todos Privados - Procesamiento de Negocio
 
     /// <summary>
     /// Configura los estados por defecto cuando no se recibe ninguno desde la vista.
@@ -271,7 +265,7 @@ string sortBy = null,
     }
 
     /// <summary>
-    /// Obtiene los empleados según los filtros y orden actual, calcula la paginación y las páginas visibles.
+    /// Obtiene los empleados segÃºn los filtros y orden actual, calcula la paginaciÃ³n y las pÃ¡ginas visibles.
     /// </summary>
     private async Task<(List<Empleado> empleados, int currentPage, int totalPages, List<int> visiblePages)>
         ObtenerDatosEmpleados(List<string> estados, List<string> roles,
@@ -286,10 +280,10 @@ string sortBy = null,
     }
     #endregion
 
-    #region Métodos Privados - Utilidades
+    #region MÃ©todos Privados - Utilidades
 
     /// <summary>
-    /// Calcula el conjunto de páginas visibles alrededor de la página actual.
+    /// Calcula el conjunto de pÃ¡ginas visibles alrededor de la pÃ¡gina actual.
   /// </summary>
     private List<int> GetVisiblePages(int currentPage, int totalPages, int range = 2)
     {
@@ -299,7 +293,7 @@ string sortBy = null,
     }
 
   /// <summary>
-    /// Copia a ViewBag la información común necesaria para renderizar la vista Index.
+    /// Copia a ViewBag la informaciÃ³n comÃºn necesaria para renderizar la vista Index.
     /// </summary>
     private void ConfigurarViewBag(
    List<string> estados, List<string> roles, List<string> rolesUnicos,

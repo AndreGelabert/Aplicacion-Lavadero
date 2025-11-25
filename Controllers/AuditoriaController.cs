@@ -190,97 +190,97 @@ public class AuditoriaController : Controller
             pageNumber: 1, pageSize: int.MaxValue, sortBy, sortOrder);
 
         // 2) Coincidencias por NOMBRE del usuario actor (no por correo)
-        var empleados = await _personalService.ObtenerEmpleados(
-            new List<string> { "Activo", "Inactivo" }, null, 1, int.MaxValue, "NombreCompleto", "asc");
+        // Usar método sin filtro para incluir empleados inactivos/eliminados
+        var empleados = await _personalService.ObtenerEmpleadosSinFiltroEstado();
 
         var idsPorNombre = new HashSet<string>(
-            empleados
-                .Where(e => CoincideTexto(e.NombreCompleto, searchTerm))
-                .Select(e => e.Id)
-        );
+         empleados
+          .Where(e => CoincideTexto(e.NombreCompleto, searchTerm))
+     .Select(e => e.Id)
+   );
 
-        var porFiltros = await _auditService.ObtenerRegistros(
-            fechaInicio, fechaFin, acciones, tiposObjetivo,
-            pageNumber: 1, pageSize: int.MaxValue, sortBy, sortOrder);
+     var porFiltros = await _auditService.ObtenerRegistros(
+ fechaInicio, fechaFin, acciones, tiposObjetivo,
+  pageNumber: 1, pageSize: int.MaxValue, sortBy, sortOrder);
 
-        var porNombreActor = porFiltros
-            .Where(r => !string.IsNullOrWhiteSpace(r.UserId) && idsPorNombre.Contains(r.UserId))
-            .ToList();
+     var porNombreActor = porFiltros
+ .Where(r => !string.IsNullOrWhiteSpace(r.UserId) && idsPorNombre.Contains(r.UserId))
+      .ToList();
 
-        // 3) Coincidencias por NOMBRE DEL OBJETO (TargetName) mostrado en la vista
-        var porFiltrosConNombres = await MapearNombresUsuarios(porFiltros);
+    // 3) Coincidencias por NOMBRE DEL OBJETO (TargetName) mostrado en la vista
+    var porFiltrosConNombres = await MapearNombresUsuarios(porFiltros);
         var porNombreObjeto = porFiltrosConNombres
-            .Where(r => !string.IsNullOrWhiteSpace(r.TargetName) && CoincideTexto(r.TargetName, searchTerm))
-            .Select(r => new AuditLog
-            {
-                UserId = r.UserId,
-                UserEmail = r.UserEmail,
-                Action = r.Action,
-                TargetId = r.TargetId,
-                TargetType = r.TargetType,
-                Timestamp = r.Timestamp
-            })
-            .ToList();
+          .Where(r => !string.IsNullOrWhiteSpace(r.TargetName) && CoincideTexto(r.TargetName, searchTerm))
+     .Select(r => new AuditLog
+  {
+  UserId = r.UserId,
+ UserEmail = r.UserEmail,
+       Action = r.Action,
+         TargetId = r.TargetId,
+          TargetType = r.TargetType,
+      Timestamp = r.Timestamp
+      })
+          .ToList();
 
-        // 4) Unificar, quitar duplicados
-        var unificados = porTexto
-            .Concat(porNombreActor)
-            .Concat(porNombreObjeto)
-            .GroupBy(r => new { r.UserId, r.UserEmail, r.Action, r.TargetId, r.TargetType, r.Timestamp })
-            .Select(g => g.First())
-            .ToList();
+    // 4) Unificar, quitar duplicados
+     var unificados = porTexto
+ .Concat(porNombreActor)
+         .Concat(porNombreObjeto)
+ .GroupBy(r => new { r.UserId, r.UserEmail, r.Action, r.TargetId, r.TargetType, r.Timestamp })
+      .Select(g => g.First())
+    .ToList();
 
-        var totalRegistros = unificados.Count;
+var totalRegistros = unificados.Count;
 
-        // Orden especial por TargetName (requiere resolver nombres antes de ordenar/paginar)
-        if (string.Equals(sortBy, "TargetName", StringComparison.OrdinalIgnoreCase))
-        {
-            var conNombresTodos = await MapearNombresUsuarios(unificados);
+     // Orden especial por TargetName (requiere resolver nombres antes de ordenar/paginar)
+    if (string.Equals(sortBy, "TargetName", StringComparison.OrdinalIgnoreCase))
+    {
+          var conNombresTodos = await MapearNombresUsuarios(unificados);
 
-            var totalPagesTN = Math.Max((int)Math.Ceiling(totalRegistros / (double)pageSize), 1);
-            var currentPageTN = Math.Clamp(pageNumber, 1, totalPagesTN);
+        var totalPagesTN = Math.Max((int)Math.Ceiling(totalRegistros / (double)pageSize), 1);
+    var currentPageTN = Math.Clamp(pageNumber, 1, totalPagesTN);
             var visiblePagesTN = GetVisiblePages(currentPageTN, totalPagesTN);
 
-            var ordenadosTN = OrdenarRegistrosConNombre(conNombresTodos, sortBy, sortOrder);
-            var paginaTN = ordenadosTN.Skip((currentPageTN - 1) * pageSize).Take(pageSize).ToList();
+      var ordenadosTN = OrdenarRegistrosConNombre(conNombresTodos, sortBy, sortOrder);
+ var paginaTN = ordenadosTN.Skip((currentPageTN - 1) * pageSize).Take(pageSize).ToList();
 
-            ViewBag.CurrentPage = currentPageTN;
-            ViewBag.TotalPages = totalPagesTN;
-            ViewBag.VisiblePages = visiblePagesTN;
+     ViewBag.CurrentPage = currentPageTN;
+   ViewBag.TotalPages = totalPagesTN;
+ ViewBag.VisiblePages = visiblePagesTN;
             ViewBag.FechaInicio = fechaInicio?.ToString("yyyy-MM-dd");
-            ViewBag.FechaFin = fechaFin?.ToString("yyyy-MM-dd");
-            ViewBag.Acciones = acciones ?? new List<string>();
-            ViewBag.TiposObjetivo = tiposObjetivo ?? new List<string>();
-            ViewBag.SortBy = sortBy;
-            ViewBag.SortOrder = sortOrder;
+       ViewBag.FechaFin = fechaFin?.ToString("yyyy-MM-dd");
+      ViewBag.Acciones = acciones ?? new List<string>();
+   ViewBag.TiposObjetivo = tiposObjetivo ?? new List<string>();
+   ViewBag.SortBy = sortBy;
+     ViewBag.SortOrder = sortOrder;
             ViewBag.SearchTerm = searchTerm;
 
-            return PartialView("_AuditoriaTable", paginaTN);
-        }
+   return PartialView("_AuditoriaTable", paginaTN);
+    }
 
         // Flujo estándar: ordenar/paginar con el modelo base
-        var ordenados = OrdenarRegistros(unificados, sortBy, sortOrder);
-        var pagina = ordenados
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
+   var ordenados = OrdenarRegistros(unificados, sortBy, sortOrder);
+  var pagina = ordenados
+       .Skip((pageNumber - 1) * pageSize)
+         .Take(pageSize)
             .ToList();
 
         // 5) Mapear nombres para la vista
         var registrosConNombres = await MapearNombresUsuarios(pagina);
 
         // 6) Paginación
-        var totalPages = Math.Max((int)Math.Ceiling(totalRegistros / (double)pageSize), 1);
+   var totalPages = Math.Max((int)Math.Ceiling(totalRegistros / (double)pageSize), 1);
 
         ViewBag.CurrentPage = pageNumber;
         ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-        ViewBag.FechaInicio = fechaInicio?.ToString("yyyy-MM-dd");
-        ViewBag.FechaFin = fechaFin?.ToString("yyyy-MM-dd");
+   ViewBag.FechaInicio = fechaInicio?.ToString("yyyy-MM-dd");
+    ViewBag.FechaFin = fechaFin?.ToString("yyyy-MM-dd");
         ViewBag.Acciones = acciones ?? new List<string>();
         ViewBag.TiposObjetivo = tiposObjetivo ?? new List<string>();
-        ViewBag.SortBy = sortBy;
-        ViewBag.SortOrder = sortOrder;
-        ViewBag.SearchTerm = searchTerm;
+    ViewBag.SortBy = sortBy;
+   ViewBag.SortOrder = sortOrder;
+   ViewBag.SearchTerm = searchTerm;
 
         return PartialView("_AuditoriaTable", registrosConNombres);
     }
@@ -312,106 +312,109 @@ public class AuditoriaController : Controller
     /// </summary>
     private async Task<List<AuditLogConNombre>> MapearNombresUsuarios(List<AuditLog> registros)
     {
-        // Empleados: obtener todos una vez
-        var empleados = await _personalService.ObtenerEmpleados(new List<string>(), null, 1, int.MaxValue, "NombreCompleto", "asc");
+        //CRÍTICO: Pasar NULL como estados para obtener TODOS los empleados
+     // NULL indica "sin filtro", lista vacía agregaría "Activo" por defecto
+     // Esto permite mapear nombres incluso de empleados dados de baja o eliminados
+        var empleados = await _personalService.ObtenerEmpleadosSinFiltroEstado();
+        
         var empleadosDict = empleados.ToDictionary(e => e.Id, e => e.NombreCompleto);
 
         // IDs por tipo para resolver nombres
-        var servicioIds = registros.Where(r => r.TargetType == "Servicio" && !string.IsNullOrWhiteSpace(r.TargetId))
-                                   .Select(r => r.TargetId).Distinct().ToList();
+   var servicioIds = registros.Where(r => r.TargetType == "Servicio" && !string.IsNullOrWhiteSpace(r.TargetId))
+  .Select(r => r.TargetId).Distinct().ToList();
 
         var tipoServIds = registros.Where(r => r.TargetType == "TipoServicio" && !string.IsNullOrWhiteSpace(r.TargetId))
-                                   .Select(r => r.TargetId).Distinct().ToList();
+                   .Select(r => r.TargetId).Distinct().ToList();
 
         var tipoVehIds = registros.Where(r => r.TargetType == "TipoVehiculo" && !string.IsNullOrWhiteSpace(r.TargetId))
-                                  .Select(r => r.TargetId).Distinct().ToList();
+         .Select(r => r.TargetId).Distinct().ToList();
 
         var paqueteIds = registros.Where(r => r.TargetType == "PaqueteServicio" && !string.IsNullOrWhiteSpace(r.TargetId))
-                                  .Select(r => r.TargetId).Distinct().ToList(); // NUEVO
+              .Select(r => r.TargetId).Distinct().ToList();
 
         // Resolver nombres de Servicio (llamadas individuales; pageSize pequeño)
         var servDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in servicioIds)
-        {
+ {
             try
             {
-                var s = await _servicioService.ObtenerServicio(id);
-                servDict[id] = s?.Nombre;
-            }
-            catch { servDict[id] = null; }
+             var s = await _servicioService.ObtenerServicio(id);
+     servDict[id] = s?.Nombre;
+       }
+    catch { servDict[id] = null; }
         }
 
-        // Resolver nombres de TipoServicio
+    // Resolver nombres de TipoServicio
         var tipoServDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in tipoServIds)
         {
-            try { tipoServDict[id] = await _tipoServicioService.ObtenerNombrePorId(id); }
+   try { tipoServDict[id] = await _tipoServicioService.ObtenerNombrePorId(id); }
             catch { tipoServDict[id] = null; }
         }
 
         // Resolver nombres de TipoVehiculo
-        var tipoVehDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+   var tipoVehDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in tipoVehIds)
-        {
-            try { tipoVehDict[id] = await _tipoVehiculoService.ObtenerNombrePorId(id); }
-            catch { tipoVehDict[id] = null; }
+      {
+      try { tipoVehDict[id] = await _tipoVehiculoService.ObtenerNombrePorId(id); }
+      catch { tipoVehDict[id] = null; }
         }
 
-        // Resolver nombres de PaqueteServicio // NUEVO
+        // Resolver nombres de PaqueteServicio
         var paqueteDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in paqueteIds)
         {
             try
             {
-                var p = await _paqueteServicioService.ObtenerPaquete(id);
-                paqueteDict[id] = p?.Nombre;
+         var p = await _paqueteServicioService.ObtenerPaquete(id);
+    paqueteDict[id] = p?.Nombre;
             }
             catch { paqueteDict[id] = null; }
         }
 
-        // Construir modelo de vista
+   // Construir modelo de vista
         return registros.Select(r =>
         {
-            var userName = empleadosDict.TryGetValue(r.UserId ?? string.Empty, out var nombre)
-                ? nombre
-                : (r.UserEmail ?? "Usuario desconocido");
+var userName = empleadosDict.TryGetValue(r.UserId ?? string.Empty, out var nombre)
+           ? nombre
+           : (r.UserEmail ?? "Usuario desconocido");
 
             string? targetName = null;
-            if (!string.IsNullOrWhiteSpace(r.TargetId))
+    if (!string.IsNullOrWhiteSpace(r.TargetId))
             {
-                switch (r.TargetType)
-                {
-                    case "Servicio":
-                        servDict.TryGetValue(r.TargetId, out targetName);
-                        break;
-                    case "TipoServicio":
-                        tipoServDict.TryGetValue(r.TargetId, out targetName);
-                        break;
-                    case "TipoVehiculo":
-                        tipoVehDict.TryGetValue(r.TargetId, out targetName);
-                        break;
-                    case "PaqueteServicio": // NUEVO
-                        paqueteDict.TryGetValue(r.TargetId, out targetName);
-                        break;
-                    case "Empleado":
-                    case "Usuario":
-                        targetName = empleadosDict.TryGetValue(r.TargetId, out var empNombre) ? empNombre : null;
-                        break;
-                }
+     switch (r.TargetType)
+          {
+     case "Servicio":
+         servDict.TryGetValue(r.TargetId, out targetName);
+    break;
+       case "TipoServicio":
+    tipoServDict.TryGetValue(r.TargetId, out targetName);
+  break;
+           case "TipoVehiculo":
+         tipoVehDict.TryGetValue(r.TargetId, out targetName);
+            break;
+    case "PaqueteServicio":
+ paqueteDict.TryGetValue(r.TargetId, out targetName);
+            break;
+       case "Empleado":
+  case "Usuario":
+    targetName = empleadosDict.TryGetValue(r.TargetId, out var empNombre) ? empNombre : null;
+             break;
+          }
             }
 
             return new AuditLogConNombre
             {
-                UserId = r.UserId,
-                UserEmail = r.UserEmail,
-                UserName = userName,
-                Action = r.Action,
-                TargetId = r.TargetId,
+      UserId = r.UserId,
+      UserEmail = r.UserEmail,
+ UserName = userName,
+          Action = r.Action,
+    TargetId = r.TargetId,
                 TargetType = r.TargetType,
-                TargetName = targetName,
-                Timestamp = r.Timestamp
+     TargetName = targetName,
+Timestamp = r.Timestamp
             };
-        }).ToList();
+     }).ToList();
     }
 
     /// <summary>
