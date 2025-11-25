@@ -4,7 +4,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 namespace Firebase.Middleware
 {
     /// <summary>
-    /// Middleware para rastrear la actividad del usuario y gestionar el cierre de sesión por inactividad.
+    /// Middleware para gestionar el cierre de sesión por duración máxima e inactividad.
+    /// La sesión se cierra automáticamente al cerrar el navegador (cookie NO persistente).
     /// </summary>
     public class SessionActivityMiddleware
     {
@@ -32,19 +33,43 @@ namespace Firebase.Middleware
             {
                 try
                 {
-                    // Forzar carga de la sesión antes de acceder a ella
                     await context.Session.LoadAsync();
-                    
+
                     var lastActivity = context.Session.GetString("LastActivity");
                     var loginTime = context.Session.GetString("LoginTime");
+                    var maxDuration = context.Session.GetString("MaxDuration");
                     var now = DateTimeOffset.UtcNow;
 
-                    if (!string.IsNullOrEmpty(lastActivity))
+                    // VALIDACIÓN 1: Verificar duración máxima de la sesión (usando datos de sesión)
+                    if (!string.IsNullOrEmpty(loginTime) && !string.IsNullOrEmpty(maxDuration))
+                    {
+                        var loginDateTime = DateTimeOffset.Parse(loginTime);
+                        var duracionMaximaMinutos = int.Parse(maxDuration);
+                        var sessionDuration = (now - loginDateTime).TotalMinutes;
+
+                        if (sessionDuration > duracionMaximaMinutos)
+                        {
+                            _logger.LogInformation(
+                                $"Sesión expirada por duración máxima para usuario: {context.User.Identity.Name} " +
+                                $"(Duración: {sessionDuration:F2} minutos, Límite: {duracionMaximaMinutos} minutos)"
+                            );
+
+                            if (!context.Response.HasStarted)
+                            {
+                                await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                                context.Session.Clear();
+                                context.Response.Redirect("/Login/Index?expired=true");
+                                return;
+                            }
+                        }
+                    }
+
+                    // VALIDACIÓN 2: Verificar inactividad
+                    if (!string.IsNullOrEmpty(lastActivity) && !string.IsNullOrEmpty(loginTime))
                     {
                         var lastActivityTime = DateTimeOffset.Parse(lastActivity);
                         var inactivityTime = now - lastActivityTime;
 
-                        // Obtener tiempo de inactividad desde configuración
                         int tiempoInactividad;
                         try
                         {
@@ -52,85 +77,55 @@ namespace Firebase.Middleware
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning($"Error al obtener configuración de inactividad, usando valor por defecto: {ex.Message}");
-                            tiempoInactividad = 15; // Valor por defecto
+                            _logger.LogWarning($"Error al obtener configuración de inactividad: {ex.Message}");
+                            tiempoInactividad = 15;
                         }
 
-                        // Si la inactividad supera el límite, cerrar sesión
                         if (inactivityTime.TotalMinutes > tiempoInactividad)
                         {
-                            _logger.LogInformation($"Sesión expirada por inactividad para usuario: {context.User.Identity.Name} (Inactivo por {inactivityTime.TotalMinutes:F2} minutos, límite: {tiempoInactividad} min)");
-                            
-                            // Verificar que no se haya comenzado a enviar la respuesta
+                            _logger.LogInformation(
+                                $"Sesión expirada por inactividad para usuario: {context.User.Identity.Name} " +
+                                $"(Inactivo por {inactivityTime.TotalMinutes:F2} minutos, límite: {tiempoInactividad} min)"
+                            );
+
                             if (!context.Response.HasStarted)
                             {
-                                // Limpiar la sesión y autenticación
                                 await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                                 context.Session.Clear();
-                                
-                                // Redirigir al login con mensaje de sesión expirada
                                 context.Response.Redirect("/Login/Index?expired=true");
                                 return;
                             }
-                            else
-                            {
-                                _logger.LogWarning("No se pudo redirigir porque la respuesta ya comenzó a enviarse");
-                            }
                         }
+
+                        // Actualizar tracking
+                        context.Session.SetString("LastActivity", DateTimeOffset.UtcNow.ToString("O"));
                     }
                     else
                     {
-                        // CRÍTICO: Si no hay LastActivity pero el usuario está autenticado,
-                        // verificar si es una sesión nueva legítima (recién logueado) o una sesión expirada
-                        
-                        // Si tampoco hay LoginTime, la sesión se perdió por inactividad
-                        if (string.IsNullOrEmpty(loginTime))
+                        // Inicializar tracking si no existe
+                        _logger.LogInformation($"Inicializando tracking para usuario: {context.User.Identity.Name}");
+
+                        // Obtener duración desde configuración
+                        int duracionSesionMinutos;
+                        try
                         {
-                            _logger.LogWarning($"Sesión perdida detectada para usuario: {context.User.Identity.Name}. Cerrando sesión por inactividad.");
-                            
-                            if (!context.Response.HasStarted)
-                            {
-                                await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                                context.Session.Clear();
-                                context.Response.Redirect("/Login/Index?expired=true");
-                                return;
-                            }
+                            duracionSesionMinutos = await configuracionService.ObtenerSesionDuracionMinutos();
                         }
-                        else
+                        catch
                         {
-                            // Hay LoginTime pero no LastActivity: validar que sea una sesión reciente (< 5 min)
-                            var loginDateTime = DateTimeOffset.Parse(loginTime);
-                            var timeSinceLogin = now - loginDateTime;
-                            
-                            if (timeSinceLogin.TotalMinutes > 5)
-                            {
-                                // LoginTime es muy antiguo, la sesión se perdió
-                                _logger.LogWarning($"Sesión antigua sin LastActivity detectada para usuario: {context.User.Identity.Name} (Login hace {timeSinceLogin.TotalMinutes:F2} min). Cerrando sesión.");
-                                
-                                if (!context.Response.HasStarted)
-                                {
-                                    await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                                    context.Session.Clear();
-                                    context.Response.Redirect("/Login/Index?expired=true");
-                                    return;
-                                }
-                            }
-                            else
-                            {
-                                // LoginTime es reciente, es un login legítimo
-                                _logger.LogInformation($"Inicializando tracking de actividad para usuario: {context.User.Identity.Name}");
-                            }
+                            duracionSesionMinutos = 480;
                         }
+
+                        context.Session.SetString("LoginTime", DateTimeOffset.UtcNow.ToString("O"));
+                        context.Session.SetString("LastActivity", DateTimeOffset.UtcNow.ToString("O"));
+                        context.Session.SetString("MaxDuration", duracionSesionMinutos.ToString());
                     }
 
-                    // Actualizar última actividad y guardar cambios
-                    context.Session.SetString("LastActivity", DateTimeOffset.UtcNow.ToString("O"));
                     await context.Session.CommitAsync();
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError($"Error en SessionActivityMiddleware: {ex.Message}");
-                    // No interrumpir el flujo normal de la aplicación
                 }
             }
 

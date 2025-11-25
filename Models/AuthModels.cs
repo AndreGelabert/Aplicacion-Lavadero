@@ -61,10 +61,6 @@ namespace Firebase.Models
             /// </summary>
             [Required(ErrorMessage = "La contraseña es obligatoria.")]
             public required string Password { get; set; }
-            /// <summary>
-            /// Booleano para saber si el usuario desea ser recordado.
-            /// </summary>
-            public bool RememberMe { get; set; }
         }
     }
 }

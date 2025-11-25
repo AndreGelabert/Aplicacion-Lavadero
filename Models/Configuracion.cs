@@ -102,7 +102,8 @@ namespace Firebase.Models
         #region Configuración de Sesiones
 
         /// <summary>
-        /// Duración en minutos de la sesión sin el botón "Recordarme" activado.
+        /// Duración máxima de la sesión en minutos.
+        /// La sesión se cerrará automáticamente al alcanzar este tiempo, incluso si el usuario está activo.
         /// Ejemplo: 480 minutos = 8 horas
         /// </summary>
         [FirestoreProperty]
@@ -110,15 +111,8 @@ namespace Firebase.Models
         public int SesionDuracionMinutos { get; set; } = 480; // 8 horas por defecto
 
         /// <summary>
-        /// Duración en días de la sesión con el botón "Recordarme" activado.
-        /// Ejemplo: 7 días
-        /// </summary>
-        [FirestoreProperty]
-        [Range(1, 30, ErrorMessage = "La duración de 'Recordarme' debe estar entre 1 y 30 días")]
-        public int SesionRecordarMeDias { get; set; } = 7; // 7 días por defecto
-
-        /// <summary>
         /// Tiempo de inactividad en minutos antes de cerrar la sesión automáticamente.
+        /// Si el usuario no interactúa con la aplicación durante este tiempo, la sesión se cerrará.
         /// Ejemplo: 15 minutos
         /// </summary>
         [FirestoreProperty]

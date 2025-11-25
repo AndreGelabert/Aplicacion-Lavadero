@@ -21,28 +21,33 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.AccessDeniedPath = "/Login/Index";
         // La duración se configurará dinámicamente en el LoginController
         options.ExpireTimeSpan = TimeSpan.FromHours(8); // Valor por defecto
-        options.SlidingExpiration = true;
+        options.SlidingExpiration = false; // No renovar automáticamente
+        // Cookie NO persistente por defecto (se borra al cerrar navegador)
+        options.Cookie.MaxAge = null; // null = cookie de sesión, se borra al cerrar navegador
 
-      options.Events = new CookieAuthenticationEvents
+        options.Events = new CookieAuthenticationEvents
         {
-       OnValidatePrincipal = async context =>
-      {
-     if (context.Properties.ExpiresUtc.HasValue &&
-           context.Properties.ExpiresUtc.Value < DateTimeOffset.UtcNow)
-        {
-    context.RejectPrincipal();
-          await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-   }
-     }
-   };
+            OnValidatePrincipal = async context =>
+            {
+                if (context.Properties.ExpiresUtc.HasValue &&
+                    context.Properties.ExpiresUtc.Value < DateTimeOffset.UtcNow)
+                {
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                }
+            }
+        };
     });
 
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(15);
+    // Sesión expira después de la duración configurada de inactividad
+    options.IdleTimeout = TimeSpan.FromMinutes(20); // Timeout razonable para la sesión del servidor
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    // Cookie de sesión NO persistente (se borra al cerrar navegador)
+    options.Cookie.MaxAge = null; // null = cookie de sesión
 });
 
 builder.Services.Configure<RequestLocalizationOptions>(options =>

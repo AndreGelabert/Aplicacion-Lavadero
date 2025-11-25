@@ -333,52 +333,37 @@
 
             <!-- Sección 5: Configuración de Sesiones -->
             <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-    Configuración de Sesiones
-            </h2>
- <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-   Configure la duración de las sesiones de los usuarios y el tiempo de inactividad.
-    </p>
-                
-        <div class="grid gap-4 grid-cols-1 md:grid-cols-3">
-   <div>
-      <label asp-for="SesionDuracionMinutos" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
- Duración de Sesión Normal (minutos)
-     </label>
-                <input type="number" asp-for="SesionDuracionMinutos" 
-                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-  min="5" max="1440" step="5" required />
-             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-       Tiempo que dura la sesión sin marcar "Recordarme" (5-1440 min)
-       </p>
-      <span asp-validation-for="SesionDuracionMinutos" class="text-red-600 text-xs"></span>
-   </div>
-     
-             <div>
-    <label asp-for="SesionRecordarMeDias" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-         Duración "Recordarme" (días)
-       </label>
-    <input type="number" asp-for="SesionRecordarMeDias" 
-         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-          min="1" max="30" step="1" required />
-      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-       Tiempo que dura la sesión con "Recordarme" activado (1-30 días)
- </p>
-        <span asp-validation-for="SesionRecordarMeDias" class="text-red-600 text-xs"></span>
-               </div>
- 
-          <div>
-              <label asp-for="SesionInactividadMinutos" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-         Tiempo de Inactividad (minutos)
-          </label>
-          <input type="number" asp-for="SesionInactividadMinutos" 
-          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-           min="5" max="120" step="1" required />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-     Tiempo sin actividad antes de cerrar sesión automáticamente (5-120 min)
-          </p>
-      <span asp-validation-for="SesionInactividadMinutos" class="text-red-600 text-xs"></span>
-          </div>
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                    Configuración de Sesiones
+                </h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Configure la duración máxima de las sesiones y el tiempo de inactividad. La sesión se cierra automáticamente al cerrar el navegador.
+                </p>              
+                <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
+                    <div>
+                        <label asp-for="SesionDuracionMinutos" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Duración Máxima de Sesión (minutos)
+                        </label>
+                        <input type="number" asp-for="SesionDuracionMinutos" 
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                               min="5" max="1440" step="5" required />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Tiempo máximo que puede durar una sesión activa (5-1440 min). La sesión se cierra al alcanzar este límite.
+                        </p>
+                        <span asp-validation-for="SesionDuracionMinutos" class="text-red-600 text-xs"></span>
+                    </div>  
+                    <div>
+                        <label asp-for="SesionInactividadMinutos" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Tiempo de Inactividad (minutos)
+                        </label>
+                        <input type="number" asp-for="SesionInactividadMinutos" 
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                               min="5" max="120" step="1" required />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Tiempo sin actividad antes de cerrar sesión automáticamente (5-120 min)
+                        </p>
+                        <span asp-validation-for="SesionInactividadMinutos" class="text-red-600 text-xs"></span>
+                    </div>
                 </div>
             </div>
 
