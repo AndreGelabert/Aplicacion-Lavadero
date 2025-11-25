@@ -1,0 +1,248 @@
+@model List<Firebase.Models.Empleado>
+@{
+    var user = User as ClaimsPrincipal;
+    var currentUserEmail = user?.FindFirst(ClaimTypes.Email)?.Value;
+}
+
+<!-- Input oculto para almacenar la página actual -->
+<input type="hidden" id="current-page-value" value="@ViewBag.CurrentPage" />
+
+<!-- Inputs ocultos para el ordenamiento -->
+<input type="hidden" id="current-sort-by" value="@(ViewBag.SortBy ?? "NombreCompleto")" />
+<input type="hidden" id="current-sort-order" value="@(ViewBag.SortOrder ?? "asc")" />
+
+<table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+   <tr>
+         <th scope="col" class="px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" onclick="sortTable('NombreCompleto')">
+     <div class="flex items-center">
+    Nombre Completo
+   @if (ViewBag.SortBy == "NombreCompleto")
+     {
+           @if (ViewBag.SortOrder == "asc")
+              {
+ <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
+   <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+    </svg>
+    }
+else
+        {
+            <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
+     <path d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" />
+               </svg>
+     }
+     }
+        </div>
+      </th>
+    <th scope="col" class="px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" onclick="sortTable('Email')">
+<div class="flex items-center">
+    Correo electrónico
+         @if (ViewBag.SortBy == "Email")
+           {
+         @if (ViewBag.SortOrder == "asc")
+           {
+      <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+         </svg>
+}
+          else
+   {
+     <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
+     <path d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" />
+          </svg>
+            }
+ }
+   </div>
+ </th>
+        <th scope="col" class="px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" onclick="sortTable('Rol')">
+                <div class="flex items-center">
+  Rol
+             @if (ViewBag.SortBy == "Rol")
+       {
+   @if (ViewBag.SortOrder == "asc")
+   {
+        <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
+     <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+   </svg>
+      }
+     else
+         {
+      <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
+      <path d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" />
+    </svg>
+  }
+  }
+                </div>
+         </th>
+<th scope="col" class="px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" onclick="sortTable('Estado')">
+     <div class="flex items-center">
+      Estado
+           @if (ViewBag.SortBy == "Estado")
+       {
+      @if (ViewBag.SortOrder == "asc")
+ {
+         <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
+         <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+    </svg>
+    }
+             else
+        {
+              <svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
+      <path d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" />
+   </svg>
+ }
+   }
+           </div>
+     </th>
+            <th scope="col" class="px-4 py-3 w-1/6 text-center">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      @if (Model.Any())
+        {
+            @foreach (var empleado in Model)
+            {
+<tr class="border-b dark:border-gray-700">
+       <th scope="row" class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap dark:text-white">@empleado.NombreCompleto</th>
+               <td class="px-4 py-3">@empleado.Email</td>
+               <td class="px-4 py-3">
+   <span id="rol-text-@empleado.Id">@empleado.Rol</span>
+    <form id="rol-form-@empleado.Id" method="post" asp-action="UpdateRole" class="hidden">
+                 <input type="hidden" name="id" value="@empleado.Id" />
+        <select name="newRole" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" onchange="submitForm('@empleado.Id')">
+   <option value="Empleado" selected="@(empleado.Rol == "Empleado")">Empleado</option>
+          <option value="Administrador" selected="@(empleado.Rol == "Administrador")">Administrador</option>
+  </select>
+       </form>
+           </td>
+          <td class="px-4 py-3">
+             @if (empleado.Estado == "Activo")
+    {
+      <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-green-900 dark:text-green-300">Activo</span>
+           }
+        else
+         {
+   <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-red-900 dark:text-red-300">Inactivo</span>
+         }
+           </td>
+          <td class="px-4 py-3 w-1/6 whitespace-nowrap text-center">
+               <div class="flex items-center justify-center gap-2">
+      @if (empleado.Email != currentUserEmail)
+    {
+               @if (empleado.Estado == "Inactivo")
+       {
+  <!-- Botón Reactivar -->
+       <button type="button"
+            class="p-1.5 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+               title="Reactivar"
+  onclick="openPersonalConfirmModal('reactivar','@empleado.Id','@empleado.NombreCompleto')">
+   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+        <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+          </svg>
+         </button>
+               }
+       else
+     {
+            <!-- Botón Editar -->
+      <button onclick="toggleEdit('@empleado.Id')" class="p-1.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors" title="Editar rol">
+   <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"></path>
+        </svg>
+              </button>
+              <!-- Botón Desactivar -->
+       <button type="button"
+         class="p-1.5 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+    title="Desactivar"
+     onclick="openPersonalConfirmModal('desactivar','@empleado.Id','@empleado.NombreCompleto')">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+             <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path>
+     </svg>
+    </button>
+             }
+       }
+    </div>
+        </td>
+        </tr>
+   }
+        }
+        else
+        {
+            <tr>
+  <td colspan="5" class="text-center py-4 text-gray-500 dark:text-gray-400">
+ No hay datos para mostrar.
+          </td>
+         </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Paginación de la tabla -->
+<nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">
+    <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
+      Mostrando página
+        <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.CurrentPage</span>
+        de
+        <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.TotalPages</span>
+    </span>
+
+    <ul class="inline-flex items-stretch -space-x-px">
+        <!-- Botón Anterior -->
+  <li>
+   @if (ViewBag.CurrentPage > 1)
+        {
+         <a href="javascript:void(0)" onclick="changePage(@(ViewBag.CurrentPage - 1))" class="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-500 bg-white rounded-l-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+      <span class="sr-only">Anterior</span>
+    <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+        </svg>
+  </a>
+            }
+   else
+          {
+ <span class="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-300 bg-white rounded-l-lg border border-gray-300 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700">
+         <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+  </svg>
+</span>
+            }
+        </li>
+
+        <!-- Números de página -->
+        @foreach (var pageNum in ViewBag.VisiblePages)
+        {
+            <li>
+ @if (pageNum == ViewBag.CurrentPage)
+     {
+      <span class="flex items-center justify-center text-sm z-10 py-2 px-3 leading-tight text-primary-600 bg-primary-50 border border-primary-300 dark:border-gray-700 dark:bg-gray-700 dark:text-white">@pageNum</span>
+                }
+                else
+      {
+        <a href="javascript:void(0)" onclick="changePage(@pageNum)" class="flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+               @pageNum
+            </a>
+                }
+            </li>
+        }
+
+   <!-- Botón Siguiente -->
+  <li>
+     @if (ViewBag.CurrentPage < ViewBag.TotalPages)
+    {
+           <a href="javascript:void(0)" onclick="changePage(@(ViewBag.CurrentPage + 1))" class="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-500 bg-white rounded-r-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+    <span class="sr-only">Siguiente</span>
+             <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+           <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+            </svg>
+      </a>
+            }
+  else
+         {
+       <span class="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-300 bg-white rounded-r-lg border border-gray-300 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700">
+   <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+         </svg>
+          </span>
+    }
+        </li>
+    </ul>
+</nav>

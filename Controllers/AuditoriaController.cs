@@ -1,9 +1,9 @@
-using Firebase.Models;
+Ôªøusing Firebase.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 /// <summary>
-/// Controlador para la visualizaciÛn de registros de auditorÌa.
+/// Controlador para la visualizaci√≥n de registros de auditor√≠a.
 /// Solo accesible para administradores.
 /// </summary>
 [Authorize(Roles = "Administrador")]
@@ -37,7 +37,7 @@ public class AuditoriaController : Controller
     #region Vistas Principales
 
     /// <summary>
-    /// P·gina principal de auditorÌa con filtros y paginaciÛn
+    /// P√°gina principal de auditor√≠a con filtros y paginaci√≥n
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> Index(
@@ -80,7 +80,7 @@ public class AuditoriaController : Controller
             return View(pagina);
         }
 
-        // Flujo est·ndar (ordenamientos por campos del modelo base)
+        // Flujo est√°ndar (ordenamientos por campos del modelo base)
         var (registros, currentPageStd, totalPagesStd, visiblePagesStd) = await ObtenerDatosAuditoria(
             fechaInicio, fechaFin, acciones, tiposObjetivo, pageNumber, pageSize, sortBy, sortOrder);
 
@@ -114,7 +114,7 @@ public class AuditoriaController : Controller
         sortBy ??= "Timestamp";
         sortOrder ??= "desc";
 
-        // Caso especial: ordenar por TargetName requiere resolver nombres y paginar aquÌ
+        // Caso especial: ordenar por TargetName requiere resolver nombres y paginar aqu√≠
         if (string.Equals(sortBy, "TargetName", StringComparison.OrdinalIgnoreCase))
         {
             var todos = await _auditService.ObtenerRegistros(
@@ -144,7 +144,7 @@ public class AuditoriaController : Controller
             return PartialView("_AuditoriaTable", pagina);
         }
 
-        // Flujo est·ndar (servicio ya pagina y ordena por campos base)
+        // Flujo est√°ndar (servicio ya pagina y ordena por campos base)
         var registros = await _auditService.ObtenerRegistros(
             fechaInicio, fechaFin, acciones, tiposObjetivo, pageNumber, pageSize, sortBy, sortOrder);
 
@@ -167,7 +167,7 @@ public class AuditoriaController : Controller
     }
 
     /// <summary>
-    /// B˙squeda de registros (mejorada con b˙squeda por nombres)
+    /// B√∫squeda de registros (mejorada con b√∫squeda por nombres)
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> SearchPartial(
@@ -184,14 +184,14 @@ public class AuditoriaController : Controller
         sortBy ??= "Timestamp";
         sortOrder ??= "desc";
 
-        // 1) Coincidencias por texto b·sico (correo/acciÛn/tipo/id/fecha)
+        // 1) Coincidencias por texto b√°sico (correo/acci√≥n/tipo/id/fecha)
         var porTexto = await _auditService.BuscarRegistros(
             searchTerm, fechaInicio, fechaFin, acciones, tiposObjetivo,
             pageNumber: 1, pageSize: int.MaxValue, sortBy, sortOrder);
 
         // 2) Coincidencias por NOMBRE del usuario actor (no por correo)
         var empleados = await _personalService.ObtenerEmpleados(
-            new List<string> { "Activo", "Inactivo" }, null, null, 1, int.MaxValue);
+            new List<string> { "Activo", "Inactivo" }, null, 1, int.MaxValue, "NombreCompleto", "asc");
 
         var idsPorNombre = new HashSet<string>(
             empleados
@@ -258,7 +258,7 @@ public class AuditoriaController : Controller
             return PartialView("_AuditoriaTable", paginaTN);
         }
 
-        // Flujo est·ndar: ordenar/paginar con el modelo base
+        // Flujo est√°ndar: ordenar/paginar con el modelo base
         var ordenados = OrdenarRegistros(unificados, sortBy, sortOrder);
         var pagina = ordenados
             .Skip((pageNumber - 1) * pageSize)
@@ -268,7 +268,7 @@ public class AuditoriaController : Controller
         // 5) Mapear nombres para la vista
         var registrosConNombres = await MapearNombresUsuarios(pagina);
 
-        // 6) PaginaciÛn
+        // 6) Paginaci√≥n
         var totalPages = Math.Max((int)Math.Ceiling(totalRegistros / (double)pageSize), 1);
 
         ViewBag.CurrentPage = pageNumber;
@@ -286,10 +286,10 @@ public class AuditoriaController : Controller
     }
     #endregion
 
-    #region MÈtodos Privados
+    #region M√©todos Privados
 
     /// <summary>
-    /// Obtiene los datos de auditorÌa con paginaciÛn
+    /// Obtiene los datos de auditor√≠a con paginaci√≥n
     /// </summary>
     private async Task<(List<AuditLog> registros, int currentPage, int totalPages, List<int> visiblePages)>
         ObtenerDatosAuditoria(DateTime? fechaInicio, DateTime? fechaFin, List<string> acciones,
@@ -313,7 +313,7 @@ public class AuditoriaController : Controller
     private async Task<List<AuditLogConNombre>> MapearNombresUsuarios(List<AuditLog> registros)
     {
         // Empleados: obtener todos una vez
-        var empleados = await _personalService.ObtenerEmpleados(new List<string>(), null, null, 1, int.MaxValue);
+        var empleados = await _personalService.ObtenerEmpleados(new List<string>(), null, 1, int.MaxValue, "NombreCompleto", "asc");
         var empleadosDict = empleados.ToDictionary(e => e.Id, e => e.NombreCompleto);
 
         // IDs por tipo para resolver nombres
@@ -329,7 +329,7 @@ public class AuditoriaController : Controller
         var paqueteIds = registros.Where(r => r.TargetType == "PaqueteServicio" && !string.IsNullOrWhiteSpace(r.TargetId))
                                   .Select(r => r.TargetId).Distinct().ToList(); // NUEVO
 
-        // Resolver nombres de Servicio (llamadas individuales; pageSize pequeÒo)
+        // Resolver nombres de Servicio (llamadas individuales; pageSize peque√±o)
         var servDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in servicioIds)
         {
@@ -448,7 +448,7 @@ public class AuditoriaController : Controller
     }
 
     /// <summary>
-    /// Obtiene las p·ginas visibles para la paginaciÛn
+    /// Obtiene las p√°ginas visibles para la paginaci√≥n
     /// </summary>
     private List<int> GetVisiblePages(int currentPage, int totalPages, int range = 2)
     {
@@ -458,14 +458,14 @@ public class AuditoriaController : Controller
     }
 
     /// <summary>
-    /// Busca si el tÈrmino est· contenido en la fecha local del timestamp.
+    /// Busca si el t√©rmino est√° contenido en la fecha local del timestamp.
     /// </summary>
     private bool BuscarEnFechaLocal(DateTime timestamp, string searchTerm)
     {
         var fechaLocal = timestamp.ToLocalTime().ToString("g"); // "g" = fecha y hora corta
         return fechaLocal.Contains(searchTerm, StringComparison.OrdinalIgnoreCase);
     }
-    // Helpers: mismo criterio de normalizaciÛn y coincidencia que el servicio
+    // Helpers: mismo criterio de normalizaci√≥n y coincidencia que el servicio
     private static bool CoincideTexto(string texto, string termino)
     {
         if (string.IsNullOrWhiteSpace(texto) || string.IsNullOrWhiteSpace(termino))
@@ -545,7 +545,7 @@ public class AuditoriaController : Controller
 
     /// <summary>
     /// Ordena una lista de registros ya enriquecidos con TargetName y UserName.
-    /// Soporta ordenamiento por TargetName ("Objeto") adem·s de los campos est·ndar.
+    /// Soporta ordenamiento por TargetName ("Objeto") adem√°s de los campos est√°ndar.
     /// </summary>
     private static List<AuditLogConNombre> OrdenarRegistrosConNombre(List<AuditLogConNombre> registros, string sortBy, string sortOrder)
     {
