@@ -45,15 +45,21 @@ public class LoginController : Controller
     /// <summary>
     /// Muestra la página principal de login/registro.
     /// </summary>
-    /// <param name="expired">Indica si la sesión expiró por inactividad</param>
+    /// <param name="expired">Indica el tipo de expiración de sesión</param>
     /// <returns>Vista de login</returns>
-    public IActionResult Index(bool expired = false)
+    public IActionResult Index(string? expired = null)
     {
-        if (expired)
+        if (!string.IsNullOrEmpty(expired))
         {
-            ViewBag.Warning = "Su sesión ha expirado por inactividad. Por favor, inicie sesión nuevamente.";
+            ViewBag.Warning = expired switch
+            {
+                "inactivity" => "Su sesión ha expirado por inactividad. Por favor, inicie sesión nuevamente.",
+                "duration" => "Su sesión ha expirado por exceder el tiempo máximo permitido. Por favor, inicie sesión nuevamente.",
+                "true" => "Su sesión ha expirado. Por favor, inicie sesión nuevamente.",
+                _ => "Su sesión ha finalizado. Por favor, inicie sesión nuevamente."
+            };
         }
-        
+
         return View();
     }
 
@@ -252,6 +258,55 @@ public class LoginController : Controller
         await HttpContext.Session.CommitAsync();
 
         _logger.LogInformation($"Sesión iniciada para {userInfo.Email}, duración máxima: {duracionSesionMinutos} min");
+    }
+    /// <summary>
+    /// Cierra la sesión del usuario actual.
+    /// </summary>
+    /// <returns>Resultado de la operación</returns>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Logout()
+    {
+        try
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var userEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+
+            // Registrar evento de auditoría ANTES de cerrar la sesión
+            if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(userEmail))
+            {
+                var auditService = HttpContext.RequestServices.GetRequiredService<AuditService>();
+                await auditService.LogEvent(
+                    userId,
+                    userEmail,
+                    "Cerrar Sesión",
+                    userId,
+                    "Empleado"
+                );
+
+                _logger.LogInformation($"Auditoría registrada - Usuario {userEmail} cerró sesión manualmente");
+            }
+
+            // Limpiar datos de tracking de sesión
+            HttpContext.Session.Remove("LastActivity");
+            HttpContext.Session.Remove("LoginTime");
+            HttpContext.Session.Remove("MaxDuration");
+
+            // Limpiar toda la sesión
+            HttpContext.Session.Clear();
+
+            // Cerrar sesión de autenticación
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+            _logger.LogInformation($"Usuario cerró sesión manualmente: {userEmail}");
+
+            return RedirectToAction("Index", "Login");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error al cerrar sesión: {ex.Message}");
+            return RedirectToAction("Index", "Login");
+        }
     }
 }
 /// <summary>

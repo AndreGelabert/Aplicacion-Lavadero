@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Security.Claims;
 
 namespace Firebase.Middleware
 {
@@ -18,7 +19,7 @@ namespace Firebase.Middleware
             _logger = logger;
         }
 
-        public async Task InvokeAsync(HttpContext context, ConfiguracionService configuracionService)
+        public async Task InvokeAsync(HttpContext context, ConfiguracionService configuracionService, AuditService auditService)
         {
             // Saltar verificación en rutas de autenticación
             var path = context.Request.Path.Value?.ToLower() ?? "";
@@ -40,6 +41,10 @@ namespace Firebase.Middleware
                     var maxDuration = context.Session.GetString("MaxDuration");
                     var now = DateTimeOffset.UtcNow;
 
+                    // Obtener datos del usuario para auditoría
+                    var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    var userEmail = context.User.FindFirst(ClaimTypes.Email)?.Value;
+
                     // VALIDACIÓN 1: Verificar duración máxima de la sesión (usando datos de sesión)
                     if (!string.IsNullOrEmpty(loginTime) && !string.IsNullOrEmpty(maxDuration))
                     {
@@ -54,11 +59,31 @@ namespace Firebase.Middleware
                                 $"(Duración: {sessionDuration:F2} minutos, Límite: {duracionMaximaMinutos} minutos)"
                             );
 
+                            // Registrar evento de auditoría ANTES de cerrar la sesión
+                            if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(userEmail))
+                            {
+                                try
+                                {
+                                    await auditService.LogEvent(
+                                        userId,
+                                        userEmail,
+                                        "Cerrar Sesión por Duración Máxima",
+                                        userId,
+                                        "Empleado"
+                                    );
+                                    _logger.LogInformation($"Auditoría registrada - Sesión cerrada por duración máxima: {userEmail}");
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError($"Error al registrar auditoría de cierre por duración: {ex.Message}");
+                                }
+                            }
+
                             if (!context.Response.HasStarted)
                             {
                                 await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                                 context.Session.Clear();
-                                context.Response.Redirect("/Login/Index?expired=true");
+                                context.Response.Redirect("/Login/Index?expired=duration");
                                 return;
                             }
                         }
@@ -88,11 +113,31 @@ namespace Firebase.Middleware
                                 $"(Inactivo por {inactivityTime.TotalMinutes:F2} minutos, límite: {tiempoInactividad} min)"
                             );
 
+                            // Registrar evento de auditoría ANTES de cerrar la sesión
+                            if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(userEmail))
+                            {
+                                try
+                                {
+                                    await auditService.LogEvent(
+                                        userId,
+                                        userEmail,
+                                        "Cerrar Sesión por Inactividad",
+                                        userId,
+                                        "Empleado"
+                                    );
+                                    _logger.LogInformation($"Auditoría registrada - Sesión cerrada por inactividad: {userEmail}");
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError($"Error al registrar auditoría de cierre por inactividad: {ex.Message}");
+                                }
+                            }
+
                             if (!context.Response.HasStarted)
                             {
                                 await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                                 context.Session.Clear();
-                                context.Response.Redirect("/Login/Index?expired=true");
+                                context.Response.Redirect("/Login/Index?expired=inactivity");
                                 return;
                             }
                         }
