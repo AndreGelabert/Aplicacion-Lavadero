@@ -228,18 +228,19 @@
         if (!form || form.dataset.submitSetup === 'true') return;
         form.addEventListener('submit', (e) => {
             e.preventDefault();
-            e.stopPropagation();
-            const pg = form.querySelector('input[name="pageNumber"]');
-            if (pg) pg.value = '1';
+        e.stopPropagation();
+   
+        const pg = form.querySelector('input[name="pageNumber"]');
+   if (pg) pg.value = '1';
             const searchInput = document.getElementById('simple-search');
-            if (searchInput) currentSearchTerm = searchInput.value.trim();
-            document.getElementById('filterDropdown')?.classList.add('hidden');
+  if (searchInput) currentSearchTerm = searchInput.value.trim();
+      document.getElementById('filterDropdown')?.classList.add('hidden');
             reloadPaqueteTable(1);
-            if (history.replaceState) history.replaceState(null, '', window.location.pathname);
-            showTableMessage('info', 'Filtros aplicados.');
+  if (history.replaceState) history.replaceState(null, '', window.location.pathname);
+    showTableMessage('info', 'Filtros aplicados.');
             schedulePriceHintsRefresh();
         });
-        form.dataset.submitSetup = 'true';
+ form.dataset.submitSetup = 'true';
     }
 
     /**
@@ -1429,90 +1430,70 @@ setupTipoVehiculoChangeHandler();
 
     /**
  * Aplica restricciones de mínimo/máximo en inputs de descuento.
-     * El step configurado se usa para los controles +/-, pero NO para validación.
+  * Con step="any" en HTML, no hay validación de múltiplos.
  */
     function setupDescuentoStep() {
-        const minDescuento = getDescuentoStep(); // Este es el MÍNIMO y el step de los controles
+  const minDescuento = getDescuentoStep(); // Este es el MÍNIMO permitido
 
-   /**
- * Valida que el valor esté dentro del rango permitido (sin forzar múltiplos)
+        /**
+   * Valida que el valor esté dentro del rango permitido
          */
-  const validate = (el) => {
-    if (!el) return;
+    const validate = (el) => {
+      if (!el) return;
    let v = parseFloat(el.value);
 
        // Si está vacío o inválido, permitir (se validará en servidor)
     if (isNaN(v) || el.value.trim() === '') {
-      return;
-     }
-
-         // Limitar al rango [minDescuento, 95]
-    if (v < minDescuento) {
-      el.value = String(minDescuento);
-            } else if (v > 95) {
-      el.value = '95';
-       }
-        // Si está entre min y max, aceptar cualquier valor
-     };
-
-     /**
-   * Configura un input de descuento con atributos y listeners
-   */
-        const wire = (el) => {
-          if (!el) return;
-
-       // Configurar atributos HTML5
-            el.setAttribute('min', String(minDescuento));
-       el.setAttribute('max', '95');
-    el.setAttribute('step', String(minDescuento)); // Para los controles +/-
-
-            // Evitar duplicar listeners
-   if (el.dataset.stepSetup === 'true') return;
-
-   // **CLAVE: Prevenir la validación HTML5 del step**
-            el.addEventListener('invalid', (e) => {
-       e.preventDefault(); // Evitar el mensaje de error del navegador
-  }, true);
-
-     // **CLAVE: Al hacer submit del form, remover temporalmente la validación**
-         const form = el.closest('form');
-       if (form) {
-   form.addEventListener('submit', () => {
-       // El navegador no validará el step, solo min/max
-       el.removeAttribute('step');
-          // Restaurar después del submit
-        setTimeout(() => {
-      el.setAttribute('step', String(minDescuento));
-   }, 100);
-       });
+    return;
          }
 
-   // Validar en blur (cuando pierde foco)
-          el.addEventListener('blur', () => {
-   validate(el);
+        // Limitar al rango [minDescuento, 95]
+   if (v < minDescuento) {
+   el.value = String(minDescuento);
+      } else if (v > 95) {
+    el.value = '95';
+    }
+        };
 
-    // Si es el campo del formulario principal, recalcular resumen
-   if (el.id === 'PorcentajeDescuento') {
-    updateResumen();
+        /**
+   * Configura un input de descuento con atributos y listeners
+   */
+  const wire = (el) => {
+if (!el) return;
+
+    // Configurar solo atributos min/max (step="any" ya está en HTML)
+       el.setAttribute('min', String(minDescuento));
+       el.setAttribute('max', '95');
+
+     // Evitar duplicar listeners
+     if (el.dataset.stepSetup === 'true') return;
+
+     // Validar en blur (cuando pierde foco)
+        el.addEventListener('blur', () => {
+       validate(el);
+
+        // Si es el campo del formulario principal, recalcular resumen
+     if (el.id === 'PorcentajeDescuento') {
+      updateResumen();
+     }
+});
+
+      // Para el campo del formulario principal, recalcular al cambiar
+     if (el.id === 'PorcentajeDescuento') {
+     el.addEventListener('input', () => {
+      // Recalcular en vivo sin validar (permite escribir)
+       updateResumen();
+    });
        }
- });
-
-   // Para el campo del formulario (no filtros), recalcular al cambiar
-          if (el.id === 'PorcentajeDescuento') {
-      el.addEventListener('input', () => {
-         // Recalcular en vivo sin validar (permite escribir)
-        updateResumen();
- });
-            }
 
       el.dataset.stepSetup = 'true';
-      };
+  };
 
-      // Aplicar a todos los inputs de descuento
-  wire(document.getElementById('PorcentajeDescuento'));
-        wire(document.getElementById('descuentoMin'));
-   wire(document.getElementById('descuentoMax'));
-  }
+     // Aplicar a todos los inputs de descuento
+        wire(document.getElementById('PorcentajeDescuento'));
+   wire(document.getElementById('descuentoMin'));
+  wire(document.getElementById('descuentoMax'));
+    }
 
     // ===================== Mensajería =====================
 

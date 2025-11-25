@@ -167,9 +167,10 @@
                                     <div>
                                         <label for="descuentoMin" class="block mb-1 text-gray-700 dark:text-gray-300">Mín</label>
                                         <input type="number"
-                                               step="@((int?)ViewBag.DescuentoStep ?? 5)"
+                                               step="any"
                                                min="@((int?)ViewBag.DescuentoStep ?? 5)"
                                                max="95"
+                                               data-step="@((int?)ViewBag.DescuentoStep ?? 5)"
                                                name="descuentoMin"
                                                id="descuentoMin"
                                                value="@(ViewBag.DescuentoMin ?? "")"
@@ -179,9 +180,10 @@
                                     <div>
                                         <label for="descuentoMax" class="block mb-1 text-gray-700 dark:text-gray-300">Máx</label>
                                         <input type="number"
-                                               step="@((int?)ViewBag.DescuentoStep ?? 5)"
+                                               step="any"
                                                min="@((int?)ViewBag.DescuentoStep ?? 5)"
                                                max="95"
+                                               data-step="@((int?)ViewBag.DescuentoStep ?? 5)"
                                                name="descuentoMax"
                                                id="descuentoMax"
                                                value="@(ViewBag.DescuentoMax ?? "")"
