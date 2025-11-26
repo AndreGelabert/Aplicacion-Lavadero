@@ -868,21 +868,21 @@ if (helpMin) helpMin.textContent = '';
     function updateServiciosSeleccionadosList() {
         const container = document.getElementById('servicios-seleccionados-container');
         const list = document.getElementById('servicios-seleccionados-list');
-      if (!(container && list)) return;
+        if (!(container && list)) return;
 
         if (serviciosSeleccionados.length === 0) {
-   container.classList.add('hidden');
- list.innerHTML = '';
-        return;
+            container.classList.add('hidden');
+            list.innerHTML = '';
+            return;
         }
         container.classList.remove('hidden');
 
         // Generar HTML con numeración y drag handles
         list.innerHTML = '<ul class="space-y-2" id="servicios-sortable-list">' +
-  serviciosSeleccionados.map((s, index) => {
-// NUEVO: Formatear tiempo usando helper global
-      const tiempoFormateado = window.SiteModule?.formatTiempoSimple?.(s.tiempoEstimado) 
-      || (s.tiempoEstimado + ' min');
+            serviciosSeleccionados.map((s, index) => {
+                // Formatear tiempo usando helper global (fallback simple)
+                const tiempoFormateado = window.SiteModule?.formatTiempoSimple?.(s.tiempoEstimado)
+                    || (s.tiempoEstimado + ' min');
 
                 return `
      <li draggable="true" 
@@ -914,25 +914,27 @@ if (helpMin) helpMin.textContent = '';
             <div class="text-xs text-gray-500 dark:text-gray-400">${tiempoFormateado}</div>
     </div>
 
-          <!-- Botón eliminar -->
-  <button type="button" 
-                onclick="event.stopPropagation(); removerServicioSeleccionado('${s.id}')"
-   class="flex-shrink-0 p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" 
-    title="Quitar servicio">
-           <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-5 h-5">
-   <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
-       </svg>
-        </button>
+          <!-- Botón eliminar (centrado y sin corte) -->
+  <button type="button"
+          onclick="event.stopPropagation(); removerServicioSeleccionado('${s.id}')"
+          class="flex-shrink-0 w-8 h-8 flex items-center justify-center overflow-visible bg-transparent rounded-md border border-transparent hover:border-red-200 dark:hover:border-red-700 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+          title="Quitar servicio"
+          aria-label="Quitar servicio"
+          style="line-height:0;">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd"/>
+    </svg>
+  </button>
 </li>
         `;
             }).join('') +
-        '</ul>' +
+            '</ul>' +
             '<p class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">' +
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">' +
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">' +
             '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />' +
             '</svg>' +
             'Arrastra los servicios para cambiar su orden de ejecución' +
-       '</p>';
+            '</p>';
 
         // Configurar drag and drop
         setupDragAndDrop();
