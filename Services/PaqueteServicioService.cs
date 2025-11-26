@@ -33,7 +33,7 @@ public class PaqueteServicioService
     /// <param name="cache">Instancia de caché en memoria.</param> // NUEVO parámetro
     public PaqueteServicioService(
         FirestoreDb firestore, 
-      ServicioService servicioService,
+        ServicioService servicioService,
         IMemoryCache cache) // NUEVO parámetro
     {
         _firestore = firestore ?? throw new ArgumentNullException(nameof(firestore));
@@ -314,14 +314,14 @@ public class PaqueteServicioService
 
     /// <summary>
     /// Obtiene el rango de descuento (min y max) para los paquetes que cumplen con los filtros actuales
-  /// excluyendo el propio filtro de descuento.
+    /// excluyendo el propio filtro de descuento.
     /// </summary>
     public async Task<(decimal? min, decimal? max)> ObtenerRangoDescuento(
         List<string> estados,
         List<string> tiposVehiculo,
-     string searchTerm,
-      decimal? precioMin = null,
-  decimal? precioMax = null,
+        string searchTerm,
+        decimal? precioMin = null,
+        decimal? precioMax = null,
         int? tiempoMin = null,
         int? tiempoMax = null,
         int? serviciosMin = null,
@@ -330,14 +330,14 @@ public class PaqueteServicioService
         estados = ConfigurarEstadosDefecto(estados);
         // No aplicar descuentoMin/descuentoMax aquí
         var paquetes = await ObtenerPaquetesFiltrados(estados, tiposVehiculo, ORDEN_DEFECTO, DIRECCION_DEFECTO,
-     precioMin, precioMax, tiempoMin, tiempoMax, null, null, serviciosMin, serviciosMax);
+            precioMin, precioMax, tiempoMin, tiempoMax, null, null, serviciosMin, serviciosMax);
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             paquetes = AplicarBusqueda(paquetes, searchTerm);
         }
 
-    if (paquetes == null || paquetes.Count == 0)
+        if (paquetes == null || paquetes.Count == 0)
             return (null, null);
 
         var descuentos = paquetes.Select(p => p.PorcentajeDescuento).ToList();
@@ -447,8 +447,8 @@ public class PaqueteServicioService
     
         return serviciosIds
             .Where(id => serviciosDict.ContainsKey(id))
-    .Select(id => serviciosDict[id])
-      .ToList();
+            .Select(id => serviciosDict[id])
+            .ToList();
     }
 
     #endregion

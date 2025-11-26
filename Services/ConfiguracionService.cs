@@ -128,7 +128,7 @@ public class ConfiguracionService
     public async Task<int> ObtenerSesionDuracionMinutos()
     {
         var config = await ObtenerConfiguracion();
-     return config.SesionDuracionHoras * 60; // Convertir horas a minutos
+        return config.SesionDuracionHoras * 60; // Convertir horas a minutos
     }
 
     /// <summary>
@@ -193,27 +193,27 @@ public class ConfiguracionService
     private Configuracion CrearConfiguracionPorDefecto()
     {
         return new Configuracion
-{
+        {
             Id = CONFIG_ID,
             CancelacionAnticipadaDescuento = 10,
-     CancelacionAnticipadaHorasMinimas = 24,
+            CancelacionAnticipadaHorasMinimas = 24,
             CancelacionAnticipadaValidezDias = 30,
             PaquetesDescuentoStep = 5,
-       HorariosOperacion = new Dictionary<string, string>
-      {
-     { "Lunes", "09:00-18:00" },
-   { "Martes", "09:00-18:00" },
-          { "Miércoles", "09:00-18:00" },
+            HorariosOperacion = new Dictionary<string, string>
+            {
+                { "Lunes", "09:00-18:00" },
+                { "Martes", "09:00-18:00" },
+                { "Miércoles", "09:00-18:00" },
                 { "Jueves", "09:00-18:00" },
-              { "Viernes", "09:00-18:00" },
-              { "Sábado", "09:00-13:00" },
-     { "Domingo", "CERRADO" }
-        },
+                { "Viernes", "09:00-18:00" },
+                { "Sábado", "09:00-13:00" },
+                { "Domingo", "CERRADO" }
+            },
             CapacidadMaximaConcurrente = 5,
             ConsiderarEmpleadosActivos = true,
-  SesionDuracionHoras = 8, // 8 horas
-   SesionInactividadMinutos = 15, // 15 minutos
- FechaActualizacion = DateTime.UtcNow
+            SesionDuracionHoras = 8, // 8 horas
+            SesionInactividadMinutos = 15, // 15 minutos
+            FechaActualizacion = DateTime.UtcNow
         };
     }
 
