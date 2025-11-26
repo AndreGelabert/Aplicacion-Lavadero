@@ -50,22 +50,17 @@
      * --------------------------------------------------------- */
 
     function cleanupOldNotifications() {
-        console.log('[Personal] Ejecutando limpieza agresiva de notificaciones');
-
         const container = document.getElementById('personal-messages-container');
         if (container) {
-            console.log('[Personal] Eliminando contenedor de mensajes');
             container.remove();
         }
 
         const orphanAlert = document.getElementById('personal-inline-alert');
         if (orphanAlert) {
-            console.log('[Personal] Eliminando alert huérfano');
             orphanAlert.remove();
         }
 
         document.querySelectorAll('.personal-inline-alert').forEach(el => {
-            console.log('[Personal] Eliminando elemento con clase personal-inline-alert');
             el.remove();
         });
 
@@ -79,24 +74,20 @@
 
     function setupPageUnloadCleanup() {
         window.addEventListener('beforeunload', () => {
-            console.log('[Personal] beforeunload - Limpiando notificaciones');
             cleanupOldNotifications();
         });
 
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                console.log('[Personal] Página oculta - Limpiando inmediatamente');
                 cleanupOldNotifications();
             }
         });
 
         window.addEventListener('pagehide', () => {
-            console.log('[Personal] pagehide - Limpiando notificaciones');
             cleanupOldNotifications();
         });
 
         window.addEventListener('blur', () => {
-            console.log('[Personal] blur - Limpiando notificaciones después de delay');
             setTimeout(() => cleanupOldNotifications(), 500);
         });
     }
@@ -249,7 +240,7 @@
             e.preventDefault();
             e.stopPropagation();
 
-            // ✅ Prevenir doble submit
+            //   Prevenir doble submit
             if (form.dataset.submitting === 'true') {
                 console.log('[Personal] Filtros ya en proceso, omitiendo');
                 return;
@@ -269,8 +260,8 @@
             if (dropdown) dropdown.classList.add('hidden');
 
             reloadPersonalTable(1, () => {
-                showTableMessage('success', 'Filtros aplicados correctamente.');
-                form.dataset.submitting = 'false'; // ✅ Permitir nuevos filtros
+                showTableMessage('info', 'Filtros aplicados.');
+                form.dataset.submitting = 'false'; //   Permitir nuevos filtros
             });
 
             if (history.replaceState) history.replaceState(null, '', window.location.pathname);
@@ -304,7 +295,7 @@
         const form = document.getElementById('filterForm');
         if (!form) return;
 
-        // ✅ Prevenir doble ejecución
+        //   Prevenir doble ejecución
         if (form.dataset.clearing === 'true') {
             console.log('[Personal] Ya se están limpiando filtros, omitiendo');
             return;
@@ -346,8 +337,8 @@
         if (typeof initDropdowns === 'function') initDropdowns();
 
         reloadPersonalTable(1, () => {
-            showTableMessage('success', 'Filtros restablecidos correctamente.');
-            form.dataset.clearing = 'false'; // ✅ Permitir nueva limpieza
+            showTableMessage('info', 'Filtros restablecidos.');
+            form.dataset.clearing = 'false'; //   Permitir nueva limpieza
         });
     };
 
@@ -360,10 +351,10 @@
      * EDICIÓN DE ROLES
      * --------------------------------------------------------- */
 
-    let roleEditingSetup = false; // ✅ Flag para evitar múltiples registros
+    let roleEditingSetup = false; //   Flag para evitar múltiples registros
 
     function setupRoleEditing() {
-        // ✅ Solo configurar una vez
+        //   Solo configurar una vez
         if (roleEditingSetup) {
             console.log('[Personal] setupRoleEditing ya configurado, omitiendo');
             return;
@@ -410,7 +401,7 @@
         const form = document.getElementById('rol-form-' + id);
         if (!form) return;
 
-        // ✅ Prevenir doble submit
+        //   Prevenir doble submit
         if (form.dataset.submitting === 'true') {
             console.log('[Personal] Formulario ya en proceso de envío, omitiendo');
             return;
@@ -429,7 +420,7 @@
         })
             .then(response => response.json())
             .then(data => {
-                form.dataset.submitting = 'false'; // ✅ Permitir nuevos envíos
+                form.dataset.submitting = 'false'; //   Permitir nuevos envíos
 
                 if (data.success) {
                     showTableMessage('success', data.message || 'Rol actualizado correctamente.');
@@ -442,7 +433,7 @@
                 }
             })
             .catch(() => {
-                form.dataset.submitting = 'false'; // ✅ Permitir reintentos
+                form.dataset.submitting = 'false'; //   Permitir reintentos
                 showTableMessage('error', 'Error de comunicación con el servidor.');
             });
     };
@@ -551,7 +542,7 @@
     window.submitPersonalEstado = function (form) {
         console.log('[Personal] Submit estado, action:', form.action);
 
-        // ✅ Prevenir doble submit
+        //   Prevenir doble submit
         if (form.dataset.submitting === 'true') {
             console.log('[Personal] Formulario ya en proceso de envío, omitiendo');
             return false;
@@ -583,12 +574,12 @@
 
                 setTimeout(() => {
                     reloadPersonalTable(pg);
-                    form.dataset.submitting = 'false'; // ✅ Permitir nuevos envíos
+                    form.dataset.submitting = 'false'; //  Permitir nuevos envíos
                 }, 800);
             })
             .catch(err => {
                 console.error('[Personal] Error en submitPersonalEstado:', err);
-                form.dataset.submitting = 'false'; // ✅ Permitir reintentos
+                form.dataset.submitting = 'false'; //   Permitir reintentos
                 window.closePersonalConfirmModal();
                 showTableMessage('error', 'Error al procesar la solicitud.');
             });
@@ -613,11 +604,11 @@
 
         if (successMessage) {
     showTableMessage('success', successMessage);
-     // ✅ Eliminar meta tag después de mostrar
+     //   Eliminar meta tag después de mostrar
             successMeta?.remove();
         } else if (errorMessage) {
             showTableMessage('error', errorMessage);
-// ✅ Eliminar meta tag después de mostrar
+//   Eliminar meta tag después de mostrar
        errorMeta?.remove();
         }
     }
