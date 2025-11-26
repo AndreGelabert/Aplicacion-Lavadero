@@ -34,6 +34,9 @@ namespace Firebase.Services
             _auditService = auditService;
             _httpClient = httpClient;
             _firebaseApiKey = _configuration["Firebase:ApiKey"] ?? throw new InvalidOperationException("Firebase API Key no configurada");
+            
+            // Aumentar timeout para navegadores con bloqueo de trackers (Brave, Firefox con privacidad estricta)
+            _httpClient.Timeout = TimeSpan.FromSeconds(30);
         }
 
         /// <summary>

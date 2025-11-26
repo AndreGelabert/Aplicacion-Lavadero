@@ -9,29 +9,11 @@ const LoginModule = {
      */
     init() {
         this.setupPasswordToggle();
-        this.setupFormValidation(); // Ahora incluye "Recordarme"
-        this.loadRememberedEmail(); // Cargar email guardado al inicio
-    },
-
-    /**
-     * Carga el email guardado si existe
-     */
-    loadRememberedEmail() {
-        const rememberCheckbox = document.getElementById('rememberMe');
-        const emailField = document.getElementById('email');
-
-        if (rememberCheckbox && emailField) {
-            const savedEmail = localStorage.getItem('rememberedEmail');
-            if (savedEmail) {
-                emailField.value = savedEmail;
-                rememberCheckbox.checked = true;
-            }
-        }
+        this.setupFormValidation();
     },
 
     /**
      * Configura validación del formulario de login
-     * AHORA INCLUYE LA LÓGICA DE "RECORDARME"
      */
     setupFormValidation() {
         const loginForm = document.getElementById('loginForm');
@@ -40,7 +22,6 @@ const LoginModule = {
         loginForm.addEventListener('submit', (e) => {
             const email = document.getElementById('email');
             const password = document.getElementById('password');
-            const rememberCheckbox = document.getElementById('rememberMe');
 
             let hasErrors = false;
 
@@ -67,13 +48,6 @@ const LoginModule = {
             if (hasErrors) {
                 e.preventDefault();
                 return;
-            }
-
-            // Guardar/eliminar email según checkbox (solo si no hay errores)
-            if (rememberCheckbox && rememberCheckbox.checked) {
-                localStorage.setItem('rememberedEmail', email.value);
-            } else {
-                localStorage.removeItem('rememberedEmail');
             }
 
             // Dejar que el formulario se envíe normalmente

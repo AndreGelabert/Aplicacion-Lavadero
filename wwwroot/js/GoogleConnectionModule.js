@@ -28,6 +28,13 @@ const provider = new GoogleAuthProvider();
 const auth = getAuth();
 
 /**
+ * Detecta si el navegador es Brave
+ */
+async function isBraveBrowser() {
+    return (navigator.brave && await navigator.brave.isBrave()) || false;
+}
+
+/**
  * Maneja el proceso de autenticación con Google
  * 
  * Este método:
@@ -38,17 +45,38 @@ const auth = getAuth();
  */
 async function handleGoogleLogin() {
     try {
+        // Detectar Brave y mostrar advertencia
+        const isBrave = await isBraveBrowser();
+        if (isBrave) {
+            console.log('Navegador Brave detectado. Ajustando configuración de popup...');
+        }
+
+        // Configurar provider con prompt para forzar selección de cuenta
+        provider.setCustomParameters({
+            prompt: 'select_account'
+        });
+
         // Mostrar popup de Google para autenticación
         const result = await signInWithPopup(auth, provider);
         
+        // Verificar que obtuvimos el resultado correctamente
+        if (!result || !result.user) {
+            throw new Error('No se pudo obtener información del usuario');
+        }
+        
         // Obtener el token de ID para enviar al servidor
         const idToken = await result.user.getIdToken();
+        
+        if (!idToken) {
+            throw new Error('No se pudo obtener el token de autenticación');
+        }
         
         // Enviar token al servidor para verificación
         const response = await fetch('/Login/LoginWithGoogle', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache'
             },
             body: JSON.stringify({ idToken })
         });
@@ -78,10 +106,29 @@ async function handleGoogleLogin() {
         
         if (error.code === 'auth/popup-closed-by-user') {
             userMessage = 'La ventana de autenticación fue cerrada. Por favor, intente de nuevo.';
+        } else if (error.code === 'auth/cancelled-popup-request') {
+            userMessage = 'Solicitud de autenticación cancelada. Por favor, intente de nuevo.';
+        } else if (error.code === 'auth/popup-blocked') {
+            const isBrave = await isBraveBrowser();
+            if (isBrave) {
+                userMessage = 'Brave está bloqueando el popup de autenticación. Por favor, permita popups para este sitio en la configuración de Brave (ícono del escudo en la barra de direcciones).';
+            } else {
+                userMessage = 'El navegador bloqueó el popup de autenticación. Por favor, permita popups para este sitio.';
+            }
         } else if (error.code === 'auth/network-request-failed') {
             userMessage = 'Error de conexión. Verifique su conexión a internet y intente de nuevo.';
         } else if (error.code === 'auth/too-many-requests') {
             userMessage = 'Demasiados intentos. Por favor, espere unos minutos antes de intentar de nuevo.';
+        } else if (error.code === 'auth/internal-error') {
+            const isBrave = await isBraveBrowser();
+            if (isBrave) {
+                userMessage = 'Error interno de autenticación. En Brave, intente: 1) Desactivar Shields temporalmente, 2) Permitir cookies de terceros para este sitio, o 3) Usar otro navegador.';
+            } else {
+                userMessage = 'Error interno de autenticación. Por favor, intente de nuevo.';
+            }
+        } else if (error.message) {
+            // Si es un error personalizado con mensaje, mostrarlo
+            userMessage = `Error: ${error.message}`;
         }
         
         showErrorMessage(userMessage);
@@ -120,12 +167,43 @@ function showErrorMessage(message) {
     }, 5000);
 }
 
+/**
+ * Muestra instrucciones específicas para Brave
+ */
+function showBraveInstructions() {
+    const instructions = `
+        <strong>Para usar Google Login en Brave:</strong><br>
+        1. Haga clic en el ícono del escudo (🛡️) en la barra de direcciones<br>
+        2. Desactive "Shields" temporalmente para este sitio<br>
+        3. O permita "Cookies de terceros" en la configuración de Shields<br>
+        4. Intente iniciar sesión nuevamente
+    `;
+    showErrorMessage(instructions);
+}
+
 // Configurar el event listener cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const googleLoginButton = document.getElementById('google-login-button');
     
     if (googleLoginButton) {
         googleLoginButton.addEventListener('click', handleGoogleLogin);
+        
+        // Si es Brave, mostrar un mensaje informativo
+        const isBrave = await isBraveBrowser();
+        if (isBrave) {
+            console.log('Navegador Brave detectado. Si tiene problemas con Google Login, desactive Shields temporalmente.');
+            
+            // Agregar un pequeño ícono de ayuda junto al botón de Google
+            const helpIcon = document.createElement('button');
+            helpIcon.type = 'button';
+            helpIcon.className = 'text-blue-600 hover:text-blue-700 text-sm mt-2 underline';
+            helpIcon.textContent = '¿Problemas con Brave? Haga clic aquí';
+            helpIcon.addEventListener('click', showBraveInstructions);
+            
+            if (googleLoginButton.parentNode) {
+                googleLoginButton.parentNode.appendChild(helpIcon);
+            }
+        }
     } else {
         console.warn('Botón de login con Google no encontrado en la página');
     }
