@@ -1306,14 +1306,16 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
-            .then(r => {
-                if (!r.ok) throw new Error('Error estado');
+            .then(r => r.json())
+            .then(data => {
                 window.closeServicioConfirmModal();
 
-                const isDeactivate = form.action.includes('DeactivateServicio');
-                const message = isDeactivate ? 'Servicio desactivado correctamente.' : 'Servicio reactivado correctamente.';
+                if (data.success) {
+                    showTableMessage('success', data.message);
+                } else {
+                    showTableMessage('error', data.message);
+                }
 
-                showTableMessage('success', message);
                 reloadServicioTable(getCurrentTablePage());
             })
             .catch(e => {
