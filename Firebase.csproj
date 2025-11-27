@@ -9,4 +9,9 @@
     <PackageReference Include="FirebaseAuthentication.net" Version="4.1.0" />
     <PackageReference Include="Google.Cloud.Firestore" Version="3.10.0" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Firebase.Tests/**" />
+    <Content Remove="Firebase.Tests/**" />
+    <None Remove="Firebase.Tests/**" />
+  </ItemGroup>
 </Project>
