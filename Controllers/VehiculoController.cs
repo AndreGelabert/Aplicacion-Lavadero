@@ -27,14 +27,21 @@ public class VehiculoController : Controller
     public async Task<IActionResult> Index(
         string searchTerm,
         string tipoVehiculo,
+        List<string> estados,
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = "Patente",
         string sortOrder = "asc",
         string editId = null)
     {
-        var vehiculos = await _vehiculoService.ObtenerVehiculos(searchTerm, tipoVehiculo, pageNumber, pageSize, sortBy, sortOrder);
-        var totalVehiculos = await _vehiculoService.ObtenerTotalVehiculos(searchTerm, tipoVehiculo);
+        // Si no se especifican estados, por defecto mostrar solo Activos
+        if (estados == null || !estados.Any())
+        {
+            estados = new List<string> { "Activo" };
+        }
+
+        var vehiculos = await _vehiculoService.ObtenerVehiculos(searchTerm, tipoVehiculo, pageNumber, pageSize, sortBy, sortOrder, estados);
+        var totalVehiculos = await _vehiculoService.ObtenerTotalVehiculos(searchTerm, tipoVehiculo, estados);
         var totalPages = Math.Max((int)Math.Ceiling(totalVehiculos / (double)pageSize), 1);
 
         ViewBag.CurrentPage = pageNumber;
@@ -44,10 +51,21 @@ public class VehiculoController : Controller
         ViewBag.SortOrder = sortOrder;
         ViewBag.SearchTerm = searchTerm;
         ViewBag.TipoVehiculo = tipoVehiculo;
+        ViewBag.Estados = estados;
         ViewBag.PageSize = pageSize;
 
         await CargarListasForm();
-        await ConfigurarFormulario(editId);
+        
+        // Solo configurar formulario si se está editando
+        if (!string.IsNullOrEmpty(editId))
+        {
+            await ConfigurarFormulario(editId);
+        }
+        else
+        {
+            ViewBag.FormTitle = "Registrando Vehículo";
+            ViewBag.EditVehiculo = null;
+        }
 
         return View(vehiculos);
     }
@@ -56,13 +74,19 @@ public class VehiculoController : Controller
     public async Task<IActionResult> SearchPartial(
         string searchTerm,
         string tipoVehiculo,
+        List<string> estados,
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = "Patente",
         string sortOrder = "asc")
     {
-        var vehiculos = await _vehiculoService.ObtenerVehiculos(searchTerm, tipoVehiculo, pageNumber, pageSize, sortBy, sortOrder);
-        var totalVehiculos = await _vehiculoService.ObtenerTotalVehiculos(searchTerm, tipoVehiculo);
+        if (estados == null || !estados.Any())
+        {
+            estados = new List<string> { "Activo" };
+        }
+
+        var vehiculos = await _vehiculoService.ObtenerVehiculos(searchTerm, tipoVehiculo, pageNumber, pageSize, sortBy, sortOrder, estados);
+        var totalVehiculos = await _vehiculoService.ObtenerTotalVehiculos(searchTerm, tipoVehiculo, estados);
         var totalPages = Math.Max((int)Math.Ceiling(totalVehiculos / (double)pageSize), 1);
 
         ViewBag.CurrentPage = pageNumber;
@@ -72,6 +96,7 @@ public class VehiculoController : Controller
         ViewBag.SortOrder = sortOrder;
         ViewBag.SearchTerm = searchTerm;
         ViewBag.TipoVehiculo = tipoVehiculo;
+        ViewBag.Estados = estados;
 
         return PartialView("_VehiculoTable", vehiculos);
     }
@@ -79,12 +104,13 @@ public class VehiculoController : Controller
     [HttpGet]
     public async Task<IActionResult> TablePartial(
         string tipoVehiculo,
+        List<string> estados,
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = "Patente",
         string sortOrder = "asc")
     {
-        return await SearchPartial(null, tipoVehiculo, pageNumber, pageSize, sortBy, sortOrder);
+        return await SearchPartial(null, tipoVehiculo, estados, pageNumber, pageSize, sortBy, sortOrder);
     }
 
     [HttpGet]
@@ -183,14 +209,43 @@ public class VehiculoController : Controller
     }
 
     [HttpPost]
+    public async Task<IActionResult> DeactivateVehiculo(string id)
+    {
+        try
+        {
+            await _vehiculoService.CambiarEstadoVehiculo(id, "Inactivo");
+            await RegistrarEvento("Desactivacion de vehiculo", id, "Vehiculo");
+            return Json(new { success = true, message = "Vehículo desactivado correctamente." });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = $"Error al desactivar vehículo: {ex.Message}" });
+        }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> ReactivateVehiculo(string id)
+    {
+        try
+        {
+            await _vehiculoService.CambiarEstadoVehiculo(id, "Activo");
+            await RegistrarEvento("Reactivacion de vehiculo", id, "Vehiculo");
+            return Json(new { success = true, message = "Vehículo reactivado correctamente." });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = $"Error al reactivar vehículo: {ex.Message}" });
+        }
+    }
+
+    [HttpPost]
     public async Task<IActionResult> EliminarVehiculo(string id)
     {
         try
         {
-            // Validar si está en uso en algún servicio/paquete?
-            // Probablemente sí, pero por ahora borrado simple.
+            // Borrado físico - solo si realmente es necesario
             await _vehiculoService.EliminarVehiculo(id);
-            await RegistrarEvento("Eliminacion de vehiculo", id, "Vehiculo");
+            await RegistrarEvento("Eliminacion fisica de vehiculo", id, "Vehiculo");
             return Json(new { success = true, message = "Vehículo eliminado correctamente." });
         }
         catch (Exception ex)

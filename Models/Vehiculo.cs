@@ -62,5 +62,11 @@ namespace Firebase.Models
         /// </summary>
         [FirestoreProperty]
         public string? ClienteNombreCompleto { get; set; }
+
+        /// <summary>
+        /// Estado del vehículo (Activo/Inactivo) para borrado lógico.
+        /// </summary>
+        [FirestoreProperty]
+        public string Estado { get; set; } = "Activo";
     }
 }

@@ -19,11 +19,22 @@ public class VehiculoService
         int pageNumber,
         int pageSize,
         string sortBy,
-        string sortOrder)
+        string sortOrder,
+        List<string> estados = null)
     {
         var vehiculosRef = _firestore.Collection("vehiculos");
         var snapshot = await vehiculosRef.GetSnapshotAsync();
         var vehiculos = snapshot.Documents.Select(d => d.ConvertTo<Vehiculo>()).ToList();
+
+        // Filtrado por estado (por defecto solo Activos)
+        if (estados != null && estados.Any())
+        {
+            vehiculos = vehiculos.Where(v => estados.Contains(v.Estado)).ToList();
+        }
+        else
+        {
+            vehiculos = vehiculos.Where(v => v.Estado == "Activo").ToList();
+        }
 
         // Filtrado en memoria
         if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -54,11 +65,21 @@ public class VehiculoService
             .ToList();
     }
 
-    public async Task<int> ObtenerTotalVehiculos(string searchTerm, string tipoVehiculo)
+    public async Task<int> ObtenerTotalVehiculos(string searchTerm, string tipoVehiculo, List<string> estados = null)
     {
         var vehiculosRef = _firestore.Collection("vehiculos");
         var snapshot = await vehiculosRef.GetSnapshotAsync();
         var vehiculos = snapshot.Documents.Select(d => d.ConvertTo<Vehiculo>()).ToList();
+
+        // Filtrado por estado
+        if (estados != null && estados.Any())
+        {
+            vehiculos = vehiculos.Where(v => estados.Contains(v.Estado)).ToList();
+        }
+        else
+        {
+            vehiculos = vehiculos.Where(v => v.Estado == "Activo").ToList();
+        }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -105,6 +126,30 @@ public class VehiculoService
     {
         var snapshot = await _firestore.Collection("vehiculos").GetSnapshotAsync();
         return snapshot.Documents.Select(d => d.ConvertTo<Vehiculo>()).ToList();
+    }
+
+    /// <summary>
+    /// Obtiene vehículos disponibles (Activos y sin dueño asignado)
+    /// </summary>
+    public async Task<List<Vehiculo>> ObtenerVehiculosDisponibles()
+    {
+        var snapshot = await _firestore.Collection("vehiculos").GetSnapshotAsync();
+        return snapshot.Documents
+            .Select(d => d.ConvertTo<Vehiculo>())
+            .Where(v => v.Estado == "Activo" && string.IsNullOrEmpty(v.ClienteId))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Cambia el estado de un vehículo (Activar/Desactivar)
+    /// </summary>
+    public async Task CambiarEstadoVehiculo(string id, string nuevoEstado)
+    {
+        var vehiculo = await ObtenerVehiculo(id);
+        if (vehiculo == null) throw new Exception("Vehículo no encontrado");
+
+        vehiculo.Estado = nuevoEstado;
+        await ActualizarVehiculo(vehiculo);
     }
 
     public async Task CrearVehiculo(Vehiculo vehiculo)

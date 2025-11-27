@@ -72,5 +72,11 @@ namespace Firebase.Models
         /// </summary>
         [FirestoreProperty]
         public List<string> VehiculosIds { get; set; } = new List<string>();
+
+        /// <summary>
+        /// Estado del cliente (Activo/Inactivo) para borrado lógico.
+        /// </summary>
+        [FirestoreProperty]
+        public string Estado { get; set; } = "Activo";
     }
 }

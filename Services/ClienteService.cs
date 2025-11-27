@@ -21,23 +21,22 @@ public class ClienteService
         int pageNumber,
         int pageSize,
         string sortBy,
-        string sortOrder)
+        string sortOrder,
+        List<string> estados = null)
     {
         var clientesRef = _firestore.Collection("clientes");
-        Query query = clientesRef;
-
-        // Nota: Firestore no soporta búsqueda parcial nativa eficiente (LIKE %term%).
-        // Se traerán todos y se filtrará en memoria si hay término de búsqueda,
-        // o se usará un índice específico si el volumen crece.
-        // Para este MVP, filtro en memoria post-fetch si hay búsqueda,
-        // pero para paginación sin búsqueda usamos cursores.
-
-        // Sin embargo, para mantener consistencia con ServicioService y dado que
-        // la colección no será masiva inmediatamente, traeremos todo y filtraremos/paginaremos en memoria
-        // para simplificar la lógica de búsqueda compleja (nombre, apellido, dni).
-
         var snapshot = await clientesRef.GetSnapshotAsync();
         var clientes = snapshot.Documents.Select(d => d.ConvertTo<Cliente>()).ToList();
+
+        // Filtrado por estado (por defecto solo Activos)
+        if (estados != null && estados.Any())
+        {
+            clientes = clientes.Where(c => estados.Contains(c.Estado)).ToList();
+        }
+        else
+        {
+            clientes = clientes.Where(c => c.Estado == "Activo").ToList();
+        }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -65,11 +64,21 @@ public class ClienteService
     /// <summary>
     /// Obtiene el total de clientes que coinciden con el filtro para paginación.
     /// </summary>
-    public async Task<int> ObtenerTotalClientes(string searchTerm)
+    public async Task<int> ObtenerTotalClientes(string searchTerm, List<string> estados = null)
     {
         var clientesRef = _firestore.Collection("clientes");
         var snapshot = await clientesRef.GetSnapshotAsync();
         var clientes = snapshot.Documents.Select(d => d.ConvertTo<Cliente>()).ToList();
+
+        // Filtrado por estado
+        if (estados != null && estados.Any())
+        {
+            clientes = clientes.Where(c => estados.Contains(c.Estado)).ToList();
+        }
+        else
+        {
+            clientes = clientes.Where(c => c.Estado == "Activo").ToList();
+        }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -83,6 +92,18 @@ public class ClienteService
         }
 
         return clientes.Count;
+    }
+
+    /// <summary>
+    /// Cambia el estado de un cliente (Activar/Desactivar)
+    /// </summary>
+    public async Task CambiarEstadoCliente(string id, string nuevoEstado)
+    {
+        var cliente = await ObtenerCliente(id);
+        if (cliente == null) throw new Exception("Cliente no encontrado");
+
+        cliente.Estado = nuevoEstado;
+        await ActualizarCliente(cliente);
     }
 
     public async Task<Cliente?> ObtenerCliente(string id)

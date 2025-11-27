@@ -26,14 +26,21 @@ public class ClienteController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(
         string searchTerm,
+        List<string> estados,
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = "Nombre",
         string sortOrder = "asc",
         string editId = null)
     {
-        var clientes = await _clienteService.ObtenerClientes(searchTerm, pageNumber, pageSize, sortBy, sortOrder);
-        var totalClientes = await _clienteService.ObtenerTotalClientes(searchTerm);
+        // Si no se especifican estados, por defecto mostrar solo Activos
+        if (estados == null || !estados.Any())
+        {
+            estados = new List<string> { "Activo" };
+        }
+
+        var clientes = await _clienteService.ObtenerClientes(searchTerm, pageNumber, pageSize, sortBy, sortOrder, estados);
+        var totalClientes = await _clienteService.ObtenerTotalClientes(searchTerm, estados);
         var totalPages = Math.Max((int)Math.Ceiling(totalClientes / (double)pageSize), 1);
 
         ViewBag.CurrentPage = pageNumber;
@@ -42,6 +49,7 @@ public class ClienteController : Controller
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
         ViewBag.SearchTerm = searchTerm;
+        ViewBag.Estados = estados;
         ViewBag.PageSize = pageSize;
 
         await CargarListasForm();
@@ -53,13 +61,19 @@ public class ClienteController : Controller
     [HttpGet]
     public async Task<IActionResult> SearchPartial(
         string searchTerm,
+        List<string> estados,
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = "Nombre",
         string sortOrder = "asc")
     {
-        var clientes = await _clienteService.ObtenerClientes(searchTerm, pageNumber, pageSize, sortBy, sortOrder);
-        var totalClientes = await _clienteService.ObtenerTotalClientes(searchTerm);
+        if (estados == null || !estados.Any())
+        {
+            estados = new List<string> { "Activo" };
+        }
+
+        var clientes = await _clienteService.ObtenerClientes(searchTerm, pageNumber, pageSize, sortBy, sortOrder, estados);
+        var totalClientes = await _clienteService.ObtenerTotalClientes(searchTerm, estados);
         var totalPages = Math.Max((int)Math.Ceiling(totalClientes / (double)pageSize), 1);
 
         ViewBag.CurrentPage = pageNumber;
@@ -68,18 +82,20 @@ public class ClienteController : Controller
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
         ViewBag.SearchTerm = searchTerm;
+        ViewBag.Estados = estados;
 
         return PartialView("_ClienteTable", clientes);
     }
 
     [HttpGet]
     public async Task<IActionResult> TablePartial(
+        List<string> estados,
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = "Nombre",
         string sortOrder = "asc")
     {
-        return await SearchPartial(null, pageNumber, pageSize, sortBy, sortOrder);
+        return await SearchPartial(null, estados, pageNumber, pageSize, sortBy, sortOrder);
     }
 
     [HttpGet]
@@ -151,14 +167,100 @@ public class ClienteController : Controller
     }
 
     [HttpPost]
+    public async Task<IActionResult> DeactivateCliente(string id)
+    {
+        try
+        {
+            await _clienteService.CambiarEstadoCliente(id, "Inactivo");
+            await RegistrarEvento("Desactivacion de cliente", id, "Cliente");
+            return Json(new { success = true, message = "Cliente desactivado correctamente." });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = $"Error al desactivar cliente: {ex.Message}" });
+        }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> ReactivateCliente(string id)
+    {
+        try
+        {
+            await _clienteService.CambiarEstadoCliente(id, "Activo");
+            await RegistrarEvento("Reactivacion de cliente", id, "Cliente");
+            return Json(new { success = true, message = "Cliente reactivado correctamente." });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = $"Error al reactivar cliente: {ex.Message}" });
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ObtenerVehiculosDisponibles()
+    {
+        try
+        {
+            var vehiculos = await _vehiculoService.ObtenerVehiculosDisponibles();
+            return Json(new
+            {
+                success = true,
+                vehiculos = vehiculos.Select(v => new
+                {
+                    id = v.Id,
+                    patente = v.Patente,
+                    marca = v.Marca,
+                    modelo = v.Modelo,
+                    color = v.Color,
+                    tipoVehiculo = v.TipoVehiculo
+                })
+            });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetVehiculosCliente(string clienteId)
+    {
+        try
+        {
+            var cliente = await _clienteService.ObtenerCliente(clienteId);
+            if (cliente == null)
+            {
+                return Json(new { success = false, message = "Cliente no encontrado" });
+            }
+
+            var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(clienteId);
+            
+            return Json(new
+            {
+                success = true,
+                vehiculos = vehiculos.Select(v => new
+                {
+                    id = v.Id,
+                    patente = v.Patente,
+                    marca = v.Marca,
+                    modelo = v.Modelo,
+                    color = v.Color,
+                    tipoVehiculo = v.TipoVehiculo,
+                    estado = v.Estado
+                })
+            });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPost]
     public async Task<IActionResult> EliminarCliente(string id)
     {
         try
         {
-            // Validar si tiene vehículos? El requerimiento dice "un vehículo solo puede tener un dueño".
-            // Si borramos el cliente, los vehículos quedarían huérfanos o deberían borrarse.
-            // Por seguridad, impedimos borrar si tiene vehículos, o los desvinculamos.
-            // Asumiremos desvinculación o restricción. Restricción es más segura.
             var cliente = await _clienteService.ObtenerCliente(id);
             if (cliente != null && cliente.VehiculosIds != null && cliente.VehiculosIds.Any())
             {
@@ -166,7 +268,7 @@ public class ClienteController : Controller
             }
 
             await _clienteService.EliminarCliente(id);
-            await RegistrarEvento("Eliminacion de cliente", id, "Cliente");
+            await RegistrarEvento("Eliminacion fisica de cliente", id, "Cliente");
             return Json(new { success = true, message = "Cliente eliminado correctamente." });
         }
         catch (Exception ex)
