@@ -105,6 +105,9 @@ builder.Services.AddScoped<TipoServicioService>();
 builder.Services.AddScoped<TipoVehiculoService>();
 builder.Services.AddScoped<PaqueteServicioService>();
 builder.Services.AddScoped<ConfiguracionService>();
+builder.Services.AddScoped<ClienteService>();
+builder.Services.AddScoped<VehiculoService>();
+builder.Services.AddScoped<TipoDocumentoService>();
 builder.Services.AddHttpClient<Firebase.Services.AuthenticationService>();
 builder.Services.AddScoped<Firebase.Services.AuthenticationService>();
 

@@ -363,3 +363,5 @@ MigrationBackup/
 FodyWeavers.xsd
 /Utils/loginmvc.json
 /Utils/loginmvc.json
+.vscode/launch.json
+.vscode/tasks.json

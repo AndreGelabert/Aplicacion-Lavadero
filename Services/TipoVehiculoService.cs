@@ -1,4 +1,4 @@
-﻿using Google.Cloud.Firestore;
+using Google.Cloud.Firestore;
 
 /// <summary>
 /// Servicio para la gestión de tipos de vehículo en Firestore.
