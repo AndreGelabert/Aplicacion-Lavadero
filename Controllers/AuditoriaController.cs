@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 /// <summary>
 /// Controlador para la visualización de registros de auditoría.
-/// Solo accesible para administradores.
+/// Proporciona acciones para listar, buscar y consultar registros de auditoría.
 /// </summary>
 [Authorize(Roles = "Administrador")]
 public class AuditoriaController : Controller
@@ -17,6 +17,15 @@ public class AuditoriaController : Controller
     private readonly TipoVehiculoService _tipoVehiculoService;
     private readonly PaqueteServicioService _paqueteServicioService; // NUEVO
 
+    /// <summary>
+    /// Crea una nueva instancia del controlador de auditoría.
+    /// </summary>
+    /// <param name="auditService">Servicio de auditoría.</param>
+    /// <param name="personalService">Servicio de personal.</param>
+    /// <param name="servicioService">Servicio de servicios.</param>
+    /// <param name="tipoServicioService">Servicio de tipos de servicio.</param>
+    /// <param name="tipoVehiculoService">Servicio de tipos de vehículo.</param>
+    /// <param name="paqueteServicioService">Servicio de paquetes de servicio.</param>
     public AuditoriaController(
         AuditService auditService,
         PersonalService personalService,
@@ -37,8 +46,17 @@ public class AuditoriaController : Controller
     #region Vistas Principales
 
     /// <summary>
-    /// Página principal de auditoría con filtros y paginación
+    /// Página principal de auditoría con filtros y paginación.
     /// </summary>
+    /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
+    /// <param name="fechaFin">Fecha de fin del filtro.</param>
+    /// <param name="acciones">Lista de acciones a filtrar.</param>
+    /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
+    /// <param name="pageNumber">Número de página actual.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Vista con la lista de registros de auditoría.</returns>
     [HttpGet]
     public async Task<IActionResult> Index(
         DateTime? fechaInicio = null,
@@ -98,8 +116,17 @@ public class AuditoriaController : Controller
     #region Vistas Parciales
 
     /// <summary>
-    /// Obtener tabla parcial para AJAX
+    /// Obtener tabla parcial para AJAX.
     /// </summary>
+    /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
+    /// <param name="fechaFin">Fecha de fin del filtro.</param>
+    /// <param name="acciones">Lista de acciones a filtrar.</param>
+    /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
+    /// <param name="pageNumber">Número de página actual.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Vista parcial con la tabla de auditoría.</returns>
     [HttpGet]
     public async Task<IActionResult> TablePartial(
         DateTime? fechaInicio = null,
@@ -167,8 +194,18 @@ public class AuditoriaController : Controller
     }
 
     /// <summary>
-    /// Búsqueda de registros (mejorada con búsqueda por nombres)
+    /// Búsqueda de registros (mejorada con búsqueda por nombres).
     /// </summary>
+    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
+    /// <param name="fechaFin">Fecha de fin del filtro.</param>
+    /// <param name="acciones">Lista de acciones a filtrar.</param>
+    /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
+    /// <param name="pageNumber">Número de página actual.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Vista parcial with la tabla de auditoría.</returns>
     [HttpGet]
     public async Task<IActionResult> SearchPartial(
         string searchTerm,
@@ -194,93 +231,93 @@ public class AuditoriaController : Controller
         var empleados = await _personalService.ObtenerEmpleadosSinFiltroEstado();
 
         var idsPorNombre = new HashSet<string>(
-         empleados
-          .Where(e => CoincideTexto(e.NombreCompleto, searchTerm))
-     .Select(e => e.Id)
-   );
+            empleados
+                .Where(e => CoincideTexto(e.NombreCompleto, searchTerm))
+                .Select(e => e.Id)
+        );
 
-     var porFiltros = await _auditService.ObtenerRegistros(
- fechaInicio, fechaFin, acciones, tiposObjetivo,
-  pageNumber: 1, pageSize: int.MaxValue, sortBy, sortOrder);
+        var porFiltros = await _auditService.ObtenerRegistros(
+            fechaInicio, fechaFin, acciones, tiposObjetivo,
+            pageNumber: 1, pageSize: int.MaxValue, sortBy, sortOrder);
 
-     var porNombreActor = porFiltros
- .Where(r => !string.IsNullOrWhiteSpace(r.UserId) && idsPorNombre.Contains(r.UserId))
-      .ToList();
+        var porNombreActor = porFiltros
+            .Where(r => !string.IsNullOrWhiteSpace(r.UserId) && idsPorNombre.Contains(r.UserId))
+            .ToList();
 
-    // 3) Coincidencias por NOMBRE DEL OBJETO (TargetName) mostrado en la vista
-    var porFiltrosConNombres = await MapearNombresUsuarios(porFiltros);
+        // 3) Coincidencias por NOMBRE DEL OBJETO (TargetName) mostrado en la vista
+        var porFiltrosConNombres = await MapearNombresUsuarios(porFiltros);
         var porNombreObjeto = porFiltrosConNombres
-          .Where(r => !string.IsNullOrWhiteSpace(r.TargetName) && CoincideTexto(r.TargetName, searchTerm))
-     .Select(r => new AuditLog
-  {
-  UserId = r.UserId,
- UserEmail = r.UserEmail,
-       Action = r.Action,
-         TargetId = r.TargetId,
-          TargetType = r.TargetType,
-      Timestamp = r.Timestamp
-      })
-          .ToList();
+            .Where(r => !string.IsNullOrWhiteSpace(r.TargetName) && CoincideTexto(r.TargetName, searchTerm))
+            .Select(r => new AuditLog
+            {
+                UserId = r.UserId,
+                UserEmail = r.UserEmail,
+                Action = r.Action,
+                TargetId = r.TargetId,
+                TargetType = r.TargetType,
+                Timestamp = r.Timestamp
+            })
+            .ToList();
 
-    // 4) Unificar, quitar duplicados
-     var unificados = porTexto
- .Concat(porNombreActor)
-         .Concat(porNombreObjeto)
- .GroupBy(r => new { r.UserId, r.UserEmail, r.Action, r.TargetId, r.TargetType, r.Timestamp })
-      .Select(g => g.First())
-    .ToList();
+        // 4) Unificar, quitar duplicados
+        var unificados = porTexto
+            .Concat(porNombreActor)
+            .Concat(porNombreObjeto)
+            .GroupBy(r => new { r.UserId, r.UserEmail, r.Action, r.TargetId, r.TargetType, r.Timestamp })
+            .Select(g => g.First())
+            .ToList();
 
-var totalRegistros = unificados.Count;
+        var totalRegistros = unificados.Count;
 
-     // Orden especial por TargetName (requiere resolver nombres antes de ordenar/paginar)
-    if (string.Equals(sortBy, "TargetName", StringComparison.OrdinalIgnoreCase))
-    {
-          var conNombresTodos = await MapearNombresUsuarios(unificados);
+        // Orden especial por TargetName (requiere resolver nombres antes de ordenar/paginar)
+        if (string.Equals(sortBy, "TargetName", StringComparison.OrdinalIgnoreCase))
+        {
+            var conNombresTodos = await MapearNombresUsuarios(unificados);
 
-        var totalPagesTN = Math.Max((int)Math.Ceiling(totalRegistros / (double)pageSize), 1);
-    var currentPageTN = Math.Clamp(pageNumber, 1, totalPagesTN);
+            var totalPagesTN = Math.Max((int)Math.Ceiling(totalRegistros / (double)pageSize), 1);
+            var currentPageTN = Math.Clamp(pageNumber, 1, totalPagesTN);
             var visiblePagesTN = GetVisiblePages(currentPageTN, totalPagesTN);
 
-      var ordenadosTN = OrdenarRegistrosConNombre(conNombresTodos, sortBy, sortOrder);
- var paginaTN = ordenadosTN.Skip((currentPageTN - 1) * pageSize).Take(pageSize).ToList();
+            var ordenadosTN = OrdenarRegistrosConNombre(conNombresTodos, sortBy, sortOrder);
+            var paginaTN = ordenadosTN.Skip((currentPageTN - 1) * pageSize).Take(pageSize).ToList();
 
-     ViewBag.CurrentPage = currentPageTN;
-   ViewBag.TotalPages = totalPagesTN;
- ViewBag.VisiblePages = visiblePagesTN;
+            ViewBag.CurrentPage = currentPageTN;
+            ViewBag.TotalPages = totalPagesTN;
+            ViewBag.VisiblePages = visiblePagesTN;
             ViewBag.FechaInicio = fechaInicio?.ToString("yyyy-MM-dd");
-       ViewBag.FechaFin = fechaFin?.ToString("yyyy-MM-dd");
-      ViewBag.Acciones = acciones ?? new List<string>();
-   ViewBag.TiposObjetivo = tiposObjetivo ?? new List<string>();
-   ViewBag.SortBy = sortBy;
-     ViewBag.SortOrder = sortOrder;
+            ViewBag.FechaFin = fechaFin?.ToString("yyyy-MM-dd");
+            ViewBag.Acciones = acciones ?? new List<string>();
+            ViewBag.TiposObjetivo = tiposObjetivo ?? new List<string>();
+            ViewBag.SortBy = sortBy;
+            ViewBag.SortOrder = sortOrder;
             ViewBag.SearchTerm = searchTerm;
 
-   return PartialView("_AuditoriaTable", paginaTN);
-    }
+            return PartialView("_AuditoriaTable", paginaTN);
+        }
 
         // Flujo estándar: ordenar/paginar con el modelo base
-   var ordenados = OrdenarRegistros(unificados, sortBy, sortOrder);
-  var pagina = ordenados
-       .Skip((pageNumber - 1) * pageSize)
-         .Take(pageSize)
+        var ordenados = OrdenarRegistros(unificados, sortBy, sortOrder);
+        var pagina = ordenados
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .ToList();
 
         // 5) Mapear nombres para la vista
         var registrosConNombres = await MapearNombresUsuarios(pagina);
 
         // 6) Paginación
-   var totalPages = Math.Max((int)Math.Ceiling(totalRegistros / (double)pageSize), 1);
+        var totalPages = Math.Max((int)Math.Ceiling(totalRegistros / (double)pageSize), 1);
 
         ViewBag.CurrentPage = pageNumber;
         ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-   ViewBag.FechaInicio = fechaInicio?.ToString("yyyy-MM-dd");
-    ViewBag.FechaFin = fechaFin?.ToString("yyyy-MM-dd");
+        ViewBag.FechaInicio = fechaInicio?.ToString("yyyy-MM-dd");
+        ViewBag.FechaFin = fechaFin?.ToString("yyyy-MM-dd");
         ViewBag.Acciones = acciones ?? new List<string>();
         ViewBag.TiposObjetivo = tiposObjetivo ?? new List<string>();
-    ViewBag.SortBy = sortBy;
-   ViewBag.SortOrder = sortOrder;
-   ViewBag.SearchTerm = searchTerm;
+        ViewBag.SortBy = sortBy;
+        ViewBag.SortOrder = sortOrder;
+        ViewBag.SearchTerm = searchTerm;
 
         return PartialView("_AuditoriaTable", registrosConNombres);
     }
@@ -289,8 +326,17 @@ var totalRegistros = unificados.Count;
     #region Métodos Privados
 
     /// <summary>
-    /// Obtiene los datos de auditoría con paginación
+    /// Obtiene los datos de auditoría con paginación.
     /// </summary>
+    /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
+    /// <param name="fechaFin">Fecha de fin del filtro.</param>
+    /// <param name="acciones">Lista de acciones a filtrar.</param>
+    /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
+    /// <param name="pageNumber">Número de página actual.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Tupla con la lista de registros, página actual, total de páginas y páginas visibles.</returns>
     private async Task<(List<AuditLog> registros, int currentPage, int totalPages, List<int> visiblePages)>
         ObtenerDatosAuditoria(DateTime? fechaInicio, DateTime? fechaFin, List<string> acciones,
         List<string> tiposObjetivo, int pageNumber, int pageSize, string sortBy, string sortOrder)
@@ -308,56 +354,58 @@ var totalRegistros = unificados.Count;
     }
 
     /// <summary>
-    /// Mapea UserIds a nombres de usuarios y resuelve TargetName por tipo/ID
+    /// Mapea UserIds a nombres de usuarios y resuelve TargetName por tipo/ID.
     /// </summary>
+    /// <param name="registros">Lista de registros de auditoría.</param>
+    /// <returns>Lista de registros con nombres mapeados.</returns>
     private async Task<List<AuditLogConNombre>> MapearNombresUsuarios(List<AuditLog> registros)
     {
-        //CRÍTICO: Pasar NULL como estados para obtener TODOS los empleados
-     // NULL indica "sin filtro", lista vacía agregaría "Activo" por defecto
-     // Esto permite mapear nombres incluso de empleados dados de baja o eliminados
+        // CRÍTICO: Pasar NULL como estados para obtener TODOS los empleados
+        // NULL indica "sin filtro", lista vacía agregaría "Activo" por defecto
+        // Esto permite mapear nombres incluso de empleados dados de baja o eliminados
         var empleados = await _personalService.ObtenerEmpleadosSinFiltroEstado();
-        
+
         var empleadosDict = empleados.ToDictionary(e => e.Id, e => e.NombreCompleto);
 
         // IDs por tipo para resolver nombres
-   var servicioIds = registros.Where(r => r.TargetType == "Servicio" && !string.IsNullOrWhiteSpace(r.TargetId))
-  .Select(r => r.TargetId).Distinct().ToList();
+        var servicioIds = registros.Where(r => r.TargetType == "Servicio" && !string.IsNullOrWhiteSpace(r.TargetId))
+            .Select(r => r.TargetId).Distinct().ToList();
 
         var tipoServIds = registros.Where(r => r.TargetType == "TipoServicio" && !string.IsNullOrWhiteSpace(r.TargetId))
-                   .Select(r => r.TargetId).Distinct().ToList();
+            .Select(r => r.TargetId).Distinct().ToList();
 
         var tipoVehIds = registros.Where(r => r.TargetType == "TipoVehiculo" && !string.IsNullOrWhiteSpace(r.TargetId))
-         .Select(r => r.TargetId).Distinct().ToList();
+            .Select(r => r.TargetId).Distinct().ToList();
 
         var paqueteIds = registros.Where(r => r.TargetType == "PaqueteServicio" && !string.IsNullOrWhiteSpace(r.TargetId))
-              .Select(r => r.TargetId).Distinct().ToList();
+            .Select(r => r.TargetId).Distinct().ToList();
 
         // Resolver nombres de Servicio (llamadas individuales; pageSize pequeño)
         var servDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in servicioIds)
- {
+        {
             try
             {
-             var s = await _servicioService.ObtenerServicio(id);
-     servDict[id] = s?.Nombre;
-       }
-    catch { servDict[id] = null; }
+                var s = await _servicioService.ObtenerServicio(id);
+                servDict[id] = s?.Nombre;
+            }
+            catch { servDict[id] = null; }
         }
 
-    // Resolver nombres de TipoServicio
+        // Resolver nombres de TipoServicio
         var tipoServDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in tipoServIds)
         {
-   try { tipoServDict[id] = await _tipoServicioService.ObtenerNombrePorId(id); }
+            try { tipoServDict[id] = await _tipoServicioService.ObtenerNombrePorId(id); }
             catch { tipoServDict[id] = null; }
         }
 
         // Resolver nombres de TipoVehiculo
-   var tipoVehDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        var tipoVehDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in tipoVehIds)
-      {
-      try { tipoVehDict[id] = await _tipoVehiculoService.ObtenerNombrePorId(id); }
-      catch { tipoVehDict[id] = null; }
+        {
+            try { tipoVehDict[id] = await _tipoVehiculoService.ObtenerNombrePorId(id); }
+            catch { tipoVehDict[id] = null; }
         }
 
         // Resolver nombres de PaqueteServicio
@@ -366,60 +414,61 @@ var totalRegistros = unificados.Count;
         {
             try
             {
-         var p = await _paqueteServicioService.ObtenerPaquete(id);
-    paqueteDict[id] = p?.Nombre;
+                var p = await _paqueteServicioService.ObtenerPaquete(id);
+                paqueteDict[id] = p?.Nombre;
             }
             catch { paqueteDict[id] = null; }
         }
 
-   // Construir modelo de vista
+        // Construir modelo de vista
         return registros.Select(r =>
         {
-var userName = empleadosDict.TryGetValue(r.UserId ?? string.Empty, out var nombre)
-           ? nombre
-           : (r.UserEmail ?? "Usuario desconocido");
+            var userName = empleadosDict.TryGetValue(r.UserId ?? string.Empty, out var nombre)
+                ? nombre
+                : (r.UserEmail ?? "Usuario desconocido");
 
             string? targetName = null;
-    if (!string.IsNullOrWhiteSpace(r.TargetId))
+            if (!string.IsNullOrWhiteSpace(r.TargetId))
             {
-     switch (r.TargetType)
-          {
-     case "Servicio":
-         servDict.TryGetValue(r.TargetId, out targetName);
-    break;
-       case "TipoServicio":
-    tipoServDict.TryGetValue(r.TargetId, out targetName);
-  break;
-           case "TipoVehiculo":
-         tipoVehDict.TryGetValue(r.TargetId, out targetName);
-            break;
-    case "PaqueteServicio":
- paqueteDict.TryGetValue(r.TargetId, out targetName);
-            break;
-       case "Empleado":
-  case "Usuario":
-    targetName = empleadosDict.TryGetValue(r.TargetId, out var empNombre) ? empNombre : null;
-             break;
-          }
+                switch (r.TargetType)
+                {
+                    case "Servicio":
+                        servDict.TryGetValue(r.TargetId, out targetName);
+                        break;
+                    case "TipoServicio":
+                        tipoServDict.TryGetValue(r.TargetId, out targetName);
+                        break;
+                    case "TipoVehiculo":
+                        tipoVehDict.TryGetValue(r.TargetId, out targetName);
+                        break;
+                    case "PaqueteServicio":
+                        paqueteDict.TryGetValue(r.TargetId, out targetName);
+                        break;
+                    case "Empleado":
+                    case "Usuario":
+                        targetName = empleadosDict.TryGetValue(r.TargetId, out var empNombre) ? empNombre : null;
+                        break;
+                }
             }
 
             return new AuditLogConNombre
             {
-      UserId = r.UserId,
-      UserEmail = r.UserEmail,
- UserName = userName,
-          Action = r.Action,
-    TargetId = r.TargetId,
+                UserId = r.UserId,
+                UserEmail = r.UserEmail,
+                UserName = userName,
+                Action = r.Action,
+                TargetId = r.TargetId,
                 TargetType = r.TargetType,
-     TargetName = targetName,
-Timestamp = r.Timestamp
+                TargetName = targetName,
+                Timestamp = r.Timestamp
             };
-     }).ToList();
+        }).ToList();
     }
 
     /// <summary>
-    /// Carga las listas para los filtros
+    /// Carga las listas para los filtros.
     /// </summary>
+    /// <returns>Tupla con listas de acciones y tipos objetivo.</returns>
     private async Task<(List<string> acciones, List<string> tiposObjetivo)> CargarListasFiltros()
     {
         var acciones = await _auditService.ObtenerAccionesUnicas();
@@ -428,8 +477,20 @@ Timestamp = r.Timestamp
     }
 
     /// <summary>
-    /// Configura el ViewBag con todos los datos necesarios
+    /// Configura el ViewBag con todos los datos necesarios.
     /// </summary>
+    /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
+    /// <param name="fechaFin">Fecha de fin del filtro.</param>
+    /// <param name="acciones">Lista de acciones a filtrar.</param>
+    /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
+    /// <param name="accionesUnicas">Lista de acciones únicas.</param>
+    /// <param name="tiposObjetivoUnicos">Lista de tipos objetivo únicos.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="currentPage">Página actual.</param>
+    /// <param name="totalPages">Total de páginas.</param>
+    /// <param name="visiblePages">Páginas visibles.</param>
+    /// <param name="sortBy">Campo de ordenamiento.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
     private void ConfigurarViewBag(
         DateTime? fechaInicio, DateTime? fechaFin, List<string> acciones, List<string> tiposObjetivo,
         List<string> accionesUnicas, List<string> tiposObjetivoUnicos,
@@ -451,8 +512,12 @@ Timestamp = r.Timestamp
     }
 
     /// <summary>
-    /// Obtiene las páginas visibles para la paginación
+    /// Obtiene las páginas visibles para la paginación.
     /// </summary>
+    /// <param name="currentPage">Página actual.</param>
+    /// <param name="totalPages">Total de páginas.</param>
+    /// <param name="range">Rango de páginas.</param>
+    /// <returns>Lista de páginas visibles.</returns>
     private List<int> GetVisiblePages(int currentPage, int totalPages, int range = 2)
     {
         var start = Math.Max(1, currentPage - range);
@@ -463,6 +528,9 @@ Timestamp = r.Timestamp
     /// <summary>
     /// Busca si el término está contenido en la fecha local del timestamp.
     /// </summary>
+    /// <param name="timestamp">Timestamp a buscar.</param>
+    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <returns>True si coincide.</returns>
     private bool BuscarEnFechaLocal(DateTime timestamp, string searchTerm)
     {
         var fechaLocal = timestamp.ToLocalTime().ToString("g"); // "g" = fecha y hora corta
@@ -550,6 +618,10 @@ Timestamp = r.Timestamp
     /// Ordena una lista de registros ya enriquecidos con TargetName y UserName.
     /// Soporta ordenamiento por TargetName ("Objeto") además de los campos estándar.
     /// </summary>
+    /// <param name="registros">Lista de registros con nombres.</param>
+    /// <param name="sortBy">Campo de ordenamiento.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Lista ordenada.</returns>
     private static List<AuditLogConNombre> OrdenarRegistrosConNombre(List<AuditLogConNombre> registros, string sortBy, string sortOrder)
     {
         var descending = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);

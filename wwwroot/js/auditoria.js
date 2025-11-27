@@ -73,6 +73,7 @@
 
     /**
      * Realiza búsqueda en el servidor
+     * @param {string} searchTerm - Término de búsqueda
      */
     function performServerSearch(searchTerm) {
         // Persistir búsqueda activa
@@ -218,6 +219,9 @@
     // =====================================
     /**
      * Muestra un mensaje en la parte superior de la tabla
+     * @param {string} type - Tipo de mensaje ('success', 'info', 'error')
+     * @param {string} msg - Mensaje a mostrar
+     * @param {number} disappearMs - Milisegundos para auto-ocultar
      */
     function showMessage(type, msg, disappearMs = 5000) {
         let container = document.getElementById('table-messages-container');

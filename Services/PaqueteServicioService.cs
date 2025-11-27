@@ -30,7 +30,7 @@ public class PaqueteServicioService
     /// </summary>
     /// <param name="firestore">Instancia de la base de datos Firestore.</param>
     /// <param name="servicioService">Servicio para validar servicios incluidos en el paquete.</param>
-    /// <param name="cache">Instancia de caché en memoria.</param> // NUEVO parámetro
+    /// <param name="cache">Instancia de caché en memoria.</param>
     public PaqueteServicioService(
         FirestoreDb firestore, 
         ServicioService servicioService,
@@ -47,6 +47,21 @@ public class PaqueteServicioService
     /// <summary>
     /// Obtiene una lista paginada de paquetes aplicando filtros y ordenamiento.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="pageNumber">Número de página actual.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <param name="precioMin">Precio mínimo.</param>
+    /// <param name="precioMax">Precio máximo.</param>
+    /// <param name="tiempoMin">Tiempo mínimo.</param>
+    /// <param name="tiempoMax">Tiempo máximo.</param>
+    /// <param name="descuentoMin">Descuento mínimo.</param>
+    /// <param name="descuentoMax">Descuento máximo.</param>
+    /// <param name="serviciosMin">Cantidad mínima de servicios.</param>
+    /// <param name="serviciosMax">Cantidad máxima de servicios.</param>
+    /// <returns>Lista de paquetes filtrados y paginados.</returns>
     public async Task<List<PaqueteServicio>> ObtenerPaquetes(
         List<string> estados = null,
         List<string> tiposVehiculo = null,
@@ -77,6 +92,18 @@ public class PaqueteServicioService
     /// <summary>
     /// Calcula el número total de páginas para los paquetes filtrados.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="precioMin">Precio mínimo.</param>
+    /// <param name="precioMax">Precio máximo.</param>
+    /// <param name="tiempoMin">Tiempo mínimo.</param>
+    /// <param name="tiempoMax">Tiempo máximo.</param>
+    /// <param name="descuentoMin">Descuento mínimo.</param>
+    /// <param name="descuentoMax">Descuento máximo.</param>
+    /// <param name="serviciosMin">Cantidad mínima de servicios.</param>
+    /// <param name="serviciosMax">Cantidad máxima de servicios.</param>
+    /// <returns>Número total de páginas.</returns>
     public async Task<int> ObtenerTotalPaginas(
         List<string> estados,
         List<string> tiposVehiculo,
@@ -101,6 +128,8 @@ public class PaqueteServicioService
     /// <summary>
     /// Obtiene un paquete específico por su ID.
     /// </summary>
+    /// <param name="id">ID del paquete.</param>
+    /// <returns>El paquete encontrado o null si no existe.</returns>
     public async Task<PaqueteServicio> ObtenerPaquete(string id)
     {
         if (string.IsNullOrWhiteSpace(id))
@@ -115,6 +144,22 @@ public class PaqueteServicioService
     /// <summary>
     /// Busca paquetes por término de búsqueda.
     /// </summary>
+    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="pageNumber">Número de página actual.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <param name="precioMin">Precio mínimo.</param>
+    /// <param name="precioMax">Precio máximo.</param>
+    /// <param name="tiempoMin">Tiempo mínimo.</param>
+    /// <param name="tiempoMax">Tiempo máximo.</param>
+    /// <param name="descuentoMin">Descuento mínimo.</param>
+    /// <param name="descuentoMax">Descuento máximo.</param>
+    /// <param name="serviciosMin">Cantidad mínima de servicios.</param>
+    /// <param name="serviciosMax">Cantidad máxima de servicios.</param>
+    /// <returns>Lista de paquetes que coinciden con la búsqueda.</returns>
     public async Task<List<PaqueteServicio>> BuscarPaquetes(
         string searchTerm,
         List<string> estados = null,
@@ -201,6 +246,18 @@ public class PaqueteServicioService
     /// <summary>
     /// Obtiene el total de paquetes que coinciden con la búsqueda.
     /// </summary>
+    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="precioMin">Precio mínimo.</param>
+    /// <param name="precioMax">Precio máximo.</param>
+    /// <param name="tiempoMin">Tiempo mínimo.</param>
+    /// <param name="tiempoMax">Tiempo máximo.</param>
+    /// <param name="descuentoMin">Descuento mínimo.</param>
+    /// <param name="descuentoMax">Descuento máximo.</param>
+    /// <param name="serviciosMin">Cantidad mínima de servicios.</param>
+    /// <param name="serviciosMax">Cantidad máxima de servicios.</param>
+    /// <returns>Número total de paquetes que coinciden.</returns>
     public async Task<int> ObtenerTotalPaquetesBusqueda(
         string searchTerm,
         List<string> estados,
@@ -281,6 +338,16 @@ public class PaqueteServicioService
     /// Obtiene el rango de precio (min y max) para los paquetes que cumplen con los filtros actuales
     /// excluyendo el propio filtro de precio.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <param name="tiempoMin">Tiempo mínimo.</param>
+    /// <param name="tiempoMax">Tiempo máximo.</param>
+    /// <param name="descuentoMin">Descuento mínimo.</param>
+    /// <param name="descuentoMax">Descuento máximo.</param>
+    /// <param name="serviciosMin">Cantidad mínima de servicios.</param>
+    /// <param name="serviciosMax">Cantidad máxima de servicios.</param>
+    /// <returns>Tupla con precio mínimo y máximo.</returns>
     public async Task<(decimal? min, decimal? max)> ObtenerRangoPrecio(
         List<string> estados,
         List<string> tiposVehiculo,
@@ -316,6 +383,16 @@ public class PaqueteServicioService
     /// Obtiene el rango de descuento (min y max) para los paquetes que cumplen con los filtros actuales
     /// excluyendo el propio filtro de descuento.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <param name="precioMin">Precio mínimo.</param>
+    /// <param name="precioMax">Precio máximo.</param>
+    /// <param name="tiempoMin">Tiempo mínimo.</param>
+    /// <param name="tiempoMax">Tiempo máximo.</param>
+    /// <param name="serviciosMin">Cantidad mínima de servicios.</param>
+    /// <param name="serviciosMax">Cantidad máxima de servicios.</param>
+    /// <returns>Tupla con descuento mínimo y máximo.</returns>
     public async Task<(decimal? min, decimal? max)> ObtenerRangoDescuento(
         List<string> estados,
         List<string> tiposVehiculo,
@@ -355,6 +432,7 @@ public class PaqueteServicioService
     /// Crea un nuevo paquete en la base de datos.
     /// Valida duplicados, servicios y calcula precio/tiempo.
     /// </summary>
+    /// <param name="paquete">Paquete a crear.</param>
     public async Task CrearPaquete(PaqueteServicio paquete)
     {
         if (paquete == null)
@@ -378,6 +456,7 @@ public class PaqueteServicioService
     /// <summary>
     /// Actualiza un paquete existente en la base de datos.
     /// </summary>
+    /// <param name="paquete">Paquete a actualizar.</param>
     public async Task ActualizarPaquete(PaqueteServicio paquete)
     {
         if (paquete == null)
@@ -402,6 +481,8 @@ public class PaqueteServicioService
     /// <summary>
     /// Cambia el estado de un paquete específico.
     /// </summary>
+    /// <param name="id">ID del paquete.</param>
+    /// <param name="nuevoEstado">Nuevo estado.</param>
     public async Task CambiarEstadoPaquete(string id, string nuevoEstado)
     {
         if (string.IsNullOrWhiteSpace(id))
@@ -420,6 +501,9 @@ public class PaqueteServicioService
     /// <summary>
     /// Verifica si existe un paquete con el nombre especificado.
     /// </summary>
+    /// <param name="nombre">Nombre del paquete.</param>
+    /// <param name="idActual">ID actual (para excluir en actualización).</param>
+    /// <returns>True si existe.</returns>
     public async Task<bool> ExistePaqueteConNombre(string nombre, string idActual = null)
     {
         if (string.IsNullOrWhiteSpace(nombre)) return false;
@@ -438,6 +522,8 @@ public class PaqueteServicioService
     /// Obtiene los servicios completos de un paquete dado sus IDs.
     /// OPTIMIZADO con batch loading.
     /// </summary>
+    /// <param name="serviciosIds">IDs de los servicios.</param>
+    /// <returns>Lista de servicios.</returns>
     public async Task<List<Servicio>> ObtenerServiciosDePaquete(List<string> serviciosIds)
     {
         if (serviciosIds == null || !serviciosIds.Any())
@@ -450,7 +536,6 @@ public class PaqueteServicioService
             .Select(id => serviciosDict[id])
             .ToList();
     }
-
     #endregion
 
     #region Métodos Privados - Consultas Base
@@ -458,6 +543,19 @@ public class PaqueteServicioService
     /// <summary>
     /// Obtiene todos los paquetes aplicando filtros y ordenamiento.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <param name="precioMin">Precio mínimo.</param>
+    /// <param name="precioMax">Precio máximo.</param>
+    /// <param name="tiempoMin">Tiempo mínimo.</param>
+    /// <param name="tiempoMax">Tiempo máximo.</param>
+    /// <param name="descuentoMin">Descuento mínimo.</param>
+    /// <param name="descuentoMax">Descuento máximo.</param>
+    /// <param name="serviciosMin">Cantidad mínima de servicios.</param>
+    /// <param name="serviciosMax">Cantidad máxima de servicios.</param>
+    /// <returns>Lista de paquetes filtrados y ordenados.</returns>
     private async Task<List<PaqueteServicio>> ObtenerPaquetesFiltrados(
         List<string> estados,
         List<string> tiposVehiculo,
@@ -509,6 +607,17 @@ public class PaqueteServicioService
     /// <summary>
     /// Obtiene el total de paquetes que cumplen con los filtros.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="precioMin">Precio mínimo.</param>
+    /// <param name="precioMax">Precio máximo.</param>
+    /// <param name="tiempoMin">Tiempo mínimo.</param>
+    /// <param name="tiempoMax">Tiempo máximo.</param>
+    /// <param name="descuentoMin">Descuento mínimo.</param>
+    /// <param name="descuentoMax">Descuento máximo.</param>
+    /// <param name="serviciosMin">Cantidad mínima de servicios.</param>
+    /// <param name="serviciosMax">Cantidad máxima de servicios.</param>
+    /// <returns>Número total de paquetes.</returns>
     private async Task<int> ObtenerTotalPaquetes(
         List<string> estados,
         List<string> tiposVehiculo,
@@ -555,6 +664,8 @@ public class PaqueteServicioService
     /// OPTIMIZADO: Calcula precios usando caché de servicios.
     /// Carga todos los servicios necesarios en una sola consulta batch.
     /// </summary>
+    /// <param name="paquetes">Lista de paquetes.</param>
+    /// <returns>Diccionario con precios por ID de paquete.</returns>
     public async Task<Dictionary<string, decimal>> CalcularPreciosAsync(IEnumerable<PaqueteServicio> paquetes)
     {
       var list = paquetes?.ToList() ?? new List<PaqueteServicio>();
@@ -606,6 +717,8 @@ public class PaqueteServicioService
     /// OPTIMIZADO: Calcula tiempos usando caché de servicios.
     /// Carga todos los servicios necesarios en una sola consulta batch.
     /// </summary>
+    /// <param name="paquetes">Lista de paquetes.</param>
+    /// <returns>Diccionario con tiempos por ID de paquete.</returns>
     public async Task<Dictionary<string, int>> CalcularTiemposAsync(IEnumerable<PaqueteServicio> paquetes)
     {
       var list = paquetes?.ToList() ?? new List<PaqueteServicio>();
@@ -651,7 +764,6 @@ public class PaqueteServicioService
   
      return result;
   }
-
     #endregion
 
     #region Métodos Privados - Utilidades y Helpers
@@ -660,6 +772,8 @@ public class PaqueteServicioService
     /// NUEVO: Obtiene múltiples servicios en batch con caché.
     /// Reduce consultas a Firestore de N a 1 (o 0 si está en caché).
     /// </summary>
+    /// <param name="serviciosIds">IDs de servicios.</param>
+    /// <returns>Diccionario de servicios.</returns>
     private async Task<Dictionary<string, Servicio>> ObtenerServiciosBatch(List<string> serviciosIds)
     {
      if (serviciosIds == null || !serviciosIds.Any())
@@ -712,6 +826,8 @@ var cacheKey = $"servicios_batch_{string.Join("_", serviciosIds.OrderBy(x => x))
     /// <summary>
     /// NUEVO: Mapea documento de Firestore a Servicio.
     /// </summary>
+    /// <param name="doc">Documento de Firestore.</param>
+    /// <returns>Objeto Servicio.</returns>
     private static Servicio MapearDocumentoAServicio(DocumentSnapshot doc)
     {
         return new Servicio
@@ -735,6 +851,7 @@ Descripcion = doc.GetValue<string>("Descripcion"),
     /// Valida un paquete antes de guardarlo.
     /// Verifica que los servicios sean válidos y cumplan las reglas.
     /// </summary>
+    /// <param name="paquete">Paquete a validar.</param>
     private async Task ValidarPaquete(PaqueteServicio paquete)
  {
         var errores = new List<string>();
@@ -788,6 +905,8 @@ Descripcion = doc.GetValue<string>("Descripcion"),
     /// Crea el diccionario de datos para guardar/actualizar un paquete en Firestore.
     /// (Sin campos calculados Precio/TiempoEstimado)
     /// </summary>
+    /// <param name="paquete">Paquete a convertir.</param>
+    /// <returns>Diccionario de datos.</returns>
     private static Dictionary<string, object> CrearDiccionarioPaquete(PaqueteServicio paquete)
     {
   return new Dictionary<string, object>
@@ -803,6 +922,8 @@ Descripcion = doc.GetValue<string>("Descripcion"),
     /// <summary>
     /// Mapea un documento de Firestore a un objeto PaqueteServicio.
     /// </summary>
+    /// <param name="documento">Documento de Firestore.</param>
+    /// <returns>Objeto PaqueteServicio.</returns>
     private static PaqueteServicio MapearDocumentoAPaquete(DocumentSnapshot documento)
     {
         return new PaqueteServicio
@@ -829,6 +950,8 @@ Descripcion = doc.GetValue<string>("Descripcion"),
     /// <summary>
     /// Valida los parámetros de paginación.
     /// </summary>
+    /// <param name="pageNumber">Número de página.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
     private static void ValidarParametrosPaginacion(int pageNumber, int pageSize)
     {
     if (pageNumber <= 0)
@@ -841,6 +964,8 @@ Descripcion = doc.GetValue<string>("Descripcion"),
     /// <summary>
     /// Configura la lista de estados por defecto si no se especificó ninguno.
     /// </summary>
+    /// <param name="estados">Lista de estados.</param>
+    /// <returns>Lista configurada.</returns>
     private static List<string> ConfigurarEstadosDefecto(List<string> estados)
     {
         estados ??= new List<string>();
@@ -854,6 +979,8 @@ Descripcion = doc.GetValue<string>("Descripcion"),
     /// <summary>
 /// Construye un query de Firestore aplicando filtros de estado.
     /// </summary>
+    /// <param name="estados">Lista de estados.</param>
+    /// <returns>Query configurado.</returns>
     private Query ConstruirQueryFiltros(List<string> estados)
     {
  Query query = _firestore.Collection(COLLECTION_NAME);
@@ -869,6 +996,9 @@ Descripcion = doc.GetValue<string>("Descripcion"),
     /// <summary>
     /// Aplica filtro de tipo de vehículo (post-proceso).
   /// </summary>
+    /// <param name="paquetes">Lista de paquetes.</param>
+    /// <param name="tiposVehiculo">Tipos de vehículo.</param>
+    /// <returns>Lista filtrada.</returns>
     private static List<PaqueteServicio> AplicarFiltroTipoVehiculo(List<PaqueteServicio> paquetes, List<string> tiposVehiculo)
     {
      if (tiposVehiculo?.Any() == true)
@@ -883,6 +1013,12 @@ Descripcion = doc.GetValue<string>("Descripcion"),
     /// <summary>
     /// Aplica ordenamiento a una lista de paquetes. Usa valores calculados si corresponden.
   /// </summary>
+    /// <param name="paquetes">Lista de paquetes.</param>
+    /// <param name="sortBy">Campo de ordenamiento.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <param name="precios">Diccionario de precios.</param>
+    /// <param name="tiempos">Diccionario de tiempos.</param>
+    /// <returns>Lista ordenada.</returns>
     private async Task<List<PaqueteServicio>> AplicarOrdenamiento(
         List<PaqueteServicio> paquetes, 
       string sortBy, 
@@ -944,6 +1080,10 @@ ordered = desc
     /// <summary>
     /// Aplica paginación a una lista en memoria.
     /// </summary>
+    /// <param name="lista">Lista a paginar.</param>
+    /// <param name="pageNumber">Número de página.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <returns>Lista paginada.</returns>
     private static List<PaqueteServicio> AplicarPaginacion(List<PaqueteServicio> lista, int pageNumber, int pageSize)
     {
    return lista.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
@@ -952,6 +1092,9 @@ ordered = desc
   /// <summary>
   /// Aplica la lógica de búsqueda sobre una lista previamente filtrada (textual).
     /// </summary>
+    /// <param name="baseFiltrada">Lista base.</param>
+    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <returns>Lista filtrada por búsqueda.</returns>
     private static List<PaqueteServicio> AplicarBusqueda(List<PaqueteServicio> baseFiltrada, string searchTerm)
     {
    var term = searchTerm?.Trim() ?? string.Empty;
@@ -983,6 +1126,7 @@ ordered = desc
     /// <summary>
     /// Devuelve los valores distintos de cantidad de servicios presentes en todos los paquetes.
     /// </summary>
+    /// <returns>Lista de cantidades distintas.</returns>
     public async Task<List<int>> ObtenerValoresCantidadServicios()
     {
         var snapshot = await _firestore.Collection(COLLECTION_NAME).GetSnapshotAsync();

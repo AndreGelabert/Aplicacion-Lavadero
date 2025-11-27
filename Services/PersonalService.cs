@@ -2,8 +2,8 @@ using Firebase.Models;
 using Google.Cloud.Firestore;
 
 /// <summary>
-/// Servicio para la gesti�n de personal (empleados) en Firestore.
-/// Proporciona operaciones de consulta, filtrado, paginaci�n, b�squeda y ordenamiento.
+/// Servicio para la gestión de personal (empleados) en Firestore.
+/// Proporciona operaciones de consulta, filtrado, paginación, búsqueda y ordenamiento.
 /// </summary>
 public class PersonalService
 {
@@ -111,6 +111,14 @@ public class PersonalService
     /// <summary>
     /// Busca empleados por término de búsqueda (nombre, email, rol).
     /// </summary>
+    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="roles">Lista de roles a filtrar.</param>
+    /// <param name="pageNumber">Número de página actual.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Lista de empleados que coinciden con la búsqueda.</returns>
     public async Task<List<Empleado>> BuscarEmpleados(
         string searchTerm,
         List<string> estados = null,
@@ -134,6 +142,10 @@ public class PersonalService
     /// <summary>
     /// Obtiene el total de empleados que coinciden con la búsqueda.
     /// </summary>
+    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="roles">Lista de roles a filtrar.</param>
+    /// <returns>Número total de empleados que coinciden.</returns>
     public async Task<int> ObtenerTotalEmpleadosBusqueda(
         string searchTerm,
         List<string> estados,
@@ -153,6 +165,7 @@ public class PersonalService
     /// <summary>
     /// Obtiene todos los roles únicos registrados.
     /// </summary>
+    /// <returns>Lista de roles únicos ordenados.</returns>
     public async Task<List<string>> ObtenerRolesUnicos()
     {
         var snapshot = await _firestore.Collection(COLLECTION_NAME).GetSnapshotAsync();
@@ -170,6 +183,8 @@ public class PersonalService
     /// <summary>
     /// Actualiza el rol de un empleado.
     /// </summary>
+    /// <param name="id">ID del empleado.</param>
+    /// <param name="nuevoRol">Nuevo rol a asignar.</param>
     public async Task ActualizarRol(string id, string nuevoRol)
     {
         if (string.IsNullOrWhiteSpace(id))
@@ -185,6 +200,8 @@ public class PersonalService
     /// <summary>
     /// Cambia el estado de un empleado.
     /// </summary>
+    /// <param name="id">ID del empleado.</param>
+    /// <param name="nuevoEstado">Nuevo estado.</param>
     public async Task CambiarEstadoEmpleado(string id, string nuevoEstado)
     {
         if (string.IsNullOrWhiteSpace(id))
@@ -203,6 +220,11 @@ public class PersonalService
     /// <summary>
     /// Obtiene todos los empleados aplicando filtros y ordenamiento.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="roles">Lista de roles a filtrar.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Lista de empleados filtrados y ordenados.</returns>
     private async Task<List<Empleado>> ObtenerEmpleadosFiltrados(
         List<string> estados,
         List<string> roles,
@@ -224,6 +246,9 @@ public class PersonalService
     /// <summary>
     /// Obtiene el total de empleados que cumplen con los filtros.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="roles">Lista de roles a filtrar.</param>
+    /// <returns>Número total de empleados.</returns>
     private async Task<int> ObtenerTotalEmpleados(
         List<string> estados,
         List<string> roles)
@@ -242,6 +267,8 @@ public class PersonalService
     /// <summary>
     /// Configura la lista de estados por defecto si no se especificó ninguno.
     /// </summary>
+    /// <param name="estados">Lista de estados seleccionados por el usuario.</param>
+    /// <returns>Lista con al menos un estado; si estaba vacía, contiene "Activo".</returns>
     private static List<string> ConfigurarEstadosDefecto(List<string> estados)
     {
         estados ??= new List<string>();
@@ -255,6 +282,9 @@ public class PersonalService
     /// <summary>
     /// Construye un query de Firestore aplicando filtros de estado y rol.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="roles">Lista de roles a filtrar.</param>
+    /// <returns>Query de Firestore configurado.</returns>
     private Query ConstruirQueryFiltros(
         List<string> estados,
         List<string> roles)
@@ -277,6 +307,10 @@ public class PersonalService
     /// <summary>
     /// Aplica ordenamiento a una lista de empleados.
     /// </summary>
+    /// <param name="empleados">Lista de empleados a ordenar.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Lista ordenada.</returns>
     private static List<Empleado> AplicarOrdenamiento(List<Empleado> empleados, string sortBy, string sortOrder)
     {
         sortBy ??= ORDEN_DEFECTO;
@@ -301,12 +335,19 @@ public class PersonalService
     /// <summary>
     /// Aplica paginación a una lista en memoria.
     /// </summary>
+    /// <param name="lista">Lista a paginar.</param>
+    /// <param name="pageNumber">Número de página.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <returns>Lista paginada.</returns>
     private static List<Empleado> AplicarPaginacion(List<Empleado> lista, int pageNumber, int pageSize)
         => lista.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
 
     /// <summary>
     /// Aplica la lógica de búsqueda sobre una lista previamente filtrada.
     /// </summary>
+    /// <param name="baseFiltrada">Lista base filtrada.</param>
+    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <returns>Lista filtrada por búsqueda.</returns>
     private static List<Empleado> AplicarBusqueda(List<Empleado> baseFiltrada, string searchTerm)
     {
         var term = searchTerm?.Trim() ?? string.Empty;
@@ -325,6 +366,8 @@ public class PersonalService
     /// <summary>
     /// Mapea un documento de Firestore a un objeto Empleado.
     /// </summary>
+    /// <param name="documento">Documento de Firestore.</param>
+    /// <returns>Objeto Empleado mapeado.</returns>
     private static Empleado MapearDocumentoAEmpleado(DocumentSnapshot documento)
     {
         return new Empleado
@@ -340,6 +383,8 @@ public class PersonalService
     /// <summary>
     /// Valida los parámetros de paginación.
     /// </summary>
+    /// <param name="pageNumber">Número de página.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
     private static void ValidarParametrosPaginacion(int pageNumber, int pageSize)
     {
         if (pageNumber <= 0)

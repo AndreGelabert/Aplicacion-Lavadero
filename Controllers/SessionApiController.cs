@@ -5,13 +5,14 @@ using System.Security.Claims;
 namespace Firebase.Controllers
 {
     /// <summary>
-    /// API para gestionar la información de sesión del usuario
+    /// API para gestionar la información de sesión del usuario.
     /// </summary>
     [ApiController]
     [Route("api")]
     [Authorize]
     public class SessionApiController : ControllerBase
     {
+        #region Dependencias
         private readonly ConfiguracionService _configuracionService;
         private readonly ILogger<SessionApiController> _logger;
 
@@ -22,9 +23,11 @@ namespace Firebase.Controllers
             _configuracionService = configuracionService;
             _logger = logger;
         }
+        #endregion
 
+        #region Endpoints
         /// <summary>
-        /// Obtiene la configuración de sesión actual del usuario
+        /// Obtiene la configuración de sesión actual del usuario.
         /// </summary>
         [HttpGet("session-config")]
         public async Task<IActionResult> GetSessionConfig()
@@ -69,7 +72,7 @@ namespace Firebase.Controllers
         }
 
         /// <summary>
-        /// Endpoint para mantener la sesión activa (ping)
+        /// Endpoint para mantener la sesión activa (ping).
         /// </summary>
         [HttpPost("ping-session")]
         public IActionResult PingSession()
@@ -90,5 +93,6 @@ namespace Firebase.Controllers
                 return StatusCode(500, new { error = "Error al actualizar sesión" });
             }
         }
+        #endregion
     }
 }

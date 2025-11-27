@@ -1,6 +1,6 @@
 /**
  * Módulo para la autenticación con Google Firebase
- * 
+ *
  * Este módulo maneja la configuración de Firebase y la autenticación
  * con Google utilizando el SDK de Firebase v9 y autenticación con popup.
  */
@@ -29,6 +29,7 @@ const auth = getAuth();
 
 /**
  * Detecta si el navegador es Brave
+ * @returns {Promise<boolean>} True si es Brave
  */
 async function isBraveBrowser() {
     return (navigator.brave && await navigator.brave.isBrave()) || false;
@@ -36,7 +37,7 @@ async function isBraveBrowser() {
 
 /**
  * Maneja el proceso de autenticación con Google
- * 
+ *
  * Este método:
  * 1. Abre un popup para que el usuario se autentique con Google
  * 2. Obtiene el token de ID del usuario autenticado
@@ -58,19 +59,19 @@ async function handleGoogleLogin() {
 
         // Mostrar popup de Google para autenticación
         const result = await signInWithPopup(auth, provider);
-        
+
         // Verificar que obtuvimos el resultado correctamente
         if (!result || !result.user) {
             throw new Error('No se pudo obtener información del usuario');
         }
-        
+
         // Obtener el token de ID para enviar al servidor
         const idToken = await result.user.getIdToken();
-        
+
         if (!idToken) {
             throw new Error('No se pudo obtener el token de autenticación');
         }
-        
+
         // Enviar token al servidor para verificación
         const response = await fetch('/Login/LoginWithGoogle', {
             method: 'POST',
@@ -80,7 +81,7 @@ async function handleGoogleLogin() {
             },
             body: JSON.stringify({ idToken })
         });
-        
+
         if (response.ok) {
             const data = await response.json();
             if (data.redirectUrl) {
@@ -100,10 +101,10 @@ async function handleGoogleLogin() {
     } catch (error) {
         // Manejar errores de Firebase o red
         console.error('Error durante la autenticación con Google:', error);
-        
+
         // Proporcionar mensajes de error más específicos
         let userMessage = 'Error al iniciar sesión con Google. Por favor, intente de nuevo.';
-        
+
         if (error.code === 'auth/popup-closed-by-user') {
             userMessage = 'La ventana de autenticación fue cerrada. Por favor, intente de nuevo.';
         } else if (error.code === 'auth/cancelled-popup-request') {
@@ -130,7 +131,7 @@ async function handleGoogleLogin() {
             // Si es un error personalizado con mensaje, mostrarlo
             userMessage = `Error: ${error.message}`;
         }
-        
+
         showErrorMessage(userMessage);
     }
 }
@@ -142,23 +143,23 @@ async function handleGoogleLogin() {
 function showErrorMessage(message) {
     // Buscar si ya existe un contenedor de error
     let errorContainer = document.querySelector('.google-auth-error');
-    
+
     if (!errorContainer) {
         // Crear un nuevo contenedor de error si no existe
         errorContainer = document.createElement('div');
         errorContainer.className = 'google-auth-error text-center text-red-600 bg-red-100 border border-red-400 rounded p-4 mt-4';
-        
+
         // Insertar el contenedor después del botón de Google
         const googleButton = document.getElementById('google-login-button');
         if (googleButton && googleButton.parentNode) {
             googleButton.parentNode.insertBefore(errorContainer, googleButton.nextSibling);
         }
     }
-    
+
     // Establecer el mensaje de error
     errorContainer.textContent = message;
     errorContainer.style.display = 'block';
-    
+
     // Ocultar el mensaje después de 5 segundos
     setTimeout(() => {
         if (errorContainer) {
@@ -184,22 +185,22 @@ function showBraveInstructions() {
 // Configurar el event listener cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', async function() {
     const googleLoginButton = document.getElementById('google-login-button');
-    
+
     if (googleLoginButton) {
         googleLoginButton.addEventListener('click', handleGoogleLogin);
-        
+
         // Si es Brave, mostrar un mensaje informativo
         const isBrave = await isBraveBrowser();
         if (isBrave) {
             console.log('Navegador Brave detectado. Si tiene problemas con Google Login, desactive Shields temporalmente.');
-            
+
             // Agregar un pequeño ícono de ayuda junto al botón de Google
             const helpIcon = document.createElement('button');
             helpIcon.type = 'button';
             helpIcon.className = 'text-blue-600 hover:text-blue-700 text-sm mt-2 underline';
             helpIcon.textContent = '¿Problemas con Brave? Haga clic aquí';
             helpIcon.addEventListener('click', showBraveInstructions);
-            
+
             if (googleLoginButton.parentNode) {
                 googleLoginButton.parentNode.appendChild(helpIcon);
             }

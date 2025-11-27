@@ -1,5 +1,4 @@
-﻿using Firebase.Auth;
-using Firebase.Models;
+﻿using Firebase.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -11,16 +10,18 @@ using System.Security.Claims;
 [Authorize(Roles = "Administrador")]
 public class PersonalController : Controller
 {
-  #region Dependencias
+    #region Dependencias
     private readonly PersonalService _personalService;
     private readonly AuditService _auditService;
 
     /// <summary>
- /// Crea una nueva instancia del controlador de personal.
+    /// Crea una nueva instancia del controlador de personal.
     /// </summary>
+    /// <param name="personalService">Servicio para operaciones de personal.</param>
+    /// <param name="auditService">Servicio para registro de auditoría.</param>
     public PersonalController(PersonalService personalService, AuditService auditService)
     {
-_personalService = personalService;
+        _personalService = personalService;
         _auditService = auditService;
     }
     #endregion
@@ -28,24 +29,31 @@ _personalService = personalService;
     #region Vistas Principales
 
     /// <summary>
- /// Página principal de personal con filtros, orden y paginación.
+    /// Página principal de personal con filtros, orden y paginación.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="roles">Lista de roles a filtrar.</param>
+    /// <param name="pageNumber">Número de página actual.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Vista con la lista de empleados.</returns>
     [HttpGet]
     public async Task<IActionResult> Index(
- List<string> estados,
+        List<string> estados,
         List<string> roles,
-   int pageNumber = 1,
+        int pageNumber = 1,
         int pageSize = 10,
-     string sortBy = null,
+        string sortBy = null,
         string sortOrder = null)
     {
- estados = ConfigurarEstadosDefecto(estados);
+        estados = ConfigurarEstadosDefecto(estados);
 
         sortBy ??= "NombreCompleto";
- sortOrder ??= "asc";
+        sortOrder ??= "asc";
 
         var (empleados, currentPage, totalPages, visiblePages) = await ObtenerDatosEmpleados(
-      estados, roles, pageNumber, pageSize, sortBy, sortOrder);
+            estados, roles, pageNumber, pageSize, sortBy, sortOrder);
 
         var rolesUnicos = await _personalService.ObtenerRolesUnicos();
 
@@ -57,20 +65,28 @@ _personalService = personalService;
 
     #region Búsqueda y Tabla Parcial
 
- /// <summary>
+    /// <summary>
     /// Busca empleados por término de búsqueda (parcial para actualización dinámica).
     /// </summary>
+    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="roles">Lista de roles a filtrar.</param>
+    /// <param name="pageNumber">Número de página actual.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Vista parcial con la tabla de empleados.</returns>
     [HttpGet]
     public async Task<IActionResult> SearchPartial(
-     string searchTerm,
- List<string> estados,
+        string searchTerm,
+        List<string> estados,
         List<string> roles,
         int pageNumber = 1,
         int pageSize = 10,
-  string sortBy = null,
-    string sortOrder = null)
+        string sortBy = null,
+        string sortOrder = null)
     {
-estados = ConfigurarEstadosDefecto(estados);
+        estados = ConfigurarEstadosDefecto(estados);
 
         sortBy ??= "NombreCompleto";
         sortOrder ??= "asc";
@@ -78,50 +94,57 @@ estados = ConfigurarEstadosDefecto(estados);
         var empleados = await _personalService.BuscarEmpleados(
             searchTerm, estados, roles, pageNumber, pageSize, sortBy, sortOrder);
 
-var totalEmpleados = await _personalService.ObtenerTotalEmpleadosBusqueda(
-        searchTerm, estados, roles);
+        var totalEmpleados = await _personalService.ObtenerTotalEmpleadosBusqueda(
+            searchTerm, estados, roles);
 
         var totalPages = Math.Max((int)Math.Ceiling(totalEmpleados / (double)pageSize), 1);
 
         ViewBag.CurrentPage = pageNumber;
-      ViewBag.TotalPages = totalPages;
+        ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-   ViewBag.Estados = estados;
+        ViewBag.Estados = estados;
         ViewBag.Roles = roles;
         ViewBag.SortBy = sortBy;
-  ViewBag.SortOrder = sortOrder;
-      ViewBag.SearchTerm = searchTerm;
+        ViewBag.SortOrder = sortOrder;
+        ViewBag.SearchTerm = searchTerm;
 
         return PartialView("_PersonalTable", empleados);
     }
 
- /// <summary>
- /// Devuelve la tabla parcial (sin búsqueda) with filters and order.
+    /// <summary>
+    /// Devuelve la tabla parcial (sin búsqueda) con filtros y orden.
     /// </summary>
-  [HttpGet]
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="roles">Lista de roles a filtrar.</param>
+    /// <param name="pageNumber">Número de página actual.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Vista parcial con la tabla de empleados.</returns>
+    [HttpGet]
     public async Task<IActionResult> TablePartial(
         List<string> estados,
         List<string> roles,
-  int pageNumber = 1,
-   int pageSize = 10,
-string sortBy = null,
+        int pageNumber = 1,
+        int pageSize = 10,
+        string sortBy = null,
         string sortOrder = null)
     {
         estados = ConfigurarEstadosDefecto(estados);
 
         sortBy ??= "NombreCompleto";
- sortOrder ??= "asc";
+        sortOrder ??= "asc";
 
-     var empleados = await _personalService.ObtenerEmpleados(estados, roles, pageNumber, pageSize, sortBy, sortOrder);
+        var empleados = await _personalService.ObtenerEmpleados(estados, roles, pageNumber, pageSize, sortBy, sortOrder);
         var totalPages = await _personalService.ObtenerTotalPaginas(estados, roles, pageSize);
         totalPages = Math.Max(totalPages, 1);
 
         ViewBag.CurrentPage = pageNumber;
         ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-   ViewBag.Estados = estados;
+        ViewBag.Estados = estados;
         ViewBag.Roles = roles;
-   ViewBag.SortBy = sortBy;
+        ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
 
         return PartialView("_PersonalTable", empleados);
@@ -133,78 +156,83 @@ string sortBy = null,
     /// <summary>
     /// Actualiza el rol de un empleado.
     /// </summary>
-[HttpPost]
+    /// <param name="id">ID del empleado.</param>
+    /// <param name="newRole">Nuevo rol a asignar.</param>
+    /// <returns>Resultado de la operación.</returns>
+    [HttpPost]
     public async Task<IActionResult> UpdateRole(string id, string newRole)
     {
         try
-  {
-    await _personalService.ActualizarRol(id, newRole);
+        {
+            await _personalService.ActualizarRol(id, newRole);
 
             // Auditoría
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-          var userEmail = User.FindFirstValue(ClaimTypes.Email);
-     await _auditService.LogEvent(userId, userEmail, "Modificación de rol", id, "Empleado");
+            var userEmail = User.FindFirstValue(ClaimTypes.Email);
+            await _auditService.LogEvent(userId, userEmail, "Modificación de rol", id, "Empleado");
 
-            // ✅ Si es petición AJAX, devolver JSON sin tocar TempData
+            //  Si es petición AJAX, devolver JSON sin tocar TempData
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             {
-    return Json(new { success = true, message = "Rol actualizado correctamente." });
-         }
+                return Json(new { success = true, message = "Rol actualizado correctamente." });
+            }
 
             // Solo establecer TempData para navegación tradicional
             TempData["RoleChangeEvent_UserId"] = id;
             TempData["RoleChangeEvent_NewRole"] = newRole;
-       TempData["Success"] = "Rol actualizado correctamente.";
+            TempData["Success"] = "Rol actualizado correctamente.";
         }
-  catch (Exception ex)
-     {
-         // Si es petición AJAX, devolver error sin tocar TempData
-    if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-     {
+        catch (Exception ex)
+        {
+            // Si es petición AJAX, devolver error sin tocar TempData
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
                 return Json(new { success = false, message = $"Error al actualizar el rol: {ex.Message}" });
-          }
+            }
 
-       TempData["Error"] = $"Error al actualizar el rol: {ex.Message}";
-   }
+            TempData["Error"] = $"Error al actualizar el rol: {ex.Message}";
+        }
 
-      return RedirectToAction("Index");
+        return RedirectToAction("Index");
     }
 
     /// <summary>
     /// Desactiva un empleado.
     /// </summary>
+    /// <param name="id">ID del empleado.</param>
+    /// <returns>Resultado de la operación.</returns>
     [HttpPost]
     public async Task<IActionResult> DeactivateEmployee(string id)
     {
         try
-     {
+        {
             await _personalService.CambiarEstadoEmpleado(id, "Inactivo");
 
-      // Auditoría
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var userEmail = User.FindFirstValue(ClaimTypes.Email);
-         await _auditService.LogEvent(userId, userEmail, "Desactivación de empleado", id, "Empleado");
+            // Auditoría
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userEmail = User.FindFirstValue(ClaimTypes.Email);
+            await _auditService.LogEvent(userId, userEmail, "Desactivación de empleado", id, "Empleado");
 
-      // ✅ Si es petición AJAX, devolver JSON sin tocar TempData
+            //  Si es petición AJAX, devolver JSON sin tocar TempData
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-         {
-             return Json(new { success = true, message = "Empleado desactivado correctamente." });
+            {
+                return Json(new { success = true, message = "Empleado desactivado correctamente." });
             }
 
             // Solo establecer TempData para navegación tradicional
             TempData["StateChangeEvent_UserId"] = id;
             TempData["StateChangeEvent_NewState"] = "Inactivo";
             TempData["Success"] = "Empleado desactivado correctamente.";
-   }
+        }
         catch (Exception ex)
-    {
-       // Si es petición AJAX, devolver error sin tocar TempData
+        {
+            // Si es petición AJAX, devolver error sin tocar TempData
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             {
-           return Json(new { success = false, message = $"Error al desactivar: {ex.Message}" });
+                return Json(new { success = false, message = $"Error al desactivar: {ex.Message}" });
             }
 
-    TempData["Error"] = $"Error al desactivar el empleado: {ex.Message}";
+            TempData["Error"] = $"Error al desactivar el empleado: {ex.Message}";
         }
 
         return RedirectToAction("Index");
@@ -213,38 +241,40 @@ string sortBy = null,
     /// <summary>
     /// Reactiva un empleado.
     /// </summary>
+    /// <param name="id">ID del empleado.</param>
+    /// <returns>Resultado de la operación.</returns>
     [HttpPost]
     public async Task<IActionResult> ReactivateEmployee(string id)
     {
-      try
-   {
+        try
+        {
             await _personalService.CambiarEstadoEmpleado(id, "Activo");
 
-       // Auditoría
-         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-      var userEmail = User.FindFirstValue(ClaimTypes.Email);
-   await _auditService.LogEvent(userId, userEmail, "Reactivación de empleado", id, "Empleado");
+            // Auditoría
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userEmail = User.FindFirstValue(ClaimTypes.Email);
+            await _auditService.LogEvent(userId, userEmail, "Reactivación de empleado", id, "Empleado");
 
-            // ✅ Si es petición AJAX, devolver JSON sin tocar TempData
-    if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-  {
-      return Json(new { success = true, message = "Empleado reactivado correctamente." });
+            //  Si es petición AJAX, devolver JSON sin tocar TempData
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return Json(new { success = true, message = "Empleado reactivado correctamente." });
             }
 
             // Solo establecer TempData para navegación tradicional
             TempData["StateChangeEvent_UserId"] = id;
-     TempData["StateChangeEvent_NewState"] = "Activo";
-         TempData["Success"] = "Empleado reactivado correctamente.";
-  }
-catch (Exception ex)
+            TempData["StateChangeEvent_NewState"] = "Activo";
+            TempData["Success"] = "Empleado reactivado correctamente.";
+        }
+        catch (Exception ex)
         {
-   // Si es petición AJAX, devolver error sin tocar TempData
+            // Si es petición AJAX, devolver error sin tocar TempData
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             {
-         return Json(new { success = false, message = $"Error al reactivar: {ex.Message}" });
-}
+                return Json(new { success = false, message = $"Error al reactivar: {ex.Message}" });
+            }
 
-       TempData["Error"] = $"Error al reactivar el empleado: {ex.Message}";
+            TempData["Error"] = $"Error al reactivar el empleado: {ex.Message}";
         }
 
         return RedirectToAction("Index");
@@ -256,23 +286,32 @@ catch (Exception ex)
     /// <summary>
     /// Configura los estados por defecto cuando no se recibe ninguno desde la vista.
     /// </summary>
+    /// <param name="estados">Lista de estados seleccionados por el usuario.</param>
+    /// <returns>Lista con al menos un estado; si estaba vacía, contiene "Activo".</returns>
     private static List<string> ConfigurarEstadosDefecto(List<string> estados)
     {
         estados ??= new List<string>();
-    if (!estados.Any())
-   estados.Add("Activo");
+        if (!estados.Any())
+            estados.Add("Activo");
         return estados;
     }
 
     /// <summary>
     /// Obtiene los empleados según los filtros y orden actual, calcula la paginación y las páginas visibles.
     /// </summary>
+    /// <param name="estados">Estados a filtrar.</param>
+    /// <param name="roles">Roles a filtrar.</param>
+    /// <param name="pageNumber">Número de página actual.</param>
+    /// <param name="pageSize">Cantidad de elementos por página.</param>
+    /// <param name="sortBy">Campo de ordenamiento.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Tupla con la lista de empleados, página actual, total de páginas y páginas visibles.</returns>
     private async Task<(List<Empleado> empleados, int currentPage, int totalPages, List<int> visiblePages)>
         ObtenerDatosEmpleados(List<string> estados, List<string> roles,
         int pageNumber, int pageSize, string sortBy, string sortOrder)
     {
         var empleados = await _personalService.ObtenerEmpleados(estados, roles, pageNumber, pageSize, sortBy, sortOrder);
-   var totalPages = Math.Max(await _personalService.ObtenerTotalPaginas(estados, roles, pageSize), 1);
+        var totalPages = Math.Max(await _personalService.ObtenerTotalPaginas(estados, roles, pageSize), 1);
         var currentPage = Math.Clamp(pageNumber, 1, totalPages);
         var visiblePages = GetVisiblePages(currentPage, totalPages);
 
@@ -284,31 +323,44 @@ catch (Exception ex)
 
     /// <summary>
     /// Calcula el conjunto de páginas visibles alrededor de la página actual.
-  /// </summary>
+    /// </summary>
+    /// <param name="currentPage">Página actual.</param>
+    /// <param name="totalPages">Total de páginas.</param>
+    /// <param name="range">Cantidad de páginas a mostrar a cada lado.</param>
+    /// <returns>Lista de números de página visibles.</returns>
     private List<int> GetVisiblePages(int currentPage, int totalPages, int range = 2)
     {
-  var start = Math.Max(1, currentPage - range);
+        var start = Math.Max(1, currentPage - range);
         var end = Math.Min(totalPages, currentPage + range);
         return Enumerable.Range(start, end - start + 1).ToList();
     }
 
-  /// <summary>
+    /// <summary>
     /// Copia a ViewBag la información común necesaria para renderizar la vista Index.
     /// </summary>
+    /// <param name="estados">Estados activos en el filtro.</param>
+    /// <param name="roles">Roles activos en el filtro.</param>
+    /// <param name="rolesUnicos">Lista completa de roles únicos.</param>
+    /// <param name="pageSize">Tamaño de página actual.</param>
+    /// <param name="currentPage">Página actual.</param>
+    /// <param name="totalPages">Total de páginas.</param>
+    /// <param name="visiblePages">Rango de páginas visibles.</param>
+    /// <param name="sortBy">Campo de ordenamiento.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
     private void ConfigurarViewBag(
-   List<string> estados, List<string> roles, List<string> rolesUnicos,
-    int pageSize, int currentPage, int totalPages, List<int> visiblePages,
-   string sortBy, string sortOrder)
+        List<string> estados, List<string> roles, List<string> rolesUnicos,
+        int pageSize, int currentPage, int totalPages, List<int> visiblePages,
+        string sortBy, string sortOrder)
     {
         ViewBag.TotalPages = totalPages;
-   ViewBag.VisiblePages = visiblePages;
+        ViewBag.VisiblePages = visiblePages;
         ViewBag.CurrentPage = currentPage;
-   ViewBag.Estados = estados;
-   ViewBag.Roles = roles;
+        ViewBag.Estados = estados;
+        ViewBag.Roles = roles;
         ViewBag.TodosLosRoles = rolesUnicos;
         ViewBag.PageSize = pageSize;
-    ViewBag.SortBy = sortBy;
+        ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
     }
-  #endregion
+    #endregion
 }

@@ -101,6 +101,15 @@ public class ServicioService
     /// Busca servicios por término de búsqueda (texto/número/"X min").
     /// Incluye coincidencias por cantidad de etapas.
     /// </summary>
+    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="pageNumber">Número de página actual.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Lista de servicios que coinciden con la búsqueda.</returns>
     public async Task<List<Servicio>> BuscarServicios(
         string searchTerm,
         List<string> estados = null,
@@ -126,6 +135,11 @@ public class ServicioService
     /// Obtiene el total de servicios que coinciden con la búsqueda.
     /// Usa la misma lógica de <see cref="BuscarServicios"/>.
     /// </summary>
+    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <returns>Número total de servicios que coinciden.</returns>
     public async Task<int> ObtenerTotalServiciosBusqueda(
         string searchTerm,
         List<string> estados,
@@ -146,12 +160,16 @@ public class ServicioService
     /// <summary>
     /// Obtiene todos los servicios de un tipo específico.
     /// </summary>
+    /// <param name="tipo">Tipo de servicio.</param>
+    /// <returns>Lista de servicios del tipo especificado.</returns>
     public async Task<List<Servicio>> ObtenerServiciosPorTipo(string tipo)
         => await ObtenerServiciosPorCampo("Tipo", tipo);
 
     /// <summary>
     /// Obtiene todos los servicios para un tipo de vehículo específico.
     /// </summary>
+    /// <param name="tipoVehiculo">Tipo de vehículo.</param>
+    /// <returns>Lista de servicios para el tipo de vehículo especificado.</returns>
     public async Task<List<Servicio>> ObtenerServiciosPorTipoVehiculo(string tipoVehiculo)
         => await ObtenerServiciosPorCampo("TipoVehiculo", tipoVehiculo);
     #endregion
@@ -162,6 +180,7 @@ public class ServicioService
     /// Crea un nuevo servicio en la base de datos.
     /// Valida duplicados y datos de entrada.
     /// </summary>
+    /// <param name="servicio">Servicio a crear.</param>
     public async Task CrearServicio(Servicio servicio)
     {
         if (servicio == null)
@@ -186,6 +205,7 @@ public class ServicioService
     /// Actualiza un servicio existente en la base de datos.
     /// Valida duplicados y datos de entrada.
     /// </summary>
+    /// <param name="servicio">Servicio a actualizar.</param>
     public async Task ActualizarServicio(Servicio servicio)
     {
         if (servicio == null)
@@ -210,6 +230,8 @@ public class ServicioService
     /// <summary>
     /// Cambia el estado de un servicio específico.
     /// </summary>
+    /// <param name="id">ID del servicio.</param>
+    /// <param name="nuevoEstado">Nuevo estado.</param>
     public async Task CambiarEstadoServicio(string id, string nuevoEstado)
     {
         if (string.IsNullOrWhiteSpace(id))
@@ -228,6 +250,10 @@ public class ServicioService
     /// <summary>
     /// Verifica si existe un servicio con el nombre y tipo de vehículo especificados.
     /// </summary>
+    /// <param name="nombre">Nombre del servicio.</param>
+    /// <param name="tipoVehiculo">Tipo de vehículo.</param>
+    /// <param name="idActual">ID actual (para excluir en actualización).</param>
+    /// <returns>True si existe.</returns>
     public async Task<bool> ExisteServicioConNombreTipoVehiculo(string nombre, string tipoVehiculo, string idActual = null)
     {
         if (string.IsNullOrWhiteSpace(nombre)) return false;
@@ -251,6 +277,12 @@ public class ServicioService
     /// <summary>
     /// Obtiene todos los servicios aplicando filtros y ordenamiento.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Lista de servicios filtrados y ordenados.</returns>
     private async Task<List<Servicio>> ObtenerServiciosFiltrados(
         List<string> estados,
         List<string> tipos,
@@ -275,6 +307,10 @@ public class ServicioService
     /// <summary>
     /// Obtiene el total de servicios que cumplen con los filtros.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <returns>Número total de servicios.</returns>
     private async Task<int> ObtenerTotalServicios(
         List<string> estados,
         List<string> tipos,
@@ -307,6 +343,9 @@ public class ServicioService
     /// <summary>
     /// Obtiene servicios filtrados por un campo específico.
     /// </summary>
+    /// <param name="campo">Campo por el cual filtrar.</param>
+    /// <param name="valor">Valor del campo.</param>
+    /// <returns>Lista de servicios filtrados.</returns>
     private async Task<List<Servicio>> ObtenerServiciosPorCampo(string campo, string valor)
     {
         if (string.IsNullOrWhiteSpace(campo))
@@ -331,6 +370,8 @@ public class ServicioService
     /// <summary>
     /// Configura la lista de estados por defecto si no se especificó ninguno.
     /// </summary>
+    /// <param name="estados">Lista de estados seleccionados por el usuario.</param>
+    /// <returns>Lista con al menos un estado; si estaba vacía, contiene "Activo".</returns>
     private static List<string> ConfigurarEstadosDefecto(List<string> estados)
     {
         estados ??= new List<string>();
@@ -344,6 +385,9 @@ public class ServicioService
     /// <summary>
     /// Construye un query de Firestore aplicando filtros de estado y tipo.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
+    /// <returns>Query de Firestore configurado.</returns>
     private Query ConstruirQueryFiltros(
         List<string> estados,
         List<string> tipos)
@@ -366,6 +410,9 @@ public class ServicioService
     /// <summary>
     /// Aplica filtro de tipo de vehículo (post-proceso).
     /// </summary>
+    /// <param name="servicios">Lista de servicios.</param>
+    /// <param name="tiposVehiculo">Tipos de vehículo a filtrar.</param>
+    /// <returns>Lista filtrada.</returns>
     private static List<Servicio> AplicarFiltroTipoVehiculo(List<Servicio> servicios, List<string> tiposVehiculo)
     {
         if (tiposVehiculo?.Any() == true)
@@ -380,6 +427,10 @@ public class ServicioService
     /// <summary>
     /// Aplica ordenamiento a una lista de servicios.
     /// </summary>
+    /// <param name="servicios">Lista de servicios a ordenar.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <returns>Lista ordenada.</returns>
     private static List<Servicio> AplicarOrdenamiento(List<Servicio> servicios, string sortBy, string sortOrder)
     {
         sortBy ??= ORDEN_DEFECTO;
@@ -407,12 +458,19 @@ public class ServicioService
     /// <summary>
     /// Aplica paginación a una lista en memoria.
     /// </summary>
+    /// <param name="lista">Lista a paginar.</param>
+    /// <param name="pageNumber">Número de página.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
+    /// <returns>Lista paginada.</returns>
     private static List<Servicio> AplicarPaginacion(List<Servicio> lista, int pageNumber, int pageSize)
         => lista.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
 
     /// <summary>
     /// Aplica la lógica de búsqueda sobre una lista previamente filtrada.
     /// </summary>
+    /// <param name="baseFiltrada">Lista base filtrada.</param>
+    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <returns>Lista filtrada por búsqueda.</returns>
     private static List<Servicio> AplicarBusqueda(List<Servicio> baseFiltrada, string searchTerm)
     {
         var term = searchTerm?.Trim() ?? string.Empty;
@@ -455,6 +513,8 @@ public class ServicioService
     /// <summary>
     /// Crea el diccionario de datos para guardar/actualizar un servicio en Firestore.
     /// </summary>
+    /// <param name="servicio">Servicio a convertir.</param>
+    /// <returns>Diccionario de datos.</returns>
     private static Dictionary<string, object> CrearDiccionarioServicio(Servicio servicio)
     {
         var etapasList = (servicio.Etapas ?? new List<Etapa>())
@@ -467,21 +527,23 @@ public class ServicioService
             .ToList();
 
         return new Dictionary<string, object>
-    {
-        { "Nombre", servicio.Nombre },
-        { "Precio", (double)servicio.Precio },
-        { "Tipo", servicio.Tipo },
-        { "TipoVehiculo", servicio.TipoVehiculo },
-        { "TiempoEstimado", servicio.TiempoEstimado },
-        { "Descripcion", servicio.Descripcion },
-        { "Estado", servicio.Estado },
-        { "Etapas", etapasList }
-    };
+        {
+            { "Nombre", servicio.Nombre },
+            { "Precio", (double)servicio.Precio },
+            { "Tipo", servicio.Tipo },
+            { "TipoVehiculo", servicio.TipoVehiculo },
+            { "TiempoEstimado", servicio.TiempoEstimado },
+            { "Descripcion", servicio.Descripcion },
+            { "Estado", servicio.Estado },
+            { "Etapas", etapasList }
+        };
     }
 
     /// <summary>
     /// Mapea un documento de Firestore a un objeto Servicio.
     /// </summary>
+    /// <param name="documento">Documento de Firestore.</param>
+    /// <returns>Objeto Servicio mapeado.</returns>
     private static Servicio MapearDocumentoAServicio(DocumentSnapshot documento)
     {
         return new Servicio
@@ -509,6 +571,8 @@ public class ServicioService
     /// <summary>
     /// Mapea la colección embebida de etapas.
     /// </summary>
+    /// <param name="documento">Documento de Firestore.</param>
+    /// <returns>Lista de etapas.</returns>
     private static List<Etapa> MapearEtapas(DocumentSnapshot documento)
     {
         var etapas = new List<Etapa>();
@@ -533,6 +597,7 @@ public class ServicioService
     /// <summary>
     /// Valida los datos de un servicio antes de guardarlo.
     /// </summary>
+    /// <param name="servicio">Servicio a validar.</param>
     private static void ValidarServicio(Servicio servicio)
     {
         var errores = new List<string>();
@@ -578,9 +643,12 @@ public class ServicioService
         if (errores.Any())
             throw new ArgumentException($"Errores de validación: {string.Join(", ", errores)}");
     }
+
     /// <summary>
     /// Valida los parámetros de paginación.
     /// </summary>
+    /// <param name="pageNumber">Número de página.</param>
+    /// <param name="pageSize">Tamaño de página.</param>
     private static void ValidarParametrosPaginacion(int pageNumber, int pageSize)
     {
         if (pageNumber <= 0)
