@@ -1,4 +1,5 @@
-﻿/* ================================================
+﻿/**
+ * ================================================
  * PERSONAL.JS - FUNCIONALIDAD PÁGINA PERSONAL
  * ================================================
  */
@@ -26,6 +27,9 @@
         }
     });
 
+    /**
+     * Inicializa la funcionalidad específica de la página de Personal
+     */
     function initializePersonalPage() {
         console.log('[Personal] Setup iniciado');
 
@@ -45,10 +49,11 @@
         console.log('[Personal] Setup completado');
     }
 
-    /* ---------------------------------------------------------
-     * LIMPIEZA DE NOTIFICACIONES
-     * --------------------------------------------------------- */
+    // ===================== Limpieza de notificaciones =====================
 
+    /**
+     * Limpia notificaciones antiguas para evitar duplicados
+     */
     function cleanupOldNotifications() {
         const container = document.getElementById('personal-messages-container');
         if (container) {
@@ -72,6 +77,9 @@
         }
     }
 
+    /**
+     * Configura limpieza de notificaciones al salir de la página
+     */
     function setupPageUnloadCleanup() {
         window.addEventListener('beforeunload', () => {
             cleanupOldNotifications();
@@ -92,10 +100,11 @@
         });
     }
 
-    /* ---------------------------------------------------------
-     * BÚSQUEDA (DEBOUNCE)
-     * --------------------------------------------------------- */
+    // ===================== Búsqueda con debounce =====================
 
+    /**
+     * Configura la búsqueda con debouncing
+     */
     function setupSearchWithDebounce() {
         const searchInput = document.getElementById('simple-search');
         if (!searchInput) return;
@@ -120,6 +129,10 @@
         });
     }
 
+    /**
+     * Realiza búsqueda en el servidor
+     * @param {string} searchTerm - Término de búsqueda
+     */
     function performServerSearch(searchTerm) {
         currentSearchTerm = searchTerm;
 
@@ -133,10 +146,11 @@
         loadTablePartial('/Personal/SearchPartial?' + params.toString());
     }
 
-    /* ---------------------------------------------------------
-     * ORDENAMIENTO TABLA
-     * --------------------------------------------------------- */
+    // ===================== Ordenamiento de tabla =====================
 
+    /**
+     * Obtiene los parámetros de ordenamiento actuales
+     */
     function getCurrentSort() {
         return {
             sortBy: document.getElementById('current-sort-by')?.value || 'NombreCompleto',
@@ -144,6 +158,10 @@
         };
     }
 
+    /**
+     * Maneja el ordenamiento de la tabla
+     * @param {string} sortBy - Campo por el cual ordenar
+     */
     window.sortTable = function (sortBy) {
         const currentSortBy = document.getElementById('current-sort-by')?.value || 'NombreCompleto';
         const currentSortOrder = document.getElementById('current-sort-order')?.value || 'asc';
@@ -157,10 +175,11 @@
         reloadPersonalTable(1);
     };
 
-    /* ---------------------------------------------------------
-     * FILTROS Y RECARGA TABLA
-     * --------------------------------------------------------- */
+    // ===================== Filtros y recarga de tabla =====================
 
+    /**
+     * Construye los parámetros de filtros actuales
+     */
     function buildFilterParams() {
         const form = document.getElementById('filterForm');
         const params = new URLSearchParams();
@@ -172,6 +191,11 @@
         return params;
     }
 
+    /**
+     * Recarga la tabla de personal
+     * @param {number} page - Número de página
+     * @param {Function} callback - Función de callback opcional
+     */
     function reloadPersonalTable(page, callback) {
         const params = buildFilterParams();
         params.set('pageNumber', String(page));
@@ -191,6 +215,11 @@
         loadTablePartial(url, callback);
     }
 
+    /**
+     * Carga la tabla parcial vía fetch
+     * @param {string} url - URL de la tabla parcial
+     * @param {Function} callback - Función de callback opcional
+     */
     function loadTablePartial(url, callback) {
         const antiCache = (url.includes('?') ? '&' : '?') + '_=' + Date.now();
 
@@ -220,16 +249,24 @@
             });
     }
 
+    /**
+     * Cambia de página la tabla
+     * @param {number} page - Número de página
+     */
     window.changePage = (page) => reloadPersonalTable(page);
 
+    /**
+     * Obtiene la página actual de la tabla
+     */
     window.getCurrentTablePage = function () {
         return parseInt(document.getElementById('personal-table-container')?.dataset.currentPage || '1');
     };
 
-    /* ---------------------------------------------------------
-     * FILTROS
-     * --------------------------------------------------------- */
+    // ===================== Filtros =====================
 
+    /**
+     * Configura el envío del formulario de filtros
+     */
     function setupFilterFormSubmit() {
         const form = document.getElementById('filterForm');
         if (!form || form.dataset.submitSetup === 'true') return;
@@ -240,7 +277,7 @@
             e.preventDefault();
             e.stopPropagation();
 
-            //   Prevenir doble submit
+            // Prevenir doble submit
             if (form.dataset.submitting === 'true') {
                 console.log('[Personal] Filtros ya en proceso, omitiendo');
                 return;
@@ -261,7 +298,7 @@
 
             reloadPersonalTable(1, () => {
                 showTableMessage('info', 'Filtros aplicados.');
-                form.dataset.submitting = 'false'; //   Permitir nuevos filtros
+                form.dataset.submitting = 'false'; // Permitir nuevos filtros
             });
 
             if (history.replaceState) history.replaceState(null, '', window.location.pathname);
@@ -271,6 +308,9 @@
         console.log('[Personal] Submit de filtros configurado');
     }
 
+    /**
+     * Configura el botón de limpiar filtros
+     */
     function setupClearFiltersButton() {
         const btn =
             document.getElementById('clearFiltersBtn') ||
@@ -289,13 +329,16 @@
         btn.dataset.setup = 'true';
     }
 
+    /**
+     * Limpia los filtros de la página de Personal
+     */
     window.clearPersonalFilters = function () {
         console.log('[Personal] Limpiando filtros');
 
         const form = document.getElementById('filterForm');
         if (!form) return;
 
-        //   Prevenir doble ejecución
+        // Prevenir doble ejecución
         if (form.dataset.clearing === 'true') {
             console.log('[Personal] Ya se están limpiando filtros, omitiendo');
             return;
@@ -338,23 +381,29 @@
 
         reloadPersonalTable(1, () => {
             showTableMessage('info', 'Filtros restablecidos.');
-            form.dataset.clearing = 'false'; //   Permitir nueva limpieza
+            form.dataset.clearing = 'false'; // Permitir nueva limpieza
         });
     };
 
+    /**
+     * Establece el valor de un input hidden
+     * @param {string} id - ID del input
+     * @param {string} value - Valor a establecer
+     */
     function setHiddenValue(id, value) {
         const el = document.getElementById(id);
         if (el) el.value = value;
     }
 
-    /* ---------------------------------------------------------
-     * EDICIÓN DE ROLES
-     * --------------------------------------------------------- */
+    // ===================== Edición de roles =====================
 
-    let roleEditingSetup = false; //   Flag para evitar múltiples registros
+    let roleEditingSetup = false; // Flag para evitar múltiples registros
 
+    /**
+     * Configura la edición de roles
+     */
     function setupRoleEditing() {
-        //   Solo configurar una vez
+        // Solo configurar una vez
         if (roleEditingSetup) {
             console.log('[Personal] setupRoleEditing ya configurado, omitiendo');
             return;
@@ -381,6 +430,10 @@
         roleEditingSetup = true;
     }
 
+    /**
+     * Alterna entre modo de edición y visualización de rol
+     * @param {string} id - ID del empleado
+     */
     window.toggleEdit = function (id) {
         const rolText = document.getElementById('rol-text-' + id);
         const rolForm = document.getElementById('rol-form-' + id);
@@ -397,11 +450,15 @@
         }
     };
 
+    /**
+     * Envía el formulario de edición de rol
+     * @param {string} id - ID del empleado
+     */
     window.submitForm = function (id) {
         const form = document.getElementById('rol-form-' + id);
         if (!form) return;
 
-        //   Prevenir doble submit
+        // Prevenir doble submit
         if (form.dataset.submitting === 'true') {
             console.log('[Personal] Formulario ya en proceso de envío, omitiendo');
             return;
@@ -420,7 +477,7 @@
         })
             .then(response => response.json())
             .then(data => {
-                form.dataset.submitting = 'false'; //   Permitir nuevos envíos
+                form.dataset.submitting = 'false'; // Permitir nuevos envíos
 
                 if (data.success) {
                     showTableMessage('success', data.message || 'Rol actualizado correctamente.');
@@ -433,15 +490,17 @@
                 }
             })
             .catch(() => {
-                form.dataset.submitting = 'false'; //   Permitir reintentos
+                form.dataset.submitting = 'false'; // Permitir reintentos
                 showTableMessage('error', 'Error de comunicación con el servidor.');
             });
     };
 
-    /* ---------------------------------------------------------
-     * MODALES
-     * --------------------------------------------------------- */
+    // ===================== Modales =====================
 
+    /**
+     * Abre un modal por ID
+     * @param {string} modalId - ID del modal
+     */
     function abrirModal(modalId) {
         const modal = document.getElementById(modalId);
         if (!modal) return;
@@ -452,6 +511,10 @@
         document.body.style.overflow = 'hidden';
     }
 
+    /**
+     * Cierra un modal por ID
+     * @param {string} modalId - ID del modal
+     */
     function cerrarModal(modalId) {
         const modal = document.getElementById(modalId);
         if (!modal) return;
@@ -462,6 +525,12 @@
         document.body.style.overflow = '';
     }
 
+    /**
+     * Abre el modal de confirmación para activar/desactivar empleado
+     * @param {string} tipoAccion - 'desactivar' o 'reactivar'
+     * @param {string} id - ID del empleado
+     * @param {string} nombre - Nombre del empleado
+     */
     window.openPersonalConfirmModal = function (tipoAccion, id, nombre) {
         console.log('[Personal] Abriendo modal:', tipoAccion, id, nombre);
 
@@ -500,7 +569,7 @@
                         1 0 00-1.414 1.414L8.586 10l-2.293 
                         2.293a1 1 0 001.414 1.414L10 
                         12.414l2.293 2.293a1 1 0 001.414-1.414L11.414 
-                        10l2.293-2.293z"
+                        10l2.293-2.293a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z"
                         clip-rule="evenodd"/>`;
         } else {
             title.textContent = 'Reactivar Empleado';
@@ -535,14 +604,21 @@
         abrirModal('personalConfirmModal');
     };
 
+    /**
+     * Cierra el modal de confirmación
+     */
     window.closePersonalConfirmModal = function () {
         cerrarModal('personalConfirmModal');
     };
 
+    /**
+     * Envía el cambio de estado del empleado
+     * @param {HTMLFormElement} form - Formulario del modal
+     */
     window.submitPersonalEstado = function (form) {
         console.log('[Personal] Submit estado, action:', form.action);
 
-        //   Prevenir doble submit
+        // Prevenir doble submit
         if (form.dataset.submitting === 'true') {
             console.log('[Personal] Formulario ya en proceso de envío, omitiendo');
             return false;
@@ -574,12 +650,12 @@
 
                 setTimeout(() => {
                     reloadPersonalTable(pg);
-                    form.dataset.submitting = 'false'; //  Permitir nuevos envíos
+                    form.dataset.submitting = 'false'; // Permitir nuevos envíos
                 }, 800);
             })
             .catch(err => {
                 console.error('[Personal] Error en submitPersonalEstado:', err);
-                form.dataset.submitting = 'false'; //   Permitir reintentos
+                form.dataset.submitting = 'false'; // Permitir reintentos
                 window.closePersonalConfirmModal();
                 showTableMessage('error', 'Error al procesar la solicitud.');
             });
@@ -587,37 +663,51 @@
         return false;
     };
 
-    /* ---------------------------------------------------------
-     * NOTIFICACIONES
-     * --------------------------------------------------------- */
+    // ===================== Notificaciones =====================
 
+    /**
+     * Configura el manejo de notificaciones del servidor
+     */
     function setupNotificationHandling() {
         showServerNotifications();
     }
 
+    /**
+     * Muestra notificaciones del servidor
+     */
     function showServerNotifications() {
-    const successMeta = document.querySelector('meta[name="success-message"]');
+        const successMeta = document.querySelector('meta[name="success-message"]');
         const errorMeta = document.querySelector('meta[name="error-message"]');
 
         const successMessage = successMeta?.getAttribute('content');
-   const errorMessage = errorMeta?.getAttribute('content');
+        const errorMessage = errorMeta?.getAttribute('content');
 
         if (successMessage) {
-    showTableMessage('success', successMessage);
-     //   Eliminar meta tag después de mostrar
+            showTableMessage('success', successMessage);
+            // Eliminar meta tag después de mostrar
             successMeta?.remove();
         } else if (errorMessage) {
             showTableMessage('error', errorMessage);
-//   Eliminar meta tag después de mostrar
-       errorMeta?.remove();
+            // Eliminar meta tag después de mostrar
+            errorMeta?.remove();
         }
     }
 
+    /**
+     * Obtiene el contenido de una meta tag
+     * @param {string} name - Nombre de la meta tag
+     */
     function getMetaContent(name) {
         const meta = document.querySelector(`meta[name="${name}"]`);
         return meta ? meta.getAttribute('content') : null;
     }
 
+    /**
+     * Muestra un mensaje en la tabla
+     * @param {string} type - Tipo de mensaje ('success', 'info', 'error')
+     * @param {string} msg - Mensaje a mostrar
+     * @param {number} disappearMs - Milisegundos para auto-ocultar
+     */
     function showTableMessage(type, msg, disappearMs = 5000) {
         console.log('[Personal] showTableMessage called:', type, msg);
 
@@ -634,6 +724,12 @@
         showTableMessageInternal(type, msg, disappearMs);
     }
 
+    /**
+     * Muestra el mensaje internamente
+     * @param {string} type - Tipo de mensaje
+     * @param {string} msg - Mensaje
+     * @param {number} disappearMs - Tiempo de auto-ocultado
+     */
     function showTableMessageInternal(type, msg, disappearMs) {
         console.log('[Personal] showTableMessageInternal:', type, msg);
 
@@ -716,6 +812,11 @@
         }, disappearMs + 800);
     }
 
+    /**
+     * Escapa caracteres HTML para prevenir XSS
+     * @param {string} str - Cadena a escapar
+     * @returns {string} Cadena escapada
+     */
     function escapeHtml(str) {
         if (!str) return '';
         return String(str).replace(/[&<>"']/g, c => ({

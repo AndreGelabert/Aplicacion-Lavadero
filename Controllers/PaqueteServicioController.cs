@@ -2,9 +2,6 @@ using Firebase.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using System.Linq; // agregado para LINQ
-using System.Threading.Tasks;
-using System.Collections.Generic;
 
 /// <summary>
 /// Controlador para la gestión de paquetes de servicios del lavadero.
@@ -281,17 +278,16 @@ public class PaqueteServicioController : Controller
         string searchTerm,
       decimal? precioMin,
         decimal? precioMax,
-        int? serviciosCantidad)
-    {
+        int? serviciosCantidad){
         try
         {
-      var (min, max) = await _paqueteServicioService.ObtenerRangoDescuento(
-     estados, tiposVehiculo, searchTerm, precioMin, precioMax, null, null, serviciosCantidad, serviciosCantidad);
-     return Json(new { success = true, min, max });
-}
-  catch (Exception ex)
+            var (min, max) = await _paqueteServicioService.ObtenerRangoDescuento(
+            estados, tiposVehiculo, searchTerm, precioMin, precioMax, null, null, serviciosCantidad, serviciosCantidad);
+            return Json(new { success = true, min, max });
+        }
+        catch (Exception ex)
         {
-  return Json(new { success = false, message = ex.Message });
+            return Json(new { success = false, message = ex.Message });
         }
     }
     #endregion

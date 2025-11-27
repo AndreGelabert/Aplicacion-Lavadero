@@ -86,6 +86,7 @@ public class ConfiguracionService
     /// <summary>
     /// Obtiene el paso de descuento para paquetes de servicios.
     /// </summary>
+    /// <returns>El paso de descuento.</returns>
     public async Task<int> ObtenerPaquetesDescuentoStep()
     {
         var config = await ObtenerConfiguracion();
@@ -95,6 +96,7 @@ public class ConfiguracionService
     /// <summary>
     /// Obtiene los horarios de operación del lavadero.
     /// </summary>
+    /// <returns>Diccionario con los horarios de operación.</returns>
     public async Task<Dictionary<string, string>> ObtenerHorariosOperacion()
     {
         var config = await ObtenerConfiguracion();
@@ -104,6 +106,7 @@ public class ConfiguracionService
     /// <summary>
     /// Obtiene la capacidad máxima concurrente del lavadero.
     /// </summary>
+    /// <returns>La capacidad máxima.</returns>
     public async Task<int> ObtenerCapacidadMaxima()
     {
         var config = await ObtenerConfiguracion();
@@ -113,6 +116,7 @@ public class ConfiguracionService
     /// <summary>
     /// Obtiene la configuración de cancelación anticipada.
     /// </summary>
+    /// <returns>Tupla con descuento, horas mínimas y validez en días.</returns>
     public async Task<(decimal descuento, int horasMinimas, int validezDias)> ObtenerConfiguracionCancelacionAnticipada()
     {
         var config = await ObtenerConfiguracion();
@@ -125,21 +129,22 @@ public class ConfiguracionService
     /// Obtiene la duración máxima de la sesión en minutos.
     /// Convierte las horas configuradas a minutos.
     /// </summary>
+    /// <returns>Duración en minutos.</returns>
     public async Task<int> ObtenerSesionDuracionMinutos()
     {
         var config = await ObtenerConfiguracion();
-     return config.SesionDuracionHoras * 60; // Convertir horas a minutos
+        return config.SesionDuracionHoras * 60; // Convertir horas a minutos
     }
 
     /// <summary>
     /// Obtiene el tiempo de inactividad antes del cierre automático en minutos.
     /// </summary>
+    /// <returns>Tiempo de inactividad en minutos.</returns>
     public async Task<int> ObtenerSesionInactividadMinutos()
     {
         var config = await ObtenerConfiguracion();
         return config.SesionInactividadMinutos;
     }
-
     #endregion
 
     #region Operaciones de Escritura
@@ -147,6 +152,7 @@ public class ConfiguracionService
     /// <summary>
     /// Crea la configuración inicial del sistema con valores por defecto.
     /// </summary>
+    /// <param name="config">Configuración a crear.</param>
     private async Task CrearConfiguracion(Configuracion config)
     {
         config.Id = CONFIG_ID;
@@ -182,7 +188,6 @@ public class ConfiguracionService
         // Invalidar caché
         _cache.Remove(CACHE_KEY);
     }
-
     #endregion
 
     #region Métodos Privados de Validación
@@ -190,37 +195,39 @@ public class ConfiguracionService
     /// <summary>
     /// Crea una configuración con valores por defecto.
     /// </summary>
+    /// <returns>Configuración por defecto.</returns>
     private Configuracion CrearConfiguracionPorDefecto()
     {
         return new Configuracion
-{
+        {
             Id = CONFIG_ID,
             CancelacionAnticipadaDescuento = 10,
-     CancelacionAnticipadaHorasMinimas = 24,
+            CancelacionAnticipadaHorasMinimas = 24,
             CancelacionAnticipadaValidezDias = 30,
             PaquetesDescuentoStep = 5,
-       HorariosOperacion = new Dictionary<string, string>
-      {
-     { "Lunes", "09:00-18:00" },
-   { "Martes", "09:00-18:00" },
-          { "Miércoles", "09:00-18:00" },
+            HorariosOperacion = new Dictionary<string, string>
+            {
+                { "Lunes", "09:00-18:00" },
+                { "Martes", "09:00-18:00" },
+                { "Miércoles", "09:00-18:00" },
                 { "Jueves", "09:00-18:00" },
-              { "Viernes", "09:00-18:00" },
-              { "Sábado", "09:00-13:00" },
-     { "Domingo", "CERRADO" }
-        },
+                { "Viernes", "09:00-18:00" },
+                { "Sábado", "09:00-13:00" },
+                { "Domingo", "CERRADO" }
+            },
             CapacidadMaximaConcurrente = 5,
             ConsiderarEmpleadosActivos = true,
-  SesionDuracionHoras = 8, // 8 horas
-   SesionInactividadMinutos = 15, // 15 minutos
- FechaActualizacion = DateTime.UtcNow
+            SesionDuracionHoras = 8, // 8 horas
+            SesionInactividadMinutos = 15, // 15 minutos
+            FechaActualizacion = DateTime.UtcNow
         };
     }
 
     /// <summary>
     /// Valida que los horarios de operación tengan el formato correcto.
-    /// Formato válido: "HH:MM-HH:MM" o "HH:MM-HH:MM,HH:MM-HH:MM" o "CERRADO"
+    /// Formato válido: "HH:MM-HH:MM" o "HH:MM-HH:MM,HH:MM-HH:MM" o "CERRADO".
     /// </summary>
+    /// <param name="horarios">Horarios a validar.</param>
     private void ValidarHorariosOperacion(Dictionary<string, string> horarios)
     {
         if (horarios == null || horarios.Count == 0)
@@ -253,6 +260,8 @@ public class ConfiguracionService
     /// <summary>
     /// Valida que un segmento de horario tenga el formato "HH:MM-HH:MM".
     /// </summary>
+    /// <param name="segmento">Segmento a validar.</param>
+    /// <returns>True si es válido.</returns>
     private bool ValidarFormatoHorario(string segmento)
     {
         if (string.IsNullOrWhiteSpace(segmento))
@@ -268,6 +277,8 @@ public class ConfiguracionService
     /// <summary>
     /// Valida que una hora tenga el formato "HH:MM" y sea válida.
     /// </summary>
+    /// <param name="hora">Hora a validar.</param>
+    /// <returns>True si es válida.</returns>
     private bool ValidarHora(string hora)
     {
         if (string.IsNullOrWhiteSpace(hora))
@@ -285,6 +296,5 @@ public class ConfiguracionService
 
         return true;
     }
-
     #endregion
 }

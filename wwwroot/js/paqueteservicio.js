@@ -364,6 +364,9 @@
             }
         } catch { }
 
+        // Limpiar checkboxes de tipos de vehículo explícitamente
+        form.querySelectorAll('input[name="tiposVehiculo"]').forEach(cb => cb.checked = false);
+
         // Limpiar campos numéricos y selects
         form.querySelectorAll('input[type="number"]').forEach(inp => {
             inp.value = '';
@@ -753,7 +756,8 @@ if (helpMin) helpMin.textContent = '';
         }
 
         let lista = servicios;
-        if (filterText) {
+        if // Filtering logic
+  (filterText) {
             const lower = filterText.toLowerCase();
             lista = lista.filter(s =>
                 (s.nombre && s.nombre.toLowerCase().includes(lower)) ||

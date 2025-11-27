@@ -14,6 +14,7 @@ namespace Firebase.Services
     /// </summary>
     public class AuthenticationService
     {
+        #region Dependencias
         private readonly IConfiguration _configuration;
         private readonly FirestoreDb _firestore;
         private readonly AuditService _auditService;
@@ -23,10 +24,10 @@ namespace Firebase.Services
         /// <summary>
         /// Constructor del servicio de autenticación.
         /// </summary>
-        /// <param name="configuration">Configuración de la aplicación</param>
-        /// <param name="firestore">Instancia de FirestoreDb</param>
-        /// <param name="auditService">Servicio de auditoría</param>
-        /// <param name="httpClient">Cliente HTTP para llamadas a Firebase</param>
+        /// <param name="configuration">Configuración de la aplicación.</param>
+        /// <param name="firestore">Instancia de FirestoreDb.</param>
+        /// <param name="auditService">Servicio de auditoría.</param>
+        /// <param name="httpClient">Cliente HTTP para llamadas a Firebase.</param>
         public AuthenticationService(IConfiguration configuration, FirestoreDb firestore, AuditService auditService, HttpClient httpClient)
         {
             _configuration = configuration;
@@ -34,17 +35,20 @@ namespace Firebase.Services
             _auditService = auditService;
             _httpClient = httpClient;
             _firebaseApiKey = _configuration["Firebase:ApiKey"] ?? throw new InvalidOperationException("Firebase API Key no configurada");
-            
+
             // Aumentar timeout para navegadores con bloqueo de trackers (Brave, Firefox con privacidad estricta)
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
         }
+        #endregion
+
+        #region Autenticación con Email
 
         /// <summary>
         /// Autentica un usuario con email y contraseña usando Firebase.
         /// </summary>
-        /// <param name="email">Email del usuario</param>
-        /// <param name="password">Contraseña del usuario</param>
-        /// <returns>Resultado de la operación de autenticación</returns>
+        /// <param name="email">Email del usuario.</param>
+        /// <param name="password">Contraseña del usuario.</param>
+        /// <returns>Resultado de la operación de autenticación.</returns>
         public async Task<AuthenticationResult> AuthenticateWithEmailAsync(string email, string password)
         {
             try
@@ -135,10 +139,10 @@ namespace Firebase.Services
 
         /// <summary>
         /// Registra un nuevo usuario en Firebase Authentication y Firestore.
-        /// AHORA: Envía email de verificación en lugar de autenticar automáticamente
+        /// AHORA: Envía email de verificación en lugar de autenticar automáticamente.
         /// </summary>
-        /// <param name="request">Datos de registro del usuario</param>
-        /// <returns>Resultado de la operación de registro</returns>
+        /// <param name="request">Datos de registro del usuario.</param>
+        /// <returns>Resultado de la operación de registro.</returns>
         public async Task<AuthenticationResult> RegisterUserAsync(RegisterRequest request)
         {
             try
@@ -211,8 +215,8 @@ namespace Firebase.Services
         /// <summary>
         /// Envía un correo de recuperación de contraseña usando la plantilla de Firebase.
         /// </summary>
-        /// <param name="email">Email del usuario que solicita recuperar la contraseña</param>
-        /// <returns>Resultado de la operación</returns>
+        /// <param name="email">Email del usuario que solicita recuperar la contraseña.</param>
+        /// <returns>Resultado de la operación.</returns>
         public async Task<AuthenticationResult> SendPasswordResetEmailAsync(string email)
         {
             try
@@ -236,17 +240,17 @@ namespace Firebase.Services
                     var errorResponse = await resetResponse.Content.ReadAsStringAsync();
                     var firebaseError = JsonConvert.DeserializeObject<FirebaseErrorResponse>(errorResponse);
                     var errorCode = firebaseError?.error?.message?.Split(' ').FirstOrDefault() ?? "UNKNOWN_ERROR";
-                    
+
                     return AuthenticationResult.Failure(GetFirebaseErrorMessage(errorCode));
                 }
 
                 Console.WriteLine("Correo de recuperación de contraseña enviado mediante plantilla Firebase.");
-                return AuthenticationResult.Success(new UserInfo 
-                { 
-                    Uid = "", 
-                    Email = email, 
-                    Name = "", 
-                    Role = "" 
+                return AuthenticationResult.Success(new UserInfo
+                {
+                    Uid = "",
+                    Email = email,
+                    Name = "",
+                    Role = ""
                 });
             }
             catch (Exception ex)
@@ -255,72 +259,15 @@ namespace Firebase.Services
                 return AuthenticationResult.Failure("Error al enviar el correo de recuperación. Por favor, intente de nuevo.");
             }
         }
+        #endregion
 
-        /// <summary>
-        /// Firma en Firebase REST para obtener idToken y dispara el envío del correo
-        /// usando la plantilla configurada en Authentication.
-        /// No autentica al usuario en tu aplicación.
-        /// </summary>
-        private async Task TriggerFirebaseTemplateVerificationEmailAsync(string email, string plainPassword)
-        {
-            // 1. Sign in técnico para obtener idToken (no genera cookie de tu app)
-            var signInPayload = new
-            {
-                email = email,
-                password = plainPassword,
-                returnSecureToken = true
-            };
-
-            var signInContent = new StringContent(
-                JsonConvert.SerializeObject(signInPayload),
-                Encoding.UTF8,
-                "application/json");
-
-            var signInUri = $"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={_firebaseApiKey}";
-            var signInResponse = await _httpClient.PostAsync(signInUri, signInContent);
-
-            if (!signInResponse.IsSuccessStatusCode)
-            {
-                var raw = await signInResponse.Content.ReadAsStringAsync();
-                throw new Exception($"Fallo en signIn técnico: {raw}");
-            }
-
-            var signInJson = await signInResponse.Content.ReadAsStringAsync();
-            dynamic signInObj = JsonConvert.DeserializeObject(signInJson);
-            string idToken = signInObj.idToken;
-
-            if (string.IsNullOrWhiteSpace(idToken))
-                throw new Exception("No se obtuvo idToken para verificación.");
-
-            // 2. Enviar la verificación (usa plantilla de Firebase)
-            var verifyPayload = new
-            {
-                requestType = "VERIFY_EMAIL",
-                idToken = idToken
-            };
-
-            var verifyContent = new StringContent(
-                JsonConvert.SerializeObject(verifyPayload),
-                Encoding.UTF8,
-                "application/json");
-
-            var verifyUri = $"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={_firebaseApiKey}";
-            var verifyResponse = await _httpClient.PostAsync(verifyUri, verifyContent);
-
-            if (!verifyResponse.IsSuccessStatusCode)
-            {
-                var raw = await verifyResponse.Content.ReadAsStringAsync();
-                throw new Exception($"Fallo al solicitar envío de verificación: {raw}");
-            }
-
-            Console.WriteLine("Correo de verificación enviado mediante plantilla Firebase.");
-        }
+        #region Autenticación con Google
 
         /// <summary>
         /// Verifica un token de Google y autentica al usuario.
         /// </summary>
-        /// <param name="idToken">Token de ID de Google</param>
-        /// <returns>Resultado de la operación de autenticación</returns>
+        /// <param name="idToken">Token de ID de Google.</param>
+        /// <returns>Resultado de la operación de autenticación.</returns>
         public async Task<AuthenticationResult> AuthenticateWithGoogleAsync(string idToken)
         {
             try
@@ -427,12 +374,77 @@ namespace Firebase.Services
                 return AuthenticationResult.Failure("Error al autenticar con Google. Por favor, intente de nuevo.");
             }
         }
+        #endregion
+
+        #region Utilidades
+
+        /// <summary>
+        /// Firma en Firebase REST para obtener idToken y dispara el envío del correo
+        /// usando la plantilla configurada en Authentication.
+        /// No autentica al usuario en tu aplicación.
+        /// </summary>
+        /// <param name="email">Email del usuario.</param>
+        /// <param name="plainPassword">Contraseña en texto plano.</param>
+        private async Task TriggerFirebaseTemplateVerificationEmailAsync(string email, string plainPassword)
+        {
+            // 1. Sign in técnico para obtener idToken (no genera cookie de tu app)
+            var signInPayload = new
+            {
+                email = email,
+                password = plainPassword,
+                returnSecureToken = true
+            };
+
+            var signInContent = new StringContent(
+                JsonConvert.SerializeObject(signInPayload),
+                Encoding.UTF8,
+                "application/json");
+
+            var signInUri = $"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={_firebaseApiKey}";
+            var signInResponse = await _httpClient.PostAsync(signInUri, signInContent);
+
+            if (!signInResponse.IsSuccessStatusCode)
+            {
+                var raw = await signInResponse.Content.ReadAsStringAsync();
+                throw new Exception($"Fallo en signIn técnico: {raw}");
+            }
+
+            var signInJson = await signInResponse.Content.ReadAsStringAsync();
+            dynamic signInObj = JsonConvert.DeserializeObject(signInJson);
+            string idToken = signInObj.idToken;
+
+            if (string.IsNullOrWhiteSpace(idToken))
+                throw new Exception("No se obtuvo idToken para verificación.");
+
+            // 2. Enviar la verificación (usa plantilla de Firebase)
+            var verifyPayload = new
+            {
+                requestType = "VERIFY_EMAIL",
+                idToken = idToken
+            };
+
+            var verifyContent = new StringContent(
+                JsonConvert.SerializeObject(verifyPayload),
+                Encoding.UTF8,
+                "application/json");
+
+            var verifyUri = $"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={_firebaseApiKey}";
+            var verifyResponse = await _httpClient.PostAsync(verifyUri, verifyContent);
+
+            if (!verifyResponse.IsSuccessStatusCode)
+            {
+                var raw = await verifyResponse.Content.ReadAsStringAsync();
+                throw new Exception($"Fallo al solicitar envío de verificación: {raw}");
+            }
+
+            Console.WriteLine("Correo de verificación enviado mediante plantilla Firebase.");
+        }
 
         /// <summary>
         /// Crea los claims de autenticación para un usuario.
         /// </summary>
-        /// <param name="userInfo">Información del usuario</param>
-        /// <returns>Lista de claims</returns>
+        /// <param name="userInfo">Información del usuario.</param>
+        /// <returns>Lista de claims.</returns>
         public List<Claim> CreateUserClaims(UserInfo userInfo)
         {
             return new List<Claim>
@@ -447,8 +459,8 @@ namespace Firebase.Services
         /// <summary>
         /// Traduce códigos de error de Firebase a mensajes en español.
         /// </summary>
-        /// <param name="errorCode">Código de error de Firebase</param>
-        /// <returns>Mensaje de error en español</returns>
+        /// <param name="errorCode">Código de error de Firebase.</param>
+        /// <returns>Mensaje de error en español.</returns>
         private string GetFirebaseErrorMessage(string errorCode)
         {
             return errorCode switch
@@ -464,6 +476,7 @@ namespace Firebase.Services
                 _ => "Se ha producido un error al procesar la solicitud."
             };
         }
+        #endregion
     }
 
     /// <summary>
@@ -491,8 +504,8 @@ namespace Firebase.Services
         /// <summary>
         /// Crea un resultado exitoso.
         /// </summary>
-        /// <param name="userInfo">Información del usuario</param>
-        /// <returns>Resultado exitoso</returns>
+        /// <param name="userInfo">Información del usuario.</param>
+        /// <returns>Resultado exitoso.</returns>
         public static AuthenticationResult Success(UserInfo userInfo)
         {
             return new AuthenticationResult
@@ -505,8 +518,8 @@ namespace Firebase.Services
         /// <summary>
         /// Crea un resultado fallido.
         /// </summary>
-        /// <param name="errorMessage">Mensaje de error</param>
-        /// <returns>Resultado fallido</returns>
+        /// <param name="errorMessage">Mensaje de error.</param>
+        /// <returns>Resultado fallido.</returns>
         public static AuthenticationResult Failure(string errorMessage)
         {
             return new AuthenticationResult

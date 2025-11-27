@@ -1,4 +1,3 @@
-// Models/FirebaseAuthResponses.cs
 namespace Firebase.Models
 {
     /// <summary>

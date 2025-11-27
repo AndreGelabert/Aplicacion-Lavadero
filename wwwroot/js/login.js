@@ -115,6 +115,7 @@ const LoginModule = {
         }
     }
 };
+
 /**
  * Cierra el modal de verificación de email
  */
@@ -127,6 +128,7 @@ function closeVerificationModal() {
 
 /**
  * Muestra el modal de verificación de email
+ * @param {string} email - Email del usuario
  */
 function showVerificationModal(email) {
     const modal = document.getElementById('verificationModal');

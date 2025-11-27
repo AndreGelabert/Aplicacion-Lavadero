@@ -2,8 +2,8 @@ using Firebase.Models;
 using Google.Cloud.Firestore;
 
 /// <summary>
-/// Servicio para la gestiÛn de personal (empleados) en Firestore.
-/// Proporciona operaciones de consulta, filtrado, paginaciÛn, b˙squeda y ordenamiento.
+/// Servicio para la gesti√≥n de personal (empleados) en Firestore.
+/// Proporciona operaciones de consulta, filtrado, paginaci√≥n, b√∫squeda y ordenamiento.
 /// </summary>
 public class PersonalService
 {
@@ -23,9 +23,9 @@ public class PersonalService
     /// <param name="firestore">Instancia de la base de datos Firestore.</param>
     public PersonalService(FirestoreDb firestore)
     {
-    _firestore = firestore ?? throw new ArgumentNullException(nameof(firestore));
+        _firestore = firestore ?? throw new ArgumentNullException(nameof(firestore));
     }
-  #endregion
+    #endregion
 
     #region Operaciones de Consulta
 
@@ -34,16 +34,16 @@ public class PersonalService
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar (null para solo activos por defecto).</param>
     /// <param name="roles">Lista de roles a filtrar (null para todos).</param>
-    /// <param name="pageNumber">N˙mero de p·gina (1-based).</param>
- /// <param name="pageSize">Cantidad de elementos por p·gina.</param>
-  /// <param name="sortBy">Campo por el cual ordenar.</param>
-    /// <param name="sortOrder">DirecciÛn del ordenamiento (asc/desc).</param>
+    /// <param name="pageNumber">N√∫mero de p√°gina (1-based).</param>
+    /// <param name="pageSize">Cantidad de elementos por p√°gina.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Direcci√≥n del ordenamiento (asc/desc).</param>
     /// <returns>Lista de empleados filtrados, ordenados y paginados.</returns>
     public async Task<List<Empleado>> ObtenerEmpleados(
         List<string> estados = null,
         List<string> roles = null,
-   int pageNumber = 1,
-    int pageSize = 10,
+        int pageNumber = 1,
+        int pageSize = 10,
         string sortBy = null,
         string sortOrder = null)
     {
@@ -52,131 +52,146 @@ public class PersonalService
         sortBy ??= ORDEN_DEFECTO;
         sortOrder ??= DIRECCION_DEFECTO;
 
-     var empleados = await ObtenerEmpleadosFiltrados(estados, roles, sortBy, sortOrder);
+        var empleados = await ObtenerEmpleadosFiltrados(estados, roles, sortBy, sortOrder);
 
         return AplicarPaginacion(empleados, pageNumber, pageSize);
     }
 
     /// <summary>
-    /// Calcula el n˙mero total de p·ginas para los empleados filtrados.
+    /// Calcula el n√∫mero total de p√°ginas para los empleados filtrados.
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="roles">Lista de roles a filtrar.</param>
-    /// <param name="pageSize">Cantidad de elementos por p·gina.</param>
-    /// <returns>N˙mero total de p·ginas.</returns>
+    /// <param name="pageSize">Cantidad de elementos por p√°gina.</param>
+    /// <returns>N√∫mero total de p√°ginas.</returns>
     public async Task<int> ObtenerTotalPaginas(
         List<string> estados,
         List<string> roles,
         int pageSize)
     {
         if (pageSize <= 0)
-       throw new ArgumentException("El tamaÒo de p·gina debe ser mayor a 0", nameof(pageSize));
+            throw new ArgumentException("El tama√±o de p√°gina debe ser mayor a 0", nameof(pageSize));
 
         var totalEmpleados = await ObtenerTotalEmpleados(estados, roles);
- return (int)Math.Ceiling(totalEmpleados / (double)pageSize);
+        return (int)Math.Ceiling(totalEmpleados / (double)pageSize);
     }
 
     /// <summary>
-    /// Obtiene un empleado especÌfico por su ID.
+    /// Obtiene un empleado espec√≠fico por su ID.
     /// </summary>
     /// <param name="id">ID del empleado.</param>
     /// <returns>El empleado encontrado o null si no existe.</returns>
     public async Task<Empleado> ObtenerEmpleado(string id)
     {
         if (string.IsNullOrWhiteSpace(id))
-      throw new ArgumentException("El ID del empleado no puede estar vacÌo", nameof(id));
+            throw new ArgumentException("El ID del empleado no puede estar vac√≠o", nameof(id));
 
-  var docRef = _firestore.Collection(COLLECTION_NAME).Document(id);
-  var snapshot = await docRef.GetSnapshotAsync();
+        var docRef = _firestore.Collection(COLLECTION_NAME).Document(id);
+        var snapshot = await docRef.GetSnapshotAsync();
 
         return snapshot.Exists ? MapearDocumentoAEmpleado(snapshot) : null;
     }
 
     /// <summary>
     /// Obtiene TODOS los empleados sin aplicar filtro de estado.
-    /// ⁄til para auditorÌa y reportes donde se necesitan empleados inactivos/eliminados.
+    /// √ötil para auditor√≠a y reportes donde se necesitan empleados inactivos/eliminados.
     /// </summary>
- /// <returns>Lista completa de todos los empleados en la base de datos.</returns>
+    /// <returns>Lista completa de todos los empleados en la base de datos.</returns>
     public async Task<List<Empleado>> ObtenerEmpleadosSinFiltroEstado()
     {
         var query = _firestore.Collection(COLLECTION_NAME);
-   var snapshot = await query.GetSnapshotAsync();
-   
+        var snapshot = await query.GetSnapshotAsync();
+
         return snapshot.Documents
-     .Select(MapearDocumentoAEmpleado)
-.OrderBy(e => e.NombreCompleto)
-   .ToList();
+            .Select(MapearDocumentoAEmpleado)
+            .OrderBy(e => e.NombreCompleto)
+            .ToList();
     }
 
     /// <summary>
-    /// Busca empleados por tÈrmino de b˙squeda (nombre, email, rol).
+    /// Busca empleados por t√©rmino de b√∫squeda (nombre, email, rol).
     /// </summary>
+    /// <param name="searchTerm">T√©rmino de b√∫squeda.</param>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="roles">Lista de roles a filtrar.</param>
+    /// <param name="pageNumber">N√∫mero de p√°gina actual.</param>
+    /// <param name="pageSize">Tama√±o de p√°gina.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Direcci√≥n del ordenamiento.</param>
+    /// <returns>Lista de empleados que coinciden con la b√∫squeda.</returns>
     public async Task<List<Empleado>> BuscarEmpleados(
         string searchTerm,
-    List<string> estados = null,
+        List<string> estados = null,
         List<string> roles = null,
-    int pageNumber = 1,
+        int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
         string sortOrder = null)
-{
+    {
         var baseFiltrada = await ObtenerEmpleadosFiltrados(estados, roles, sortBy, sortOrder);
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-     baseFiltrada = AplicarBusqueda(baseFiltrada, searchTerm);
+            baseFiltrada = AplicarBusqueda(baseFiltrada, searchTerm);
         }
 
-      var ordenados = AplicarOrdenamiento(baseFiltrada, sortBy, sortOrder);
+        var ordenados = AplicarOrdenamiento(baseFiltrada, sortBy, sortOrder);
         return AplicarPaginacion(ordenados, Math.Max(pageNumber, 1), Math.Max(pageSize, 1));
     }
 
     /// <summary>
-    /// Obtiene el total de empleados que coinciden con la b˙squeda.
-    /// /// </summary>
+    /// Obtiene el total de empleados que coinciden con la b√∫squeda.
+    /// </summary>
+    /// <param name="searchTerm">T√©rmino de b√∫squeda.</param>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="roles">Lista de roles a filtrar.</param>
+    /// <returns>N√∫mero total de empleados que coinciden.</returns>
     public async Task<int> ObtenerTotalEmpleadosBusqueda(
-      string searchTerm,
+        string searchTerm,
         List<string> estados,
         List<string> roles)
     {
         estados = ConfigurarEstadosDefecto(estados);
-      var baseFiltrada = await ObtenerEmpleadosFiltrados(estados, roles, ORDEN_DEFECTO, DIRECCION_DEFECTO);
+        var baseFiltrada = await ObtenerEmpleadosFiltrados(estados, roles, ORDEN_DEFECTO, DIRECCION_DEFECTO);
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-  baseFiltrada = AplicarBusqueda(baseFiltrada, searchTerm);
+            baseFiltrada = AplicarBusqueda(baseFiltrada, searchTerm);
         }
 
         return baseFiltrada.Count;
     }
 
     /// <summary>
-    /// Obtiene todos los roles ˙nicos registrados.
+    /// Obtiene todos los roles √∫nicos registrados.
     /// </summary>
+    /// <returns>Lista de roles √∫nicos ordenados.</returns>
     public async Task<List<string>> ObtenerRolesUnicos()
     {
         var snapshot = await _firestore.Collection(COLLECTION_NAME).GetSnapshotAsync();
         return snapshot.Documents
             .Select(doc => doc.ContainsField("Rol") ? doc.GetValue<string>("Rol") : "Empleado")
-   .Where(rol => !string.IsNullOrWhiteSpace(rol))
+            .Where(rol => !string.IsNullOrWhiteSpace(rol))
             .Distinct()
-        .OrderBy(rol => rol)
-        .ToList();
+            .OrderBy(rol => rol)
+            .ToList();
     }
-  #endregion
+    #endregion
 
     #region Operaciones CRUD
 
     /// <summary>
     /// Actualiza el rol de un empleado.
     /// </summary>
+    /// <param name="id">ID del empleado.</param>
+    /// <param name="nuevoRol">Nuevo rol a asignar.</param>
     public async Task ActualizarRol(string id, string nuevoRol)
     {
         if (string.IsNullOrWhiteSpace(id))
-  throw new ArgumentException("El ID del empleado no puede estar vacÌo", nameof(id));
+            throw new ArgumentException("El ID del empleado no puede estar vac√≠o", nameof(id));
 
-    if (string.IsNullOrWhiteSpace(nuevoRol))
- throw new ArgumentException("El nuevo rol no puede estar vacÌo", nameof(nuevoRol));
+        if (string.IsNullOrWhiteSpace(nuevoRol))
+            throw new ArgumentException("El nuevo rol no puede estar vac√≠o", nameof(nuevoRol));
 
         var employeeRef = _firestore.Collection(COLLECTION_NAME).Document(id);
         await employeeRef.UpdateAsync("Rol", nuevoRol);
@@ -185,38 +200,45 @@ public class PersonalService
     /// <summary>
     /// Cambia el estado de un empleado.
     /// </summary>
+    /// <param name="id">ID del empleado.</param>
+    /// <param name="nuevoEstado">Nuevo estado.</param>
     public async Task CambiarEstadoEmpleado(string id, string nuevoEstado)
     {
         if (string.IsNullOrWhiteSpace(id))
-            throw new ArgumentException("El ID del empleado no puede estar vacÌo", nameof(id));
+            throw new ArgumentException("El ID del empleado no puede estar vac√≠o", nameof(id));
 
-  if (string.IsNullOrWhiteSpace(nuevoEstado))
-        throw new ArgumentException("El nuevo estado no puede estar vacÌo", nameof(nuevoEstado));
+        if (string.IsNullOrWhiteSpace(nuevoEstado))
+            throw new ArgumentException("El nuevo estado no puede estar vac√≠o", nameof(nuevoEstado));
 
-     var employeeRef = _firestore.Collection(COLLECTION_NAME).Document(id);
-    await employeeRef.UpdateAsync("Estado", nuevoEstado);
-  }
+        var employeeRef = _firestore.Collection(COLLECTION_NAME).Document(id);
+        await employeeRef.UpdateAsync("Estado", nuevoEstado);
+    }
     #endregion
 
-    #region MÈtodos Privados - Consultas Base
+    #region M√©todos Privados - Consultas Base
 
     /// <summary>
     /// Obtiene todos los empleados aplicando filtros y ordenamiento.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="roles">Lista de roles a filtrar.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Direcci√≥n del ordenamiento.</param>
+    /// <returns>Lista de empleados filtrados y ordenados.</returns>
     private async Task<List<Empleado>> ObtenerEmpleadosFiltrados(
         List<string> estados,
         List<string> roles,
-     string sortBy,
-   string sortOrder)
+        string sortBy,
+        string sortOrder)
     {
-      estados = ConfigurarEstadosDefecto(estados);
+        estados = ConfigurarEstadosDefecto(estados);
 
         var query = ConstruirQueryFiltros(estados, roles);
 
         var snapshot = await query.GetSnapshotAsync();
-  var empleados = snapshot.Documents
-       .Select(MapearDocumentoAEmpleado)
-     .ToList();
+        var empleados = snapshot.Documents
+            .Select(MapearDocumentoAEmpleado)
+            .ToList();
 
         return AplicarOrdenamiento(empleados, sortBy, sortOrder);
     }
@@ -224,37 +246,45 @@ public class PersonalService
     /// <summary>
     /// Obtiene el total de empleados que cumplen con los filtros.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="roles">Lista de roles a filtrar.</param>
+    /// <returns>N√∫mero total de empleados.</returns>
     private async Task<int> ObtenerTotalEmpleados(
-     List<string> estados,
-      List<string> roles)
- {
+        List<string> estados,
+        List<string> roles)
+    {
         estados = ConfigurarEstadosDefecto(estados);
 
-    var query = ConstruirQueryFiltros(estados, roles);
+        var query = ConstruirQueryFiltros(estados, roles);
 
         var snapshot = await query.GetSnapshotAsync();
         return snapshot.Count;
     }
     #endregion
 
-    #region MÈtodos Privados - Utilidades
+    #region M√©todos Privados - Utilidades
 
     /// <summary>
-    /// Configura la lista de estados por defecto si no se especificÛ ninguno.
+    /// Configura la lista de estados por defecto si no se especific√≥ ninguno.
     /// </summary>
+    /// <param name="estados">Lista de estados seleccionados por el usuario.</param>
+    /// <returns>Lista con al menos un estado; si estaba vac√≠a, contiene "Activo".</returns>
     private static List<string> ConfigurarEstadosDefecto(List<string> estados)
     {
-      estados ??= new List<string>();
+        estados ??= new List<string>();
         if (!estados.Any())
         {
-  estados.Add(ESTADO_DEFECTO);
+            estados.Add(ESTADO_DEFECTO);
         }
-    return estados;
+        return estados;
     }
 
     /// <summary>
     /// Construye un query de Firestore aplicando filtros de estado y rol.
     /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="roles">Lista de roles a filtrar.</param>
+    /// <returns>Query de Firestore configurado.</returns>
     private Query ConstruirQueryFiltros(
         List<string> estados,
         List<string> roles)
@@ -266,25 +296,29 @@ public class PersonalService
             query = query.WhereIn("Estado", estados);
         }
 
- if (roles?.Any() == true)
+        if (roles?.Any() == true)
         {
-         query = query.WhereIn("Rol", roles);
+            query = query.WhereIn("Rol", roles);
         }
 
-   return query;
+        return query;
     }
 
     /// <summary>
     /// Aplica ordenamiento a una lista de empleados.
     /// </summary>
+    /// <param name="empleados">Lista de empleados a ordenar.</param>
+    /// <param name="sortBy">Campo por el cual ordenar.</param>
+    /// <param name="sortOrder">Direcci√≥n del ordenamiento.</param>
+    /// <returns>Lista ordenada.</returns>
     private static List<Empleado> AplicarOrdenamiento(List<Empleado> empleados, string sortBy, string sortOrder)
     {
-  sortBy ??= ORDEN_DEFECTO;
+        sortBy ??= ORDEN_DEFECTO;
         sortOrder = (sortOrder ?? DIRECCION_DEFECTO).Trim().ToLowerInvariant();
 
         Func<Empleado, object> keySelector = sortBy switch
-   {
-     "NombreCompleto" => e => e.NombreCompleto,
+        {
+            "NombreCompleto" => e => e.NombreCompleto,
             "Email" => e => e.Email,
             "Rol" => e => e.Rol,
             "Estado" => e => e.Estado,
@@ -293,60 +327,71 @@ public class PersonalService
 
         var ordered = sortOrder == "desc"
             ? empleados.OrderByDescending(keySelector)
-     : empleados.OrderBy(keySelector);
+            : empleados.OrderBy(keySelector);
 
         return ordered.ToList();
     }
 
     /// <summary>
-    /// Aplica paginaciÛn a una lista en memoria.
- /// </summary>
+    /// Aplica paginaci√≥n a una lista en memoria.
+    /// </summary>
+    /// <param name="lista">Lista a paginar.</param>
+    /// <param name="pageNumber">N√∫mero de p√°gina.</param>
+    /// <param name="pageSize">Tama√±o de p√°gina.</param>
+    /// <returns>Lista paginada.</returns>
     private static List<Empleado> AplicarPaginacion(List<Empleado> lista, int pageNumber, int pageSize)
         => lista.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
 
     /// <summary>
-    /// Aplica la lÛgica de b˙squeda sobre una lista previamente filtrada.
+    /// Aplica la l√≥gica de b√∫squeda sobre una lista previamente filtrada.
     /// </summary>
+    /// <param name="baseFiltrada">Lista base filtrada.</param>
+    /// <param name="searchTerm">T√©rmino de b√∫squeda.</param>
+    /// <returns>Lista filtrada por b√∫squeda.</returns>
     private static List<Empleado> AplicarBusqueda(List<Empleado> baseFiltrada, string searchTerm)
     {
         var term = searchTerm?.Trim() ?? string.Empty;
- if (term.Length == 0) return baseFiltrada;
+        if (term.Length == 0) return baseFiltrada;
 
         var termUpper = term.ToUpperInvariant();
 
-    return baseFiltrada.Where(e =>
-        (e.NombreCompleto?.ToUpperInvariant().Contains(termUpper) ?? false) ||
-          (e.Email?.ToUpperInvariant().Contains(termUpper) ?? false) ||
-       (e.Rol?.ToUpperInvariant().Contains(termUpper) ?? false) ||
-         (e.Estado?.ToUpperInvariant().Contains(termUpper) ?? false)
+        return baseFiltrada.Where(e =>
+            (e.NombreCompleto?.ToUpperInvariant().Contains(termUpper) ?? false) ||
+            (e.Email?.ToUpperInvariant().Contains(termUpper) ?? false) ||
+            (e.Rol?.ToUpperInvariant().Contains(termUpper) ?? false) ||
+            (e.Estado?.ToUpperInvariant().Contains(termUpper) ?? false)
         ).ToList();
     }
 
     /// <summary>
     /// Mapea un documento de Firestore a un objeto Empleado.
     /// </summary>
- private static Empleado MapearDocumentoAEmpleado(DocumentSnapshot documento)
+    /// <param name="documento">Documento de Firestore.</param>
+    /// <returns>Objeto Empleado mapeado.</returns>
+    private static Empleado MapearDocumentoAEmpleado(DocumentSnapshot documento)
     {
         return new Empleado
         {
-Id = documento.Id,
+            Id = documento.Id,
             NombreCompleto = documento.GetValue<string>("Nombre"),
             Email = documento.GetValue<string>("Email"),
-       Rol = documento.ContainsField("Rol") ? documento.GetValue<string>("Rol") : "Empleado",
-    Estado = documento.GetValue<string>("Estado")
+            Rol = documento.ContainsField("Rol") ? documento.GetValue<string>("Rol") : "Empleado",
+            Estado = documento.GetValue<string>("Estado")
         };
     }
 
     /// <summary>
-    /// Valida los par·metros de paginaciÛn.
+    /// Valida los par√°metros de paginaci√≥n.
     /// </summary>
+    /// <param name="pageNumber">N√∫mero de p√°gina.</param>
+    /// <param name="pageSize">Tama√±o de p√°gina.</param>
     private static void ValidarParametrosPaginacion(int pageNumber, int pageSize)
     {
-      if (pageNumber <= 0)
-     throw new ArgumentException("El n˙mero de p·gina debe ser mayor a 0", nameof(pageNumber));
+        if (pageNumber <= 0)
+            throw new ArgumentException("El n√∫mero de p√°gina debe ser mayor a 0", nameof(pageNumber));
 
         if (pageSize <= 0)
-            throw new ArgumentException("El tamaÒo de p·gina debe ser mayor a 0", nameof(pageSize));
+            throw new ArgumentException("El tama√±o de p√°gina debe ser mayor a 0", nameof(pageSize));
     }
- #endregion
+    #endregion
 }

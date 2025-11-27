@@ -157,7 +157,7 @@
     /**
      * Realiza búsqueda en el servidor
      */
-    function performServerSearch(searchTerm) {
+    function performServerSearch(searchTerm = '') {
         // Persistir búsqueda activa
         currentSearchTerm = searchTerm;
 
@@ -556,6 +556,7 @@
                 // Asegura cierre incluso si Flowbite no reacciona
                 e.preventDefault();
                 e.stopPropagation();
+                e.stopImmediatePropagation();
                 cerrarModal(modalId);
             });
             btn.setAttribute('data-close-setup', 'true');
@@ -1359,7 +1360,7 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
 
     function configureReactivateModal(title, msg, form, submitBtn, iconWrapper, icon, nombre) {
         title.textContent = 'Reactivar Servicio';
-        msg.innerHTML = '¿Confirma reactivar el servicio <strong>' + (window.SiteModule?.escapeHtml(nombre) || nombre) + '</strong>?';
+        msg.innerHTML = '¿Confirma reactivar el servicio <strong>' + (window.SiteModule?.escapeHtml(nombre) || escapeHtml(nombre)) + '</strong>?';
         form.action = '/Servicio/ReactivateServicio';
         submitBtn.textContent = 'Reactivar';
         submitBtn.className = 'py-2 px-3 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900';
@@ -1724,6 +1725,9 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
     // =====================================
     // FILTROS (SUBMIT AJAX)
     // =====================================
+    /**
+     * Intercepta el submit de filtros para aplicar y recargar tabla.
+     */
     function setupFilterFormSubmit() {
         const form = document.getElementById('filterForm');
         if (!form || form.dataset.submitSetup === 'true') return;
@@ -1736,7 +1740,7 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
             const pg = form.querySelector('input[name="pageNumber"]');
             if (pg) pg.value = '1';
 
-            // Persistir término de búsqueda actual (si hay)
+            // Persistir término de búsqueda currentSearchTerm (si hay)
             const searchInput = document.getElementById('simple-search');
             if (searchInput) currentSearchTerm = searchInput.value.trim();
 
@@ -1752,6 +1756,7 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
 
             // Mensaje informativo
             showTableMessage('info', 'Filtros aplicados.');
+            schedulePriceHintsRefresh();
         });
 
         form.dataset.submitSetup = 'true';

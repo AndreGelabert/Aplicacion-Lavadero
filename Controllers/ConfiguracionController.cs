@@ -2,7 +2,6 @@ using Firebase.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using System.Threading.Tasks;
 
 /// <summary>
 /// Controlador para la gestión de configuración del sistema.
@@ -18,6 +17,8 @@ public class ConfiguracionController : Controller
     /// <summary>
     /// Crea una nueva instancia del controlador de configuración.
     /// </summary>
+    /// <param name="configuracionService">Servicio de configuración.</param>
+    /// <param name="auditService">Servicio de auditoría.</param>
     public ConfiguracionController(
         ConfiguracionService configuracionService,
         AuditService auditService)
@@ -32,6 +33,7 @@ public class ConfiguracionController : Controller
     /// <summary>
     /// Página principal de configuración del sistema.
     /// </summary>
+    /// <returns>Vista con la configuración actual.</returns>
     [HttpGet]
     public async Task<IActionResult> Index()
     {
@@ -54,6 +56,9 @@ public class ConfiguracionController : Controller
     /// <summary>
     /// Actualiza la configuración del sistema.
     /// </summary>
+    /// <param name="configuracion">Modelo de configuración a actualizar.</param>
+    /// <param name="HorariosOperacion">Horarios de operación opcionales.</param>
+    /// <returns>Redirección a Index tras actualizar.</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Actualizar(Configuracion configuracion, Dictionary<string, string>? HorariosOperacion)

@@ -64,8 +64,8 @@ const SiteModule = {
     },
 
     /**
-    * Limpia todos los filtros y marca "Activo" por defecto (si aplica)
-    */
+     * Limpia todos los filtros y marca "Activo" por defecto (si aplica)
+     */
     clearAllFilters() {
         const form = document.getElementById('filterForm');
         if (!form) return;
@@ -96,8 +96,8 @@ const SiteModule = {
     },
 
     /**
-    * Filtra las filas de una tabla según el texto de búsqueda (DEPRECATED - usar búsqueda del servidor)
-    */
+     * Filtra las filas de una tabla según el texto de búsqueda (DEPRECATED - usar búsqueda del servidor)
+     */
     filterTable() {
         // Esta función ahora solo se usa como fallback
         const input = document.getElementById("simple-search");
@@ -283,41 +283,41 @@ const SiteModule = {
      * @param {number} minutos - Tiempo en minutos
      * @param {boolean} returnHtml - Si true, devuelve HTML con formato secundario
      * @returns {string} Tiempo formateado
-  * 
+     *
      * Ejemplos:
-  * - formatTiempo(45) → "45 min"
+     * - formatTiempo(45) → "45 min"
      * - formatTiempo(60) → "1 hs" (con "(60 min)" en HTML)
      * - formatTiempo(90) → "1.5 hs" (con "(90 min)" en HTML)
      * - formatTiempo(125) → "2.08 hs" (con "(125 min)" en HTML)
      */
     formatTiempo(minutos, returnHtml = true) {
-    if (!minutos || minutos < 0) return returnHtml ? '<span>0 min</span>' : '0 min';
-        
+        if (!minutos || minutos < 0) return returnHtml ? '<span>0 min</span>' : '0 min';
+
         // Si es menos de 60 minutos, mostrar solo minutos
-if (minutos < 60) {
-      return returnHtml 
-     ? `<span>${minutos} min</span>` 
-      : `${minutos} min`;
-    }
+        if (minutos < 60) {
+            return returnHtml
+                ? `<span>${minutos} min</span>`
+                : `${minutos} min`;
+        }
 
         // Convertir a horas (con 2 decimales)
-     const horas = (minutos / 60).toFixed(2);
-     const horasDisplay = horas.endsWith('.00') ? horas.slice(0, -3) : horas;
+        const horas = (minutos / 60).toFixed(2);
+        const horasDisplay = horas.endsWith('.00') ? horas.slice(0, -3) : horas;
 
         if (returnHtml) {
- return `<div class="flex flex-col items-start">
-       <span class="font-medium">${horasDisplay} hs</span>
-   <span class="text-xs text-gray-500 dark:text-gray-400">(${minutos} min)</span>
-   </div>`;
-   }
-      
-      return `${horasDisplay} hs (${minutos} min)`;
+            return `<div class="flex flex-col items-start">
+                <span class="font-medium">${horasDisplay} hs</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">(${minutos} min)</span>
+            </div>`;
+        }
+
+        return `${horasDisplay} hs (${minutos} min)`;
     },
 
     /**
      * Versión simplificada sin HTML (para inputs, tooltips, etc.)
      * @param {number} minutos - Tiempo en minutos
- * @returns {string} Tiempo formateado sin HTML
+     * @returns {string} Tiempo formateado sin HTML
      */
     formatTiempoSimple(minutos) {
         return this.formatTiempo(minutos, false);
