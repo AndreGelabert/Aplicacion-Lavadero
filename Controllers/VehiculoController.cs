@@ -147,9 +147,18 @@ public class VehiculoController : Controller
     {
         try
         {
+            // IMPORTANTE: Remover validaciones de campos que pueden estar vacíos
             ModelState.Remove("Id");
             ModelState.Remove("ClienteNombreCompleto"); // No viene del form
-            if (!ModelState.IsValid) return await PrepararRespuestaAjax(false, vehiculo, null);
+            ModelState.Remove("ClienteId"); // Puede estar vacío en creación rápida (vehículos sin dueño)
+            
+            if (!ModelState.IsValid)
+            {
+                // Log para debug
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                Console.WriteLine($"❌ ModelState inválido: {string.Join(", ", errors)}");
+                return await PrepararRespuestaAjax(false, vehiculo, null);
+            }
 
             var existente = await _vehiculoService.ObtenerVehiculoPorPatente(vehiculo.Patente);
             if (existente != null)
@@ -157,13 +166,18 @@ public class VehiculoController : Controller
                 ModelState.AddModelError("Patente", "Ya existe un vehículo con esta patente.");
                 return await PrepararRespuestaAjax(false, vehiculo, null);
             }
+            
+            // Los vehículos creados desde el modal no tienen cliente aún
+            if (string.IsNullOrWhiteSpace(vehiculo.ClienteId))
+            {
+                vehiculo.ClienteId = null;
+                vehiculo.ClienteNombreCompleto = null;
+            }
 
-            // Si se asignó un cliente (aunque el form principal de vehículo no suele tener selector de cliente según requerimiento inicial, 
-            // pero "un vehículo solo puede tener un dueño", así que podría asignarse después o desde la vista de cliente).
-            // El requerimiento dice: "campo llamado titular, pero que sea de solo lectura... si todavia no se le asigno un dueño, quedará vacio".
-            // Esto implica que la asignación se hace desde Cliente -> Vehículo, o quizás aquí si agregamos lógica extra.
-            // Por ahora respetamos el modelo.
-
+            // Los vehículos pueden crearse sin cliente (desde el modal de cliente)
+            // La asignación de dueño se hace desde Cliente -> Vehículo
+            vehiculo.Estado = "Activo"; // Siempre activo al crear
+            
             await _vehiculoService.CrearVehiculo(vehiculo);
             return await PrepararRespuestaAjax(true, vehiculo, "Creacion de vehiculo");
         }

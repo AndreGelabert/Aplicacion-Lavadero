@@ -1,12 +1,12 @@
-/**
+ï»¿/**
  * ================================================
- * VEHICULO.JS - FUNCIONALIDAD DE LA PÁGINA DE VEHÍCULOS
+ * VEHICULO.JS - FUNCIONALIDAD DE LA PÃGINA DE VEHÃCULOS
  * ================================================
  * Responsabilidades:
- *  - Búsqueda con debounce y ordenamiento de tabla
+ *  - BÃºsqueda con debounce y ordenamiento de tabla
  *  - Filtros y recarga parcial (tabla)
- *  - Formulario AJAX solo para edición
- *  - Gestión de activación/desactivación (modal de confirmación)
+ *  - Formulario AJAX solo para ediciÃ³n
+ *  - GestiÃ³n de activaciÃ³n/desactivaciÃ³n (modal de confirmaciÃ³n)
  *  - Notificaciones de operaciones
  */
 
@@ -23,7 +23,7 @@
     let vehiculoMsgTimeout = null;
     let tableMsgTimeout = null;
 
-    // ===================== Inicialización del módulo =====================
+    // ===================== InicializaciÃ³n del mÃ³dulo =====================
     window.PageModules = window.PageModules || {};
     window.PageModules.vehiculos = { init: initializeVehiculosPage };
 
@@ -33,7 +33,7 @@
     });
 
     /**
-     * Inicializa el comportamiento principal de la página de Vehículos
+     * Inicializa el comportamiento principal de la pÃ¡gina de VehÃ­culos
      */
     function initializeVehiculosPage() {
         setupInitialState();
@@ -44,7 +44,7 @@
         window.CommonUtils?.setupDefaultFilterForm();
     }
 
-    // ===================== Configuración inicial =====================
+    // ===================== ConfiguraciÃ³n inicial =====================
 
     function setupInitialState() {
         const pageInput = document.getElementById("current-page-value");
@@ -68,7 +68,7 @@
         }
     }
 
-    // ===================== Búsqueda (debounce) =====================
+    // ===================== BÃºsqueda (debounce) =====================
 
     function setupSearchWithDebounce() {
         const searchInput = document.getElementById("simple-search");
@@ -128,8 +128,8 @@
         if (page) currentPage = page;
 
         const params = buildFilterParams();
-        
-        // Obtener filtro de tipo de vehículo
+
+        // Obtener filtro de tipo de vehÃ­culo
         const tipoRadio = document.querySelector('input[name="tipoVehiculo"]:checked');
         if (tipoRadio) {
             currentTipoVehiculo = tipoRadio.value;
@@ -209,7 +209,7 @@
         } catch { }
 
         form.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
-        
+
         const searchInput = document.getElementById('simple-search');
         if (searchInput) searchInput.value = '';
         currentSearchTerm = '';
@@ -225,11 +225,11 @@
         showTableMessage('info', 'Filtros restablecidos.');
     };
 
-    // ===================== Formulario (solo para edición) =====================
+    // ===================== Formulario (solo para ediciÃ³n) =====================
 
     window.loadVehiculoForm = function (id) {
         if (!id) {
-            showTableMessage('error', 'ID de vehículo no válido.');
+            showTableMessage('error', 'ID de vehÃ­culo no vÃ¡lido.');
             return;
         }
 
@@ -239,11 +239,11 @@
             .then(response => response.text())
             .then(html => {
                 document.getElementById("vehiculo-form-container").innerHTML = html;
-                document.getElementById('form-title').textContent = 'Editando Vehículo';
+                document.getElementById('form-title').textContent = 'Editando VehÃ­culo';
 
                 const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
                 const accordionBody = document.getElementById("accordion-flush-body-1");
-                
+
                 if (accordionBody) {
                     accordionBody.classList.remove('hidden');
                     accordionBody.style.display = 'block';
@@ -276,7 +276,7 @@
                 document.getElementById('vehiculo-form-container').innerHTML = result.html;
 
                 if (result.valid) {
-                    showFormMessage('success', result.msg || 'Vehículo actualizado correctamente.', 4000);
+                    showFormMessage('success', result.msg || 'VehÃ­culo actualizado correctamente.', 4000);
                     reloadVehiculoTable(getCurrentTablePage());
 
                     setTimeout(() => {
@@ -295,7 +295,7 @@
                 }
             })
             .catch(e => {
-                showFormMessage('error', 'Error de comunicación con el servidor.', 8000);
+                showFormMessage('error', 'Error de comunicaciÃ³n con el servidor.', 8000);
             });
 
         return false;
@@ -355,12 +355,12 @@
 
         const esDesactivar = tipoAccion === 'desactivar';
 
-        if (title) title.textContent = esDesactivar ? 'Desactivar Vehículo' : 'Reactivar Vehículo';
+        if (title) title.textContent = esDesactivar ? 'Desactivar VehÃ­culo' : 'Reactivar VehÃ­culo';
 
         if (message) {
             message.innerHTML = esDesactivar
-                ? '¿Confirma desactivar el vehículo con patente <strong>' + escapeHtml(patente) + '</strong>?'
-                : '¿Confirma reactivar el vehículo con patente <strong>' + escapeHtml(patente) + '</strong>?';
+                ? 'Â¿Confirma desactivar el vehÃ­culo con patente <strong>' + escapeHtml(patente) + '</strong>?'
+                : 'Â¿Confirma reactivar el vehÃ­culo con patente <strong>' + escapeHtml(patente) + '</strong>?';
         }
 
         if (idInput) idInput.value = id;
@@ -414,21 +414,21 @@
                 closeVehiculoConfirmModal();
                 if (data.success) {
                     const accion = form.action.includes('Deactivate') ? 'desactivado' : 'reactivado';
-                    showTableMessage('success', `Vehículo ${accion} correctamente.`);
+                    showTableMessage('success', `VehÃ­culo ${accion} correctamente.`);
                 } else {
-                    showTableMessage('error', data.message || 'No se pudo completar la acción.');
+                    showTableMessage('error', data.message || 'No se pudo completar la acciÃ³n.');
                 }
                 reloadVehiculoTable(getCurrentTablePage());
             })
             .catch(err => {
                 console.error('submitVehiculoEstado error:', err);
                 closeVehiculoConfirmModal();
-                showTableMessage('error', 'No se pudo completar la acción.');
+                showTableMessage('error', 'No se pudo completar la acciÃ³n.');
             });
         return false;
     };
 
-    // ===================== Mensajería =====================
+    // ===================== MensajerÃ­a =====================
 
     function showFormMessage(type, message, disappearMs = 5000) {
         const container = document.getElementById('ajax-form-messages');

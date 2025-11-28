@@ -126,7 +126,25 @@ public class ClienteController : Controller
                 return await PrepararRespuestaAjax(false, cliente, null);
             }
 
+            // Crear el cliente primero
             await _clienteService.CrearCliente(cliente);
+
+            // Asignar el cliente como dueño de los vehículos seleccionados
+            if (cliente.VehiculosIds != null && cliente.VehiculosIds.Any())
+            {
+                foreach (var vehiculoId in cliente.VehiculosIds)
+                {
+                    var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
+                    if (vehiculo != null)
+                    {
+                        // Asignar el cliente como dueño
+                        vehiculo.ClienteId = cliente.Id;
+                        vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
+                        await _vehiculoService.ActualizarVehiculo(vehiculo);
+                    }
+                }
+            }
+
             return await PrepararRespuestaAjax(true, cliente, "Creacion de cliente");
         }
         catch (Exception ex)
@@ -151,10 +169,37 @@ public class ClienteController : Controller
                 return await PrepararRespuestaAjax(false, cliente, null);
             }
 
-            // Mantener VehiculosIds si no vienen en el form (aunque deberían venir si se manejan bien)
-            // En este caso, asumimos que el form no edita VehiculosIds directamente, sino que se agregan por otro lado.
-            // Pero si el modelo binder los pierde, hay que recuperarlos.
-            cliente.VehiculosIds = clienteActual.VehiculosIds;
+            // Obtener vehículos anteriores y nuevos
+            var vehiculosAnteriores = clienteActual.VehiculosIds ?? new List<string>();
+            var vehiculosNuevos = cliente.VehiculosIds ?? new List<string>();
+
+            // Determinar qué vehículos se removieron y cuáles se agregaron
+            var vehiculosRemovidos = vehiculosAnteriores.Except(vehiculosNuevos).ToList();
+            var vehiculosAgregados = vehiculosNuevos.Except(vehiculosAnteriores).ToList();
+
+            // Quitar la asignación de los vehículos removidos
+            foreach (var vehiculoId in vehiculosRemovidos)
+            {
+                var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
+                if (vehiculo != null)
+                {
+                    vehiculo.ClienteId = null;
+                    vehiculo.ClienteNombreCompleto = null;
+                    await _vehiculoService.ActualizarVehiculo(vehiculo);
+                }
+            }
+
+            // Asignar los nuevos vehículos
+            foreach (var vehiculoId in vehiculosAgregados)
+            {
+                var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
+                if (vehiculo != null)
+                {
+                    vehiculo.ClienteId = cliente.Id;
+                    vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
+                    await _vehiculoService.ActualizarVehiculo(vehiculo);
+                }
+            }
 
             await _clienteService.ActualizarCliente(cliente);
             return await PrepararRespuestaAjax(true, cliente, "Actualizacion de cliente");
