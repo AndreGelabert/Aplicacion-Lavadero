@@ -147,16 +147,31 @@ public class VehiculoController : Controller
     {
         try
         {
-            // IMPORTANTE: Remover validaciones de campos que pueden estar vacíos
+            // IMPORTANTE: Remover validaciones de campos que pueden estar vacíos o generados
             ModelState.Remove("Id");
             ModelState.Remove("ClienteNombreCompleto"); // No viene del form
             ModelState.Remove("ClienteId"); // Puede estar vacío en creación rápida (vehículos sin dueño)
             
+            // Log detallado para debug
             if (!ModelState.IsValid)
             {
-                // Log para debug
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                Console.WriteLine($"❌ ModelState inválido: {string.Join(", ", errors)}");
+                var errors = ModelState
+                    .Where(x => x.Value.Errors.Count > 0)
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()
+                    );
+                
+                Console.WriteLine($"❌ ModelState inválido:");
+                foreach (var error in errors)
+                {
+                    Console.WriteLine($"  Campo: {error.Key}");
+                    foreach (var msg in error.Value)
+                    {
+                        Console.WriteLine($"    - {msg}");
+                    }
+                }
+                
                 return await PrepararRespuestaAjax(false, vehiculo, null);
             }
 
@@ -304,7 +319,13 @@ public class VehiculoController : Controller
 
         await RegistrarEvento(accionAuditoria, vehiculo.Id, "Vehiculo");
         Response.Headers["X-Form-Valid"] = "true";
-        Response.Headers["X-Form-Message"] = accionAuditoria.Contains("Creacion") ? "Vehículo creado correctamente." : "Vehículo actualizado correctamente.";
+        
+        // Usar solo caracteres ASCII en headers HTTP
+        var mensaje = accionAuditoria.Contains("Creacion") 
+            ? "Vehiculo creado correctamente." 
+            : "Vehiculo actualizado correctamente.";
+        Response.Headers["X-Form-Message"] = mensaje;
+        
         await CargarListasForm();
         return PartialView("_VehiculoForm", null);
     }

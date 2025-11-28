@@ -70,7 +70,6 @@
                     
                     if (!isHidden) {
                         // El acordeón se acaba de abrir
-                        console.log('🎯 Acordeón abierto - Inicializando vehículos...');
                         
                         // Esperar un poco para asegurar que el DOM esté completamente renderizado
                         await new Promise(resolve => setTimeout(resolve, 100));
@@ -79,7 +78,7 @@
                         if (vehiculosDisponibles.length === 0) {
                             await setupVehiculoSelector();
                         } else {
-                            console.log('✓ Selector de vehículos ya inicializado');
+                            
                         }
                     }
                 }
@@ -87,7 +86,7 @@
         });
         
         observer.observe(accordionBody, { attributes: true });
-        console.log('✓ Observer del acordeón configurado');
+        
     }
 
     // ===================== Configuración inicial =====================
@@ -111,7 +110,6 @@
                 accordion.classList.remove('hidden');
                 
                 // CRÍTICO: Inicializar selector de vehículos cuando se abre en modo edición
-                console.log('🔧 Inicializando selector de vehículos en modo edición...');
                 await setupVehiculoSelector();
             }
         }
@@ -224,7 +222,11 @@
             const searchInput = document.getElementById('simple-search');
             if (searchInput) currentSearchTerm = searchInput.value.trim();
 
-            document.getElementById('filterDropdown')?.classList.add('hidden');
+            // Cerrar el dropdown de filtros usando el botón de toggle
+            const filterButton = document.getElementById('filterDropdownButton');
+            if (filterButton) {
+                filterButton.click();
+            }
 
             reloadClienteTable(1);
 
@@ -257,7 +259,11 @@
         if (searchInput) searchInput.value = '';
         currentSearchTerm = '';
 
-        document.getElementById('filterDropdown')?.classList.add('hidden');
+        // Cerrar el dropdown de filtros usando el botón de toggle
+        const filterButton = document.getElementById('filterDropdownButton');
+        if (filterButton) {
+            filterButton.click();
+        }
 
         if (history.replaceState) history.replaceState({}, document.title, '/Cliente/Index');
 
@@ -285,9 +291,7 @@
             }
 
             // CRÍTICO: Esperar a que setupVehiculoSelector termine
-            console.log('📋 Formulario cargado, iniciando setup de vehículos...');
             await setupVehiculoSelector();
-            console.log('✅ Setup de vehículos completado');
 
             const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
             const accordionBody = document.getElementById("accordion-flush-body-1");
@@ -304,7 +308,7 @@
                 }, 100);
             }
         } catch (error) {
-            console.error('❌ Error al cargar el formulario:', error);
+            
         }
     };
 
@@ -326,7 +330,7 @@
             formData.append('VehiculosIds', v.id);
         });
 
-        console.log('Enviando vehículos:', vehiculosSeleccionados.map(v => v.id));
+        
 
         fetch(form.action, {
             method: 'POST',
@@ -376,13 +380,12 @@
     // ===================== Selector de Vehículos (Estilo Paquetes) =====================
 
     async function setupVehiculoSelector() {
-        console.log('🔧 setupVehiculoSelector iniciado');
+        
         
         // IMPORTANTE: Esperar a que se carguen los vehículos ANTES de continuar
         await loadVehiculosDisponibles();
         
-        console.log('🔧 Configurando event listeners...');
-
+        
         const searchInput = document.getElementById('vehiculo-search');
         if (searchInput) {
             searchInput.addEventListener('input', function () {
@@ -392,67 +395,61 @@
             searchInput.addEventListener('focus', function () {
                 showVehiculoDropdown();
             });
-            console.log('✓ Event listeners configurados');
+            
         } else {
-            console.error('❌ vehiculo-search input no encontrado');
+            
         }
 
         setupDropdownClickOutside();
-        console.log('✅ setupVehiculoSelector completado');
+        
     }
 
     async function loadVehiculosDisponibles() {
-        console.log('🔄 loadVehiculosDisponibles iniciado');
+        
         
         try {
             // Obtener ID del cliente si estamos editando
             const clienteId = document.getElementById('Id')?.value;
-            console.log('Cliente ID:', clienteId || '(nuevo cliente)');
-
+            
             // MODO EDICIÓN: Cargar los vehículos del cliente actual + disponibles
             if (clienteId) {
-                console.log('📝 Modo EDICIÓN');
                 
                 // Primero obtener vehículos del cliente
                 const respCliente = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${clienteId}`);
                 const dataCliente = await respCliente.json();
-                console.log('Respuesta GetVehiculosCliente:', dataCliente);
                 
                 // Luego obtener vehículos disponibles (sin dueño)
                 const respDisponibles = await fetch('/Cliente/ObtenerVehiculosDisponibles');
                 const dataDisponibles = await respDisponibles.json();
-                console.log('Respuesta ObtenerVehiculosDisponibles:', dataDisponibles);
+                
 
                 // Combinar ambos (vehículos del cliente + disponibles)
                 const vehiculosCliente = dataCliente.success ? (dataCliente.vehiculos || []) : [];
                 const vehiculosLibres = dataDisponibles.success ? (dataDisponibles.vehiculos || []) : [];
                 
                 vehiculosDisponibles = [...vehiculosCliente, ...vehiculosLibres];
-                console.log('✓ Total vehículos disponibles:', vehiculosDisponibles.length, 
-                           '(Cliente:', vehiculosCliente.length, '+ Libres:', vehiculosLibres.length, ')');
-
+                
                 // Marcar como seleccionados los que ya son del cliente
                 const hiddenIds = document.getElementById('VehiculosIdsData')?.value;
                 if (hiddenIds) {
                     const ids = hiddenIds.split(',').map(x => x.trim()).filter(x => x);
                     vehiculosSeleccionados = vehiculosDisponibles.filter(v => ids.includes(v.id));
-                    console.log('✓ Vehículos pre-seleccionados:', vehiculosSeleccionados.length);
+                    
                 } else {
                     vehiculosSeleccionados = [];
                 }
             } 
             // MODO CREACIÓN: Solo mostrar vehículos sin dueño
             else {
-                console.log('✨ Modo CREACIÓN');
+                
                 
                 const resp = await fetch('/Cliente/ObtenerVehiculosDisponibles');
                 const data = await resp.json();
-                console.log('Respuesta ObtenerVehiculosDisponibles:', data);
+                
 
                 if (data.success) {
                     vehiculosDisponibles = data.vehiculos || [];
                     vehiculosSeleccionados = [];
-                    console.log('✓ Vehículos disponibles:', vehiculosDisponibles.length);
                     
                     // Log detallado de cada vehículo
                     if (vehiculosDisponibles.length > 0) {
@@ -463,20 +460,19 @@
                             Estado: v.estado
                         })));
                     } else {
-                        console.warn('⚠ No hay vehículos sin dueño. Cree uno nuevo.');
+                        
                     }
                 } else {
                     vehiculosDisponibles = [];
                     vehiculosSeleccionados = [];
-                    console.error('❌ Error en respuesta del servidor:', data);
+                    
                 }
             }
 
             updateVehiculosSeleccionadosList();
-            console.log('✅ loadVehiculosDisponibles completado');
             
         } catch (error) {
-            console.error('❌ Error al cargar vehículos:', error);
+            
             vehiculosDisponibles = [];
             vehiculosSeleccionados = [];
         }
@@ -489,11 +485,11 @@
             return;
         }
 
-        console.log('renderVehiculosDropdown - Total vehículos:', vehiculos?.length, 'Filtro:', filterText);
+        
 
         if (!Array.isArray(vehiculos) || vehiculos.length === 0) {
             target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No hay vehículos disponibles. Use "Nuevo Vehículo" para crear uno.</p>';
-            console.log('⚠ Array vacío o no válido');
+            
             return;
         }
 
@@ -507,17 +503,17 @@
                 (v.marca && v.marca.toLowerCase().includes(lower)) ||
                 (v.modelo && v.modelo.toLowerCase().includes(lower))
             );
-            console.log('Después de filtrar por texto:', lista.length);
+            
         }
 
         // Excluir ya seleccionados
         const listaOriginal = lista.length;
         lista = lista.filter(v => !vehiculosSeleccionados.some(sel => sel.id === v.id));
-        console.log('Después de excluir seleccionados:', lista.length, '(de', listaOriginal, ')');
+        
 
         if (lista.length === 0) {
             target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No se encontraron vehículos con ese criterio</p>';
-            console.log('⚠ Sin resultados tras filtros');
+            
             return;
         }
 
@@ -532,7 +528,7 @@
         });
 
         target.innerHTML = html;
-        console.log('✓ Dropdown renderizado con', lista.length, 'vehículos');
+        
     }
 
     window.showVehiculoDropdown = function () {
@@ -546,13 +542,12 @@
 
         const inputValue = searchInput?.value?.trim() || '';
         
-        console.log('showVehiculoDropdown - Vehículos disponibles:', vehiculosDisponibles.length, 'Filtro:', inputValue);
-
+        
         // Mostrar SIEMPRE que haya vehículos disponibles
         if (vehiculosDisponibles.length > 0) {
             renderVehiculosDropdown(vehiculosDisponibles, inputValue);
             dropdown.classList.remove('hidden');
-            console.log('✓ Dropdown mostrado');
+            
         } else {
             // Si no hay vehículos, mostrar mensaje
             const target = document.getElementById('vehiculo-dropdown-content');
@@ -560,7 +555,7 @@
                 target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No hay vehículos disponibles. Cree uno nuevo usando el botón "Nuevo Vehículo".</p>';
             }
             dropdown.classList.remove('hidden');
-            console.log('⚠ No hay vehículos disponibles');
+            
         }
     };
 
@@ -570,8 +565,7 @@
 
         const searchText = txt?.trim() || '';
         
-        console.log('filterVehiculosDropdown - Texto:', searchText, 'Vehículos:', vehiculosDisponibles.length);
-
+        
         // Si no hay texto, mostrar todos
         if (searchText === '') {
             if (vehiculosDisponibles.length > 0) {
@@ -1003,7 +997,6 @@
         const color = form.querySelector('#Color')?.value;
         const tipoVehiculo = form.querySelector('#TipoVehiculo')?.value;
 
-        console.log('Enviando vehículo:', { patente, marca, modelo, color, tipoVehiculo });
 
         fetch(form.action, {
             method: 'POST',
@@ -1013,12 +1006,11 @@
             .then(response => {
                 const isValid = response.headers.get("X-Form-Valid") === "true";
                 const message = response.headers.get("X-Form-Message");
-                console.log('Respuesta servidor - isValid:', isValid, 'message:', message);
+                
                 return response.text().then(html => ({ isValid, html, message, status: response.status }));
             })
             .then(async result => {
                 if (result.isValid && result.status === 200) {
-                    console.log('✓ Vehículo creado exitosamente');
                     
                     // IMPORTANTE: Cerrar el modal PRIMERO
                     closeQuickCreateModal();
@@ -1026,43 +1018,60 @@
                     // Esperar un poco para que se complete la creación en el servidor
                     await new Promise(resolve => setTimeout(resolve, 800));
 
-                    console.log('Recargando lista de vehículos disponibles...');
-
+                    
                     // Recargar vehículos disponibles
                     const respDisponibles = await fetch('/Cliente/ObtenerVehiculosDisponibles');
                     const dataDisponibles = await respDisponibles.json();
-
-                    console.log('Respuesta ObtenerVehiculosDisponibles:', dataDisponibles);
+                    
 
                     if (dataDisponibles.success && dataDisponibles.vehiculos) {
                         vehiculosDisponibles = dataDisponibles.vehiculos;
-                        console.log('Vehículos disponibles actualizados:', vehiculosDisponibles.length);
                         
                         // Buscar el vehículo recién creado por patente
                         const nuevoVehiculo = vehiculosDisponibles.find(v => 
                             v.patente && v.patente.toLowerCase() === patente.toLowerCase()
                         );
 
-                        console.log('Vehículo encontrado:', nuevoVehiculo);
+                        
 
                         if (nuevoVehiculo) {
                             // Agregarlo automáticamente a la lista
                             if (!vehiculosSeleccionados.some(v => v.id === nuevoVehiculo.id)) {
                                 vehiculosSeleccionados.push(nuevoVehiculo);
                                 updateVehiculosSeleccionadosList();
-                                console.log('✓ Vehículo agregado a la lista de seleccionados');
+                                
                             }
                             showFormMessage('success', `Vehículo ${patente} registrado y agregado correctamente.`, 4000);
                         } else {
-                            console.warn('⚠ No se encontró el vehículo recién creado en la lista');
+                            
                             showFormMessage('info', 'Vehículo registrado. Búsquelo en la lista para agregarlo.', 5000);
                         }
                     } else {
-                        console.error('Error al obtener vehículos:', dataDisponibles);
+                        
                         showFormMessage('warning', 'Vehículo registrado. Recargue la página para verlo.', 5000);
                     }
                 } else {
-                    console.log('✗ Formulario con errores de validación');
+                    
+                    // Extraer errores del HTML para mostrarlos en consola
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = result.html;
+                    const validationSummary = tempDiv.querySelector('[asp-validation-summary], .validation-summary-errors, #vehiculo-validation-summary');
+                    if (validationSummary && validationSummary.textContent.trim().length > 0) {
+                        console.error('❌ Errores de validación:', validationSummary.textContent.trim());
+                    }
+                    
+                    // Buscar spans de error individuales
+                    const errorSpans = tempDiv.querySelectorAll('.text-red-600, .field-validation-error');
+                    if (errorSpans.length > 0) {
+                        console.error('❌ Errores de campo:');
+                        errorSpans.forEach(span => {
+                            if (span.textContent.trim()) {
+                                const fieldName = span.getAttribute('data-valmsg-for') || 'Campo desconocido';
+                                console.error(`  - ${fieldName}: ${span.textContent.trim()}`);
+                            }
+                        });
+                    }
+                    
                     // Mostrar errores en el modal (NO cerrar)
                     const content = document.getElementById("quick-vehiculo-form-content");
                     if (content) {
@@ -1089,7 +1098,7 @@
                 }
             })
             .catch(error => {
-                console.error('Error de red:', error);
+                
                 showFormMessage('error', 'Error al registrar el vehículo.', 5000);
             });
     }
@@ -1232,7 +1241,7 @@
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
                 .then(response => response.json())
-                .then(data => {
+                .then (data => {
                     cerrarModal('clienteConfirmModal');
                     if (data.success) {
                         showTableMessage('success', data.message);
@@ -1291,7 +1300,7 @@
                 icon.setAttribute('fill', 'currentColor');
                 icon.setAttribute('viewBox', '0 0 20 20');
                 icon.setAttribute('class', 'w-8 h-8 text-red-600 dark:text-red-400');
-                icon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.293a1 1 0 00-1.414-1.414L10 7.586 7.707 5.293a1 1 0 00-1.414 1.414L8.586 10l-2.293 2.293a1 1 0 001.414 1.414L10 11.414l2.293 2.293a1 1 0 001.414-1.414L11.414 10l2.293-2.293z" clip-rule="evenodd"/>`;
+                icon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.293a1 1 0 00-1.414-1.414L10 7.586 7.707 5.293a1 1 0 00-1.414 1.414L8.586 10l-2.293 2.293a1 1 0 001.414 1.414L10 11.414l2.293 2.293a1 1 0 001.414-1.414L13.06 10l2.293-2.293a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd"/>`;
             } else {
                 iconWrapper.className = 'w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 p-2 flex items-center justify-center mx-auto mb-3.5';
                 icon.setAttribute('fill', 'currentColor');
@@ -1355,50 +1364,114 @@
     };
 
     function mostrarModalVehiculos(vehiculos) {
-        let modalContainer = document.getElementById("ver-vehiculos-modal");
-        if (!modalContainer) {
-            modalContainer = document.createElement("div");
-            modalContainer.id = "ver-vehiculos-modal";
-            modalContainer.className = "fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden";
-            document.body.appendChild(modalContainer);
+        // Eliminar modal anterior si existe
+        const existingModal = document.getElementById("ver-vehiculos-modal");
+        if (existingModal) {
+            existingModal.remove();
         }
 
-        let html = '<div class="relative w-full max-w-2xl bg-white rounded-lg shadow dark:bg-gray-800 p-6 m-4">';
-        html += '<div class="flex justify-between items-center mb-4 border-b pb-3 dark:border-gray-600">';
-        html += '<h3 class="text-xl font-semibold text-gray-900 dark:text-white">Vehículos del Cliente</h3>';
-        html += '<button onclick="closeVerVehiculosModal()" class="text-gray-400 hover:text-gray-900 dark:hover:text-white">';
-        html += '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
-        html += '</button></div>';
-        html += '<div class="space-y-2">';
-
+        // Construir el HTML del modal
+        let vehiculosHtml = '';
         if (vehiculos.length === 0) {
-            html += '<p class="text-center text-gray-500 dark:text-gray-400 py-4">Este cliente no tiene vehículos asociados.</p>';
+            vehiculosHtml = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">Este cliente no tiene vehículos asociados.</p>';
         } else {
             vehiculos.forEach(v => {
-                html += `<div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">`;
-                html += `<div class="flex justify-between items-center">`;
-                html += `<div>`;
-                html += `<div class="font-medium text-gray-900 dark:text-white">${escapeHtml(v.patente)}</div>`;
-                html += `<div class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(v.tipoVehiculo)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</div>`;
-                html += `<div class="text-xs text-gray-400 dark:text-gray-500">Color: ${escapeHtml(v.color)}</div>`;
-                html += `</div>`;
-
                 const estadoClass = v.estado === 'Activo'
                     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
                     : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-                html += `<span class="px-2 py-1 text-xs font-medium ${estadoClass} rounded">${escapeHtml(v.estado)}</span>`;
-                html += `</div></div>`;
+                
+                vehiculosHtml += `
+                    <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <div class="font-medium text-gray-900 dark:text-white">${escapeHtml(v.patente)}</div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(v.tipoVehiculo)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</div>
+                                <div class="text-xs text-gray-400 dark:text-gray-500">Color: ${escapeHtml(v.color)}</div>
+                            </div>
+                            <span class="px-2 py-1 text-xs font-medium ${estadoClass} rounded">${escapeHtml(v.estado)}</span>
+                        </div>
+                    </div>
+                `;
             });
         }
 
-        html += '</div></div>';
-        modalContainer.innerHTML = html;
-        modalContainer.classList.remove("hidden");
+        // Crear estructura de modal Flowbite
+        const modalHtml = `
+            <div id="ver-vehiculos-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                <div class="relative p-4 w-full max-w-2xl max-h-full">
+                    <div class="relative bg-white rounded-lg shadow dark:bg-gray-800">
+                        <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                                Vehículos del Cliente
+                            </h3>
+                            <button type="button" onclick="closeVerVehiculosModal()" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white">
+                                <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                                </svg>
+                                <span class="sr-only">Cerrar modal</span>
+                            </button>
+                        </div>
+                        <div class="p-4 md:p-5 space-y-2">
+                            ${vehiculosHtml}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Insertar en el DOM
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Obtener el modal y crear instancia Flowbite
+        const modalEl = document.getElementById('ver-vehiculos-modal');
+        
+        // Configurar Flowbite Modal
+        if (typeof Modal !== 'undefined') {
+            const modalOptions = {
+                placement: 'center',
+                backdrop: 'dynamic',
+                closable: true,
+                onHide: () => {
+                    document.body.style.overflow = '';
+                    // Limpiar después de cerrar
+                    setTimeout(() => {
+                        const modalToRemove = document.getElementById('ver-vehiculos-modal');
+                        if (modalToRemove) modalToRemove.remove();
+                    }, 300);
+                },
+                onShow: () => {
+                    document.body.style.overflow = 'hidden';
+                }
+            };
+
+            const modal = new Modal(modalEl, modalOptions);
+            modal.show();
+
+            // Guardar referencia para cerrar después
+            window._verVehiculosModal = modal;
+        } else {
+            // Fallback sin Flowbite
+            modalEl.classList.remove('hidden');
+            modalEl.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
     }
 
     window.closeVerVehiculosModal = function () {
-        const modal = document.getElementById("ver-vehiculos-modal");
-        if (modal) modal.classList.add("hidden");
+        // Intentar cerrar con Flowbite
+        if (window._verVehiculosModal && typeof window._verVehiculosModal.hide === 'function') {
+            window._verVehiculosModal.hide();
+            window._verVehiculosModal = null;
+        } else {
+            // Fallback
+            const modal = document.getElementById("ver-vehiculos-modal");
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                setTimeout(() => modal.remove(), 300);
+            }
+            document.body.style.overflow = '';
+        }
     };
 
     // ===================== Mensajería =====================
