@@ -1209,7 +1209,7 @@
         form.dataset.setup = 'true';
     }
 
-    window.openClienteConfirmModal = function (tipoAccion, id, nombre) {
+    window.openClienteConfirmModal = async function (tipoAccion, id, nombre) {
         const modalId = 'clienteConfirmModal';
         const modal = document.getElementById(modalId);
         const title = document.getElementById('clienteConfirmTitle');
@@ -1225,9 +1225,63 @@
         if (title) title.textContent = esDesactivar ? 'Desactivar Cliente' : 'Reactivar Cliente';
 
         if (message) {
-            message.innerHTML = esDesactivar
-                ? '¿Confirma desactivar el cliente <strong>' + escapeHtml(nombre) + '</strong>?'
-                : '¿Confirma reactivar el cliente <strong>' + escapeHtml(nombre) + '</strong>?';
+            if (esDesactivar) {
+                // Obtener vehículos del cliente para mostrar advertencia
+                try {
+                    const resp = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${id}`);
+                    const data = await resp.json();
+                    
+                    let mensajeVehiculos = '';
+                    if (data.success && data.vehiculos && data.vehiculos.length > 0) {
+                        const vehiculosActivos = data.vehiculos.filter(v => v.estado === 'Activo');
+                        if (vehiculosActivos.length > 0) {
+                            mensajeVehiculos = `<div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg dark:bg-yellow-900/20 dark:border-yellow-800">
+                                <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-2">
+                                    ⚠️ Advertencia: Esta acción también desactivará ${vehiculosActivos.length} vehículo${vehiculosActivos.length > 1 ? 's' : ''} asociado${vehiculosActivos.length > 1 ? 's' : ''}:
+                                </p>
+                                <ul class="text-xs text-yellow-700 dark:text-yellow-400 list-disc list-inside space-y-1">
+                                    ${vehiculosActivos.map(v => `<li>${escapeHtml(v.patente)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</li>`).join('')}
+                                </ul>
+                            </div>`;
+                        }
+                    }
+                    
+                    message.innerHTML = `
+                        <p class="mb-2">¿Confirma desactivar el cliente <strong>${escapeHtml(nombre)}</strong>?</p>
+                        ${mensajeVehiculos}
+                    `;
+                } catch (error) {
+                    message.innerHTML = '¿Confirma desactivar el cliente <strong>' + escapeHtml(nombre) + '</strong>?';
+                }
+            } else {
+                // Reactivación: mostrar advertencia de vehículos que se reactivarán
+                try {
+                    const resp = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${id}`);
+                    const data = await resp.json();
+                    
+                    let mensajeVehiculos = '';
+                    if (data.success && data.vehiculos && data.vehiculos.length > 0) {
+                        const vehiculosInactivos = data.vehiculos.filter(v => v.estado === 'Inactivo');
+                        if (vehiculosInactivos.length > 0) {
+                            mensajeVehiculos = `<div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg dark:bg-green-900/20 dark:border-green-800">
+                                <p class="text-sm font-medium text-green-800 dark:text-green-300 mb-2">
+                                    ℹ️ Esta acción también reactivará ${vehiculosInactivos.length} vehículo${vehiculosInactivos.length > 1 ? 's' : ''} asociado${vehiculosInactivos.length > 1 ? 's' : ''}:
+                                </p>
+                                <ul class="text-xs text-green-700 dark:text-green-400 list-disc list-inside space-y-1">
+                                    ${vehiculosInactivos.map(v => `<li>${escapeHtml(v.patente)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</li>`).join('')}
+                                </ul>
+                            </div>`;
+                        }
+                    }
+                    
+                    message.innerHTML = `
+                        <p class="mb-2">¿Confirma reactivar el cliente <strong>${escapeHtml(nombre)}</strong>?</p>
+                        ${mensajeVehiculos}
+                    `;
+                } catch (error) {
+                    message.innerHTML = '¿Confirma reactivar el cliente <strong>' + escapeHtml(nombre) + '</strong>?';
+                }
+            }
         }
 
         if (idInput) idInput.value = id;

@@ -27,8 +27,8 @@
             </div>
         </div>
 
-        <!-- Formulario de Registro/Edicion -->
-        <div id="accordion-flush-body-1" class="hidden" aria-labelledby="accordion-flush-heading-1" style="display: none;">
+        <!-- Formulario de Edición (Oculto por defecto) -->
+        <div id="accordion-flush" data-accordion="collapse" data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white" data-inactive-classes="text-gray-500 dark:text-gray-400" class="@(ViewBag.EditVehiculo == null ? "hidden" : "")">
             <h2 id="accordion-flush-heading-1">
                 <button type="button" class="flex items-center justify-between w-full p-2 py-5 font-medium rtl:text-right text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400 gap-3" data-accordion-target="#accordion-flush-body-1" aria-expanded="false" aria-controls="accordion-flush-body-1">
                     <div class="flex items-center gap-2">
@@ -119,8 +119,29 @@
                 <div id="filterDropdown" class="z-50 hidden bg-white rounded-lg shadow-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
                     <form method="get" asp-action="Index" id="filterForm" class="p-4">
                         <input type="hidden" name="pageNumber" value="1" />
-                        <div class="grid grid-cols-1 gap-6 min-w-[200px]">
-                            <!-- Columna: Tipo de Vehículo -->
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 min-w-[600px]">
+                            <!-- Filtro de Estado -->
+                            <div>
+                                <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                    Estado
+                                </h6>
+                                <div class="space-y-2">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="estados" value="Activo"
+                                               @(ViewBag.Estados != null && ((List<string>)ViewBag.Estados).Contains("Activo") ? "checked" : "")
+                                               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                        <span class="ml-2 text-sm text-gray-900 dark:text-gray-100">Activo</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="estados" value="Inactivo"
+                                               @(ViewBag.Estados != null && ((List<string>)ViewBag.Estados).Contains("Inactivo") ? "checked" : "")
+                                               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                        <span class="ml-2 text-sm text-gray-900 dark:text-gray-100">Inactivo</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Filtro: Tipo de Vehículo -->
                             <div>
                                 <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
                                     Tipo de Vehículo
@@ -131,19 +152,43 @@
                                         @foreach (var tipo in ViewBag.TiposVehiculo)
                                         {
                                             <label class="flex items-center">
-                                                <input id="tipo-@tipo.Replace(" ", "-")" type="radio" name="tipoVehiculo" value="@tipo"
-                                                       @(ViewBag.TipoVehiculo == tipo ? "checked" : "")
-                                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500">
+                                                <input type="checkbox" name="tiposVehiculo" value="@tipo"
+                                                       @(ViewBag.TiposVehiculoFiltrados != null && ((List<string>)ViewBag.TiposVehiculoFiltrados).Contains(tipo) ? "checked" : "")
+                                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                 <span class="ml-2 text-gray-900 dark:text-gray-100">@tipo</span>
                                             </label>
                                         }
                                     }
                                 </div>
                             </div>
+
+                            <!-- Filtro: Marca (Dropdown con búsqueda) -->
+                            <div>
+                                <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                    Marca
+                                </h6>
+                                <input type="text" id="marca-filter-search" placeholder="Buscar marca..." 
+                                       class="mb-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white">
+                                <div id="marca-filter-list" class="space-y-2 max-h-40 overflow-y-auto text-sm">
+                                    <!-- Se llenará dinámicamente con JavaScript -->
+                                </div>
+                            </div>
+
+                            <!-- Filtro: Color (Dropdown con búsqueda) -->
+                            <div>
+                                <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                    Color
+                                </h6>
+                                <input type="text" id="color-filter-search" placeholder="Buscar color..." 
+                                       class="mb-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white">
+                                <div id="color-filter-list" class="space-y-2 max-h-40 overflow-y-auto text-sm">
+                                    <!-- Se llenará dinámicamente con JavaScript -->
+                                </div>
+                            </div>
                         </div>
                         <!-- Botones de acción -->
                         <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
-                            <button type="button" onclick="clearVehiculoFilters()"
+                            <button type="button" onclick="clearVehiculoFilters()" id="clearFiltersBtn"
                                     class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
                                 Limpiar
                             </button>

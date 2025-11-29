@@ -16,12 +16,15 @@
     // ===================== Estado interno =====================
     let currentPage = 1;
     let currentSearchTerm = "";
-    let currentTipoVehiculo = "";
     let currentSortBy = "Patente";
     let currentSortOrder = "asc";
     let searchTimeout;
     let vehiculoMsgTimeout = null;
     let tableMsgTimeout = null;
+    
+    // Listas para filtros dinámicos
+    let marcasDisponibles = [];
+    let coloresDisponibles = [];
 
     // ===================== Inicialización del módulo =====================
     window.PageModules = window.PageModules || {};
@@ -39,6 +42,7 @@
         setupInitialState();
         setupSearchWithDebounce();
         setupFilterFormSubmit();
+        setupDynamicFilters();
         setupModals();
         checkEditMode();
         window.CommonUtils?.setupDefaultFilterForm();
@@ -59,11 +63,18 @@
 
     function checkEditMode() {
         const formTitle = document.getElementById('form-title');
-        if (formTitle && formTitle.textContent.includes('Editando')) {
-            const accordion = document.getElementById('accordion-flush-body-1');
-            if (accordion) {
-                accordion.classList.remove('hidden');
-                accordion.style.display = 'block';
+        const accordion = document.getElementById('accordion-flush');
+        
+        // Solo mostrar el acordeón si realmente estamos en modo edición (viene de la URL)
+        if (formTitle && formTitle.textContent.includes('Editando') && accordion && !accordion.classList.contains('hidden')) {
+            const accordionBody = document.getElementById('accordion-flush-body-1');
+            const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
+            
+            if (accordionBody && accordionBtn) {
+                // Abrir el acordeón automáticamente solo si el acordeón está visible
+                if (accordionBody.classList.contains('hidden')) {
+                    accordionBtn.click();
+                }
             }
         }
     }
@@ -128,14 +139,6 @@
         if (page) currentPage = page;
 
         const params = buildFilterParams();
-
-        // Obtener filtro de tipo de vehículo
-        const tipoRadio = document.querySelector('input[name="tipoVehiculo"]:checked');
-        if (tipoRadio) {
-            currentTipoVehiculo = tipoRadio.value;
-            params.set('tipoVehiculo', currentTipoVehiculo);
-        }
-
         params.set('searchTerm', currentSearchTerm);
         params.set('pageNumber', currentPage.toString());
         params.set('sortBy', currentSortBy);
@@ -183,7 +186,11 @@
             const searchInput = document.getElementById('simple-search');
             if (searchInput) currentSearchTerm = searchInput.value.trim();
 
-            document.getElementById('filterDropdown')?.classList.add('hidden');
+            // Cerrar el dropdown usando el botón de toggle
+            const filterButton = document.getElementById('filterDropdownButton');
+            if (filterButton) {
+                filterButton.click();
+            }
 
             reloadVehiculoTable(1);
 
@@ -195,27 +202,140 @@
         form.dataset.submitSetup = 'true';
     }
 
+    function setupDynamicFilters() {
+        // Cargar marcas y colores disponibles
+        fetch('/Vehiculo/Index')
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // Extraer datos del ViewBag (si están disponibles en data attributes)
+                // Por ahora, cargaremos desde una llamada AJAX adicional si es necesario
+            })
+            .catch(error => console.error('Error cargando filtros:', error));
+
+        // Setup búsqueda de marcas
+        const marcaSearch = document.getElementById('marca-filter-search');
+        if (marcaSearch) {
+            marcaSearch.addEventListener('input', function() {
+                filterMarcaList(this.value);
+            });
+        }
+
+        // Setup búsqueda de colores
+        const colorSearch = document.getElementById('color-filter-search');
+        if (colorSearch) {
+            colorSearch.addEventListener('input', function() {
+                filterColorList(this.value);
+            });
+        }
+
+        // Cargar listas iniciales
+        loadMarcasYColores();
+    }
+
+    async function loadMarcasYColores() {
+        try {
+            const marcasElement = document.getElementById('marca-filter-list');
+            const coloresElement = document.getElementById('color-filter-list');
+
+            if (!marcasElement || !coloresElement) return;
+
+            const response = await fetch('/Vehiculo/GetMarcasYColores');
+            const data = await response.json();
+            
+            marcasDisponibles = data.marcas || [];
+            coloresDisponibles = data.colores || [];
+
+            renderMarcasList();
+            renderColoresList();
+        } catch (error) {
+            console.error('Error cargando marcas y colores:', error);
+        }
+    }
+
+    function renderMarcasList(filterText = '') {
+        const container = document.getElementById('marca-filter-list');
+        if (!container) return;
+
+        let marcas = marcasDisponibles;
+        if (filterText) {
+            const lower = filterText.toLowerCase();
+            marcas = marcas.filter(m => m.toLowerCase().includes(lower));
+        }
+
+        container.innerHTML = marcas.map(marca => `
+            <label class="flex items-center">
+                <input type="checkbox" name="marcas" value="${escapeHtml(marca)}"
+                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                <span class="ml-2 text-gray-900 dark:text-gray-100">${escapeHtml(marca)}</span>
+            </label>
+        `).join('');
+    }
+
+    function renderColoresList(filterText = '') {
+        const container = document.getElementById('color-filter-list');
+        if (!container) return;
+
+        let colores = coloresDisponibles;
+        if (filterText) {
+            const lower = filterText.toLowerCase();
+            colores = colores.filter(c => c.toLowerCase().includes(lower));
+        }
+
+        container.innerHTML = colores.map(color => `
+            <label class="flex items-center">
+                <input type="checkbox" name="colores" value="${escapeHtml(color)}"
+                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                <span class="ml-2 text-gray-900 dark:text-gray-100">${escapeHtml(color)}</span>
+            </label>
+        `).join('');
+    }
+
+    function filterMarcaList(searchText) {
+        renderMarcasList(searchText);
+    }
+
+    function filterColorList(searchText) {
+        renderColoresList(searchText);
+    }
+
     window.clearVehiculoFilters = function () {
         const form = document.getElementById('filterForm');
         if (!form) return;
 
-        try {
-            if (typeof window.clearAllFilters === 'function') {
-                window.clearAllFilters();
-            } else {
-                form.querySelectorAll('input[name="estados"][type="checkbox"]').forEach(cb => cb.checked = false);
-                form.querySelector('input[name="estados"][value="Activo"]')?.setAttribute('checked', 'checked');
-            }
-        } catch { }
+        // Limpiar TODOS los checkboxes
+        form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = false;
+        });
 
-        form.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+        // Marcar solo "Activo" en estados
+        const activoCheckbox = form.querySelector('input[name="estados"][value="Activo"]');
+        if (activoCheckbox) {
+            activoCheckbox.checked = true;
+        }
 
+        // Limpiar búsqueda principal
         const searchInput = document.getElementById('simple-search');
         if (searchInput) searchInput.value = '';
         currentSearchTerm = '';
-        currentTipoVehiculo = '';
 
-        document.getElementById('filterDropdown')?.classList.add('hidden');
+        // Limpiar búsquedas de filtros
+        const marcaSearch = document.getElementById('marca-filter-search');
+        if (marcaSearch) marcaSearch.value = '';
+        const colorSearch = document.getElementById('color-filter-search');
+        if (colorSearch) colorSearch.value = '';
+
+        // Re-renderizar listas sin filtros
+        renderMarcasList();
+        renderColoresList();
+
+        // Cerrar dropdown
+        const filterButton = document.getElementById('filterDropdownButton');
+        if (filterButton) {
+            filterButton.click();
+        }
 
         if (history.replaceState) history.replaceState({}, document.title, '/Vehiculo/Index');
 
@@ -241,12 +361,20 @@
                 document.getElementById("vehiculo-form-container").innerHTML = html;
                 document.getElementById('form-title').textContent = 'Editando Vehículo';
 
+                // Mostrar el acordeón completo
+                const accordion = document.getElementById('accordion-flush');
+                if (accordion) {
+                    accordion.classList.remove('hidden');
+                }
+
                 const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
                 const accordionBody = document.getElementById("accordion-flush-body-1");
 
-                if (accordionBody) {
-                    accordionBody.classList.remove('hidden');
-                    accordionBody.style.display = 'block';
+                if (accordionBody && accordionBtn) {
+                    // Abrir el acordeón usando el botón
+                    if (accordionBody.classList.contains('hidden')) {
+                        accordionBtn.click();
+                    }
                 }
 
                 setTimeout(() => {
@@ -259,7 +387,35 @@
             .catch(error => console.error('Error al cargar el formulario:', error));
     };
 
-    window.submitVehiculoAjax = function (form) {
+    window.submitVehiculoAjax = function (form, event) {
+        // Prevenir el comportamiento por defecto
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        // Prevenir doble envío
+        const submitBtn = document.getElementById('submit-button');
+        if (submitBtn && submitBtn.disabled) {
+            return false;
+        }
+
+        // Deshabilitar botón
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5 mr-2 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Guardando...
+            `;
+            
+            // Guardar el HTML original para restaurarlo
+            submitBtn.dataset.originalHtml = originalText;
+        }
+
         const formData = new FormData(form);
 
         fetch(form.action, {
@@ -279,12 +435,23 @@
                     showFormMessage('success', result.msg || 'Vehículo actualizado correctamente.', 4000);
                     reloadVehiculoTable(getCurrentTablePage());
 
+                    // Cerrar y ocultar el acordeón completo
                     setTimeout(() => {
-                        const accordion = document.getElementById('accordion-flush-body-1');
-                        if (accordion) {
-                            accordion.classList.add('hidden');
-                            accordion.style.display = 'none';
+                        const accordionBody = document.getElementById('accordion-flush-body-1');
+                        const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
+                        const accordion = document.getElementById('accordion-flush');
+                        
+                        // Primero cerrar el body del acordeón si está abierto
+                        if (accordionBody && accordionBtn && !accordionBody.classList.contains('hidden')) {
+                            accordionBtn.click();
                         }
+                        
+                        // Luego ocultar todo el acordeón
+                        setTimeout(() => {
+                            if (accordion) {
+                                accordion.classList.add('hidden');
+                            }
+                        }, 300); // Dar tiempo a la animación de cierre
                     }, 1500);
                 } else {
                     const summary = document.getElementById('vehiculo-validation-summary');
@@ -295,7 +462,15 @@
                 }
             })
             .catch(e => {
+                console.error('Error:', e);
                 showFormMessage('error', 'Error de comunicación con el servidor.', 8000);
+            })
+            .finally(() => {
+                // Re-habilitar botón
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = submitBtn.dataset.originalHtml || 'Guardar';
+                }
             });
 
         return false;

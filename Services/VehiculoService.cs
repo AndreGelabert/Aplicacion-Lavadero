@@ -15,7 +15,9 @@ public class VehiculoService
 
     public async Task<List<Vehiculo>> ObtenerVehiculos(
         string searchTerm,
-        string tipoVehiculo,
+        List<string> tiposVehiculo,
+        List<string> marcas,
+        List<string> colores,
         int pageNumber,
         int pageSize,
         string sortBy,
@@ -36,7 +38,7 @@ public class VehiculoService
             vehiculos = vehiculos.Where(v => v.Estado == "Activo").ToList();
         }
 
-        // Filtrado en memoria
+        // Filtrado en memoria por búsqueda
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             string term = searchTerm.ToLowerInvariant();
@@ -48,9 +50,22 @@ public class VehiculoService
             ).ToList();
         }
 
-        if (!string.IsNullOrWhiteSpace(tipoVehiculo))
+        // Filtrado por tipos de vehículo
+        if (tiposVehiculo != null && tiposVehiculo.Any())
         {
-            vehiculos = vehiculos.Where(v => v.TipoVehiculo == tipoVehiculo).ToList();
+            vehiculos = vehiculos.Where(v => tiposVehiculo.Contains(v.TipoVehiculo)).ToList();
+        }
+
+        // Filtrado por marcas
+        if (marcas != null && marcas.Any())
+        {
+            vehiculos = vehiculos.Where(v => marcas.Contains(v.Marca)).ToList();
+        }
+
+        // Filtrado por colores
+        if (colores != null && colores.Any())
+        {
+            vehiculos = vehiculos.Where(v => colores.Contains(v.Color)).ToList();
         }
 
         // Ordenamiento
@@ -65,7 +80,7 @@ public class VehiculoService
             .ToList();
     }
 
-    public async Task<int> ObtenerTotalVehiculos(string searchTerm, string tipoVehiculo, List<string> estados = null)
+    public async Task<int> ObtenerTotalVehiculos(string searchTerm, List<string> tiposVehiculo, List<string> marcas, List<string> colores, List<string> estados = null)
     {
         var vehiculosRef = _firestore.Collection("vehiculos");
         var snapshot = await vehiculosRef.GetSnapshotAsync();
@@ -92,12 +107,44 @@ public class VehiculoService
             ).ToList();
         }
 
-        if (!string.IsNullOrWhiteSpace(tipoVehiculo))
+        if (tiposVehiculo != null && tiposVehiculo.Any())
         {
-            vehiculos = vehiculos.Where(v => v.TipoVehiculo == tipoVehiculo).ToList();
+            vehiculos = vehiculos.Where(v => tiposVehiculo.Contains(v.TipoVehiculo)).ToList();
+        }
+
+        if (marcas != null && marcas.Any())
+        {
+            vehiculos = vehiculos.Where(v => marcas.Contains(v.Marca)).ToList();
+        }
+
+        if (colores != null && colores.Any())
+        {
+            vehiculos = vehiculos.Where(v => colores.Contains(v.Color)).ToList();
         }
 
         return vehiculos.Count;
+    }
+
+    public async Task<List<string>> ObtenerMarcasUnicas()
+    {
+        var snapshot = await _firestore.Collection("vehiculos").GetSnapshotAsync();
+        var marcas = snapshot.Documents
+            .Select(d => d.ConvertTo<Vehiculo>().Marca)
+            .Distinct()
+            .OrderBy(m => m)
+            .ToList();
+        return marcas;
+    }
+
+    public async Task<List<string>> ObtenerColoresUnicos()
+    {
+        var snapshot = await _firestore.Collection("vehiculos").GetSnapshotAsync();
+        var colores = snapshot.Documents
+            .Select(d => d.ConvertTo<Vehiculo>().Color)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToList();
+        return colores;
     }
 
     public async Task<Vehiculo?> ObtenerVehiculo(string id)

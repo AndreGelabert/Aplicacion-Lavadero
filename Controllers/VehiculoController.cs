@@ -26,7 +26,9 @@ public class VehiculoController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(
         string searchTerm,
-        string tipoVehiculo,
+        List<string> tiposVehiculo,
+        List<string> marcas,
+        List<string> colores,
         List<string> estados,
         int pageNumber = 1,
         int pageSize = 10,
@@ -40,8 +42,8 @@ public class VehiculoController : Controller
             estados = new List<string> { "Activo" };
         }
 
-        var vehiculos = await _vehiculoService.ObtenerVehiculos(searchTerm, tipoVehiculo, pageNumber, pageSize, sortBy, sortOrder, estados);
-        var totalVehiculos = await _vehiculoService.ObtenerTotalVehiculos(searchTerm, tipoVehiculo, estados);
+        var vehiculos = await _vehiculoService.ObtenerVehiculos(searchTerm, tiposVehiculo, marcas, colores, pageNumber, pageSize, sortBy, sortOrder, estados);
+        var totalVehiculos = await _vehiculoService.ObtenerTotalVehiculos(searchTerm, tiposVehiculo, marcas, colores, estados);
         var totalPages = Math.Max((int)Math.Ceiling(totalVehiculos / (double)pageSize), 1);
 
         ViewBag.CurrentPage = pageNumber;
@@ -50,11 +52,17 @@ public class VehiculoController : Controller
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
         ViewBag.SearchTerm = searchTerm;
-        ViewBag.TipoVehiculo = tipoVehiculo;
+        ViewBag.TiposVehiculoFiltrados = tiposVehiculo;
+        ViewBag.MarcasFiltradas = marcas;
+        ViewBag.ColoresFiltrados = colores;
         ViewBag.Estados = estados;
         ViewBag.PageSize = pageSize;
 
         await CargarListasForm();
+        
+        // Obtener listas únicas para filtros
+        ViewBag.MarcasDisponibles = await _vehiculoService.ObtenerMarcasUnicas();
+        ViewBag.ColoresDisponibles = await _vehiculoService.ObtenerColoresUnicos();
         
         // Solo configurar formulario si se está editando
         if (!string.IsNullOrEmpty(editId))
@@ -63,7 +71,7 @@ public class VehiculoController : Controller
         }
         else
         {
-            ViewBag.FormTitle = "Registrando Vehículo";
+            ViewBag.FormTitle = "Editar Vehículo";
             ViewBag.EditVehiculo = null;
         }
 
@@ -73,7 +81,9 @@ public class VehiculoController : Controller
     [HttpGet]
     public async Task<IActionResult> SearchPartial(
         string searchTerm,
-        string tipoVehiculo,
+        List<string> tiposVehiculo,
+        List<string> marcas,
+        List<string> colores,
         List<string> estados,
         int pageNumber = 1,
         int pageSize = 10,
@@ -85,8 +95,8 @@ public class VehiculoController : Controller
             estados = new List<string> { "Activo" };
         }
 
-        var vehiculos = await _vehiculoService.ObtenerVehiculos(searchTerm, tipoVehiculo, pageNumber, pageSize, sortBy, sortOrder, estados);
-        var totalVehiculos = await _vehiculoService.ObtenerTotalVehiculos(searchTerm, tipoVehiculo, estados);
+        var vehiculos = await _vehiculoService.ObtenerVehiculos(searchTerm, tiposVehiculo, marcas, colores, pageNumber, pageSize, sortBy, sortOrder, estados);
+        var totalVehiculos = await _vehiculoService.ObtenerTotalVehiculos(searchTerm, tiposVehiculo, marcas, colores, estados);
         var totalPages = Math.Max((int)Math.Ceiling(totalVehiculos / (double)pageSize), 1);
 
         ViewBag.CurrentPage = pageNumber;
@@ -95,7 +105,9 @@ public class VehiculoController : Controller
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
         ViewBag.SearchTerm = searchTerm;
-        ViewBag.TipoVehiculo = tipoVehiculo;
+        ViewBag.TiposVehiculoFiltrados = tiposVehiculo;
+        ViewBag.MarcasFiltradas = marcas;
+        ViewBag.ColoresFiltrados = colores;
         ViewBag.Estados = estados;
 
         return PartialView("_VehiculoTable", vehiculos);
@@ -103,14 +115,16 @@ public class VehiculoController : Controller
 
     [HttpGet]
     public async Task<IActionResult> TablePartial(
-        string tipoVehiculo,
+        List<string> tiposVehiculo,
+        List<string> marcas,
+        List<string> colores,
         List<string> estados,
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = "Patente",
         string sortOrder = "asc")
     {
-        return await SearchPartial(null, tipoVehiculo, estados, pageNumber, pageSize, sortBy, sortOrder);
+        return await SearchPartial(null, tiposVehiculo, marcas, colores, estados, pageNumber, pageSize, sortBy, sortOrder);
     }
 
     [HttpGet]
@@ -131,13 +145,25 @@ public class VehiculoController : Controller
         var cliente = await _clienteService.ObtenerCliente(clienteId);
         if (cliente == null) return NotFound();
 
-        // Retornamos un partial o un JSON para mostrar en el modal
         return Json(new
         {
             nombreCompleto = cliente.NombreCompleto,
             documento = $"{cliente.TipoDocumento} {cliente.NumeroDocumento}",
             telefono = cliente.Telefono,
             email = cliente.Email
+        });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetMarcasYColores()
+    {
+        var marcas = await _vehiculoService.ObtenerMarcasUnicas();
+        var colores = await _vehiculoService.ObtenerColoresUnicos();
+        
+        return Json(new
+        {
+            marcas = marcas,
+            colores = colores
         });
     }
 
@@ -246,6 +272,21 @@ public class VehiculoController : Controller
     {
         try
         {
+            // Verificar si el vehículo tiene dueño
+            var vehiculo = await _vehiculoService.ObtenerVehiculo(id);
+            if (vehiculo == null)
+            {
+                return Json(new { success = false, message = "Vehículo no encontrado." });
+            }
+
+            if (!string.IsNullOrEmpty(vehiculo.ClienteId))
+            {
+                return Json(new { 
+                    success = false, 
+                    message = $"No se puede desactivar el vehículo porque está asignado al cliente: {vehiculo.ClienteNombreCompleto}. Para desactivarlo, primero remuévalo del cliente desde la edición del cliente." 
+                });
+            }
+
             await _vehiculoService.CambiarEstadoVehiculo(id, "Inactivo");
             await RegistrarEvento("Desactivacion de vehiculo", id, "Vehiculo");
             return Json(new { success = true, message = "Vehículo desactivado correctamente." });
