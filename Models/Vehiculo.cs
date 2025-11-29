@@ -55,7 +55,8 @@ namespace Firebase.Models
         /// ID del cliente dueño del vehículo.
         /// </summary>
         [FirestoreProperty]
-        public string? ClienteId { get; set; }
+        [Required(ErrorMessage = "El vehículo debe tener un dueño asignado")]
+        public required string ClienteId { get; set; }
 
         /// <summary>
         /// Nombre completo del dueño (solo lectura/visualización).

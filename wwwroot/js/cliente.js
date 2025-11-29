@@ -27,6 +27,7 @@
     let vehiculosSeleccionados = [];
     let vehiculosDisponibles = [];
     let vehiculoSeleccionadoDropdown = null;
+    let vehiculosTemporales = []; // Vehículos creados en memoria (aún no guardados en BD)
 
     // ===================== Inicialización del módulo =====================
     window.PageModules = window.PageModules || {};
@@ -276,6 +277,9 @@
     // ===================== Formulario =====================
 
     window.loadClienteForm = async function (id) {
+        // NUEVO: Limpiar vehículos temporales al cambiar/limpiar formulario
+        vehiculosTemporales = [];
+        
         const url = id ? `/Cliente/FormPartial?id=${id}` : "/Cliente/FormPartial";
 
         try {
@@ -312,67 +316,120 @@
         }
     };
 
-    window.submitClienteAjax = function (form) {
+    window.submitClienteAjax = async function (form, event) {
+        // Prevenir el comportamiento por defecto
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        // Prevenir doble envío
+        const submitBtn = document.getElementById('submit-button');
+        if (submitBtn && submitBtn.disabled) {
+            return false;
+        }
+        
         // Validar que al menos haya un vehículo
         if (vehiculosSeleccionados.length === 0) {
-            showFormMessage('error', 'Debe seleccionar al menos un vehículo para el cliente.');
+            showFormMessage('error', 'Debe agregar al menos un vehículo para el cliente.');
             document.getElementById('vehiculos-error')?.classList.remove('hidden');
             return false;
         }
 
         document.getElementById('vehiculos-error')?.classList.add('hidden');
 
-        const formData = new FormData(form);
+        // Deshabilitar botón de envío
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5 mr-2 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Guardando...
+            `;
+        }
 
-        // Agregar vehículos seleccionados (eliminar duplicados primero)
-        formData.delete('VehiculosIds');
-        vehiculosSeleccionados.forEach(v => {
-            formData.append('VehiculosIds', v.id);
-        });
+        try {
+            // NUEVO: Preparar datos de vehículos
+            const vehiculosData = vehiculosSeleccionados.map(v => ({
+                id: v.esTemporalNuevo ? null : v.id, // null para nuevos, ID para existentes
+                patente: v.patente,
+                marca: v.marca,
+                modelo: v.modelo,
+                color: v.color,
+                tipoVehiculo: v.tipoVehiculo,
+                esNuevo: v.esTemporalNuevo || false
+            }));
 
-        
+            // Crear FormData del formulario
+            const formData = new FormData(form);
+            
+            // Agregar el JSON al FormData
+            const vehiculosJson = JSON.stringify(vehiculosData);
+            formData.set('VehiculosDataJson', vehiculosJson);
 
-        fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-            .then(resp => {
-                const valid = resp.headers.get('X-Form-Valid') === 'true';
-                const msg = resp.headers.get('X-Form-Message');
-                return resp.text().then(html => ({ html, valid, msg }));
-            })
-            .then(async result => {
-                document.getElementById('cliente-form-container').innerHTML = result.html;
-                
-                // CRÍTICO: Esperar setup de vehículos
-                await setupVehiculoSelector();
-
-                const isEdit = !!document.getElementById('Id')?.value;
-                const titleSpan = document.getElementById('form-title');
-                if (titleSpan) {
-                    titleSpan.textContent = isEdit ? 'Editando Cliente' : 'Registrando Cliente';
-                }
-
-                if (result.valid) {
-                    showFormMessage('success', result.msg || 'Cliente guardado correctamente. Los vehículos han sido asignados.', 4000);
-                    reloadClienteTable(1);
-
-                    setTimeout(() => {
-                        document.getElementById('accordion-flush-body-1')?.classList.add('hidden');
-                    }, 1500);
-                } else {
-                    const summary = document.getElementById('cliente-validation-summary');
-                    if (summary && summary.textContent.trim().length > 0) {
-                        summary.classList.remove('hidden');
-                    }
-                    showFormMessage('error', 'Revise los errores del formulario.', 8000);
-                }
-            })
-            .catch(e => {
-                console.error('Error al enviar formulario:', e);
-                showFormMessage('error', 'Error de comunicación con el servidor.', 8000);
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
+
+            const valid = response.headers.get('X-Form-Valid') === 'true';
+            const msg = response.headers.get('X-Form-Message');
+            const html = await response.text();
+
+            document.getElementById('cliente-form-container').innerHTML = html;
+            
+            // CRÍTICO: Esperar setup de vehículos
+            await setupVehiculoSelector();
+
+            const isEdit = !!document.getElementById('Id')?.value;
+            const titleSpan = document.getElementById('form-title');
+            if (titleSpan) {
+                titleSpan.textContent = isEdit ? 'Editando Cliente' : 'Registrando Cliente';
+            }
+
+            if (valid) {
+                // Limpiar vehículos temporales si se guardó exitosamente
+                vehiculosTemporales = [];
+                vehiculosSeleccionados = [];
+                vehiculosDisponibles = [];
+                
+                showFormMessage('success', msg || 'Cliente guardado correctamente. Los vehículos han sido asignados.', 4000);
+                reloadClienteTable(1);
+
+                // Cerrar el acordeón
+                setTimeout(() => {
+                    const accordionBody = document.getElementById('accordion-flush-body-1');
+                    const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
+                    
+                    if (accordionBody && accordionBtn && !accordionBody.classList.contains('hidden')) {
+                        accordionBtn.click(); // Simular click para cerrar correctamente
+                    }
+                }, 1500);
+            } else {
+                const summary = document.getElementById('cliente-validation-summary');
+                if (summary && summary.textContent.trim().length > 0) {
+                    summary.classList.remove('hidden');
+                }
+                showFormMessage('error', 'Revise los errores del formulario.', 8000);
+            }
+        } catch (e) {
+            console.error('❌ Error al enviar formulario:', e);
+            showFormMessage('error', 'Error de comunicación con el servidor.', 8000);
+        } finally {
+            // Re-habilitar botón de envío
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
+                        <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                    </svg>
+                    ${document.getElementById('Id')?.value ? 'Guardar' : 'Registrar'}
+                `;
+            }
+        }
 
         return false;
     };
@@ -380,11 +437,7 @@
     // ===================== Selector de Vehículos (Estilo Paquetes) =====================
 
     async function setupVehiculoSelector() {
-        
-        
-        // IMPORTANTE: Esperar a que se carguen los vehículos ANTES de continuar
         await loadVehiculosDisponibles();
-        
         
         const searchInput = document.getElementById('vehiculo-search');
         if (searchInput) {
@@ -395,84 +448,38 @@
             searchInput.addEventListener('focus', function () {
                 showVehiculoDropdown();
             });
-            
-        } else {
-            
         }
 
         setupDropdownClickOutside();
-        
     }
 
     async function loadVehiculosDisponibles() {
-        
-        
         try {
-            // Obtener ID del cliente si estamos editando
             const clienteId = document.getElementById('Id')?.value;
             
-            // MODO EDICIÓN: Cargar los vehículos del cliente actual + disponibles
             if (clienteId) {
-                
-                // Primero obtener vehículos del cliente
                 const respCliente = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${clienteId}`);
                 const dataCliente = await respCliente.json();
-                
-                // Luego obtener vehículos disponibles (sin dueño)
-                const respDisponibles = await fetch('/Cliente/ObtenerVehiculosDisponibles');
-                const dataDisponibles = await respDisponibles.json();
-                
 
-                // Combinar ambos (vehículos del cliente + disponibles)
                 const vehiculosCliente = dataCliente.success ? (dataCliente.vehiculos || []) : [];
-                const vehiculosLibres = dataDisponibles.success ? (dataDisponibles.vehiculos || []) : [];
+                vehiculosDisponibles = [...vehiculosCliente, ...vehiculosTemporales];
                 
-                vehiculosDisponibles = [...vehiculosCliente, ...vehiculosLibres];
-                
-                // Marcar como seleccionados los que ya son del cliente
                 const hiddenIds = document.getElementById('VehiculosIdsData')?.value;
                 if (hiddenIds) {
                     const ids = hiddenIds.split(',').map(x => x.trim()).filter(x => x);
                     vehiculosSeleccionados = vehiculosDisponibles.filter(v => ids.includes(v.id));
-                    
                 } else {
                     vehiculosSeleccionados = [];
                 }
-            } 
-            // MODO CREACIÓN: Solo mostrar vehículos sin dueño
-            else {
-                
-                
-                const resp = await fetch('/Cliente/ObtenerVehiculosDisponibles');
-                const data = await resp.json();
-                
-
-                if (data.success) {
-                    vehiculosDisponibles = data.vehiculos || [];
-                    vehiculosSeleccionados = [];
-                    
-                    // Log detallado de cada vehículo
-                    if (vehiculosDisponibles.length > 0) {
-                        console.table(vehiculosDisponibles.map(v => ({
-                            Patente: v.patente,
-                            Marca: v.marca,
-                            Modelo: v.modelo,
-                            Estado: v.estado
-                        })));
-                    } else {
-                        
-                    }
-                } else {
-                    vehiculosDisponibles = [];
-                    vehiculosSeleccionados = [];
-                    
-                }
+            } else {
+                vehiculosDisponibles = [...vehiculosTemporales];
+                vehiculosSeleccionados = [];
             }
 
             updateVehiculosSeleccionadosList();
             
         } catch (error) {
-            
+            console.error('Error al cargar vehículos:', error);
             vehiculosDisponibles = [];
             vehiculosSeleccionados = [];
         }
@@ -480,22 +487,15 @@
 
     function renderVehiculosDropdown(vehiculos, filterText = '') {
         const target = document.getElementById('vehiculo-dropdown-content');
-        if (!target) {
-            console.error('❌ vehiculo-dropdown-content no encontrado');
-            return;
-        }
-
-        
+        if (!target) return;
 
         if (!Array.isArray(vehiculos) || vehiculos.length === 0) {
             target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No hay vehículos disponibles. Use "Nuevo Vehículo" para crear uno.</p>';
-            
             return;
         }
 
         let lista = vehiculos;
         
-        // Aplicar filtro de texto
         if (filterText && filterText.trim()) {
             const lower = filterText.toLowerCase();
             lista = lista.filter(v =>
@@ -503,17 +503,12 @@
                 (v.marca && v.marca.toLowerCase().includes(lower)) ||
                 (v.modelo && v.modelo.toLowerCase().includes(lower))
             );
-            
         }
 
-        // Excluir ya seleccionados
-        const listaOriginal = lista.length;
         lista = lista.filter(v => !vehiculosSeleccionados.some(sel => sel.id === v.id));
-        
 
         if (lista.length === 0) {
             target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No se encontraron vehículos con ese criterio</p>';
-            
             return;
         }
 
@@ -528,34 +523,25 @@
         });
 
         target.innerHTML = html;
-        
     }
 
     window.showVehiculoDropdown = function () {
         const dropdown = document.getElementById('vehiculo-dropdown');
         const searchInput = document.getElementById('vehiculo-search');
         
-        if (!dropdown) {
-            console.warn('Dropdown de vehículos no encontrado');
-            return;
-        }
+        if (!dropdown) return;
 
         const inputValue = searchInput?.value?.trim() || '';
         
-        
-        // Mostrar SIEMPRE que haya vehículos disponibles
         if (vehiculosDisponibles.length > 0) {
             renderVehiculosDropdown(vehiculosDisponibles, inputValue);
             dropdown.classList.remove('hidden');
-            
         } else {
-            // Si no hay vehículos, mostrar mensaje
             const target = document.getElementById('vehiculo-dropdown-content');
             if (target) {
                 target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No hay vehículos disponibles. Cree uno nuevo usando el botón "Nuevo Vehículo".</p>';
             }
             dropdown.classList.remove('hidden');
-            
         }
     };
 
@@ -565,8 +551,6 @@
 
         const searchText = txt?.trim() || '';
         
-        
-        // Si no hay texto, mostrar todos
         if (searchText === '') {
             if (vehiculosDisponibles.length > 0) {
                 renderVehiculosDropdown(vehiculosDisponibles, '');
@@ -581,7 +565,6 @@
             return;
         }
 
-        // Filtrar por texto
         renderVehiculosDropdown(vehiculosDisponibles, searchText);
         dropdown.classList.remove('hidden');
     };
@@ -628,7 +611,18 @@
     };
 
     window.removerVehiculoSeleccionado = function (id) {
+        // Remover de seleccionados
         vehiculosSeleccionados = vehiculosSeleccionados.filter(v => v.id !== id);
+        
+        // NUEVO: Si es un vehículo temporal, lo devolvemos al dropdown
+        const vehiculoRemovido = vehiculosTemporales.find(v => v.id === id);
+        if (vehiculoRemovido) {
+            // Ya está en vehiculosTemporales, solo actualizar disponibles
+            if (!vehiculosDisponibles.some(v => v.id === id)) {
+                vehiculosDisponibles.push(vehiculoRemovido);
+            }
+        }
+        
         updateVehiculosSeleccionadosList();
         renderVehiculosDropdown(vehiculosDisponibles, document.getElementById('vehiculo-search')?.value || '');
     };
@@ -955,6 +949,17 @@
                             return false;
                         };
                     }
+                    
+                    // Convertir patente a mayúsculas mientras se escribe
+                    const patenteInput = form.querySelector("#Patente");
+                    if (patenteInput) {
+                        patenteInput.addEventListener('input', function() {
+                            const start = this.selectionStart;
+                            const end = this.selectionEnd;
+                            this.value = this.value.toUpperCase();
+                            this.setSelectionRange(start, end);
+                        });
+                    }
                 }
             })
             .catch(error => console.error('Error al cargar form vehiculo:', error));
@@ -988,119 +993,63 @@
     };
 
     function submitQuickVehiculo(form) {
-        const formData = new FormData(form);
+        // Prevenir el envío al servidor
+        event.preventDefault();
+        
+        // Validar el formulario usando el API de validación del navegador
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return false;
+        }
 
-        // Capturar datos antes de enviar
-        const patente = form.querySelector('#Patente')?.value;
-        const marca = form.querySelector('#Marca')?.value;
-        const modelo = form.querySelector('#Modelo')?.value;
-        const color = form.querySelector('#Color')?.value;
+        // Capturar datos del formulario (patente en mayúsculas)
+        const patente = form.querySelector('#Patente')?.value?.trim().toUpperCase();
+        const marca = form.querySelector('#Marca')?.value?.trim();
+        const modelo = form.querySelector('#Modelo')?.value?.trim();
+        const color = form.querySelector('#Color')?.value?.trim();
         const tipoVehiculo = form.querySelector('#TipoVehiculo')?.value;
 
+        // Validaciones básicas
+        if (!patente || !marca || !modelo || !color || !tipoVehiculo) {
+            showFormMessage('error', 'Todos los campos son obligatorios.', 5000);
+            return false;
+        }
 
-        fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-            .then(response => {
-                const isValid = response.headers.get("X-Form-Valid") === "true";
-                const message = response.headers.get("X-Form-Message");
-                
-                return response.text().then(html => ({ isValid, html, message, status: response.status }));
-            })
-            .then(async result => {
-                if (result.isValid && result.status === 200) {
-                    
-                    // IMPORTANTE: Cerrar el modal PRIMERO
-                    closeQuickCreateModal();
+        // Verificar que no exista ya en los vehículos temporales o seleccionados
+        const patenteExiste = [...vehiculosTemporales, ...vehiculosSeleccionados].some(v => 
+            v.patente && v.patente.toLowerCase() === patente.toLowerCase()
+        );
 
-                    // Esperar un poco para que se complete la creación en el servidor
-                    await new Promise(resolve => setTimeout(resolve, 800));
+        if (patenteExiste) {
+            showFormMessage('error', 'Ya existe un vehículo con esta patente en la lista.', 5000);
+            return false;
+        }
 
-                    
-                    // Recargar vehículos disponibles
-                    const respDisponibles = await fetch('/Cliente/ObtenerVehiculosDisponibles');
-                    const dataDisponibles = await respDisponibles.json();
-                    
+        // Crear vehículo temporal (solo en memoria)
+        const vehiculoTemporal = {
+            id: 'temp_' + Date.now(), // ID temporal único
+            patente: patente,
+            marca: marca,
+            modelo: modelo,
+            color: color,
+            tipoVehiculo: tipoVehiculo,
+            estado: 'Activo',
+            esTemporalNuevo: true // Flag para identificar que es nuevo y no viene de BD
+        };
 
-                    if (dataDisponibles.success && dataDisponibles.vehiculos) {
-                        vehiculosDisponibles = dataDisponibles.vehiculos;
-                        
-                        // Buscar el vehículo recién creado por patente
-                        const nuevoVehiculo = vehiculosDisponibles.find(v => 
-                            v.patente && v.patente.toLowerCase() === patente.toLowerCase()
-                        );
+        // Agregar a las listas
+        vehiculosTemporales.push(vehiculoTemporal);
+        vehiculosSeleccionados.push(vehiculoTemporal);
 
-                        
+        // Cerrar modal
+        closeQuickCreateModal();
 
-                        if (nuevoVehiculo) {
-                            // Agregarlo automáticamente a la lista
-                            if (!vehiculosSeleccionados.some(v => v.id === nuevoVehiculo.id)) {
-                                vehiculosSeleccionados.push(nuevoVehiculo);
-                                updateVehiculosSeleccionadosList();
-                                
-                            }
-                            showFormMessage('success', `Vehículo ${patente} registrado y agregado correctamente.`, 4000);
-                        } else {
-                            
-                            showFormMessage('info', 'Vehículo registrado. Búsquelo en la lista para agregarlo.', 5000);
-                        }
-                    } else {
-                        
-                        showFormMessage('warning', 'Vehículo registrado. Recargue la página para verlo.', 5000);
-                    }
-                } else {
-                    
-                    // Extraer errores del HTML para mostrarlos en consola
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = result.html;
-                    const validationSummary = tempDiv.querySelector('[asp-validation-summary], .validation-summary-errors, #vehiculo-validation-summary');
-                    if (validationSummary && validationSummary.textContent.trim().length > 0) {
-                        console.error('❌ Errores de validación:', validationSummary.textContent.trim());
-                    }
-                    
-                    // Buscar spans de error individuales
-                    const errorSpans = tempDiv.querySelectorAll('.text-red-600, .field-validation-error');
-                    if (errorSpans.length > 0) {
-                        console.error('❌ Errores de campo:');
-                        errorSpans.forEach(span => {
-                            if (span.textContent.trim()) {
-                                const fieldName = span.getAttribute('data-valmsg-for') || 'Campo desconocido';
-                                console.error(`  - ${fieldName}: ${span.textContent.trim()}`);
-                            }
-                        });
-                    }
-                    
-                    // Mostrar errores en el modal (NO cerrar)
-                    const content = document.getElementById("quick-vehiculo-form-content");
-                    if (content) {
-                        content.innerHTML = result.html;
-
-                        const newForm = content.querySelector("form");
-                        if (newForm) {
-                            newForm.onsubmit = function (e) {
-                                e.preventDefault();
-                                submitQuickVehiculo(this);
-                                return false;
-                            };
-
-                            const cancelBtn = newForm.querySelector("#clear-button");
-                            if (cancelBtn) {
-                                cancelBtn.onclick = function (e) {
-                                    e.preventDefault();
-                                    closeQuickCreateModal();
-                                    return false;
-                                };
-                            }
-                        }
-                    }
-                }
-            })
-            .catch(error => {
-                
-                showFormMessage('error', 'Error al registrar el vehículo.', 5000);
-            });
+        // Actualizar UI
+        updateVehiculosSeleccionadosList();
+        
+        showFormMessage('success', `Vehículo ${patente} agregado. Guarde el cliente para registrarlo.`, 4000);
+        
+        return false;
     }
 
     // ===================== Modales =====================

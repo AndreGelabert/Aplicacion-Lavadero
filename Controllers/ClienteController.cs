@@ -111,12 +111,17 @@ public class ClienteController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CrearClienteAjax(Cliente cliente)
+    public async Task<IActionResult> CrearClienteAjax(Cliente cliente, string? vehiculosDataJson = null)
     {
         try
         {
-            ModelState.Remove("Id"); // Id es generado
-            if (!ModelState.IsValid) return await PrepararRespuestaAjax(false, cliente, null);
+            ModelState.Remove("Id");
+            ModelState.Remove("VehiculosDataJson");
+            
+            if (!ModelState.IsValid)
+            {
+                return await PrepararRespuestaAjax(false, cliente, null);
+            }
 
             // Validar duplicados (TipoDoc + NumDoc)
             var existente = await _clienteService.ObtenerClientePorDocumento(cliente.TipoDocumento, cliente.NumeroDocumento);
@@ -126,24 +131,70 @@ public class ClienteController : Controller
                 return await PrepararRespuestaAjax(false, cliente, null);
             }
 
-            // Crear el cliente primero
+            List<VehiculoData>? vehiculosData = null;
+            
+            if (!string.IsNullOrWhiteSpace(vehiculosDataJson))
+            {
+                try
+                {
+                    var options = new System.Text.Json.JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+                    
+                    vehiculosData = System.Text.Json.JsonSerializer.Deserialize<List<VehiculoData>>(vehiculosDataJson, options);
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    vehiculosData = new List<VehiculoData>();
+                }
+            }
+
+            if (vehiculosData == null || !vehiculosData.Any())
+            {
+                ModelState.AddModelError("", "Debe agregar al menos un vehículo.");
+                return await PrepararRespuestaAjax(false, cliente, null);
+            }
+
             await _clienteService.CrearCliente(cliente);
 
-            // Asignar el cliente como dueño de los vehículos seleccionados
-            if (cliente.VehiculosIds != null && cliente.VehiculosIds.Any())
+            var vehiculosIds = new List<string>();
+
+            foreach (var vehiculoData in vehiculosData)
             {
-                foreach (var vehiculoId in cliente.VehiculosIds)
+                if (vehiculoData.EsNuevo)
                 {
-                    var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
+                    var nuevoVehiculo = new Vehiculo
+                    {
+                        Id = "",
+                        Patente = vehiculoData.Patente.ToUpper(), // Convertir a mayúsculas
+                        Marca = vehiculoData.Marca,
+                        Modelo = vehiculoData.Modelo,
+                        Color = vehiculoData.Color,
+                        TipoVehiculo = vehiculoData.TipoVehiculo,
+                        ClienteId = cliente.Id,
+                        ClienteNombreCompleto = cliente.NombreCompleto,
+                        Estado = "Activo"
+                    };
+
+                    await _vehiculoService.CrearVehiculo(nuevoVehiculo);
+                    vehiculosIds.Add(nuevoVehiculo.Id);
+                }
+                else if (!string.IsNullOrEmpty(vehiculoData.Id))
+                {
+                    var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoData.Id);
                     if (vehiculo != null)
                     {
-                        // Asignar el cliente como dueño
                         vehiculo.ClienteId = cliente.Id;
                         vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
                         await _vehiculoService.ActualizarVehiculo(vehiculo);
+                        vehiculosIds.Add(vehiculo.Id);
                     }
                 }
             }
+
+            cliente.VehiculosIds = vehiculosIds;
+            await _clienteService.ActualizarCliente(cliente);
 
             return await PrepararRespuestaAjax(true, cliente, "Creacion de cliente");
         }
@@ -154,12 +205,26 @@ public class ClienteController : Controller
         }
     }
 
+    // Clase auxiliar para deserializar datos de vehículos
+    private class VehiculoData
+    {
+        public string? Id { get; set; }
+        public string Patente { get; set; } = "";
+        public string Marca { get; set; } = "";
+        public string Modelo { get; set; } = "";
+        public string Color { get; set; } = "";
+        public string TipoVehiculo { get; set; } = "";
+        public bool EsNuevo { get; set; }
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ActualizarClienteAjax(Cliente cliente)
+    public async Task<IActionResult> ActualizarClienteAjax(Cliente cliente, string? vehiculosDataJson = null)
     {
         try
         {
+            ModelState.Remove("VehiculosDataJson"); // No es parte del modelo Cliente
+            
             if (!ModelState.IsValid) return await PrepararRespuestaAjax(false, cliente, null);
 
             var clienteActual = await _clienteService.ObtenerCliente(cliente.Id);
@@ -169,39 +234,69 @@ public class ClienteController : Controller
                 return await PrepararRespuestaAjax(false, cliente, null);
             }
 
-            // Obtener vehículos anteriores y nuevos
-            var vehiculosAnteriores = clienteActual.VehiculosIds ?? new List<string>();
-            var vehiculosNuevos = cliente.VehiculosIds ?? new List<string>();
-
-            // Determinar qué vehículos se removieron y cuáles se agregaron
-            var vehiculosRemovidos = vehiculosAnteriores.Except(vehiculosNuevos).ToList();
-            var vehiculosAgregados = vehiculosNuevos.Except(vehiculosAnteriores).ToList();
-
-            // Quitar la asignación de los vehículos removidos
-            foreach (var vehiculoId in vehiculosRemovidos)
+            List<VehiculoData>? vehiculosData = null;
+            
+            if (!string.IsNullOrWhiteSpace(vehiculosDataJson))
             {
-                var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
-                if (vehiculo != null)
+                try
                 {
-                    vehiculo.ClienteId = null;
-                    vehiculo.ClienteNombreCompleto = null;
-                    await _vehiculoService.ActualizarVehiculo(vehiculo);
+                    var options = new System.Text.Json.JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+                    
+                    vehiculosData = System.Text.Json.JsonSerializer.Deserialize<List<VehiculoData>>(vehiculosDataJson, options);
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    vehiculosData = new List<VehiculoData>();
                 }
             }
 
-            // Asignar los nuevos vehículos
-            foreach (var vehiculoId in vehiculosAgregados)
+            if (vehiculosData == null || !vehiculosData.Any())
             {
-                var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
-                if (vehiculo != null)
+                ModelState.AddModelError("", "Debe tener al menos un vehículo.");
+                return await PrepararRespuestaAjax(false, cliente, null);
+            }
+
+            var vehiculosIds = new List<string>();
+
+            foreach (var vehiculoData in vehiculosData)
+            {
+                if (vehiculoData.EsNuevo)
                 {
-                    vehiculo.ClienteId = cliente.Id;
-                    vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
-                    await _vehiculoService.ActualizarVehiculo(vehiculo);
+                    var nuevoVehiculo = new Vehiculo
+                    {
+                        Id = "",
+                        Patente = vehiculoData.Patente.ToUpper(), // Convertir a mayúsculas
+                        Marca = vehiculoData.Marca,
+                        Modelo = vehiculoData.Modelo,
+                        Color = vehiculoData.Color,
+                        TipoVehiculo = vehiculoData.TipoVehiculo,
+                        ClienteId = cliente.Id,
+                        ClienteNombreCompleto = cliente.NombreCompleto,
+                        Estado = "Activo"
+                    };
+
+                    await _vehiculoService.CrearVehiculo(nuevoVehiculo);
+                    vehiculosIds.Add(nuevoVehiculo.Id);
+                }
+                else if (!string.IsNullOrEmpty(vehiculoData.Id))
+                {
+                    var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoData.Id);
+                    if (vehiculo != null)
+                    {
+                        vehiculo.ClienteId = cliente.Id;
+                        vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
+                        await _vehiculoService.ActualizarVehiculo(vehiculo);
+                        vehiculosIds.Add(vehiculo.Id);
+                    }
                 }
             }
 
+            cliente.VehiculosIds = vehiculosIds;
             await _clienteService.ActualizarCliente(cliente);
+
             return await PrepararRespuestaAjax(true, cliente, "Actualizacion de cliente");
         }
         catch (Exception ex)
@@ -238,32 +333,6 @@ public class ClienteController : Controller
         catch (Exception ex)
         {
             return Json(new { success = false, message = $"Error al reactivar cliente: {ex.Message}" });
-        }
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> ObtenerVehiculosDisponibles()
-    {
-        try
-        {
-            var vehiculos = await _vehiculoService.ObtenerVehiculosDisponibles();
-            return Json(new
-            {
-                success = true,
-                vehiculos = vehiculos.Select(v => new
-                {
-                    id = v.Id,
-                    patente = v.Patente,
-                    marca = v.Marca,
-                    modelo = v.Modelo,
-                    color = v.Color,
-                    tipoVehiculo = v.TipoVehiculo
-                })
-            });
-        }
-        catch (Exception ex)
-        {
-            return Json(new { success = false, message = ex.Message });
         }
     }
 

@@ -147,12 +147,16 @@ public class VehiculoController : Controller
     {
         try
         {
-            // IMPORTANTE: Remover validaciones de campos que pueden estar vacíos o generados
+            // IMPORTANTE: Remover validaciones de campos generados
             ModelState.Remove("Id");
             ModelState.Remove("ClienteNombreCompleto"); // No viene del form
-            ModelState.Remove("ClienteId"); // Puede estar vacío en creación rápida (vehículos sin dueño)
             
-            // Log detallado para debug
+            // NUEVO: ClienteId es obligatorio ahora
+            if (string.IsNullOrWhiteSpace(vehiculo.ClienteId))
+            {
+                ModelState.AddModelError("ClienteId", "El vehículo debe tener un dueño asignado.");
+            }
+            
             if (!ModelState.IsValid)
             {
                 var errors = ModelState
@@ -181,17 +185,17 @@ public class VehiculoController : Controller
                 ModelState.AddModelError("Patente", "Ya existe un vehículo con esta patente.");
                 return await PrepararRespuestaAjax(false, vehiculo, null);
             }
-            
-            // Los vehículos creados desde el modal no tienen cliente aún
-            if (string.IsNullOrWhiteSpace(vehiculo.ClienteId))
+
+            // Obtener nombre completo del cliente
+            var cliente = await _clienteService.ObtenerCliente(vehiculo.ClienteId);
+            if (cliente == null)
             {
-                vehiculo.ClienteId = null;
-                vehiculo.ClienteNombreCompleto = null;
+                ModelState.AddModelError("ClienteId", "El cliente especificado no existe.");
+                return await PrepararRespuestaAjax(false, vehiculo, null);
             }
 
-            // Los vehículos pueden crearse sin cliente (desde el modal de cliente)
-            // La asignación de dueño se hace desde Cliente -> Vehículo
-            vehiculo.Estado = "Activo"; // Siempre activo al crear
+            vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
+            vehiculo.Estado = "Activo";
             
             await _vehiculoService.CrearVehiculo(vehiculo);
             return await PrepararRespuestaAjax(true, vehiculo, "Creacion de vehiculo");

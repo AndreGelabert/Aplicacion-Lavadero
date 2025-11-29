@@ -129,18 +129,6 @@ public class VehiculoService
     }
 
     /// <summary>
-    /// Obtiene vehículos disponibles (Activos y sin dueño asignado)
-    /// </summary>
-    public async Task<List<Vehiculo>> ObtenerVehiculosDisponibles()
-    {
-        var snapshot = await _firestore.Collection("vehiculos").GetSnapshotAsync();
-        return snapshot.Documents
-            .Select(d => d.ConvertTo<Vehiculo>())
-            .Where(v => v.Estado == "Activo" && string.IsNullOrEmpty(v.ClienteId))
-            .ToList();
-    }
-
-    /// <summary>
     /// Cambia el estado de un vehículo (Activar/Desactivar)
     /// </summary>
     public async Task CambiarEstadoVehiculo(string id, string nuevoEstado)
