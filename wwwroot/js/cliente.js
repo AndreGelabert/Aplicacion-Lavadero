@@ -50,44 +50,44 @@
         checkEditMode();
         //window.CommonUtils?.setupDefaultFilterForm();
     }
-    
+
     /**
      * Configura listener para cuando se abre el acordeón del formulario
      */
     function setupAccordionListener() {
         const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
         const accordionBody = document.getElementById('accordion-flush-body-1');
-        
+
         if (!accordionBtn || !accordionBody) {
             console.warn('⚠ Elementos del acordeón no encontrados');
             return;
         }
-        
+
         // Usar MutationObserver para detectar cuando el acordeón se abre
         const observer = new MutationObserver(async (mutations) => {
             for (const mutation of mutations) {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                     const isHidden = accordionBody.classList.contains('hidden');
-                    
+
                     if (!isHidden) {
                         // El acordeón se acaba de abrir
-                        
+
                         // Esperar un poco para asegurar que el DOM esté completamente renderizado
                         await new Promise(resolve => setTimeout(resolve, 100));
-                        
+
                         // Verificar si ya se inicializó (para evitar duplicados)
                         if (vehiculosDisponibles.length === 0) {
                             await setupVehiculoSelector();
                         } else {
-                            
+
                         }
                     }
                 }
             }
         });
-        
+
         observer.observe(accordionBody, { attributes: true });
-        
+
     }
 
     // ===================== Configuración inicial =====================
@@ -109,7 +109,7 @@
             const accordion = document.getElementById('accordion-flush-body-1');
             if (accordion) {
                 accordion.classList.remove('hidden');
-                
+
                 // CRÍTICO: Inicializar selector de vehículos cuando se abre en modo edición
                 await setupVehiculoSelector();
             }
@@ -122,29 +122,33 @@
         const searchInput = document.getElementById("simple-search");
         if (!searchInput) return;
 
-        const cloned = searchInput.cloneNode(true);
-        searchInput.parentNode.replaceChild(cloned, searchInput);
+        // Remover event listeners anteriores
+        const newSearchInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
 
-        currentSearchTerm = cloned.value?.trim() || '';
+        // Inicializar estado con el valor actual del input (si vino del servidor)
+        currentSearchTerm = newSearchInput.value?.trim() || '';
 
-        cloned.addEventListener("input", function () {
-            clearTimeout(searchTimeout);
-            const term = this.value.trim();
+        newSearchInput.addEventListener('input', function () {
+            const searchTerm = this.value.trim();
 
-            if (term === '') {
+            if (searchTimeout) clearTimeout(searchTimeout);
+
+            if (searchTerm === '') {
+                // Limpiar estado y volver a la tabla base
                 currentSearchTerm = '';
                 currentPage = 1;
                 reloadClienteTable();
                 return;
             }
 
+            // Debouncing
             searchTimeout = setTimeout(() => {
-                currentSearchTerm = term;
-                currentPage = 1;
-                reloadClienteTable();
+                performServerSearch(searchTerm);
             }, 500);
         });
     }
+
 
     // ===================== Ordenamiento tabla =====================
 
@@ -163,13 +167,17 @@
     function buildFilterParams() {
         const form = document.getElementById('filterForm');
         const params = new URLSearchParams();
-        if (!form) return params;
-
-        const fd = new FormData(form);
-        for (const [k, v] of fd.entries()) {
-            params.append(k, v);
+        if (form) {
+            const formData = new FormData(form);
+            for (const [key, value] of formData.entries()) {
+                params.append(key, value);
+            }
         }
         return params;
+    }
+
+    function getCurrentTablePage() {
+        return parseInt(document.getElementById('cliente-table-container')?.dataset.currentPage || '1');
     }
 
     function reloadClienteTable(page) {
@@ -181,7 +189,7 @@
         params.set('sortBy', currentSortBy);
         params.set('sortOrder', currentSortOrder);
 
-        const url = `/Cliente/TablePartial?${params.toString()}`;
+        const url = `/Cliente/SearchPartial?${params.toString()}`;
 
         fetch(url, {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Cache-Control': 'no-cache' },
@@ -194,20 +202,12 @@
 
                 const cp = document.getElementById('current-page-value')?.value;
                 if (cp && container) container.dataset.currentPage = cp;
-
-                window.CommonUtils?.setupDefaultFilterForm?.();
             })
             .catch(error => {
                 console.error('Error al cargar la tabla:', error);
                 showTableMessage('error', 'Error al cargar los datos.');
             });
     }
-
-    window.reloadClienteTable = reloadClienteTable;
-
-    window.getCurrentTablePage = function () {
-        return parseInt(document.getElementById('cliente-table-container')?.dataset.currentPage || '1');
-    };
 
     function setupFilterFormSubmit() {
         const form = document.getElementById('filterForm');
@@ -279,13 +279,13 @@
     window.loadClienteForm = async function (id) {
         // NUEVO: Limpiar vehículos temporales al cambiar/limpiar formulario
         vehiculosTemporales = [];
-        
+
         const url = id ? `/Cliente/FormPartial?id=${id}` : "/Cliente/FormPartial";
 
         try {
             const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             const html = await response.text();
-            
+
             document.getElementById("cliente-form-container").innerHTML = html;
 
             const isEdit = !!document.getElementById('Id')?.value;
@@ -312,7 +312,7 @@
                 }, 100);
             }
         } catch (error) {
-            
+
         }
     };
 
@@ -322,13 +322,13 @@
             event.preventDefault();
             event.stopPropagation();
         }
-        
+
         // Prevenir doble envío
         const submitBtn = document.getElementById('submit-button');
         if (submitBtn && submitBtn.disabled) {
             return false;
         }
-        
+
         // Validar que al menos haya un vehículo
         if (vehiculosSeleccionados.length === 0) {
             showFormMessage('error', 'Debe agregar al menos un vehículo para el cliente.');
@@ -364,7 +364,7 @@
 
             // Crear FormData del formulario
             const formData = new FormData(form);
-            
+
             // Agregar el JSON al FormData
             const vehiculosJson = JSON.stringify(vehiculosData);
             formData.set('VehiculosDataJson', vehiculosJson);
@@ -380,7 +380,7 @@
             const html = await response.text();
 
             document.getElementById('cliente-form-container').innerHTML = html;
-            
+
             // CRÍTICO: Esperar setup de vehículos
             await setupVehiculoSelector();
 
@@ -395,7 +395,7 @@
                 vehiculosTemporales = [];
                 vehiculosSeleccionados = [];
                 vehiculosDisponibles = [];
-                
+
                 showFormMessage('success', msg || 'Cliente guardado correctamente. Los vehículos han sido asignados.', 4000);
                 reloadClienteTable(1);
 
@@ -403,7 +403,7 @@
                 setTimeout(() => {
                     const accordionBody = document.getElementById('accordion-flush-body-1');
                     const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
-                    
+
                     if (accordionBody && accordionBtn && !accordionBody.classList.contains('hidden')) {
                         accordionBtn.click(); // Simular click para cerrar correctamente
                     }
@@ -438,7 +438,7 @@
 
     async function setupVehiculoSelector() {
         await loadVehiculosDisponibles();
-        
+
         const searchInput = document.getElementById('vehiculo-search');
         if (searchInput) {
             searchInput.addEventListener('input', function () {
@@ -456,14 +456,14 @@
     async function loadVehiculosDisponibles() {
         try {
             const clienteId = document.getElementById('Id')?.value;
-            
+
             if (clienteId) {
                 const respCliente = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${clienteId}`);
                 const dataCliente = await respCliente.json();
 
                 const vehiculosCliente = dataCliente.success ? (dataCliente.vehiculos || []) : [];
                 vehiculosDisponibles = [...vehiculosCliente, ...vehiculosTemporales];
-                
+
                 const hiddenIds = document.getElementById('VehiculosIdsData')?.value;
                 if (hiddenIds) {
                     const ids = hiddenIds.split(',').map(x => x.trim()).filter(x => x);
@@ -477,7 +477,7 @@
             }
 
             updateVehiculosSeleccionadosList();
-            
+
         } catch (error) {
             console.error('Error al cargar vehículos:', error);
             vehiculosDisponibles = [];
@@ -495,7 +495,7 @@
         }
 
         let lista = vehiculos;
-        
+
         if (filterText && filterText.trim()) {
             const lower = filterText.toLowerCase();
             lista = lista.filter(v =>
@@ -528,11 +528,11 @@
     window.showVehiculoDropdown = function () {
         const dropdown = document.getElementById('vehiculo-dropdown');
         const searchInput = document.getElementById('vehiculo-search');
-        
+
         if (!dropdown) return;
 
         const inputValue = searchInput?.value?.trim() || '';
-        
+
         if (vehiculosDisponibles.length > 0) {
             renderVehiculosDropdown(vehiculosDisponibles, inputValue);
             dropdown.classList.remove('hidden');
@@ -550,7 +550,7 @@
         if (!dropdown) return;
 
         const searchText = txt?.trim() || '';
-        
+
         if (searchText === '') {
             if (vehiculosDisponibles.length > 0) {
                 renderVehiculosDropdown(vehiculosDisponibles, '');
@@ -613,7 +613,7 @@
     window.removerVehiculoSeleccionado = function (id) {
         // Remover de seleccionados
         vehiculosSeleccionados = vehiculosSeleccionados.filter(v => v.id !== id);
-        
+
         // NUEVO: Si es un vehículo temporal, lo devolvemos al dropdown
         const vehiculoRemovido = vehiculosTemporales.find(v => v.id === id);
         if (vehiculoRemovido) {
@@ -622,7 +622,7 @@
                 vehiculosDisponibles.push(vehiculoRemovido);
             }
         }
-        
+
         updateVehiculosSeleccionadosList();
         renderVehiculosDropdown(vehiculosDisponibles, document.getElementById('vehiculo-search')?.value || '');
     };
@@ -899,7 +899,7 @@
 
                 // Obtener el modal y crear instancia Flowbite
                 const modalEl = document.getElementById('quick-create-modal');
-                
+
                 // Configurar Flowbite Modal
                 if (typeof Modal !== 'undefined') {
                     const modalOptions = {
@@ -924,7 +924,7 @@
                     modalEl.classList.remove('hidden');
                     modalEl.classList.add('flex');
                     document.body.style.overflow = 'hidden';
-                    
+
                     // Crear backdrop manual
                     const backdrop = document.createElement('div');
                     backdrop.setAttribute('modal-backdrop', '');
@@ -949,11 +949,11 @@
                             return false;
                         };
                     }
-                    
+
                     // Convertir patente a mayúsculas mientras se escribe
                     const patenteInput = form.querySelector("#Patente");
                     if (patenteInput) {
-                        patenteInput.addEventListener('input', function() {
+                        patenteInput.addEventListener('input', function () {
                             const start = this.selectionStart;
                             const end = this.selectionEnd;
                             this.value = this.value.toUpperCase();
@@ -969,7 +969,7 @@
         // Intentar cerrar con Flowbite
         if (window._quickVehiculoModal && typeof window._quickVehiculoModal.hide === 'function') {
             window._quickVehiculoModal.hide();
-            
+
             // Limpiar después de cerrar
             setTimeout(() => {
                 const modalEl = document.getElementById('quick-create-modal');
@@ -984,18 +984,18 @@
                 modalEl.classList.remove('flex');
                 setTimeout(() => modalEl.remove(), 300);
             }
-            
+
             const backdrop = document.querySelector('[modal-backdrop]');
             if (backdrop) backdrop.remove();
         }
-        
+
         document.body.style.overflow = '';
     };
 
     function submitQuickVehiculo(form) {
         // Prevenir el envío al servidor
         event.preventDefault();
-        
+
         // Validar el formulario usando el API de validación del navegador
         if (!form.checkValidity()) {
             form.reportValidity();
@@ -1016,7 +1016,7 @@
         }
 
         // Verificar que no exista ya en los vehículos temporales o seleccionados
-        const patenteExiste = [...vehiculosTemporales, ...vehiculosSeleccionados].some(v => 
+        const patenteExiste = [...vehiculosTemporales, ...vehiculosSeleccionados].some(v =>
             v.patente && v.patente.toLowerCase() === patente.toLowerCase()
         );
 
@@ -1046,9 +1046,9 @@
 
         // Actualizar UI
         updateVehiculosSeleccionadosList();
-        
+
         showFormMessage('success', `Vehículo ${patente} agregado. Guarde el cliente para registrarlo.`, 4000);
-        
+
         return false;
     }
 
@@ -1190,7 +1190,7 @@
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
                 .then(response => response.json())
-                .then (data => {
+                .then(data => {
                     cerrarModal('clienteConfirmModal');
                     if (data.success) {
                         showTableMessage('success', data.message);
@@ -1230,7 +1230,7 @@
                 try {
                     const resp = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${id}`);
                     const data = await resp.json();
-                    
+
                     let mensajeVehiculos = '';
                     if (data.success && data.vehiculos && data.vehiculos.length > 0) {
                         const vehiculosActivos = data.vehiculos.filter(v => v.estado === 'Activo');
@@ -1245,7 +1245,7 @@
                             </div>`;
                         }
                     }
-                    
+
                     message.innerHTML = `
                         <p class="mb-2">¿Confirma desactivar el cliente <strong>${escapeHtml(nombre)}</strong>?</p>
                         ${mensajeVehiculos}
@@ -1258,7 +1258,7 @@
                 try {
                     const resp = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${id}`);
                     const data = await resp.json();
-                    
+
                     let mensajeVehiculos = '';
                     if (data.success && data.vehiculos && data.vehiculos.length > 0) {
                         const vehiculosInactivos = data.vehiculos.filter(v => v.estado === 'Inactivo');
@@ -1273,7 +1273,7 @@
                             </div>`;
                         }
                     }
-                    
+
                     message.innerHTML = `
                         <p class="mb-2">¿Confirma reactivar el cliente <strong>${escapeHtml(nombre)}</strong>?</p>
                         ${mensajeVehiculos}
@@ -1382,7 +1382,7 @@
                 const estadoClass = v.estado === 'Activo'
                     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
                     : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-                
+
                 vehiculosHtml += `
                     <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
                         <div class="flex justify-between items-center">
@@ -1427,7 +1427,7 @@
 
         // Obtener el modal y crear instancia Flowbite
         const modalEl = document.getElementById('ver-vehiculos-modal');
-        
+
         // Configurar Flowbite Modal
         if (typeof Modal !== 'undefined') {
             const modalOptions = {
@@ -1562,6 +1562,50 @@
                 }, 750);
             }
         }, disappearMs);
+    }
+
+    // ===================== Búsqueda en servidor =====================
+
+    function performServerSearch(searchTerm = '') {
+        // Persistir búsqueda activa
+        currentSearchTerm = searchTerm;
+
+        // Obtener filtros actuales
+        const filterForm = document.getElementById('filterForm');
+        const params = new URLSearchParams();
+
+        if (filterForm) {
+            const formData = new FormData(filterForm);
+            for (const [key, value] of formData.entries()) {
+                params.append(key, value);
+            }
+        }
+
+        // Agregar término de búsqueda y ordenamiento
+        params.set('searchTerm', searchTerm);
+        params.set('pageNumber', '1');
+        params.set('sortBy', currentSortBy);
+        params.set('sortOrder', currentSortOrder);
+
+        const url = `/Cliente/SearchPartial?${params.toString()}`;
+
+        fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Cache-Control': 'no-cache' },
+            cache: 'no-store'
+        })
+            .then(r => r.text())
+            .then(html => {
+                const cont = document.getElementById('cliente-table-container');
+                if (cont) {
+                    cont.innerHTML = html;
+                    const cp = document.getElementById('current-page-value')?.value;
+                    if (cp) cont.dataset.currentPage = cp;
+                }
+            })
+            .catch(e => {
+                console.error('Error en búsqueda:', e);
+                showTableMessage('error', 'Error al realizar la búsqueda.');
+            });
     }
 
     // ===================== Utilidades =====================
