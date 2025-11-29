@@ -48,7 +48,7 @@
         setupModals();
         setupAccordionListener(); // NUEVO: Escuchar apertura del acordeón
         checkEditMode();
-        window.CommonUtils?.setupDefaultFilterForm();
+        //window.CommonUtils?.setupDefaultFilterForm();
     }
     
     /**
@@ -268,7 +268,7 @@
 
         if (history.replaceState) history.replaceState({}, document.title, '/Cliente/Index');
 
-        window.CommonUtils?.setupDefaultFilterForm?.();
+        //window.CommonUtils?.setupDefaultFilterForm?.();
 
         reloadClienteTable(1);
         showTableMessage('info', 'Filtros restablecidos.');
@@ -1303,7 +1303,7 @@
                 icon.setAttribute('fill', 'currentColor');
                 icon.setAttribute('viewBox', '0 0 20 20');
                 icon.setAttribute('class', 'w-8 h-8 text-red-600 dark:text-red-400');
-                icon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.293a1 1 0 00-1.414-1.414L10 7.586 7.707 5.293a1 1 0 00-1.414 1.414L8.586 10l-2.293 2.293a1 1 0 001.414 1.414L10 11.414l2.293 2.293a1 1 0 001.414-1.414L13.06 10l2.293-2.293a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd"/>`;
+                icon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.293a1 1 0 00-1.414-1.414L10 7.586 7.707 5.293a1 1 0 00-1.414 1.414L8.586 10l-2.293 2.293a.75.75 0 001.414 1.414L10 11.414l1.72 1.72a.75.75 0 001.414-1.414L13.06 10l2.293-2.293a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd"/>`;
             } else {
                 iconWrapper.className = 'w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 p-2 flex items-center justify-center mx-auto mb-3.5';
                 icon.setAttribute('fill', 'currentColor');

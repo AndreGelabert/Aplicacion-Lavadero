@@ -45,7 +45,8 @@
         setupDynamicFilters();
         setupModals();
         checkEditMode();
-        window.CommonUtils?.setupDefaultFilterForm();
+        // Solo llamar una vez al inicio, no después de cada recarga
+        // window.CommonUtils?.setupDefaultFilterForm();
     }
 
     // ===================== Configuración inicial =====================
@@ -85,26 +86,28 @@
         const searchInput = document.getElementById("simple-search");
         if (!searchInput) return;
 
-        const cloned = searchInput.cloneNode(true);
-        searchInput.parentNode.replaceChild(cloned, searchInput);
+        // Remover event listeners anteriores
+        const newSearchInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
 
-        currentSearchTerm = cloned.value?.trim() || '';
+        // Inicializar estado con el valor actual del input (si vino del servidor)
+        currentSearchTerm = newSearchInput.value?.trim() || '';
 
-        cloned.addEventListener("input", function () {
-            clearTimeout(searchTimeout);
-            const term = this.value.trim();
+        newSearchInput.addEventListener('input', function () {
+            const searchTerm = this.value.trim();
 
-            if (term === '') {
+            if (searchTimeout) clearTimeout(searchTimeout);
+
+            if (searchTerm === '') {
+                // limpiar estado y volver a la tabla base
                 currentSearchTerm = '';
-                currentPage = 1;
-                reloadVehiculoTable();
+                reloadVehiculoTable(1);
                 return;
             }
 
+            // Debouncing
             searchTimeout = setTimeout(() => {
-                currentSearchTerm = term;
-                currentPage = 1;
-                reloadVehiculoTable();
+                performServerSearch(searchTerm);
             }, 500);
         });
     }
@@ -157,8 +160,6 @@
 
                 const cp = document.getElementById('current-page-value')?.value;
                 if (cp && container) container.dataset.currentPage = cp;
-
-                window.CommonUtils?.setupDefaultFilterForm?.();
             })
             .catch(error => {
                 console.error('Error al cargar la tabla:', error);
@@ -339,7 +340,8 @@
 
         if (history.replaceState) history.replaceState({}, document.title, '/Vehiculo/Index');
 
-        window.CommonUtils?.setupDefaultFilterForm?.();
+        // NO llamar a setupDefaultFilterForm aquí, ya manejamos el estado manualmente
+        // window.CommonUtils?.setupDefaultFilterForm?.();
 
         reloadVehiculoTable(1);
         showTableMessage('info', 'Filtros restablecidos.');
@@ -407,7 +409,7 @@
             submitBtn.innerHTML = `
                 <svg class="animate-spin h-5 w-5 mr-2 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 100-16 8 8 0 000 16zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 Guardando...
             `;
@@ -428,7 +430,7 @@
                 const msg = resp.headers.get('X-Form-Message');
                 return resp.text().then(html => ({ html, valid, msg }));
             })
-            .then(result => {
+            .then (result => {
                 document.getElementById('vehiculo-form-container').innerHTML = result.html;
 
                 if (result.valid) {
@@ -743,6 +745,46 @@
         modal.setAttribute('aria-hidden', 'true');
         document.querySelectorAll('[modal-backdrop]').forEach(b => b.remove());
         document.body.classList.remove('overflow-hidden');
+    }
+
+    // ===================== Código actualizado =====================
+
+    function performServerSearch(searchTerm = '') {
+        // Persistir búsqueda activa
+        currentSearchTerm = searchTerm;
+
+        // Obtener filtros actuales
+        const filterForm = document.getElementById('filterForm');
+        const params = new URLSearchParams();
+
+        if (filterForm) {
+            const formData = new FormData(filterForm);
+            for (const [key, value] of formData.entries()) {
+                params.append(key, value);
+            }
+        }
+
+        // Agregar término de búsqueda y ordenamiento
+        const currentSort = getCurrentSort();
+        params.set('searchTerm', searchTerm);
+        params.set('pageNumber', '1');
+        params.set('sortBy', currentSort.sortBy);
+        params.set('sortOrder', currentSort.sortOrder);
+
+        const url = `/Vehiculo/SearchPartial?${params.toString()}`;
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.text())
+        .then(html => {
+            const cont = document.getElementById('vehiculo-table-container');
+            cont.innerHTML = html;
+            const cp = document.getElementById('current-page-value')?.value;
+            if (cp) cont.dataset.currentPage = cp;
+        })
+        .catch(e => {
+            console.error('Error en búsqueda:', e);
+            showTableMessage('error', 'Error al realizar la búsqueda.');
+        });
     }
 
 })();
