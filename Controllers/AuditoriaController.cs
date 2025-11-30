@@ -15,7 +15,9 @@ public class AuditoriaController : Controller
     private readonly ServicioService _servicioService;
     private readonly TipoServicioService _tipoServicioService;
     private readonly TipoVehiculoService _tipoVehiculoService;
-    private readonly PaqueteServicioService _paqueteServicioService; // NUEVO
+    private readonly PaqueteServicioService _paqueteServicioService;
+    private readonly ClienteService _clienteService; // NUEVO
+    private readonly VehiculoService _vehiculoService; // NUEVO
 
     /// <summary>
     /// Crea una nueva instancia del controlador de auditoría.
@@ -26,20 +28,26 @@ public class AuditoriaController : Controller
     /// <param name="tipoServicioService">Servicio de tipos de servicio.</param>
     /// <param name="tipoVehiculoService">Servicio de tipos de vehículo.</param>
     /// <param name="paqueteServicioService">Servicio de paquetes de servicio.</param>
+    /// <param name="clienteService">Servicio de clientes.</param>
+    /// <param name="vehiculoService">Servicio de vehículos.</param>
     public AuditoriaController(
         AuditService auditService,
         PersonalService personalService,
         ServicioService servicioService,
         TipoServicioService tipoServicioService,
         TipoVehiculoService tipoVehiculoService,
-        PaqueteServicioService paqueteServicioService) // NUEVO
+        PaqueteServicioService paqueteServicioService,
+        ClienteService clienteService, // NUEVO
+        VehiculoService vehiculoService) // NUEVO
     {
         _auditService = auditService;
         _personalService = personalService;
         _servicioService = servicioService;
         _tipoServicioService = tipoServicioService;
         _tipoVehiculoService = tipoVehiculoService;
-        _paqueteServicioService = paqueteServicioService; // NUEVO
+        _paqueteServicioService = paqueteServicioService;
+        _clienteService = clienteService; // NUEVO
+        _vehiculoService = vehiculoService; // NUEVO
     }
     #endregion
 
@@ -380,6 +388,14 @@ public class AuditoriaController : Controller
         var paqueteIds = registros.Where(r => r.TargetType == "PaqueteServicio" && !string.IsNullOrWhiteSpace(r.TargetId))
             .Select(r => r.TargetId).Distinct().ToList();
 
+        // NUEVO: Resolver nombres de Cliente
+        var clienteIds = registros.Where(r => r.TargetType == "Cliente" && !string.IsNullOrWhiteSpace(r.TargetId))
+            .Select(r => r.TargetId).Distinct().ToList();
+
+        // NUEVO: Resolver nombres de Vehículo
+        var vehiculoIds = registros.Where(r => r.TargetType == "Vehiculo" && !string.IsNullOrWhiteSpace(r.TargetId))
+            .Select(r => r.TargetId).Distinct().ToList();
+
         // Resolver nombres de Servicio (llamadas individuales; pageSize pequeño)
         var servDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in servicioIds)
@@ -420,6 +436,30 @@ public class AuditoriaController : Controller
             catch { paqueteDict[id] = null; }
         }
 
+        // NUEVO: Resolver nombres de Cliente
+        var clienteDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var id in clienteIds)
+        {
+            try
+            {
+                var c = await _clienteService.ObtenerCliente(id);
+                clienteDict[id] = c?.NombreCompleto;
+            }
+            catch { clienteDict[id] = null; }
+        }
+
+        // NUEVO: Resolver nombres de Vehículo (mostrar patente - marca modelo)
+        var vehiculoDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var id in vehiculoIds)
+        {
+            try
+            {
+                var v = await _vehiculoService.ObtenerVehiculo(id);
+                vehiculoDict[id] = v != null ? $"{v.Patente} - {v.Marca} {v.Modelo}" : null;
+            }
+            catch { vehiculoDict[id] = null; }
+        }
+
         // Construir modelo de vista
         return registros.Select(r =>
         {
@@ -443,6 +483,12 @@ public class AuditoriaController : Controller
                         break;
                     case "PaqueteServicio":
                         paqueteDict.TryGetValue(r.TargetId, out targetName);
+                        break;
+                    case "Cliente":
+                        clienteDict.TryGetValue(r.TargetId, out targetName);
+                        break;
+                    case "Vehiculo":
+                        vehiculoDict.TryGetValue(r.TargetId, out targetName);
                         break;
                     case "Empleado":
                     case "Usuario":

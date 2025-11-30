@@ -179,6 +179,9 @@ public class ClienteController : Controller
 
                     await _vehiculoService.CrearVehiculo(nuevoVehiculo);
                     vehiculosIds.Add(nuevoVehiculo.Id);
+                    
+                    // Registrar evento de creación de vehículo
+                    await RegistrarEvento("Creacion de vehiculo", nuevoVehiculo.Id, "Vehiculo");
                 }
                 else if (!string.IsNullOrEmpty(vehiculoData.Id))
                 {
@@ -293,6 +296,9 @@ public class ClienteController : Controller
 
                     await _vehiculoService.CrearVehiculo(nuevoVehiculo);
                     vehiculosIds.Add(nuevoVehiculo.Id);
+                    
+                    // Registrar evento de creación de vehículo
+                    await RegistrarEvento("Creacion de vehiculo", nuevoVehiculo.Id, "Vehiculo");
                 }
                 else if (!string.IsNullOrEmpty(vehiculoData.Id))
                 {
