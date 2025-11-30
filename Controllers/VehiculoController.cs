@@ -167,6 +167,50 @@ public class VehiculoController : Controller
         });
     }
 
+    /// <summary>
+    /// Verifica si existe un vehículo inactivo sin dueño con la misma patente, marca y modelo
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> VerificarVehiculoSinDueno(string patente, string marca, string modelo)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(patente) || string.IsNullOrWhiteSpace(marca) || string.IsNullOrWhiteSpace(modelo))
+            {
+                return Json(new { existe = false });
+            }
+
+            var vehiculoExistente = await _vehiculoService.ObtenerVehiculoPorPatente(patente.ToUpper());
+            
+            if (vehiculoExistente != null && 
+                vehiculoExistente.Estado == "Inactivo" && 
+                string.IsNullOrEmpty(vehiculoExistente.ClienteId) &&
+                vehiculoExistente.Marca.Equals(marca, StringComparison.OrdinalIgnoreCase) &&
+                vehiculoExistente.Modelo.Equals(modelo, StringComparison.OrdinalIgnoreCase))
+            {
+                return Json(new
+                {
+                    existe = true,
+                    vehiculo = new
+                    {
+                        id = vehiculoExistente.Id,
+                        patente = vehiculoExistente.Patente,
+                        marca = vehiculoExistente.Marca,
+                        modelo = vehiculoExistente.Modelo,
+                        color = vehiculoExistente.Color,
+                        tipoVehiculo = vehiculoExistente.TipoVehiculo
+                    }
+                });
+            }
+
+            return Json(new { existe = false });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { existe = false, error = ex.Message });
+        }
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CrearVehiculoAjax(Vehiculo vehiculo)

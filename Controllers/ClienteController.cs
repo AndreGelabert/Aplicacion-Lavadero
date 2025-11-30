@@ -185,10 +185,21 @@ public class ClienteController : Controller
                     var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoData.Id);
                     if (vehiculo != null)
                     {
+                        // Actualizar datos del vehículo (reasignación o actualización normal)
                         vehiculo.ClienteId = cliente.Id;
                         vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
+                        vehiculo.Color = vehiculoData.Color; // Actualizar color si cambió
+                        vehiculo.TipoVehiculo = vehiculoData.TipoVehiculo; // Actualizar tipo si cambió
+                        vehiculo.Estado = "Activo"; // Reactivar si estaba inactivo
+                        
                         await _vehiculoService.ActualizarVehiculo(vehiculo);
                         vehiculosIds.Add(vehiculo.Id);
+                        
+                        // Registrar evento de reasignación si corresponde
+                        if (vehiculoData.EsReasignacion)
+                        {
+                            await RegistrarEvento("Reasignacion de vehiculo sin dueno a nuevo cliente", vehiculo.Id, "Vehiculo");
+                        }
                     }
                 }
             }
@@ -215,6 +226,7 @@ public class ClienteController : Controller
         public string Color { get; set; } = "";
         public string TipoVehiculo { get; set; } = "";
         public bool EsNuevo { get; set; }
+        public bool EsReasignacion { get; set; } // Para indicar reasignación de vehículo sin dueño
     }
 
     [HttpPost]
@@ -287,10 +299,21 @@ public class ClienteController : Controller
                     var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoData.Id);
                     if (vehiculo != null)
                     {
+                        // Actualizar datos del vehículo (reasignación o actualización normal)
                         vehiculo.ClienteId = cliente.Id;
                         vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
+                        vehiculo.Color = vehiculoData.Color; // Actualizar color si cambió
+                        vehiculo.TipoVehiculo = vehiculoData.TipoVehiculo; // Actualizar tipo si cambió
+                        vehiculo.Estado = "Activo"; // Reactivar si estaba inactivo
+                        
                         await _vehiculoService.ActualizarVehiculo(vehiculo);
                         vehiculosIds.Add(vehiculo.Id);
+                        
+                        // Registrar evento de reasignación si corresponde
+                        if (vehiculoData.EsReasignacion)
+                        {
+                            await RegistrarEvento("Reasignacion de vehiculo sin dueno a cliente existente", vehiculo.Id, "Vehiculo");
+                        }
                     }
                 }
             }

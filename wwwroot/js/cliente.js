@@ -359,7 +359,8 @@
                 modelo: v.modelo,
                 color: v.color,
                 tipoVehiculo: v.tipoVehiculo,
-                esNuevo: v.esTemporalNuevo || false
+                esNuevo: v.esTemporalNuevo || false,
+                esReasignacion: v.esReasignacion || false // Flag para reasignación
             }));
 
             // Crear FormData del formulario
@@ -992,10 +993,10 @@
         document.body.style.overflow = '';
     };
 
-    function submitQuickVehiculo(form) {
+    async function submitQuickVehiculo(form) {
         // Prevenir el envío al servidor
         event.preventDefault();
-
+        
         // Validar el formulario usando el API de validación del navegador
         if (!form.checkValidity()) {
             form.reportValidity();
@@ -1025,6 +1026,21 @@
             return false;
         }
 
+        // NUEVO: Verificar si existe un vehículo sin dueño con estos datos
+        try {
+            const verificarUrl = `/Vehiculo/VerificarVehiculoSinDueno?patente=${encodeURIComponent(patente)}&marca=${encodeURIComponent(marca)}&modelo=${encodeURIComponent(modelo)}`;
+            const respuesta = await fetch(verificarUrl);
+            const data = await respuesta.json();
+
+            if (data.existe && data.vehiculo) {
+                // Mostrar modal de confirmación de reasignación
+                mostrarModalReasignacion(data.vehiculo, color, tipoVehiculo);
+                return false;
+            }
+        } catch (error) {
+            console.error('Error al verificar vehículo:', error);
+        }
+
         // Crear vehículo temporal (solo en memoria)
         const vehiculoTemporal = {
             id: 'temp_' + Date.now(), // ID temporal único
@@ -1048,9 +1064,172 @@
         updateVehiculosSeleccionadosList();
 
         showFormMessage('success', `Vehículo ${patente} agregado. Guarde el cliente para registrarlo.`, 4000);
-
+        
         return false;
     }
+
+    /**
+     * Muestra modal de confirmación para reasignar vehículo existente
+     */
+    function mostrarModalReasignacion(vehiculoExistente, nuevoColor, nuevoTipo) {
+        // Eliminar modal anterior si existe
+        const existingModal = document.getElementById("reasignar-vehiculo-modal");
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const colorCambio = vehiculoExistente.color !== nuevoColor;
+        const tipoCambio = vehiculoExistente.tipoVehiculo !== nuevoTipo;
+
+        const cambiosHTML = colorCambio || tipoCambio ? `
+            <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
+                <p class="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">
+                    📝 Se detectaron cambios que se aplicarán:
+                </p>
+                <ul class="text-xs text-blue-700 dark:text-blue-400 list-disc list-inside space-y-1">
+                    ${colorCambio ? `<li>Color: <span class="font-semibold">${escapeHtml(vehiculoExistente.color)}</span> → <span class="font-semibold">${escapeHtml(nuevoColor)}</span></li>` : ''}
+                    ${tipoCambio ? `<li>Tipo: <span class="font-semibold">${escapeHtml(vehiculoExistente.tipoVehiculo)}</span> → <span class="font-semibold">${escapeHtml(nuevoTipo)}</span></li>` : ''}
+                </ul>
+            </div>
+        ` : '';
+
+        const modalHtml = `
+            <div id="reasignar-vehiculo-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                <div class="relative p-4 w-full max-w-md max-h-full">
+                    <div class="relative bg-white rounded-lg shadow dark:bg-gray-800">
+                        <button type="button" onclick="closeReasignarModal()" class="absolute top-3 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white">
+                            <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                            </svg>
+                            <span class="sr-only">Cerrar</span>
+                        </button>
+                        <div class="p-6 text-center">
+                            <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 p-2 flex items-center justify-center mx-auto mb-3.5">
+                                <svg class="w-8 h-8 text-yellow-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <h3 class="mb-2 text-lg font-normal text-gray-900 dark:text-white">Vehículo Ya Registrado</h3>
+                            <div class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+                                <p class="mb-2">Este vehículo ya está registrado en el sistema pero <strong>no tiene dueño asignado</strong>.</p>
+                                <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-left mb-3">
+                                    <p class="font-semibold text-gray-900 dark:text-white mb-1">📋 Datos actuales:</p>
+                                    <ul class="text-xs space-y-1">
+                                        <li>• Patente: <span class="font-semibold">${escapeHtml(vehiculoExistente.patente)}</span></li>
+                                        <li>• Marca/Modelo: <span class="font-semibold">${escapeHtml(vehiculoExistente.marca)} ${escapeHtml(vehiculoExistente.modelo)}</span></li>
+                                        <li>• Color: <span class="font-semibold">${escapeHtml(vehiculoExistente.color)}</span></li>
+                                        <li>• Tipo: <span class="font-semibold">${escapeHtml(vehiculoExistente.tipoVehiculo)}</span></li>
+                                        <li>• Estado: <span class="font-semibold text-red-600">Inactivo</span></li>
+                                    </ul>
+                                </div>
+                                ${cambiosHTML}
+                                <p class="mt-3 font-medium">¿Desea reasignarlo a este cliente?</p>
+                            </div>
+                            <div class="flex justify-center items-center space-x-4">
+                                <button type="button" onclick="closeReasignarModal()" class="py-2 px-4 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600">
+                                    No, cancelar
+                                </button>
+                                <button type="button" onclick="confirmarReasignacion('${vehiculoExistente.id}', '${escapeHtml(nuevoColor)}', '${escapeHtml(nuevoTipo)}')" class="py-2 px-4 text-sm font-medium text-center text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-900">
+                                    Sí, reasignar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        const modalEl = document.getElementById('reasignar-vehiculo-modal');
+        
+        if (typeof Modal !== 'undefined') {
+            const modalOptions = {
+                placement: 'center',
+                backdrop: 'static',
+                closable: false
+            };
+            const modal = new Modal(modalEl, modalOptions);
+            modal.show();
+            window._reasignarVehiculoModal = modal;
+        } else {
+            modalEl.classList.remove('hidden');
+            modalEl.classList.add('flex');
+        }
+    }
+
+    window.closeReasignarModal = function () {
+        if (window._reasignarVehiculoModal && typeof window._reasignarVehiculoModal.hide === 'function') {
+            window._reasignarVehiculoModal.hide();
+            setTimeout(() => {
+                const modalEl = document.getElementById('reasignar-vehiculo-modal');
+                if (modalEl) modalEl.remove();
+                window._reasignarVehiculoModal = null;
+            }, 300);
+        } else {
+            const modalEl = document.getElementById("reasignar-vehiculo-modal");
+            if (modalEl) {
+                modalEl.classList.add('hidden');
+                modalEl.classList.remove('flex');
+                setTimeout(() => modalEl.remove(), 300);
+            }
+        }
+    };
+
+    window.confirmarReasignacion = async function (vehiculoId, nuevoColor, nuevoTipo) {
+        try {
+            // Obtener el vehículo completo del servidor
+            const respuesta = await fetch(`/Vehiculo/FormPartial?id=${vehiculoId}`);
+            const vehiculoHTML = await respuesta.text();
+            
+            // Parsear para extraer datos (alternativa: hacer un endpoint específico)
+            const respVehiculo = await fetch(`/Vehiculo/VerificarVehiculoSinDueno?patente=${encodeURIComponent('')}&marca=&modelo=`);
+            
+            // En su lugar, vamos a usar los datos que ya tenemos y hacer la petición correcta
+            const vehiculoData = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${vehiculoId}`);
+            
+            // Método más directo: agregar el vehículo existente con los nuevos datos
+            const vehiculoReasignado = {
+                id: vehiculoId, // ID del vehículo existente
+                patente: '', // Se llenará desde el modal original
+                marca: '',
+                modelo: '',
+                color: nuevoColor,
+                tipoVehiculo: nuevoTipo,
+                esTemporalNuevo: false, // NO es nuevo, es reasignación
+                esReasignacion: true // Flag especial para indicar reasignación
+            };
+
+            // Obtener datos del formulario que se quedó abierto
+            const quickModal = document.getElementById('quick-create-modal');
+            if (quickModal) {
+                const form = quickModal.querySelector('form');
+                if (form) {
+                    vehiculoReasignado.patente = form.querySelector('#Patente')?.value?.trim().toUpperCase() || '';
+                    vehiculoReasignado.marca = form.querySelector('#Marca')?.value?.trim() || '';
+                    vehiculoReasignado.modelo = form.querySelector('#Modelo')?.value?.trim() || '';
+                }
+            }
+
+            // Agregar a las listas
+            vehiculosSeleccionados.push(vehiculoReasignado);
+            
+            // Si estaba en disponibles, removerlo
+            vehiculosDisponibles = vehiculosDisponibles.filter(v => v.id !== vehiculoId);
+
+            // Cerrar ambos modales
+            closeReasignarModal();
+            closeQuickCreateModal();
+
+            // Actualizar UI
+            updateVehiculosSeleccionadosList();
+
+            showFormMessage('success', `Vehículo ${vehiculoReasignado.patente} reasignado. Guarde el cliente para confirmar.`, 4000);
+        } catch (error) {
+            console.error('Error al reasignar vehículo:', error);
+            showFormMessage('error', 'Error al procesar la reasignación.', 5000);
+        }
+    };
 
     // ===================== Modales =====================
 
