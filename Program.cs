@@ -1,3 +1,5 @@
+using Firebase.Middleware;
+using Firebase.Models;
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Firestore;
@@ -5,7 +7,6 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Localization;
 using System.Globalization;
-using Firebase.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -110,6 +111,23 @@ builder.Services.AddScoped<VehiculoService>();
 builder.Services.AddScoped<TipoDocumentoService>();
 builder.Services.AddHttpClient<Firebase.Services.AuthenticationService>();
 builder.Services.AddScoped<Firebase.Services.AuthenticationService>();
+
+// Configuración WhatsApp Business API
+builder.Services.Configure<WhatsAppSettings>(builder.Configuration.GetSection("WhatsApp"));
+
+// HttpClient para Meta WhatsApp API
+builder.Services.AddHttpClient<Firebase.Services.MetaWhatsAppService>(client =>
+{
+    client.BaseAddress = new Uri("https://graph.facebook.com/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+// Servicios WhatsApp
+builder.Services.AddScoped<Firebase.Services.WhatsAppSessionService>();
+builder.Services.AddScoped<Firebase.Services.WhatsAppFlowService>();
+
+// Background Service para limpieza automática de sesiones
+builder.Services.AddHostedService<Firebase.BackgroundServices.WhatsAppSessionCleanupService>();
 
 var app = builder.Build();
 
