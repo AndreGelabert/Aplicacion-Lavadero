@@ -168,7 +168,7 @@ public class VehiculoController : Controller
     }
 
     /// <summary>
-    /// Verifica si existe un vehículo inactivo sin dueño con la misma patente, marca y modelo
+    /// Verifica si existe un vehículo con la patente especificada y determina si puede ser reasignado
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> VerificarVehiculoSinDueno(string patente, string marca, string modelo)
@@ -182,10 +182,34 @@ public class VehiculoController : Controller
 
             var vehiculoExistente = await _vehiculoService.ObtenerVehiculoPorPatente(patente.ToUpper());
             
-            if (vehiculoExistente != null && 
-                vehiculoExistente.Estado == "Inactivo" && 
-                string.IsNullOrEmpty(vehiculoExistente.ClienteId) &&
-                vehiculoExistente.Marca.Equals(marca, StringComparison.OrdinalIgnoreCase) &&
+            // CASO 1: No existe ningún vehículo con esa patente → OK, puede crear
+            if (vehiculoExistente == null)
+            {
+                return Json(new { existe = false });
+            }
+            
+            // CASO 2: Existe vehículo ACTIVO → ERROR, patente duplicada
+            if (vehiculoExistente.Estado == "Activo")
+            {
+                return Json(new 
+                { 
+                    existe = false, 
+                    error = $"Ya existe un vehículo activo con la patente {vehiculoExistente.Patente} ({vehiculoExistente.TipoVehiculo} - {vehiculoExistente.Marca} {vehiculoExistente.Modelo}). No se pueden registrar patentes duplicadas."
+                });
+            }
+            
+            // CASO 3: Existe vehículo INACTIVO pero CON DUEÑO → ERROR, no se puede reasignar
+            if (!string.IsNullOrEmpty(vehiculoExistente.ClienteId))
+            {
+                return Json(new 
+                { 
+                    existe = false, 
+                    error = $"Ya existe un vehículo con la patente {vehiculoExistente.Patente} asignado al cliente {vehiculoExistente.ClienteNombreCompleto}. No se pueden registrar patentes duplicadas."
+                });
+            }
+            
+            // CASO 4: Existe vehículo INACTIVO, SIN DUEÑO, con misma marca y modelo → REASIGNACIÓN
+            if (vehiculoExistente.Marca.Equals(marca, StringComparison.OrdinalIgnoreCase) &&
                 vehiculoExistente.Modelo.Equals(modelo, StringComparison.OrdinalIgnoreCase))
             {
                 return Json(new
@@ -202,12 +226,18 @@ public class VehiculoController : Controller
                     }
                 });
             }
-
-            return Json(new { existe = false });
+            
+            // CASO 5: Existe vehículo INACTIVO, SIN DUEÑO, pero DIFERENTE marca/modelo → ERROR
+            // Esto indica que la misma patente perteneció a un vehículo distinto
+            return Json(new 
+            { 
+                existe = false, 
+                error = $"Ya existe un vehículo registrado con la patente {vehiculoExistente.Patente}, pero es un {vehiculoExistente.TipoVehiculo} {vehiculoExistente.Marca} {vehiculoExistente.Modelo}. Está ingresando datos de un {marca} {modelo}. Verifique la patente."
+            });
         }
         catch (Exception ex)
         {
-            return Json(new { existe = false, error = ex.Message });
+            return Json(new { existe = false, error = $"Error al verificar vehículo: {ex.Message}" });
         }
     }
 

@@ -886,6 +886,9 @@
                                     </button>
                                 </div>
                                 <div class="p-4 md:p-5 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+                                    <!-- Contenedor de mensajes dentro del modal -->
+                                    <div id="quick-vehiculo-messages" class="mb-4"></div>
+                                    
                                     <div id="quick-vehiculo-form-content">
                                         ${html}
                                     </div>
@@ -933,6 +936,12 @@
                     document.body.appendChild(backdrop);
                 }
 
+                // Limpiar mensajes previos si el contenedor ya existe
+                const messagesContainer = document.getElementById('quick-vehiculo-messages');
+                if (messagesContainer) {
+                    messagesContainer.innerHTML = '';
+                }
+
                 // Configurar el formulario
                 const form = modalEl.querySelector("form");
                 if (form) {
@@ -967,6 +976,12 @@
     };
 
     window.closeQuickCreateModal = function () {
+        // Limpiar mensajes del modal
+        const messagesContainer = document.getElementById('quick-vehiculo-messages');
+        if (messagesContainer) {
+            messagesContainer.innerHTML = '';
+        }
+        
         // Intentar cerrar con Flowbite
         if (window._quickVehiculoModal && typeof window._quickVehiculoModal.hide === 'function') {
             window._quickVehiculoModal.hide();
@@ -1012,7 +1027,7 @@
 
         // Validaciones básicas
         if (!patente || !marca || !modelo || !color || !tipoVehiculo) {
-            showFormMessage('error', 'Todos los campos son obligatorios.', 5000);
+            showQuickVehiculoMessage('error', 'Todos los campos son obligatorios.', 5000);
             return false;
         }
 
@@ -1022,23 +1037,30 @@
         );
 
         if (patenteExiste) {
-            showFormMessage('error', 'Ya existe un vehículo con esta patente en la lista.', 5000);
+            showQuickVehiculoMessage('error', 'Ya existe un vehículo con esta patente en la lista.', 5000);
             return false;
         }
 
-        // NUEVO: Verificar si existe un vehículo sin dueño con estos datos
+        // NUEVO: Verificar si existe un vehículo con esta patente
         try {
             const verificarUrl = `/Vehiculo/VerificarVehiculoSinDueno?patente=${encodeURIComponent(patente)}&marca=${encodeURIComponent(marca)}&modelo=${encodeURIComponent(modelo)}`;
             const respuesta = await fetch(verificarUrl);
             const data = await respuesta.json();
 
             if (data.existe && data.vehiculo) {
-                // Mostrar modal de confirmación de reasignación
+                // Existe vehículo inactivo sin dueño → Mostrar modal de reasignación
                 mostrarModalReasignacion(data.vehiculo, color, tipoVehiculo);
+                return false;
+            }
+            
+            if (data.existe === false && data.error) {
+                // Existe un vehículo activo o con dueño → Bloquear
+                showQuickVehiculoMessage('error', data.error, 8000);
                 return false;
             }
         } catch (error) {
             console.error('Error al verificar vehículo:', error);
+            showQuickVehiculoMessage('error', 'Error al verificar el vehículo. Intente nuevamente.', 5000);
         }
 
         // Crear vehículo temporal (solo en memoria)
@@ -1788,6 +1810,49 @@
     }
 
     // ===================== Utilidades =====================
+
+    /**
+     * Muestra un mensaje dentro del modal de creación rápida de vehículo
+     */
+    function showQuickVehiculoMessage(type, message, disappearMs = 5000) {
+        const container = document.getElementById('quick-vehiculo-messages');
+        if (!container) {
+            // Si no existe el contenedor, usar la notificación estándar
+            showFormMessage(type, message, disappearMs);
+            return;
+        }
+
+        const color = type === 'success'
+            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z' }
+            : type === 'info'
+                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z' }
+                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z' };
+
+        container.innerHTML = `
+            <div class="flex items-center p-4 mb-4 text-sm rounded-lg border bg-${color.bg} text-${color.text} border-${color.border} dark:bg-gray-800 dark:text-${color.darkText}" role="alert">
+                <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="${color.icon}"/>
+                </svg>
+                <span class="sr-only">${type === 'error' ? 'Error' : type === 'success' ? 'Success' : 'Info'}</span>
+                <div class="flex-1">${escapeHtml(message)}</div>
+            </div>
+        `;
+
+        // Auto-ocultar después del tiempo especificado
+        if (disappearMs > 0) {
+            setTimeout(() => {
+                const alertEl = container.firstElementChild;
+                if (alertEl) {
+                    alertEl.classList.add('opacity-0', 'transition-opacity', 'duration-700');
+                    setTimeout(() => {
+                        try { 
+                            container.innerHTML = ''; 
+                        } catch { }
+                    }, 700);
+                }
+            }, disappearMs);
+        }
+    }
 
     function escapeHtml(text) {
         if (!text) return '';
