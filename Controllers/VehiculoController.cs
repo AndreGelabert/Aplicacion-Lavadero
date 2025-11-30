@@ -371,20 +371,10 @@ public class VehiculoController : Controller
         }
     }
 
-    [HttpPost]
-    public async Task<IActionResult> ReactivateVehiculo(string id)
-    {
-        try
-        {
-            await _vehiculoService.CambiarEstadoVehiculo(id, "Activo");
-            await RegistrarEvento("Reactivacion de vehiculo", id, "Vehiculo");
-            return Json(new { success = true, message = "Vehículo reactivado correctamente." });
-        }
-        catch (Exception ex)
-        {
-            return Json(new { success = false, message = $"Error al reactivar vehículo: {ex.Message}" });
-        }
-    }
+    // NOTA: La reactivación de vehículos solo se permite de dos formas:
+    // 1. Al reactivar el cliente (reactivación en cascada)
+    // 2. Al reasignar el vehículo a un nuevo cliente
+    // Por lo tanto, este endpoint ha sido removido para mantener consistencia
 
     [HttpPost]
     public async Task<IActionResult> EliminarVehiculo(string id)

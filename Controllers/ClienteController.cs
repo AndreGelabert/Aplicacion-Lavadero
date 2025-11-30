@@ -387,8 +387,11 @@ public class ClienteController : Controller
             // Obtener vehículos del cliente
             var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(id);
             
-            // Reactivar todos los vehículos inactivos del cliente
-            foreach (var vehiculo in vehiculos.Where(v => v.Estado == "Inactivo"))
+            // Contar vehículos inactivos ANTES de reactivarlos
+            var cantidadVehiculosInactivos = vehiculos.Count(v => v.Estado == "Inactivo");
+            
+            // Reactivar todos los vehículos inactivos del cliente (solo si tienen dueño)
+            foreach (var vehiculo in vehiculos.Where(v => v.Estado == "Inactivo" && !string.IsNullOrEmpty(v.ClienteId)))
             {
                 await _vehiculoService.CambiarEstadoVehiculo(vehiculo.Id, "Activo");
                 await RegistrarEvento("Reactivacion de vehiculo (por reactivacion de cliente)", vehiculo.Id, "Vehiculo");
@@ -398,9 +401,8 @@ public class ClienteController : Controller
             await _clienteService.CambiarEstadoCliente(id, "Activo");
             await RegistrarEvento("Reactivacion de cliente", id, "Cliente");
             
-            var cantidadVehiculos = vehiculos.Count(v => v.Estado == "Inactivo");
-            var mensaje = cantidadVehiculos > 0 
-                ? $"Cliente reactivado correctamente. Se reactivaron {cantidadVehiculos} vehículo(s) asociado(s)."
+            var mensaje = cantidadVehiculosInactivos > 0 
+                ? $"Cliente reactivado correctamente. Se reactivaron {cantidadVehiculosInactivos} vehículo(s) asociado(s)."
                 : "Cliente reactivado correctamente.";
             
             return Json(new { success = true, message = mensaje });
