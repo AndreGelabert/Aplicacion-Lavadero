@@ -109,6 +109,30 @@ public class ClienteController : Controller
         return PartialView("_ClienteForm", cliente);
     }
 
+    /// <summary>
+    /// Obtiene el detalle de un cliente para mostrar en modal.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> DetailPartial(string id)
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            return BadRequest("ID de cliente no válido");
+        }
+
+        var cliente = await _clienteService.ObtenerCliente(id);
+        if (cliente == null)
+        {
+            return NotFound("Cliente no encontrado");
+        }
+
+        // Obtener vehículos del cliente
+        var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(id);
+        ViewBag.Vehiculos = vehiculos;
+
+        return PartialView("_ClienteDetail", cliente);
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CrearClienteAjax(Cliente cliente, string? vehiculosDataJson = null)

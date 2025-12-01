@@ -1,0 +1,107 @@
+@model Firebase.Models.Cliente
+@{
+    var vehiculos = ViewBag.Vehiculos as List<Firebase.Models.Vehiculo> ?? new List<Firebase.Models.Vehiculo>();
+}
+
+<div class="space-y-4">
+    <!-- Información del Cliente -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Información Personal</h4>
+            <div class="space-y-2">
+                <div>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Nombre Completo:</span>
+                    <p class="text-sm font-medium text-gray-900 dark:text-white">@Model.NombreCompleto</p>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Documento:</span>
+                    <p class="text-sm text-gray-900 dark:text-white">@Model.TipoDocumento: @Model.NumeroDocumento</p>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Email:</span>
+                    <p class="text-sm text-gray-900 dark:text-white">@(Model.Email ?? "No especificado")</p>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Contacto</h4>
+            <div class="space-y-2">
+                <div>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Teléfono:</span>
+                    <p class="text-sm text-gray-900 dark:text-white">@(Model.Telefono ?? "No especificado")</p>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Estado:</span>
+                    @if (Model.Estado == "Activo")
+                    {
+                        <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-green-800 bg-green-100 rounded dark:bg-green-900 dark:text-green-300">
+                            Activo
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-red-800 bg-red-100 rounded dark:bg-red-900 dark:text-red-300">
+                            Inactivo
+                        </span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vehículos del Cliente -->
+    <div>
+        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Vehículos (@vehiculos.Count)
+        </h4>
+        @if (vehiculos.Any())
+        {
+            <div class="space-y-2">
+                @foreach (var vehiculo in vehiculos)
+                {
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="flex-shrink-0">
+                                <svg class="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">
+                                    @vehiculo.Patente
+                                </p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">
+                                    @vehiculo.Marca @vehiculo.Modelo (@vehiculo.Color) - @vehiculo.TipoVehiculo
+                                </p>
+                            </div>
+                        </div>
+                        <div>
+                            @if (vehiculo.Estado == "Activo")
+                            {
+                                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-green-800 bg-green-100 rounded dark:bg-green-900 dark:text-green-300">
+                                    Activo
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-800 bg-gray-100 rounded dark:bg-gray-700 dark:text-gray-300">
+                                    Inactivo
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-6 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <svg class="w-12 h-12 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+                </svg>
+                <p class="text-sm">Este cliente no tiene vehículos registrados</p>
+            </div>
+        }
+    </div>
+</div>
