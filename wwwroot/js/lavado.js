@@ -1094,7 +1094,10 @@
         }
     };
 
-    // Iniciar monitoreo cuando la página carga
-    document.addEventListener('DOMContentLoaded', iniciarMonitoreoTiempo);
+    // Iniciar monitoreo cuando la página carga (con protección contra múltiples llamadas)
+    if (!window._lavadoMonitoreoInicializado) {
+        window._lavadoMonitoreoInicializado = true;
+        document.addEventListener('DOMContentLoaded', iniciarMonitoreoTiempo);
+    }
 
 })();
