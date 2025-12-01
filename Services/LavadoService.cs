@@ -322,6 +322,12 @@ namespace Firebase.Services
 
             servicio.TiempoFinalizacion = DateTime.UtcNow;
             await ActualizarLavado(lavado);
+            
+            // Iniciar el siguiente servicio automáticamente
+            await IniciarSiguienteServicioAutomaticamente(lavado);
+            
+            // Verificar si todos los servicios están finalizados para finalizar el lavado
+            await FinalizarLavadoAutomaticamente(lavado);
         }
 
         /// <summary>
@@ -358,9 +364,29 @@ namespace Firebase.Services
                     servicio.Estado = "Realizado";
                 }
                 servicio.TiempoFinalizacion = DateTime.UtcNow;
+                
+                // Iniciar el siguiente servicio automáticamente
+                await IniciarSiguienteServicioAutomaticamente(lavado);
+            }
+            else
+            {
+                // Iniciar la siguiente etapa automáticamente
+                var siguienteEtapa = servicio.Etapas
+                    .Where(e => e.Estado == "Pendiente")
+                    .OrderBy(e => servicio.Etapas.IndexOf(e))
+                    .FirstOrDefault();
+                    
+                if (siguienteEtapa != null)
+                {
+                    siguienteEtapa.Estado = "EnProceso";
+                    siguienteEtapa.TiempoInicio = DateTime.UtcNow;
+                }
             }
 
             await ActualizarLavado(lavado);
+            
+            // Verificar si todos los servicios están finalizados para finalizar el lavado
+            await FinalizarLavadoAutomaticamente(lavado);
         }
 
         /// <summary>
@@ -536,6 +562,13 @@ namespace Firebase.Services
             if (etapa.Estado != "Pendiente")
                 throw new InvalidOperationException("La etapa ya fue iniciada o finalizada.");
 
+            // Verificar que no haya otra etapa en proceso en este servicio
+            var etapaEnProceso = servicio.Etapas.FirstOrDefault(e => e.Estado == "EnProceso");
+            if (etapaEnProceso != null && etapaEnProceso.EtapaId != etapaId)
+            {
+                throw new InvalidOperationException($"No se puede iniciar esta etapa porque la etapa '{etapaEnProceso.Nombre}' está en proceso. Las etapas deben completarse en orden.");
+            }
+
             etapa.Estado = "EnProceso";
             etapa.TiempoInicio = DateTime.UtcNow;
 
@@ -669,6 +702,75 @@ namespace Firebase.Services
         #endregion
 
         #region Métodos Privados
+
+        private async Task IniciarSiguienteServicioAutomaticamente(Lavado lavado)
+        {
+            // Buscar el siguiente servicio pendiente en orden
+            var siguienteServicio = lavado.Servicios
+                .Where(s => s.Estado == "Pendiente")
+                .OrderBy(s => s.Orden)
+                .FirstOrDefault();
+                
+            if (siguienteServicio != null)
+            {
+                siguienteServicio.Estado = "EnProceso";
+                siguienteServicio.TiempoInicio = DateTime.UtcNow;
+                
+                // Si el servicio tiene etapas, iniciar la primera
+                if (siguienteServicio.Etapas.Any())
+                {
+                    var primeraEtapa = siguienteServicio.Etapas.First();
+                    primeraEtapa.Estado = "EnProceso";
+                    primeraEtapa.TiempoInicio = DateTime.UtcNow;
+                }
+                
+                await ActualizarLavado(lavado);
+            }
+        }
+
+        private async Task FinalizarLavadoAutomaticamente(Lavado lavado)
+        {
+            // Recargar el lavado para tener los datos más recientes
+            var lavadoActualizado = await ObtenerLavado(lavado.Id);
+            if (lavadoActualizado == null) return;
+            
+            // Verificar si todos los servicios están finalizados o cancelados
+            var serviciosPendientes = lavadoActualizado.Servicios
+                .Where(s => s.Estado == "Pendiente" || s.Estado == "EnProceso")
+                .ToList();
+            
+            if (!serviciosPendientes.Any())
+            {
+                // Determinar el estado final del lavado
+                var serviciosRealizados = lavadoActualizado.Servicios.Where(s => s.Estado == "Realizado" || s.Estado == "RealizadoParcialmente").ToList();
+                var serviciosCancelados = lavadoActualizado.Servicios.Where(s => s.Estado == "Cancelado").ToList();
+                
+                if (serviciosCancelados.Count == lavadoActualizado.Servicios.Count)
+                {
+                    // Todos los servicios fueron cancelados - el lavado ya debería estar cancelado
+                    return;
+                }
+                else if (serviciosRealizados.Any() && serviciosCancelados.Any())
+                {
+                    // Algunos realizados, algunos cancelados
+                    lavadoActualizado.Estado = ESTADO_REALIZADO_PARCIALMENTE;
+                }
+                else if (serviciosRealizados.Count == lavadoActualizado.Servicios.Count)
+                {
+                    // Todos los servicios realizados completamente
+                    lavadoActualizado.Estado = ESTADO_REALIZADO;
+                }
+                else if (serviciosRealizados.Any())
+                {
+                    // Hay servicios realizados (algunos parcialmente)
+                    var hayParciales = lavadoActualizado.Servicios.Any(s => s.Estado == "RealizadoParcialmente");
+                    lavadoActualizado.Estado = hayParciales ? ESTADO_REALIZADO_PARCIALMENTE : ESTADO_REALIZADO;
+                }
+                
+                lavadoActualizado.TiempoFinalizacion = DateTime.UtcNow;
+                await ActualizarLavado(lavadoActualizado);
+            }
+        }
 
         private async Task<List<Lavado>> ObtenerLavadosFiltrados(
             List<string>? estados,

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ================================================
  * LAVADO.JS - FUNCIONALIDAD DE LA PÁGINA DE LAVADOS
  * ================================================
@@ -240,6 +240,18 @@
     }
 
     window.seleccionarCliente = function (id, nombre) {
+        // Si ya había un cliente seleccionado, limpiar datos anteriores
+        if (window.lavadoData.clienteId && window.lavadoData.clienteId !== id) {
+            // Limpiar vehículos seleccionados
+            window.lavadoData.vehiculosSeleccionados.forEach(vehiculoId => {
+                eliminarServiciosVehiculo(vehiculoId);
+            });
+            window.lavadoData.vehiculosSeleccionados = [];
+            window.lavadoData.serviciosPorVehiculo = {};
+            window.lavadoData.serviciosDisponibles = {};
+            window.lavadoData.paquetesDisponibles = {};
+        }
+
         document.getElementById('clienteId').value = id;
         document.getElementById('clienteSearch').value = nombre;
         document.getElementById('clienteResultados').classList.add('hidden');
@@ -268,10 +280,11 @@
                 vehiculosList.innerHTML = vehiculos.map(v => `
                     <div class="vehiculo-card p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border-2 border-transparent hover:border-blue-500 cursor-pointer transition-all"
                          data-vehiculo-id="${v.id}" data-tipo-vehiculo="${v.tipoVehiculo}"
-                         onclick="toggleVehiculo('${v.id}', '${v.tipoVehiculo}')">
+                         onclick="toggleVehiculo('${v.id}', '${v.tipoVehiculo}', event)">
                         <div class="flex items-center gap-3">
                             <input type="checkbox" class="vehiculo-checkbox w-5 h-5 text-blue-600 rounded focus:ring-blue-500" 
-                                   id="vehiculo-${v.id}" data-vehiculo-id="${v.id}">
+                                   id="vehiculo-${v.id}" data-vehiculo-id="${v.id}"
+                                   onchange="handleCheckboxChange('${v.id}', '${v.tipoVehiculo}')" onclick="event.stopPropagation()">
                             <div>
                                 <div class="font-medium text-gray-900 dark:text-white">${escapeHtml(v.patente)}</div>
                                 <div class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</div>
@@ -289,11 +302,10 @@
         }
     }
 
-    window.toggleVehiculo = async function (vehiculoId, tipoVehiculo) {
+    // Función separada para manejar el cambio del checkbox
+    window.handleCheckboxChange = async function (vehiculoId, tipoVehiculo) {
         const checkbox = document.getElementById(`vehiculo-${vehiculoId}`);
         const card = checkbox.closest('.vehiculo-card');
-
-        checkbox.checked = !checkbox.checked;
 
         if (checkbox.checked) {
             card.classList.add('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30');
@@ -307,6 +319,21 @@
 
         actualizarResumen();
         actualizarBotonSubmit();
+    };
+
+    window.toggleVehiculo = async function (vehiculoId, tipoVehiculo, event) {
+        // Si el click fue en el checkbox, no hacer nada (ya se maneja en handleCheckboxChange)
+        if (event && event.target.type === 'checkbox') {
+            return;
+        }
+
+        const checkbox = document.getElementById(`vehiculo-${vehiculoId}`);
+
+        // Si el click no fue en el checkbox, hacer toggle manualmente
+        checkbox.checked = !checkbox.checked;
+
+        // Disparar el cambio manualmente
+        await handleCheckboxChange(vehiculoId, tipoVehiculo);
     };
 
     async function cargarServiciosParaVehiculo(vehiculoId, tipoVehiculo) {
@@ -337,18 +364,18 @@
                 
                 ${paquetes.length > 0 ? `
                 <div class="mb-4">
-                    <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Paquetes de Servicios</label>
-                    <select onchange="agregarPaquete('${vehiculoId}', this.value)" 
+                    <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Paquete de Servicios (solo uno)</label>
+                    <select id="paquete-select-${vehiculoId}" onchange="agregarPaquete('${vehiculoId}', this.value)" 
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                         <option value="">Seleccionar paquete...</option>
-                        ${paquetes.map(p => `<option value="${p.id}">${escapeHtml(p.nombre)} - ${formatCurrency(p.precio)} (${p.descuento}% desc.)</option>`).join('')}
+                        ${paquetes.map(p => `<option value="${p.id}" data-precio="${p.precioOriginal || p.precio}">${escapeHtml(p.nombre)} - ${formatCurrency(p.precioOriginal || p.precio)} (${p.descuento}% desc.) = ${formatCurrency(p.precio)}</option>`).join('')}
                     </select>
                 </div>
                 ` : ''}
                 
                 <div class="mb-4">
                     <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Servicios Individuales</label>
-                    <select onchange="agregarServicio('${vehiculoId}', this.value)"
+                    <select id="servicios-select-${vehiculoId}" onchange="agregarServicio('${vehiculoId}', this.value)"
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                         <option value="">Agregar servicio...</option>
                         ${servicios.map(s => `<option value="${s.id}" data-tipo="${s.tipo}">${escapeHtml(s.nombre)} - ${formatCurrency(s.precio)} (${s.tiempoEstimado} min)</option>`).join('')}
@@ -391,6 +418,24 @@
         const paquete = window.lavadoData.paquetesDisponibles[vehiculoId]?.find(p => p.id === paqueteId);
         if (!paquete) return;
 
+        // Verificar si ya hay un paquete seleccionado
+        const paqueteExistente = window.lavadoData.serviciosPorVehiculo[vehiculoId]?.find(s => s.paqueteId);
+        if (paqueteExistente) {
+            showTableMessage('error', 'Solo se puede seleccionar un paquete por lavado. Elimine el paquete actual primero.');
+            event.target.value = '';
+            return;
+        }
+
+        // Calcular el precio del paquete: suma de servicios - descuento
+        let precioTotalServicios = 0;
+        paquete.servicios.forEach(s => {
+            const servicioCompleto = window.lavadoData.serviciosDisponibles[vehiculoId]?.find(serv => serv.id === s.id);
+            if (servicioCompleto) {
+                precioTotalServicios += servicioCompleto.precio;
+            }
+        });
+        const precioPaquete = precioTotalServicios - (precioTotalServicios * paquete.descuento / 100);
+
         // Agregar todos los servicios del paquete
         paquete.servicios.forEach(s => {
             // Verificar si ya existe un servicio del mismo tipo
@@ -401,11 +446,19 @@
                     window.lavadoData.serviciosPorVehiculo[vehiculoId].push({
                         ...servicioCompleto,
                         paqueteId: paquete.id,
-                        paqueteNombre: paquete.nombre
+                        paqueteNombre: paquete.nombre,
+                        precioPaquete: precioPaquete // Guardar precio calculado del paquete
                     });
                 }
             }
         });
+
+        // Deshabilitar el select de paquetes
+        const select = document.getElementById(`paquete-select-${vehiculoId}`);
+        if (select) select.disabled = true;
+
+        // Actualizar select de servicios individuales para ocultar los ya agregados
+        actualizarSelectServicios(vehiculoId);
 
         renderizarServiciosVehiculo(vehiculoId);
         actualizarResumen();
@@ -431,6 +484,9 @@
 
         window.lavadoData.serviciosPorVehiculo[vehiculoId].push(servicio);
 
+        // Actualizar select de servicios
+        actualizarSelectServicios(vehiculoId);
+
         renderizarServiciosVehiculo(vehiculoId);
         actualizarResumen();
         actualizarBotonSubmit();
@@ -440,7 +496,30 @@
     };
 
     window.eliminarServicioDeVehiculo = function (vehiculoId, servicioId) {
-        window.lavadoData.serviciosPorVehiculo[vehiculoId] = window.lavadoData.serviciosPorVehiculo[vehiculoId].filter(s => s.id !== servicioId);
+        const servicios = window.lavadoData.serviciosPorVehiculo[vehiculoId];
+        const servicio = servicios.find(s => s.id === servicioId);
+
+        // Si el servicio pertenece a un paquete, eliminar todos los servicios del paquete
+        if (servicio && servicio.paqueteId) {
+            const paqueteId = servicio.paqueteId;
+            window.lavadoData.serviciosPorVehiculo[vehiculoId] = servicios.filter(s => s.paqueteId !== paqueteId);
+
+            // Rehabilitar el select de paquetes
+            const select = document.getElementById(`paquete-select-${vehiculoId}`);
+            if (select) {
+                select.disabled = false;
+                select.value = '';
+            }
+
+            showTableMessage('info', 'Se eliminó el paquete completo.');
+        } else {
+            // Eliminar solo el servicio individual
+            window.lavadoData.serviciosPorVehiculo[vehiculoId] = servicios.filter(s => s.id !== servicioId);
+        }
+
+        // Actualizar select de servicios
+        actualizarSelectServicios(vehiculoId);
+
         renderizarServiciosVehiculo(vehiculoId);
         actualizarResumen();
         actualizarBotonSubmit();
@@ -449,11 +528,123 @@
     window.moverServicio = function (vehiculoId, servicioId, direccion) {
         const servicios = window.lavadoData.serviciosPorVehiculo[vehiculoId];
         const index = servicios.findIndex(s => s.id === servicioId);
+        const servicio = servicios[index];
 
-        if (direccion === 'up' && index > 0) {
-            [servicios[index], servicios[index - 1]] = [servicios[index - 1], servicios[index]];
-        } else if (direccion === 'down' && index < servicios.length - 1) {
-            [servicios[index], servicios[index + 1]] = [servicios[index + 1], servicios[index]];
+        // Si el servicio pertenece a un paquete, mover todo el paquete
+        if (servicio.paqueteId) {
+            const paqueteId = servicio.paqueteId;
+            const serviciosPaquete = servicios.filter(s => s.paqueteId === paqueteId);
+            const serviciosOtros = servicios.filter(s => s.paqueteId !== paqueteId);
+
+            // Encontrar la posición del primer servicio del paquete
+            const primerIndexPaquete = servicios.findIndex(s => s.paqueteId === paqueteId);
+
+            if (direccion === 'up' && primerIndexPaquete > 0) {
+                // Encontrar el servicio o paquete anterior
+                let indexAnterior = primerIndexPaquete - 1;
+                const servicioAnterior = servicios[indexAnterior];
+
+                if (servicioAnterior.paqueteId) {
+                    // El anterior es un paquete, mover todo el paquete actual antes de ese paquete
+                    const serviciosPaqueteAnterior = servicios.filter(s => s.paqueteId === servicioAnterior.paqueteId);
+                    indexAnterior = servicios.findIndex(s => s.paqueteId === servicioAnterior.paqueteId);
+
+                    // Reorganizar: otros servicios antes del anterior paquete + paquete actual + paquete anterior + resto
+                    const antesAnteriorPaquete = servicios.slice(0, indexAnterior);
+                    const despuesPaquetes = servicios.slice(indexAnterior + serviciosPaqueteAnterior.length + serviciosPaquete.length);
+                    window.lavadoData.serviciosPorVehiculo[vehiculoId] = [
+                        ...antesAnteriorPaquete,
+                        ...serviciosPaquete,
+                        ...serviciosPaqueteAnterior,
+                        ...despuesPaquetes
+                    ];
+                } else {
+                    // El anterior es un servicio individual, intercambiar
+                    const antesPaquete = servicios.slice(0, indexAnterior);
+                    const despuesPaquete = servicios.slice(primerIndexPaquete + serviciosPaquete.length);
+                    window.lavadoData.serviciosPorVehiculo[vehiculoId] = [
+                        ...antesPaquete,
+                        ...serviciosPaquete,
+                        servicioAnterior,
+                        ...despuesPaquete
+                    ];
+                }
+            } else if (direccion === 'down' && primerIndexPaquete + serviciosPaquete.length < servicios.length) {
+                // Encontrar el servicio o paquete siguiente
+                let indexSiguiente = primerIndexPaquete + serviciosPaquete.length;
+                const servicioSiguiente = servicios[indexSiguiente];
+
+                if (servicioSiguiente.paqueteId && servicioSiguiente.paqueteId !== paqueteId) {
+                    // El siguiente es un paquete diferente
+                    const serviciosPaqueteSiguiente = servicios.filter(s => s.paqueteId === servicioSiguiente.paqueteId);
+
+                    // Reorganizar
+                    const antesPaquete = servicios.slice(0, primerIndexPaquete);
+                    const despuesPaquetes = servicios.slice(indexSiguiente + serviciosPaqueteSiguiente.length);
+                    window.lavadoData.serviciosPorVehiculo[vehiculoId] = [
+                        ...antesPaquete,
+                        ...serviciosPaqueteSiguiente,
+                        ...serviciosPaquete,
+                        ...despuesPaquetes
+                    ];
+                } else if (!servicioSiguiente.paqueteId) {
+                    // El siguiente es un servicio individual
+                    const antesPaquete = servicios.slice(0, primerIndexPaquete);
+                    const despuesSiguiente = servicios.slice(indexSiguiente + 1);
+                    window.lavadoData.serviciosPorVehiculo[vehiculoId] = [
+                        ...antesPaquete,
+                        servicioSiguiente,
+                        ...serviciosPaquete,
+                        ...despuesSiguiente
+                    ];
+                }
+            }
+        } else {
+            // Servicio individual, comportamiento normal
+            if (direccion === 'up' && index > 0) {
+                const servicioAnterior = servicios[index - 1];
+
+                // Si el anterior es parte de un paquete, mover el servicio individual antes de TODO el paquete
+                if (servicioAnterior.paqueteId) {
+                    const paqueteIdAnterior = servicioAnterior.paqueteId;
+                    const serviciosPaqueteAnterior = servicios.filter(s => s.paqueteId === paqueteIdAnterior);
+                    const primerIndexPaquete = servicios.findIndex(s => s.paqueteId === paqueteIdAnterior);
+
+                    // Reorganizar: antes del paquete + servicio individual + paquete + después
+                    const antesPaquete = servicios.slice(0, primerIndexPaquete);
+                    const despuesServicio = servicios.slice(index + 1);
+                    window.lavadoData.serviciosPorVehiculo[vehiculoId] = [
+                        ...antesPaquete,
+                        servicio,
+                        ...serviciosPaqueteAnterior,
+                        ...despuesServicio
+                    ];
+                } else {
+                    [servicios[index], servicios[index - 1]] = [servicios[index - 1], servicios[index]];
+                }
+            } else if (direccion === 'down' && index < servicios.length - 1) {
+                const servicioSiguiente = servicios[index + 1];
+
+                // Si el siguiente es parte de un paquete, mover el servicio individual después de TODO el paquete
+                if (servicioSiguiente.paqueteId) {
+                    const paqueteIdSiguiente = servicioSiguiente.paqueteId;
+                    const serviciosPaqueteSiguiente = servicios.filter(s => s.paqueteId === paqueteIdSiguiente);
+                    const primerIndexPaquete = servicios.findIndex(s => s.paqueteId === paqueteIdSiguiente);
+                    const ultimoIndexPaquete = primerIndexPaquete + serviciosPaqueteSiguiente.length - 1;
+
+                    // Reorganizar: antes del servicio + paquete + servicio individual + después
+                    const antesServicio = servicios.slice(0, index);
+                    const despuesPaquete = servicios.slice(ultimoIndexPaquete + 1);
+                    window.lavadoData.serviciosPorVehiculo[vehiculoId] = [
+                        ...antesServicio,
+                        ...serviciosPaqueteSiguiente,
+                        servicio,
+                        ...despuesPaquete
+                    ];
+                } else {
+                    [servicios[index], servicios[index + 1]] = [servicios[index + 1], servicios[index]];
+                }
+            }
         }
 
         renderizarServiciosVehiculo(vehiculoId);
@@ -468,49 +659,136 @@
             return;
         }
 
-        listaDiv.innerHTML = servicios.map((s, index) => `
-            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg" draggable="true">
-                <div class="flex items-center gap-3">
-                    <span class="text-gray-400 dark:text-gray-500 font-medium">${index + 1}.</span>
-                    <div>
-                        <div class="font-medium text-gray-900 dark:text-white">${escapeHtml(s.nombre)}</div>
-                        <div class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(s.tipo)} • ${s.tiempoEstimado} min • ${formatCurrency(s.precio)}</div>
-                        ${s.paqueteNombre ? `<div class="text-xs text-blue-600 dark:text-blue-400">Paquete: ${escapeHtml(s.paqueteNombre)}</div>` : ''}
+        // Agrupar servicios por paquete
+        const grupos = [];
+        let i = 0;
+        while (i < servicios.length) {
+            const servicio = servicios[i];
+            if (servicio.paqueteId) {
+                // Encontrar todos los servicios del mismo paquete
+                const serviciosPaquete = servicios.filter(s => s.paqueteId === servicio.paqueteId);
+                grupos.push({
+                    tipo: 'paquete',
+                    paqueteId: servicio.paqueteId,
+                    paqueteNombre: servicio.paqueteNombre,
+                    servicios: serviciosPaquete,
+                    indiceInicial: i
+                });
+                i += serviciosPaquete.length;
+            } else {
+                grupos.push({
+                    tipo: 'individual',
+                    servicio: servicio,
+                    indice: i
+                });
+                i++;
+            }
+        }
+
+        listaDiv.innerHTML = grupos.map((grupo, grupoIndex) => {
+            if (grupo.tipo === 'paquete') {
+                const primerServicio = grupo.servicios[0];
+                const esUltimoGrupo = grupoIndex === grupos.length - 1;
+                const esPrimerGrupo = grupoIndex === 0;
+
+                return `
+                    <div class="border-2 border-blue-200 dark:border-blue-700 rounded-lg p-2 bg-blue-50 dark:bg-blue-900/20">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-blue-600 dark:text-blue-400">📦 Paquete: ${escapeHtml(grupo.paqueteNombre)}</span>
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="moverServicio('${vehiculoId}', '${primerServicio.id}', 'up')" 
+                                        class="p-1 text-gray-400 hover:text-gray-600 ${esPrimerGrupo ? 'opacity-50 cursor-not-allowed' : ''}"
+                                        ${esPrimerGrupo ? 'disabled' : ''}>
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                                    </svg>
+                                </button>
+                                <button type="button" onclick="moverServicio('${vehiculoId}', '${primerServicio.id}', 'down')"
+                                        class="p-1 text-gray-400 hover:text-gray-600 ${esUltimoGrupo ? 'opacity-50 cursor-not-allowed' : ''}"
+                                        ${esUltimoGrupo ? 'disabled' : ''}>
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </button>
+                                <button type="button" onclick="eliminarServicioDeVehiculo('${vehiculoId}', '${primerServicio.id}')"
+                                        class="p-1 text-red-400 hover:text-red-600">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        ${grupo.servicios.map((s, idx) => `
+                            <div class="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded ${idx > 0 ? 'mt-1' : ''}">
+                                <span class="text-gray-400 dark:text-gray-500 font-medium text-sm">${grupo.indiceInicial + idx + 1}.</span>
+                                <div class="flex-1">
+                                    <div class="font-medium text-gray-900 dark:text-white text-sm">${escapeHtml(s.nombre)}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(s.tipo)} • ${s.tiempoEstimado} min • ${formatCurrency(s.precio)}</div>
+                                </div>
+                            </div>
+                        `).join('')}
                     </div>
-                </div>
-                <div class="flex items-center gap-1">
-                    <button type="button" onclick="moverServicio('${vehiculoId}', '${s.id}', 'up')" 
-                            class="p-1 text-gray-400 hover:text-gray-600 ${index === 0 ? 'opacity-50 cursor-not-allowed' : ''}"
-                            ${index === 0 ? 'disabled' : ''}>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
-                        </svg>
-                    </button>
-                    <button type="button" onclick="moverServicio('${vehiculoId}', '${s.id}', 'down')"
-                            class="p-1 text-gray-400 hover:text-gray-600 ${index === servicios.length - 1 ? 'opacity-50 cursor-not-allowed' : ''}"
-                            ${index === servicios.length - 1 ? 'disabled' : ''}>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </button>
-                    <button type="button" onclick="eliminarServicioDeVehiculo('${vehiculoId}', '${s.id}')"
-                            class="p-1 text-red-400 hover:text-red-600">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        `).join('');
+                `;
+            } else {
+                const esUltimo = grupoIndex === grupos.length - 1;
+                const esPrimero = grupoIndex === 0;
+                const s = grupo.servicio;
+
+                return `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <span class="text-gray-400 dark:text-gray-500 font-medium">${grupo.indice + 1}.</span>
+                            <div>
+                                <div class="font-medium text-gray-900 dark:text-white">${escapeHtml(s.nombre)}</div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(s.tipo)} • ${s.tiempoEstimado} min • ${formatCurrency(s.precio)}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button type="button" onclick="moverServicio('${vehiculoId}', '${s.id}', 'up')" 
+                                    class="p-1 text-gray-400 hover:text-gray-600 ${esPrimero ? 'opacity-50 cursor-not-allowed' : ''}"
+                                    ${esPrimero ? 'disabled' : ''}>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                                </svg>
+                            </button>
+                            <button type="button" onclick="moverServicio('${vehiculoId}', '${s.id}', 'down')"
+                                    class="p-1 text-gray-400 hover:text-gray-600 ${esUltimo ? 'opacity-50 cursor-not-allowed' : ''}"
+                                    ${esUltimo ? 'disabled' : ''}>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                            <button type="button" onclick="eliminarServicioDeVehiculo('${vehiculoId}', '${s.id}')"
+                                    class="p-1 text-red-400 hover:text-red-600">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }).join('');
     }
 
     window.actualizarResumen = function () {
         let precioTotal = 0;
         let tiempoTotal = 0;
+        const paquetesContados = new Set();
 
         Object.values(window.lavadoData.serviciosPorVehiculo).forEach(servicios => {
             servicios.forEach(s => {
-                precioTotal += s.precio;
+                // Si el servicio pertenece a un paquete
+                if (s.paqueteId) {
+                    // Solo contar el precio del paquete una vez
+                    if (!paquetesContados.has(s.paqueteId)) {
+                        precioTotal += s.precioPaquete || s.precio;
+                        paquetesContados.add(s.paqueteId);
+                    }
+                } else {
+                    // Servicio individual
+                    precioTotal += s.precio;
+                }
                 tiempoTotal += s.tiempoEstimado;
             });
         });
@@ -626,30 +904,41 @@
     // =====================================
     // MODALES
     // =====================================
-    window.verDetalleLavado = async function (id) {
-        try {
-            const response = await fetch(`/Lavados/DetailPartial?id=${id}`, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            });
-            const html = await response.text();
-
-            document.getElementById('detalleModalContent').innerHTML = html;
-            abrirModal('detalleModal');
-        } catch (e) {
-            console.error('Error cargando detalle:', e);
-            showTableMessage('error', 'Error al cargar el detalle del lavado.');
-        }
+    window.verDetalleLavado = function (id) {
+        // Redirigir a la vista completa de detalle
+        window.location.href = `/Lavados/Detalle?id=${id}`;
     };
 
     window.abrirModalPago = function (lavadoId, precioTotal, pagado) {
         document.getElementById('pagoLavadoId').value = lavadoId;
         document.getElementById('pagoTotal').textContent = formatCurrency(precioTotal);
         document.getElementById('pagoPagado').textContent = formatCurrency(pagado);
-        document.getElementById('pagoRestante').textContent = formatCurrency(precioTotal - pagado);
-        document.getElementById('montoInput').value = (precioTotal - pagado).toFixed(2);
+
+        const restante = precioTotal - pagado;
+        document.getElementById('pagoRestante').textContent = formatCurrency(restante);
+
+        // Configurar el input para no permitir más del restante
+        const montoInput = document.getElementById('montoInput');
+        montoInput.value = restante.toFixed(2);
+        montoInput.max = restante.toFixed(2);
+        montoInput.dataset.restante = restante.toFixed(2);
+
         document.getElementById('notasPago').value = '';
 
         abrirModal('pagoModal');
+    };
+
+    window.validarMontoPago = function () {
+        const montoInput = document.getElementById('montoInput');
+        const montoError = document.getElementById('montoError');
+        const restante = parseFloat(montoInput.dataset.restante || 0);
+        const monto = parseFloat(montoInput.value || 0);
+
+        if (monto > restante) {
+            montoInput.value = restante.toFixed(2);
+            montoError.classList.remove('hidden');
+            setTimeout(() => montoError.classList.add('hidden'), 3000);
+        }
     };
 
     window.abrirModalCancelar = function (lavadoId, servicioId, etapaId, tipo) {
@@ -902,8 +1191,9 @@
         const filterForm = document.getElementById('filterForm');
 
         if (filterForm) {
+            // Marcar TODOS los checkboxes de estado por defecto
             filterForm.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                cb.checked = cb.value === 'Pendiente' || cb.value === 'EnProceso';
+                cb.checked = true;
             });
         }
 
@@ -974,6 +1264,32 @@
         }, disappearMs);
     }
 
+    function actualizarSelectServicios(vehiculoId) {
+        const select = document.getElementById(`servicios-select-${vehiculoId}`);
+        if (!select) return;
+
+        const serviciosAgregados = window.lavadoData.serviciosPorVehiculo[vehiculoId] || [];
+        const tiposAgregados = serviciosAgregados.map(s => s.tipo);
+        const idsAgregados = serviciosAgregados.map(s => s.id);
+
+        // Obtener todas las opciones excepto la primera (placeholder)
+        const opciones = Array.from(select.options).slice(1);
+
+        opciones.forEach(option => {
+            const servicioId = option.value;
+            const servicioTipo = option.getAttribute('data-tipo');
+
+            // Ocultar si el servicio ya está agregado o si su tipo ya está agregado
+            if (idsAgregados.includes(servicioId) || tiposAgregados.includes(servicioTipo)) {
+                option.style.display = 'none';
+                option.disabled = true;
+            } else {
+                option.style.display = '';
+                option.disabled = false;
+            }
+        });
+    }
+
     function escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -1002,8 +1318,21 @@
             }
         } catch { }
 
+        // Crear backdrop si no existe
+        let backdrop = document.getElementById('modal-backdrop');
+        if (!backdrop) {
+            backdrop = document.createElement('div');
+            backdrop.id = 'modal-backdrop';
+            backdrop.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 z-40';
+            backdrop.style.backgroundColor = 'rgba(17, 24, 39, 0.5)';
+            backdrop.onclick = () => cerrarModal(modalId);
+            document.body.appendChild(backdrop);
+        }
+
         modal.classList.remove('hidden');
+        modal.classList.add('z-50');
         modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('overflow-hidden');
     }
 
     function cerrarModal(modalId) {
@@ -1022,6 +1351,13 @@
 
         modal.classList.add('hidden');
         modal.setAttribute('aria-hidden', 'true');
+
+        // Remover backdrop
+        const backdrop = document.getElementById('modal-backdrop');
+        if (backdrop) {
+            backdrop.remove();
+        }
+
         document.querySelectorAll('[modal-backdrop]').forEach(b => b.remove());
         document.body.classList.remove('overflow-hidden');
     }

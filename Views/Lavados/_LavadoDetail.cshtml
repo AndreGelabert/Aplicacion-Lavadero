@@ -326,27 +326,19 @@
     </div>
 </div>
 
-<!-- Botones de Acción -->
+<!-- Botón de Finalizar Lavado (solo si todos los servicios están finalizados) -->
 @if (Model.Estado == "EnProceso")
 {
     var todosServiciosFinalizados = Model.Servicios.All(s => s.Estado == "Realizado" || s.Estado == "Cancelado");
-    <div class="mt-4 flex justify-end gap-2">
-        <button type="button" onclick="abrirModalPago('@Model.Id', @Model.Precio.ToString(System.Globalization.CultureInfo.InvariantCulture), @((Model.Pago?.MontoPagado ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture)))"
-                class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700">
-            Registrar Pago
-        </button>
-        @if (todosServiciosFinalizados)
-        {
+    @if (todosServiciosFinalizados)
+    {
+        <div class="mt-4 flex justify-end">
             <button type="button" onclick="abrirModalFinalizar('@Model.Id', null, null, 'lavado', '')"
                     class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
                 Finalizar Lavado
             </button>
-        }
-        <button type="button" onclick="abrirModalCancelar('@Model.Id', null, null, 'lavado')"
-                class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">
-            Cancelar Lavado
-        </button>
-    </div>
+        </div>
+    }
 }
 
 @if (!string.IsNullOrEmpty(Model.Notas))

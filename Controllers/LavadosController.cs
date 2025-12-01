@@ -224,6 +224,24 @@ namespace FirebaseLoginCustom.Controllers
             return PartialView("_LavadoDetail", lavado);
         }
 
+        /// <summary>
+        /// Vista completa de detalle de un lavado.
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> Detalle(string id)
+        {
+            var lavado = await _lavadoService.ObtenerLavado(id);
+            if (lavado == null)
+            {
+                return NotFound();
+            }
+
+            var config = await _configuracionService.ObtenerConfiguracion();
+            ViewBag.Configuracion = config;
+
+            return View("Detalle", lavado);
+        }
+
         #endregion
 
         #region Operaciones CRUD
@@ -342,6 +360,20 @@ namespace FirebaseLoginCustom.Controllers
 
                     var lavadoCreado = await _lavadoService.CrearLavado(lavado);
                     lavadosCreados.Add(lavadoCreado);
+
+                    // Iniciar automáticamente el primer servicio
+                    if (lavadoCreado.Servicios.Any())
+                    {
+                        var primerServicio = lavadoCreado.Servicios.OrderBy(s => s.Orden).First();
+                        await _lavadoService.IniciarServicio(lavadoCreado.Id, primerServicio.ServicioId);
+
+                        // Si el servicio tiene etapas, iniciar la primera
+                        if (primerServicio.Etapas.Any())
+                        {
+                            var primeraEtapa = primerServicio.Etapas.First();
+                            await _lavadoService.IniciarEtapa(lavadoCreado.Id, primerServicio.ServicioId, primeraEtapa.EtapaId);
+                        }
+                    }
 
                     await RegistrarEvento("Creación de lavado", lavadoCreado.Id, "Lavado");
                 }
@@ -726,8 +758,8 @@ namespace FirebaseLoginCustom.Controllers
             estados ??= new List<string>();
             if (!estados.Any())
             {
-                // Por defecto mostrar todos los estados activos
-                estados.AddRange(new[] { "Pendiente", "EnProceso" });
+                // Por defecto mostrar TODOS los estados
+                estados.AddRange(new[] { "Pendiente", "EnProceso", "Realizado", "RealizadoParcialmente", "Cancelado" });
             }
             return estados;
         }
