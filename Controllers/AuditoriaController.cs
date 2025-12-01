@@ -1,4 +1,5 @@
 ﻿using Firebase.Models;
+using Firebase.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,6 +19,7 @@ public class AuditoriaController : Controller
     private readonly PaqueteServicioService _paqueteServicioService;
     private readonly ClienteService _clienteService; // NUEVO
     private readonly VehiculoService _vehiculoService; // NUEVO
+    private readonly LavadoService _lavadoService; // NUEVO
 
     /// <summary>
     /// Crea una nueva instancia del controlador de auditoría.
@@ -30,6 +32,7 @@ public class AuditoriaController : Controller
     /// <param name="paqueteServicioService">Servicio de paquetes de servicio.</param>
     /// <param name="clienteService">Servicio de clientes.</param>
     /// <param name="vehiculoService">Servicio de vehículos.</param>
+    /// <param name="lavadoService">Servicio de lavados.</param>
     public AuditoriaController(
         AuditService auditService,
         PersonalService personalService,
@@ -38,7 +41,8 @@ public class AuditoriaController : Controller
         TipoVehiculoService tipoVehiculoService,
         PaqueteServicioService paqueteServicioService,
         ClienteService clienteService, // NUEVO
-        VehiculoService vehiculoService) // NUEVO
+        VehiculoService vehiculoService, // NUEVO
+        LavadoService lavadoService) // NUEVO
     {
         _auditService = auditService;
         _personalService = personalService;
@@ -48,6 +52,7 @@ public class AuditoriaController : Controller
         _paqueteServicioService = paqueteServicioService;
         _clienteService = clienteService; // NUEVO
         _vehiculoService = vehiculoService; // NUEVO
+        _lavadoService = lavadoService; // NUEVO
     }
     #endregion
 
@@ -460,6 +465,21 @@ public class AuditoriaController : Controller
             catch { vehiculoDict[id] = null; }
         }
 
+        // NUEVO: Resolver nombres de Lavado
+        var lavadoIds = registros.Where(r => r.TargetType == "Lavado" && !string.IsNullOrWhiteSpace(r.TargetId))
+            .Select(r => r.TargetId).Distinct().ToList();
+
+        var lavadoDict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var id in lavadoIds)
+        {
+            try
+            {
+                var l = await _lavadoService.ObtenerLavado(id);
+                lavadoDict[id] = l != null ? $"Lavado #{l.Id.Substring(0, 8)} - {l.VehiculoPatente ?? "Sin patente"}" : null;
+            }
+            catch { lavadoDict[id] = null; }
+        }
+
         // Construir modelo de vista
         return registros.Select(r =>
         {
@@ -489,6 +509,9 @@ public class AuditoriaController : Controller
                         break;
                     case "Vehiculo":
                         vehiculoDict.TryGetValue(r.TargetId, out targetName);
+                        break;
+                    case "Lavado":
+                        lavadoDict.TryGetValue(r.TargetId, out targetName);
                         break;
                     case "Empleado":
                     case "Usuario":

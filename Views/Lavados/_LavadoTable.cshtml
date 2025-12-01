@@ -1,0 +1,292 @@
+@model List<Firebase.Models.Lavado>
+<input type="hidden" id="current-page-value" value="@ViewBag.CurrentPage" />
+<input type="hidden" id="current-sort-by" value="@(ViewBag.SortBy ?? "FechaCreacion")" />
+<input type="hidden" id="current-sort-order" value="@(ViewBag.SortOrder ?? "desc")" />
+
+<table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+        <tr>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Cliente</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('ClienteNombre')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "ClienteNombre" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Vehículo</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('VehiculoPatente')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "VehiculoPatente" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">Servicios</th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Precio</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('Precio')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "Precio" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">Pago</th>
+            <th class="px-4 py-3 select-none">Empleados</th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Estado</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('Estado')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "Estado" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Fecha</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('FechaCreacion')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "FechaCreacion" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
+            <th class="px-4 py-3 text-center">Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null && Model.Any())
+        {
+            foreach (var lavado in Model)
+            {
+                var serviciosCount = lavado.Servicios?.Count ?? 0;
+                var serviciosRealizados = lavado.Servicios?.Count(s => s.Estado == "Realizado") ?? 0;
+                var pagoEstado = lavado.Pago?.Estado ?? "Pendiente";
+                var pagado = lavado.Pago?.MontoPagado ?? 0;
+                
+                <tr class="border-b dark:border-gray-700" data-lavado-id="@lavado.Id" 
+                    data-tiempo-inicio="@(lavado.TiempoInicio?.ToString("o") ?? "")"
+                    data-tiempo-estimado="@lavado.TiempoEstimado">
+                    <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                        @(lavado.ClienteNombre ?? "Sin cliente")
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex flex-col">
+                            <span class="font-medium">@(lavado.VehiculoPatente ?? "Sin patente")</span>
+                            <span class="text-xs text-gray-500">@(lavado.TipoVehiculo ?? "")</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex flex-col">
+                            <span class="font-medium">@serviciosRealizados / @serviciosCount</span>
+                            <span class="text-xs text-gray-500">@lavado.TiempoEstimado min</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex flex-col">
+                            <span class="font-medium">@lavado.Precio.ToString("C")</span>
+                            @if (lavado.Descuento > 0)
+                            {
+                                <span class="text-xs text-green-600">-@lavado.Descuento%</span>
+                            }
+                        </div>
+                    </td>
+                    <td class="px-4 py-3">
+                        @if (pagoEstado == "Pagado")
+                        {
+                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-green-900 dark:text-green-300">Pagado</span>
+                        }
+                        else if (pagoEstado == "Parcial")
+                        {
+                            <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-yellow-900 dark:text-yellow-300">
+                                @pagado.ToString("C") / @lavado.Precio.ToString("C")
+                            </span>
+                        }
+                        else if (pagoEstado == "Cancelado")
+                        {
+                            <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-gray-700 dark:text-gray-300">Cancelado</span>
+                        }
+                        else
+                        {
+                            <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-red-900 dark:text-red-300">Pendiente</span>
+                        }
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex flex-col">
+                            @foreach (var nombre in lavado.EmpleadosAsignadosNombres.Take(2))
+                            {
+                                <span class="text-xs">@nombre</span>
+                            }
+                            @if (lavado.EmpleadosAsignadosNombres.Count > 2)
+                            {
+                                <span class="text-xs text-gray-500">+@(lavado.EmpleadosAsignadosNombres.Count - 2) más</span>
+                            }
+                        </div>
+                    </td>
+                    <td class="px-4 py-3">
+                        @if (lavado.Estado == "EnProceso")
+                        {
+                            <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">En Proceso</span>
+                        }
+                        else if (lavado.Estado == "Realizado")
+                        {
+                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-green-900 dark:text-green-300">Realizado</span>
+                        }
+                        else if (lavado.Estado == "RealizadoParcialmente")
+                        {
+                            <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-yellow-900 dark:text-yellow-300">Realizado Parcialmente</span>
+                        }
+                        else if (lavado.Estado == "Cancelado")
+                        {
+                            <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-red-900 dark:text-red-300">Cancelado</span>
+                        }
+                        else
+                        {
+                            <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-gray-900 dark:text-gray-300">Pendiente</span>
+                        }
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex flex-col">
+                            <span>@lavado.FechaCreacion.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                            <span class="text-xs text-gray-500">@lavado.FechaCreacion.ToLocalTime().ToString("HH:mm")</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-center">
+                        <div class="flex items-center justify-center gap-1">
+                            <!-- Ver Detalle -->
+                            <button type="button"
+                                    class="p-1.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                                    title="Ver detalle"
+                                    onclick="verDetalleLavado('@lavado.Id')">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                            </button>
+                            
+                            
+                            @* Mostrar botón de pago si no está completamente pagado *@
+                            @if (pagoEstado != "Pagado" & lavado.Estado != "Cancelado")
+                            {
+                                <!-- Registrar Pago -->
+                                <button type="button"
+                                        class="p-1.5 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+                                        title="Registrar pago"
+                                        onclick="abrirModalPago('@lavado.Id', @lavado.Precio.ToString(System.Globalization.CultureInfo.InvariantCulture), @pagado.ToString(System.Globalization.CultureInfo.InvariantCulture))">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </button>
+                            }
+                            
+                            @if (lavado.Estado == "EnProceso")
+                            {
+                                <!-- Cancelar Lavado -->
+                                <button type="button"
+                                        class="p-1.5 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                                        title="Cancelar lavado"
+                                        onclick="abrirModalCancelar('@lavado.Id', null, null, 'lavado')">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="9" class="text-center py-4 text-gray-500 dark:text-gray-400">
+                    No hay lavados para mostrar.
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Paginación -->
+<nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">
+    <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
+        Mostrando página
+        <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.CurrentPage</span>
+        de
+        <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.TotalPages</span>
+    </span>
+
+    <ul class="inline-flex items-stretch -space-x-px">
+        <li>
+            @if (ViewBag.CurrentPage > 1)
+            {
+                <button onclick="reloadLavadoTable(@(ViewBag.CurrentPage - 1))"
+                        class="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-500 bg-white rounded-l-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                    <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            }
+            else
+            {
+                <span class="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-300 bg-white rounded-l-lg border border-gray-300 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </span>
+            }
+        </li>
+
+        @foreach (var pageNum in (IEnumerable<int>)ViewBag.VisiblePages)
+        {
+            <li>
+                @if (pageNum == (int)ViewBag.CurrentPage)
+                {
+                    <span class="flex items-center justify-center text-sm z-10 py-2 px-3 leading-tight text-primary-600 bg-primary-50 border border-primary-300 dark:border-gray-700 dark:bg-gray-700 dark:text-white">
+                        @pageNum
+                    </span>
+                }
+                else
+                {
+                    <button onclick="reloadLavadoTable(@pageNum)"
+                            class="flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                        @pageNum
+                    </button>
+                }
+            </li>
+        }
+
+        <li>
+            @if (ViewBag.CurrentPage < ViewBag.TotalPages)
+            {
+                <button onclick="reloadLavadoTable(@(ViewBag.CurrentPage + 1))"
+                        class="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-500 bg-white rounded-r-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            }
+            else
+            {
+                <span class="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-300 bg-white rounded-r-lg border border-gray-300 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </span>
+            }
+        </li>
+    </ul>
+</nav>

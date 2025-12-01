@@ -145,6 +145,16 @@ public class ConfiguracionService
         var config = await ObtenerConfiguracion();
         return config.SesionInactividadMinutos;
     }
+
+    /// <summary>
+    /// Obtiene el número máximo de empleados que se pueden asignar a un lavado.
+    /// </summary>
+    /// <returns>Número máximo de empleados por lavado.</returns>
+    public async Task<int> ObtenerEmpleadosMaximosPorLavado()
+    {
+        var config = await ObtenerConfiguracion();
+        return config.EmpleadosMaximosPorLavado;
+    }
     #endregion
 
     #region Operaciones de Escritura
@@ -217,6 +227,7 @@ public class ConfiguracionService
             },
             CapacidadMaximaConcurrente = 5,
             ConsiderarEmpleadosActivos = true,
+            EmpleadosMaximosPorLavado = 3,
             SesionDuracionHoras = 8, // 8 horas
             SesionInactividadMinutos = 15, // 15 minutos
             FechaActualizacion = DateTime.UtcNow

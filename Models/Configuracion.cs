@@ -116,6 +116,42 @@ namespace Firebase.Models
         [FirestoreProperty]
         public bool ConsiderarEmpleadosActivos { get; set; } = true;
 
+        /// <summary>
+        /// Número máximo de empleados que se pueden asignar a un solo lavado.
+        /// Esto limita la cantidad de empleados que un lavado individual puede requerir.
+        /// </summary>
+        [FirestoreProperty]
+        [Range(1, 20, ErrorMessage = "La cantidad máxima de empleados por lavado debe estar entre 1 y 20")]
+        public int EmpleadosMaximosPorLavado { get; set; } = 3;
+
+        #endregion
+
+        #region Configuración de Tiempos de Lavado
+
+        /// <summary>
+        /// Minutos de anticipación para notificar al empleado antes de que se cumpla el tiempo estimado.
+        /// Ejemplo: 15 significa que se notificará cuando falten 15 minutos.
+        /// </summary>
+        [FirestoreProperty]
+        [Range(1, 60, ErrorMessage = "El tiempo de notificación debe estar entre 1 y 60 minutos")]
+        public int TiempoNotificacionMinutos { get; set; } = 15;
+
+        /// <summary>
+        /// Minutos de tolerancia máxima que se puede extender un lavado después del tiempo estimado.
+        /// Ejemplo: 15 significa que puede excederse hasta 15 minutos del tiempo estimado.
+        /// </summary>
+        [FirestoreProperty]
+        [Range(5, 60, ErrorMessage = "El tiempo de tolerancia debe estar entre 5 y 60 minutos")]
+        public int TiempoToleranciaMinutos { get; set; } = 15;
+
+        /// <summary>
+        /// Intervalo en minutos para preguntar si ya terminó el servicio cuando se excede el tiempo.
+        /// Ejemplo: 5 significa que se preguntará cada 5 minutos.
+        /// </summary>
+        [FirestoreProperty]
+        [Range(1, 15, ErrorMessage = "El intervalo de preguntas debe estar entre 1 y 15 minutos")]
+        public int IntervaloPreguntas { get; set; } = 5;
+
         #endregion
 
         #region Configuración de Sesiones
