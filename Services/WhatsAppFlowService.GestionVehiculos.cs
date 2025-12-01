@@ -134,8 +134,8 @@ public partial class WhatsAppFlowService
 
         var buttons = new List<(string id, string title)>
         {
-            ("modificar_modelo", "✏️ Cambiar modelo"),
-            ("modificar_color", "🎨 Cambiar color"),
+            ("modificar_modelo", "✏️ Editar modelo"),
+            ("modificar_color", "🎨 Editar color"),
             ("eliminar_vehiculo", "🗑️ Eliminar vehículo")
         };
 

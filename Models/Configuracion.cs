@@ -56,6 +56,25 @@ namespace Firebase.Models
 
         #endregion
 
+        #region Información del Lavadero
+
+        /// <summary>
+        /// Nombre del lavadero para mostrar en WhatsApp y otros lugares
+        /// </summary>
+        [FirestoreProperty]
+        [Required(ErrorMessage = "El nombre del lavadero es obligatorio")]
+        [StringLength(100, MinimumLength = 3, ErrorMessage = "El nombre debe tener entre 3 y 100 caracteres")]
+        public string NombreLavadero { get; set; } = "Lavadero AutoClean";
+
+        /// <summary>
+        /// Ubicación/Dirección del lavadero
+        /// </summary>
+        [FirestoreProperty]
+        [StringLength(200, ErrorMessage = "La ubicación no puede exceder 200 caracteres")]
+        public string Ubicacion { get; set; } = "";
+
+        #endregion
+
         #region Configuración de Horarios de Operación
 
         /// <summary>

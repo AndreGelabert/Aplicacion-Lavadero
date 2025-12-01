@@ -15,6 +15,7 @@ public partial class WhatsAppFlowService
     private readonly VehiculoService _vehiculoService;
     private readonly TipoDocumentoService _tipoDocumentoService;
     private readonly TipoVehiculoService _tipoVehiculoService;
+    private readonly LavaderoInfoService _lavaderoInfoService;
     private readonly ILogger<WhatsAppFlowService> _logger;
 
     public WhatsAppFlowService(
@@ -24,6 +25,7 @@ public partial class WhatsAppFlowService
         VehiculoService vehiculoService,
         TipoDocumentoService tipoDocumentoService,
         TipoVehiculoService tipoVehiculoService,
+        LavaderoInfoService lavaderoInfoService,
         ILogger<WhatsAppFlowService> logger)
     {
         _sessionService = sessionService;
@@ -32,6 +34,7 @@ public partial class WhatsAppFlowService
         _vehiculoService = vehiculoService;
         _tipoDocumentoService = tipoDocumentoService;
         _tipoVehiculoService = tipoVehiculoService;
+        _lavaderoInfoService = lavaderoInfoService;
         _logger = logger;
     }
 
@@ -104,9 +107,11 @@ public partial class WhatsAppFlowService
 
                 await _sessionService.AssociateClienteToSession(phoneNumber, clienteExistente.Id);
 
+                var nombreLavadero = await _lavaderoInfoService.ObtenerNombreLavadero();
+                
                 await _whatsAppService.SendTextMessage(phoneNumber,
                     $"¡Hola {clienteExistente.Nombre}! 👋\n\n" +
-                    $"Bienvenido de vuelta al Lavadero AutoClean 🚗✨");
+                    $"Bienvenido de vuelta a {nombreLavadero} 🚗✨");
 
                 await Task.Delay(500); // Pequeña pausa para mejor UX
 
@@ -117,8 +122,10 @@ public partial class WhatsAppFlowService
                 // ❌ CLIENTE NO REGISTRADO → Iniciar proceso de registro
                 _logger.LogInformation("📝 Cliente nuevo detectado, iniciando registro");
 
+                var nombreLavadero = await _lavaderoInfoService.ObtenerNombreLavadero();
+
                 await _whatsAppService.SendTextMessage(phoneNumber,
-                    "¡Hola! 👋 Bienvenido al Lavadero AutoClean 🚗✨\n\n" +
+                    $"¡Hola! 👋 Bienvenido a {nombreLavadero} 🚗✨\n\n" +
                     "Veo que es tu primer contacto con nosotros.\n\n" +
                     "Para brindarte un mejor servicio, necesito registrarte. " +
                     "El proceso es rápido y sencillo. ¿Empezamos? 😊");
@@ -192,16 +199,20 @@ public partial class WhatsAppFlowService
     /// </summary>
     private async Task ShowClienteMenu(string phoneNumber, string nombreCliente)
     {
-        var buttons = new List<(string id, string title)>
+        // Como tenemos 4 opciones, usamos lista desplegable (WhatsApp permite máximo 3 botones)
+        var options = new List<(string id, string title, string description)>
         {
-            ("vehiculos", "Gestionar vehículos"),
-            ("datos", "👤 Mis datos"),
-            ("ayuda", "❓ Ayuda")
+            ("vehiculos", "🚗 Gestionar vehículos", "Agregar o modificar vehículos"),
+            ("datos", "👤 Mis datos", "Ver o editar mi información"),
+            ("sobre_nosotros", "ℹ️ Sobre nosotros", "Información del lavadero"),
+            ("ayuda", "❓ Ayuda", "Comandos y contacto")
         };
 
-        await _whatsAppService.SendButtonMessage(phoneNumber,
+        await _whatsAppService.SendListMessage(phoneNumber,
             $"¡Hola {nombreCliente}! 👋\n\n¿Qué deseas hacer hoy?",
-            buttons);
+            "📋 Ver menú",
+            "Opciones disponibles",
+            options);
     }
 
     /// <summary>
@@ -222,14 +233,32 @@ public partial class WhatsAppFlowService
                 return;
             }
 
-            // Crear botones con los tipos de documento (máximo 3)
-            var buttons = tiposDocumento.Take(3).Select(tipo => (tipo, tipo)).ToList();
-
             await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.REGISTRO_TIPO_DOCUMENTO);
 
-            await _whatsAppService.SendButtonMessage(phoneNumber,
-                "📄 Primero, ¿qué tipo de documento tienes?",
-                buttons);
+            // Crear lista con tipos de documento
+            var options = tiposDocumento.Select(tipo => (
+                tipo,
+                tipo,
+                "Documento de identidad"
+            )).ToList();
+
+            if (options.Count <= 3)
+            {
+                // Usar botones si son 3 o menos
+                var buttons = options.Select(o => (o.Item1, o.Item2)).ToList();
+                await _whatsAppService.SendButtonMessage(phoneNumber,
+                    "📄 Primero, ¿qué tipo de documento tienes?",
+                    buttons);
+            }
+            else
+            {
+                // Usar lista si son más de 3
+                await _whatsAppService.SendListMessage(phoneNumber,
+                    "📄 Primero, ¿qué tipo de documento tienes?",
+                    "Ver opciones",
+                    "Tipos de documento",
+                    options);
+            }
         }
         catch (Exception ex)
         {

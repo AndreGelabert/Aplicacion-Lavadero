@@ -313,6 +313,10 @@ public partial class WhatsAppFlowService
         {
             await MostrarMenuEdicionDatos(phoneNumber, session);
         }
+        else if (opcion.Contains("hablar") || opcion.Contains("personal") || opcion == "hablar_personal")
+        {
+            await HablarConPersonal(phoneNumber);
+        }
         else if (opcion.Contains("menu") || opcion.Contains("principal") || opcion == "menu_principal")
         {
             var cliente = await _clienteService.ObtenerCliente(session.ClienteId!);

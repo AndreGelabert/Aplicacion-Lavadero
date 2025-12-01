@@ -69,7 +69,7 @@ public partial class WhatsAppFlowService
 
         await _whatsAppService.SendTextMessage(phoneNumber,
             "✅ Perfecto!\n\n" +
-            "👤 ¿Cuál es tu nombre? (solo letras):");
+            "👤 ¿Cuál es tu nombre? (solo letras y espacios):");
     }
 
     /// <summary>
@@ -83,7 +83,7 @@ public partial class WhatsAppFlowService
         if (!EsTextoValido(nombre))
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ El nombre solo debe contener letras. Por favor, inténtalo nuevamente:");
+                "❌ El nombre solo debe contener letras y espacios. Por favor, inténtalo nuevamente:");
             return;
         }
 
@@ -107,7 +107,7 @@ public partial class WhatsAppFlowService
         if (!EsTextoValido(apellido))
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ El apellido solo debe contener letras. Por favor, inténtalo nuevamente:");
+                "❌ El apellido solo debe contener letras y espacios. Por favor, inténtalo nuevamente:");
             return;
         }
 

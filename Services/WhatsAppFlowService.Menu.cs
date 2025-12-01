@@ -25,6 +25,11 @@ public partial class WhatsAppFlowService
             // Opción: Mis datos
             await MostrarDatosCliente(phoneNumber, session);
         }
+        else if (opcion.Contains("sobre") || opcion == "sobre_nosotros")
+        {
+            // Opción: Sobre nosotros
+            await MostrarSobreNosotros(phoneNumber);
+        }
         else if (opcion.Contains("ayuda") || opcion == "ayuda")
         {
             // Opción: Ayuda
@@ -96,7 +101,7 @@ public partial class WhatsAppFlowService
             var buttons = new List<(string id, string title)>
             {
                 ("agregar_vehiculo", "➕ Agregar vehículo"),
-                ("modificar_vehiculo", "✏️ Modificar vehículo"),
+                ("modificar_vehiculo", "✏️ Editar vehículo"),
                 ("menu_principal", "⬅️ Menú principal")
             };
 
@@ -247,24 +252,81 @@ public partial class WhatsAppFlowService
     }
 
     /// <summary>
-    /// Muestra ayuda al usuario
+    /// Muestra información "Sobre nosotros" del lavadero
+    /// </summary>
+    private async Task MostrarSobreNosotros(string phoneNumber)
+    {
+        var mensaje = await _lavaderoInfoService.ObtenerMensajeSobreNosotros();
+        await _whatsAppService.SendTextMessage(phoneNumber, mensaje);
+
+        await Task.Delay(1000);
+
+        // Volver al menú principal
+        var session = await _sessionService.GetOrCreateSession(phoneNumber);
+        if (!string.IsNullOrEmpty(session.ClienteId))
+        {
+            var cliente = await _clienteService.ObtenerCliente(session.ClienteId);
+            if (cliente != null)
+            {
+                await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO);
+                await ShowClienteMenu(phoneNumber, cliente.Nombre);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Muestra ayuda al usuario con opción de hablar con personal
     /// </summary>
     private async Task MostrarAyuda(string phoneNumber)
     {
         var mensaje = "❓ *Ayuda - Comandos disponibles:*\n\n" +
                      "• *MENÚ* - Volver al menú principal\n" +
                      "• *REINICIAR* - Reiniciar la conversación\n\n" +
-                     "📞 *Contacto:*\n" +
-                     "Si necesitas ayuda adicional, contacta al lavadero directamente.";
+                     "¿Necesitas ayuda adicional?";
 
         await _whatsAppService.SendTextMessage(phoneNumber, mensaje);
 
-        await Task.Delay(500);
+        await Task.Delay(300);
 
-        var cliente = await _clienteService.ObtenerCliente(phoneNumber);
-        if (cliente != null)
+        var buttons = new List<(string id, string title)>
         {
-            await ShowClienteMenu(phoneNumber, cliente.Nombre);
+            ("hablar_personal", "👤 Hablar con personal"),
+            ("menu_principal", "⬅️ Volver al menú")
+        };
+
+        await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MOSTRAR_DATOS);
+        await _whatsAppService.SendButtonMessage(phoneNumber,
+            "Selecciona una opción:",
+            buttons);
+    }
+
+    /// <summary>
+    /// Maneja la opción de hablar con el personal
+    /// </summary>
+    private async Task HablarConPersonal(string phoneNumber)
+    {
+        var nombreLavadero = await _lavaderoInfoService.ObtenerNombreLavadero();
+        
+        var mensaje = $"👤 *Solicitud de atención personal*\n\n" +
+                     $"Hemos registrado tu solicitud de hablar con nuestro personal.\n\n" +
+                     $"Un miembro del equipo de {nombreLavadero} se pondrá en contacto contigo a través de este WhatsApp lo antes posible.\n\n" +
+                     $"Horario de atención: Lunes a Sábado\n\n" +
+                     $"Mientras tanto, puedes seguir usando el menú automático. 😊";
+
+        await _whatsAppService.SendTextMessage(phoneNumber, mensaje);
+
+        await Task.Delay(1000);
+
+        // Volver al menú principal
+        var session = await _sessionService.GetOrCreateSession(phoneNumber);
+        if (!string.IsNullOrEmpty(session.ClienteId))
+        {
+            var cliente = await _clienteService.ObtenerCliente(session.ClienteId);
+            if (cliente != null)
+            {
+                await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO);
+                await ShowClienteMenu(phoneNumber, cliente.Nombre);
+            }
         }
     }
 }
