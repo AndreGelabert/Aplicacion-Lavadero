@@ -116,6 +116,14 @@ namespace Firebase.Models
         [FirestoreProperty]
         public bool ConsiderarEmpleadosActivos { get; set; } = true;
 
+        /// <summary>
+        /// Número máximo de empleados que se pueden asignar a un solo lavado.
+        /// Esto limita la cantidad de empleados que un lavado individual puede requerir.
+        /// </summary>
+        [FirestoreProperty]
+        [Range(1, 20, ErrorMessage = "La cantidad máxima de empleados por lavado debe estar entre 1 y 20")]
+        public int EmpleadosMaximosPorLavado { get; set; } = 3;
+
         #endregion
 
         #region Configuración de Tiempos de Lavado

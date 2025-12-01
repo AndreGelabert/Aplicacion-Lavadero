@@ -366,6 +366,19 @@
                             Si está activado, la capacidad efectiva será el mínimo entre la capacidad configurada y el número de empleados activos.
                         </p>
                     </div>
+                    
+                    <div>
+                        <label asp-for="EmpleadosMaximosPorLavado" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Empleados Máximos por Lavado
+                        </label>
+                        <input type="number" asp-for="EmpleadosMaximosPorLavado" 
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                               min="1" max="20" step="1" required />
+                        <span asp-validation-for="EmpleadosMaximosPorLavado" class="text-red-600 text-xs"></span>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Cantidad máxima de empleados que se pueden asignar a un lavado individual.
+                        </p>
+                    </div>
                 </div>
             </div>
 

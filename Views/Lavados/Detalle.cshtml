@@ -32,7 +32,7 @@
                     </button>
                 }
                 @* Mostrar botón de pago si no está completamente pagado, independientemente del estado del lavado *@
-                @if (Model.Pago?.Estado != "Pagado")
+                @if (Model.Pago?.Estado != "Pagado" & Model.Estado != "Cancelado")
                 {
                     <button onclick="abrirModalPago('@Model.Id', @Model.Precio, @(Model.Pago?.MontoPagado ?? 0))" 
                             class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg focus:ring-4 focus:ring-green-300 dark:focus:ring-green-900">

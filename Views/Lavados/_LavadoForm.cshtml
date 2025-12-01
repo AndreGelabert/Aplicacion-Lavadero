@@ -23,14 +23,15 @@
             </p>
         </div>
 
-        <!-- Cantidad de Empleados -->
-        <div>
+          <!-- Cantidad de Empleados -->
+          <div>
             <label for="cantidadEmpleados" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cantidad de Empleados</label>
             <input type="number" id="cantidadEmpleados" name="cantidadEmpleados" 
                    min="1" max="10" value="@(Model?.CantidadEmpleadosRequeridos ?? 1)"
-                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                   placeholder="Número de empleados requeridos">
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Los empleados serán asignados automáticamente según disponibilidad</p>
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                    placeholder="Número de empleados requeridos">
+             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Los empleados serán asignados automáticamente según disponibilidad</p>
+             <div id="empleadosInfo"></div>
         </div>
     </div>
 
@@ -110,6 +111,7 @@
         vehiculosSeleccionados: [],
         serviciosPorVehiculo: {},
         serviciosDisponibles: {},
-        paquetesDisponibles: {}
+        paquetesDisponibles: {},
+        empleadosInfo: null
     };
 </script>

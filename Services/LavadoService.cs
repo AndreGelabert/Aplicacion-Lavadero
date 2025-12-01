@@ -405,6 +405,25 @@ namespace Firebase.Services
             lavado.MotivoCancelacion = motivo;
             lavado.TiempoFinalizacion = DateTime.UtcNow;
 
+            // Cancelar el pago si existe y no está completamente pagado
+            if (lavado.Pago != null)
+            {
+                if (lavado.Pago.Estado != "Pagado")
+                {
+                    lavado.Pago.Estado = "Cancelado";
+                }
+            }
+            else
+            {
+                // Inicializar pago como cancelado si no existía
+                lavado.Pago = new PagoLavado
+                {
+                    Estado = "Cancelado",
+                    MontoPagado = 0,
+                    Pagos = new List<DetallePago>()
+                };
+            }
+
             // Cancelar todos los servicios pendientes
             foreach (var servicio in lavado.Servicios.Where(s => s.Estado == "Pendiente" || s.Estado == "EnProceso"))
             {

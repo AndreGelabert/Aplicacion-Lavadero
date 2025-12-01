@@ -262,7 +262,74 @@
         window.lavadoData.clienteNombre = nombre;
 
         cargarVehiculosCliente(id);
+        cargarInfoEmpleados();
     };
+
+    async function cargarInfoEmpleados() {
+        try {
+            const response = await fetch('/Lavados/ObtenerEmpleadosDisponibles');
+            const data = await response.json();
+
+            window.lavadoData.empleadosInfo = {
+                totalActivos: data.totalActivos,
+                totalDisponibles: data.totalDisponibles,
+                empleadosMaximosPorLavado: data.empleadosMaximosPorLavado
+            };
+
+            // Actualizar el input de cantidad de empleados
+            const cantidadEmpleadosInput = document.getElementById('cantidadEmpleados');
+            if (cantidadEmpleadosInput) {
+                const maxEmpleados = Math.min(
+                    data.totalDisponibles,
+                    data.empleadosMaximosPorLavado
+                );
+                
+                cantidadEmpleadosInput.max = maxEmpleados;
+                cantidadEmpleadosInput.min = 1;
+                
+                if (parseInt(cantidadEmpleadosInput.value) > maxEmpleados) {
+                    cantidadEmpleadosInput.value = maxEmpleados;
+                }
+
+                // Agregar validación en tiempo real
+                cantidadEmpleadosInput.addEventListener('input', validarCantidadEmpleados);
+                cantidadEmpleadosInput.addEventListener('change', validarCantidadEmpleados);
+            }
+
+            // Mostrar información al usuario
+            const infoDiv = document.getElementById('empleadosInfo');
+            if (infoDiv) {
+                infoDiv.innerHTML = `
+                    <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                        <p>Empleados disponibles: <span class="font-medium text-blue-600 dark:text-blue-400">${data.totalDisponibles}</span> de ${data.totalActivos} activos</p>
+                        <p>Máximo por lavado: <span class="font-medium">${data.empleadosMaximosPorLavado}</span></p>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            console.error('Error cargando info de empleados:', e);
+        }
+    }
+
+    function validarCantidadEmpleados() {
+        const input = document.getElementById('cantidadEmpleados');
+        if (!input || !window.lavadoData.empleadosInfo) return;
+
+        const valor = parseInt(input.value);
+        const maxEmpleados = Math.min(
+            window.lavadoData.empleadosInfo.totalDisponibles,
+            window.lavadoData.empleadosInfo.empleadosMaximosPorLavado
+        );
+
+        if (valor > maxEmpleados) {
+            input.value = maxEmpleados;
+            showTableMessage('error', `Solo hay ${window.lavadoData.empleadosInfo.totalDisponibles} empleados disponibles. Máximo permitido por lavado: ${window.lavadoData.empleadosInfo.empleadosMaximosPorLavado}`);
+        }
+
+        if (valor < 1) {
+            input.value = 1;
+        }
+    }
 
     async function cargarVehiculosCliente(clienteId) {
         const vehiculosSection = document.getElementById('vehiculosSection');
@@ -368,7 +435,11 @@
                     <select id="paquete-select-${vehiculoId}" onchange="agregarPaquete('${vehiculoId}', this.value)" 
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                         <option value="">Seleccionar paquete...</option>
-                        ${paquetes.map(p => `<option value="${p.id}" data-precio="${p.precioOriginal || p.precio}">${escapeHtml(p.nombre)} - ${formatCurrency(p.precioOriginal || p.precio)} (${p.descuento}% desc.) = ${formatCurrency(p.precio)}</option>`).join('')}
+                        ${paquetes.map(p => {
+                            const precioOriginal = p.precioOriginal || 0;
+                            const precioConDescuento = precioOriginal - (precioOriginal * p.descuento / 100);
+                            return `<option value="${p.id}" data-precio="${precioOriginal}">${escapeHtml(p.nombre)} - ${formatCurrency(precioOriginal)} (${p.descuento}% desc.) = ${formatCurrency(precioConDescuento)}</option>`;
+                        }).join('')}
                     </select>
                 </div>
                 ` : ''}
@@ -426,15 +497,9 @@
             return;
         }
 
-        // Calcular el precio del paquete: suma de servicios - descuento
-        let precioTotalServicios = 0;
-        paquete.servicios.forEach(s => {
-            const servicioCompleto = window.lavadoData.serviciosDisponibles[vehiculoId]?.find(serv => serv.id === s.id);
-            if (servicioCompleto) {
-                precioTotalServicios += servicioCompleto.precio;
-            }
-        });
-        const precioPaquete = precioTotalServicios - (precioTotalServicios * paquete.descuento / 100);
+        // Usar el precio original del paquete (suma de servicios) y aplicar descuento
+        const precioOriginalPaquete = paquete.precioOriginal || 0;
+        const precioPaqueteConDescuento = precioOriginalPaquete - (precioOriginalPaquete * paquete.descuento / 100);
 
         // Agregar todos los servicios del paquete
         paquete.servicios.forEach(s => {
@@ -447,7 +512,7 @@
                         ...servicioCompleto,
                         paqueteId: paquete.id,
                         paqueteNombre: paquete.nombre,
-                        precioPaquete: precioPaquete // Guardar precio calculado del paquete
+                        precioPaquete: precioPaqueteConDescuento // Guardar precio CON descuento del paquete
                     });
                 }
             }
@@ -884,7 +949,8 @@
             vehiculosSeleccionados: [],
             serviciosPorVehiculo: {},
             serviciosDisponibles: {},
-            paquetesDisponibles: {}
+            paquetesDisponibles: {},
+            empleadosInfo: null
         };
 
         document.getElementById('clienteSearch').value = '';
@@ -899,6 +965,11 @@
         document.getElementById('notas').value = '';
         document.getElementById('cantidadEmpleados').value = '1';
         document.getElementById('submit-button').disabled = true;
+        
+        const infoDiv = document.getElementById('empleadosInfo');
+        if (infoDiv) {
+            infoDiv.innerHTML = '';
+        }
     };
 
     // =====================================
@@ -947,6 +1018,18 @@
         document.getElementById('cancelarEtapaId').value = etapaId || '';
         document.getElementById('cancelarTipo').value = tipo;
         document.getElementById('motivoCancelacion').value = '';
+
+        // Configurar la acción del formulario según el tipo
+        const form = document.getElementById('formCancelar');
+        if (form) {
+            if (tipo === 'lavado') {
+                form.action = '/Lavados/CancelarLavado';
+            } else if (tipo === 'servicio') {
+                form.action = '/Lavados/CancelarServicio';
+            } else if (tipo === 'etapa') {
+                form.action = '/Lavados/CancelarEtapa';
+            }
+        }
 
         abrirModal('cancelarModal');
     };
@@ -1070,12 +1153,24 @@
                 const motivo = document.getElementById('motivoCancelacion').value;
 
                 if (!motivo.trim()) {
-                    alert('Debe ingresar un motivo de cancelación.');
+                    showTableMessage('error', 'Debe ingresar un motivo de cancelación.');
+                    return;
+                }
+
+                if (!lavadoId) {
+                    showTableMessage('error', 'ID de lavado no válido.');
                     return;
                 }
 
                 let url;
                 const formData = new FormData();
+                
+                // Obtener token antiforgery
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                if (token) {
+                    formData.append('__RequestVerificationToken', token);
+                }
+                
                 formData.append('motivo', motivo);
 
                 if (tipo === 'lavado') {
@@ -1101,7 +1196,6 @@
                     const result = await response.json();
 
                     cerrarModal('cancelarModal');
-                    cerrarModal('detalleModal');
 
                     if (result.success) {
                         showTableMessage('success', result.message);
@@ -1110,7 +1204,8 @@
                         showTableMessage('error', result.message);
                     }
                 } catch (e) {
-                    showTableMessage('error', 'Error al cancelar.');
+                    console.error('Error al cancelar:', e);
+                    showTableMessage('error', 'Error al cancelar: ' + e.message);
                 }
             });
         }
@@ -1364,6 +1459,19 @@
 
     window.cerrarModal = cerrarModal;
     window.abrirModal = abrirModal;
+
+    // =====================================
+    // SETUP DE BOTONES DE CIERRE DE MODALES
+    // =====================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Manejar botones con data-modal-hide
+        document.querySelectorAll('[data-modal-hide]').forEach(button => {
+            button.addEventListener('click', function() {
+                const modalId = this.getAttribute('data-modal-hide');
+                cerrarModal(modalId);
+            });
+        });
+    });
 
     // =====================================
     // MONITOREO DE TIEMPO

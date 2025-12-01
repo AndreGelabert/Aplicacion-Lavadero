@@ -279,10 +279,11 @@ namespace FirebaseLoginCustom.Controllers
                         return Json(new { success = false, message = $"Vehículo con ID {vehiculoServicios.VehiculoId} no encontrado." });
                     }
 
-                    // Construir lista de servicios
+                    // Construir lista de servicios y calcular precios
                     var serviciosEnLavado = new List<ServicioEnLavado>();
                     var tiempoEstimadoTotal = 0;
                     decimal precioTotal = 0;
+                    var paquetesYaContados = new HashSet<string>(); // Para contar precio de cada paquete solo una vez
 
                     var orden = 0;
                     foreach (var servicioItem in vehiculoServicios.Servicios)
@@ -328,7 +329,45 @@ namespace FirebaseLoginCustom.Controllers
 
                         serviciosEnLavado.Add(servicioEnLavado);
                         tiempoEstimadoTotal += servicio.TiempoEstimado;
-                        precioTotal += servicio.Precio;
+                    }
+
+                    // CALCULAR PRECIO TOTAL considerando paquetes
+                    // Primero identificar qué paquetes hay
+                    var paquetesUnicos = serviciosEnLavado
+                        .Where(s => !string.IsNullOrEmpty(s.PaqueteId))
+                        .Select(s => s.PaqueteId)
+                        .Distinct()
+                        .ToList();
+
+                    // Calcular y sumar precio de cada paquete UNA SOLA VEZ
+                    foreach (var paqueteId in paquetesUnicos)
+                    {
+                        var paquete = await _paqueteServicioService.ObtenerPaquete(paqueteId);
+                        if (paquete != null)
+                        {
+                            // CALCULAR precio del paquete en tiempo real
+                            // Sumar precios de los servicios del paquete
+                            decimal precioServiciosPaquete = 0;
+                            foreach (var servicioId in paquete.ServiciosIds)
+                            {
+                                var servicio = await _servicioService.ObtenerServicio(servicioId);
+                                if (servicio != null)
+                                {
+                                    precioServiciosPaquete += servicio.Precio;
+                                }
+                            }
+
+                            // Aplicar descuento del paquete
+                            var precioPaqueteConDescuento = precioServiciosPaquete - (precioServiciosPaquete * paquete.PorcentajeDescuento / 100);
+                            precioTotal += precioPaqueteConDescuento;
+                        }
+                    }
+
+                    // Sumar servicios individuales (los que NO tienen PaqueteId)
+                    var serviciosIndividuales = serviciosEnLavado.Where(s => string.IsNullOrEmpty(s.PaqueteId));
+                    foreach (var servIndiv in serviciosIndividuales)
+                    {
+                        precioTotal += servIndiv.Precio;
                     }
 
                     // Aplicar descuento
@@ -336,7 +375,14 @@ namespace FirebaseLoginCustom.Controllers
                     var precioConDescuento = precioTotal - (precioTotal * descuento / 100);
 
                     // Asignar empleados aleatoriamente
-                    var empleadosAsignados = await _lavadoService.AsignarEmpleadosAleatorios(request.CantidadEmpleados);
+                // Validar cantidad de empleados solicitados
+                var config = await _configuracionService.ObtenerConfiguracion();
+                if (request.CantidadEmpleados > config.EmpleadosMaximosPorLavado)
+                {
+                    return Json(new { success = false, message = $"La cantidad de empleados solicitados ({request.CantidadEmpleados}) excede el máximo permitido por lavado ({config.EmpleadosMaximosPorLavado})." });
+                }
+
+                var empleadosAsignados = await _lavadoService.AsignarEmpleadosAleatorios(request.CantidadEmpleados);
 
                     var lavado = new Lavado
                     {
@@ -668,17 +714,22 @@ namespace FirebaseLoginCustom.Controllers
             var paquetesConServicios = new List<object>();
             foreach (var p in paquetes)
             {
+                // Calcular precio original sumando los precios de los servicios
+                decimal precioOriginalCalculado = 0;
                 var serviciosDelPaquete = new List<object>();
+                
                 foreach (var servicioId in p.ServiciosIds)
                 {
                     var servicio = await _servicioService.ObtenerServicio(servicioId);
                     if (servicio != null)
                     {
+                        precioOriginalCalculado += servicio.Precio;
                         serviciosDelPaquete.Add(new
                         {
                             id = servicio.Id,
                             nombre = servicio.Nombre,
-                            tipo = servicio.Tipo
+                            tipo = servicio.Tipo,
+                            precio = servicio.Precio
                         });
                     }
                 }
@@ -689,7 +740,7 @@ namespace FirebaseLoginCustom.Controllers
                     nombre = p.Nombre,
                     tipoVehiculo = p.TipoVehiculo,
                     precio = p.Precio,
-                    precioOriginal = p.ServiciosIds.Count > 0 ? p.Precio / (1 - p.PorcentajeDescuento / 100) : p.Precio,
+                    precioOriginal = precioOriginalCalculado,
                     descuento = p.PorcentajeDescuento,
                     tiempoEstimado = p.TiempoEstimado,
                     servicios = serviciosDelPaquete
@@ -712,7 +763,8 @@ namespace FirebaseLoginCustom.Controllers
                 {
                     tiempoNotificacionMinutos = 15,
                     tiempoToleranciaMinutos = 15,
-                    intervaloPreguntas = 5
+                    intervaloPreguntas = 5,
+                    empleadosMaximosPorLavado = 3
                 });
             }
 
@@ -720,8 +772,60 @@ namespace FirebaseLoginCustom.Controllers
             {
                 tiempoNotificacionMinutos = config.TiempoNotificacionMinutos,
                 tiempoToleranciaMinutos = config.TiempoToleranciaMinutos,
-                intervaloPreguntas = config.IntervaloPreguntas
+                intervaloPreguntas = config.IntervaloPreguntas,
+                empleadosMaximosPorLavado = config.EmpleadosMaximosPorLavado
             });
+        }
+
+        /// <summary>
+        /// Obtiene información sobre empleados disponibles.
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> ObtenerEmpleadosDisponibles()
+        {
+            try
+            {
+                var empleadosActivos = await _personalService.ObtenerEmpleados(
+                    estados: new List<string> { "Activo" },
+                    pageNumber: 1,
+                    pageSize: 100
+                );
+
+                var empleadosDisponibles = new List<object>();
+                foreach (var empleado in empleadosActivos)
+                {
+                    var lavadosActivos = await _lavadoService.ObtenerLavadosActivosPorEmpleado(empleado.Id);
+                    if (!lavadosActivos.Any())
+                    {
+                        empleadosDisponibles.Add(new
+                        {
+                            id = empleado.Id,
+                            nombre = empleado.NombreCompleto
+                        });
+                    }
+                }
+
+                var config = await _configuracionService.ObtenerConfiguracion();
+
+                return Json(new
+                {
+                    totalActivos = empleadosActivos.Count,
+                    totalDisponibles = empleadosDisponibles.Count,
+                    empleadosMaximosPorLavado = config.EmpleadosMaximosPorLavado,
+                    empleados = empleadosDisponibles
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener empleados disponibles");
+                return Json(new
+                {
+                    totalActivos = 0,
+                    totalDisponibles = 0,
+                    empleadosMaximosPorLavado = 3,
+                    empleados = new List<object>()
+                });
+            }
         }
 
         #endregion
