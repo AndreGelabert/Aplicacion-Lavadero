@@ -109,6 +109,7 @@ builder.Services.AddScoped<ConfiguracionService>();
 builder.Services.AddScoped<ClienteService>();
 builder.Services.AddScoped<VehiculoService>();
 builder.Services.AddScoped<TipoDocumentoService>();
+builder.Services.AddScoped<Firebase.Services.LavadoService>();
 builder.Services.AddScoped<Firebase.Services.LavaderoInfoService>();
 builder.Services.AddHttpClient<Firebase.Services.AuthenticationService>();
 builder.Services.AddScoped<Firebase.Services.AuthenticationService>();

@@ -1,0 +1,115 @@
+@model Firebase.Models.Lavado
+@{
+    var edit = Model != null && !string.IsNullOrWhiteSpace(Model.Id);
+}
+<form id="lavado-form" data-edit="@edit">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="Id" id="lavadoId" value="@(Model?.Id)" />
+
+    <div class="grid gap-4 m-4 grid-cols-1 lg:grid-cols-2">
+        <!-- Selección de Cliente -->
+        <div>
+            <label for="clienteSearch" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cliente</label>
+            <div class="relative">
+                <input type="text" id="clienteSearch" 
+                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                       placeholder="Buscar cliente por nombre o documento..."
+                       autocomplete="off">
+                <input type="hidden" id="clienteId" name="clienteId" value="@(Model?.ClienteId)" />
+                <div id="clienteResultados" class="absolute z-50 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg mt-1 max-h-48 overflow-y-auto hidden shadow-lg"></div>
+            </div>
+            <p id="clienteSeleccionado" class="mt-1 text-sm text-green-600 dark:text-green-400 hidden">
+                Cliente seleccionado: <span id="clienteNombre"></span>
+            </p>
+        </div>
+
+        <!-- Cantidad de Empleados -->
+        <div>
+            <label for="cantidadEmpleados" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cantidad de Empleados</label>
+            <input type="number" id="cantidadEmpleados" name="cantidadEmpleados" 
+                   min="1" max="10" value="@(Model?.CantidadEmpleadosRequeridos ?? 1)"
+                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                   placeholder="Número de empleados requeridos">
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Los empleados serán asignados automáticamente según disponibilidad</p>
+        </div>
+    </div>
+
+    <!-- Lista de Vehículos del Cliente -->
+    <div class="m-4" id="vehiculosSection" style="display: none;">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Vehículos del Cliente</h3>
+        <div id="vehiculosList" class="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            <!-- Los vehículos se cargarán dinámicamente -->
+        </div>
+    </div>
+
+    <!-- Sección de Servicios por Vehículo -->
+    <div class="m-4" id="serviciosSection" style="display: none;">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Servicios a Realizar</h3>
+        <div id="serviciosPorVehiculo">
+            <!-- Se genera dinámicamente por cada vehículo seleccionado -->
+        </div>
+    </div>
+
+    <!-- Resumen y Descuento -->
+    <div class="m-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg" id="resumenSection" style="display: none;">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Resumen</h3>
+        <div class="grid gap-4 grid-cols-1 md:grid-cols-3">
+            <div>
+                <label for="descuento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Descuento (%)</label>
+                <input type="number" id="descuento" name="descuento" 
+                       min="0" max="100" step="5" value="@(Model?.Descuento ?? 0)"
+                       class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:text-white"
+                       onchange="actualizarResumen()">
+            </div>
+            <div>
+                <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Precio Total</label>
+                <div class="flex items-center gap-2">
+                    <span id="precioOriginal" class="text-sm text-gray-500 line-through"></span>
+                    <span id="precioFinal" class="text-xl font-bold text-green-600 dark:text-green-400">$0</span>
+                </div>
+            </div>
+            <div>
+                <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tiempo Estimado</label>
+                <span id="tiempoTotal" class="text-xl font-bold text-blue-600 dark:text-blue-400">0 min</span>
+            </div>
+        </div>
+        <div class="mt-4">
+            <label for="notas" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Notas (opcional)</label>
+            <textarea id="notas" name="notas" rows="2"
+                      class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:text-white"
+                      placeholder="Notas adicionales sobre el lavado...">@(Model?.Notas)</textarea>
+        </div>
+    </div>
+
+    <!-- Botones de acción -->
+    <div class="flex justify-end m-4 gap-2">
+        <button type="submit" id="submit-button" class="text-white inline-flex items-center bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900 font-medium text-sm px-4 py-2.5" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-2">
+                <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+            </svg>
+            Registrar Lavado
+        </button>
+        <button type="button" id="clear-button" class="text-white inline-flex items-center bg-gray-600 rounded-lg hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-300 dark:bg-gray-500 dark:hover:bg-gray-600 dark:focus:ring-gray-900 font-medium text-sm px-4 py-2.5" onclick="limpiarFormularioLavado()">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-2">
+                <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
+            </svg>
+            Limpiar
+        </button>
+    </div>
+
+    <!-- Mensajes -->
+    <div id="ajax-form-messages" class="m-4"></div>
+</form>
+
+<script>
+    // Inicializar datos de servicios y paquetes
+    window.lavadoData = {
+        clienteId: null,
+        clienteNombre: null,
+        vehiculos: [],
+        vehiculosSeleccionados: [],
+        serviciosPorVehiculo: {},
+        serviciosDisponibles: {},
+        paquetesDisponibles: {}
+    };
+</script>
