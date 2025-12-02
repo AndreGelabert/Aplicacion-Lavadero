@@ -19,10 +19,13 @@ namespace Firebase.Models
         public class RegisterRequest
         {
             /// <summary>
-            /// Nombre completo del usuario. Solo permite letras y espacios.
+            /// Nombre completo del usuario. Debe incluir al menos nombre y apellido (mínimo 2 letras por palabra).
+            /// Formato requerido: Nombre(s) Apellido(s)
+            /// Ejemplos válidos: "Juan Pérez", "María García López", "José Luis Rodríguez Martínez"
             /// </summary>
             [Required(ErrorMessage = "El nombre completo es obligatorio.")]
-            [RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "El nombre completo solo debe contener letras.")]
+            [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,}(\s+[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,})+$", 
+                ErrorMessage = "Debe ingresar al menos nombre y apellido (mínimo 2 letras por palabra). Ejemplo: Juan Pérez")]
             public required string NombreCompleto { get; set; }
 
             /// <summary>
@@ -33,11 +36,20 @@ namespace Firebase.Models
             public required string Email { get; set; }
 
             /// <summary>
-            /// Contraseña del usuario. Debe tener al menos 6 caracteres.
+            /// Contraseña del usuario. Debe tener al menos 6 caracteres, una mayúscula, una minúscula y un número.
             /// </summary>
             [Required(ErrorMessage = "La contraseña es obligatoria.")]
             [MinLength(6, ErrorMessage = "La contraseña debe contener al menos 6 caracteres.")]
+            [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$", 
+                ErrorMessage = "La contraseña debe contener al menos una mayúscula, una minúscula y un número.")]
             public required string Password { get; set; }
+
+            /// <summary>
+            /// Confirmación de la contraseña. Debe coincidir con Password.
+            /// </summary>
+            [Required(ErrorMessage = "Debe confirmar la contraseña.")]
+            [Compare("Password", ErrorMessage = "Las contraseñas no coinciden.")]
+            public required string ConfirmPassword { get; set; }
         }
 
         /// <summary>

@@ -114,7 +114,8 @@ public class LoginController : Controller
     {
         if (!ModelState.IsValid)
         {
-            ViewBag.Error = "Por favor, complete todos los campos del registro correctamente.";
+            TempData["Error"] = "Por favor, complete todos los campos del registro correctamente.";
+            TempData["ShowRegisterModal"] = true; // Mantener el modal abierto
             return View("Index");
         }
 
@@ -124,7 +125,8 @@ public class LoginController : Controller
 
             if (!result.IsSuccess)
             {
-                ViewBag.Error = result.ErrorMessage;
+                TempData["Error"] = result.ErrorMessage;
+                TempData["ShowRegisterModal"] = true; // Mantener el modal abierto
                 return View("Index");
             }
 
@@ -136,7 +138,8 @@ public class LoginController : Controller
         }
         catch (Exception)
         {
-            ViewBag.Error = "Error al registrar el usuario. Por favor, intente de nuevo.";
+            TempData["Error"] = "Error al registrar el usuario. Por favor, intente de nuevo.";
+            TempData["ShowRegisterModal"] = true; // Mantener el modal abierto
             return View("Index");
         }
     }

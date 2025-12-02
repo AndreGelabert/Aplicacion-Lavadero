@@ -71,9 +71,21 @@
                     </span>
                 </div>
             </div>
-            @if (ViewBag.Error != null)
+            @if (TempData["Error"] != null || ViewBag.Error != null)
             {
-                <p class="text-center text-red-600 bg-red-100 border border-red-400 rounded p-4 mt-4">@ViewBag.Error</p>
+                <div id="errorMessage" class="text-center text-red-600 bg-red-100 border border-red-400 rounded p-4 mt-4 transition-opacity duration-500">
+                    @(TempData["Error"] ?? ViewBag.Error)
+                </div>
+                <script>
+                    // Hacer que el mensaje desaparezca después de 5 segundos
+                    setTimeout(() => {
+                        const errorMsg = document.getElementById('errorMessage');
+                        if (errorMsg) {
+                            errorMsg.style.opacity = '0';
+                            setTimeout(() => errorMsg.remove(), 500);
+                        }
+                    }, 5000);
+                </script>
             }
             
             <div class="flex items-center justify-between">
@@ -108,7 +120,9 @@
     </div>
     <!-- Agregar el modal de registro -->
     <div id="registerModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed inset-0 z-50 flex justify-center items-center w-full h-full">
-        <div class="relative p-4 w-full max-w-md">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onclick="closeRegisterModal()"></div>
+        <div class="relative p-4 w-full max-w-md z-10">
             <!-- Modal content -->
             <div class="relative bg-white rounded-lg shadow-inner shadow-lg">
                 <!-- Modal header -->
@@ -116,7 +130,7 @@
                     <h3 class="text-lg font-semibold text-gray-900">
                         Formulario de registro
                     </h3>
-                    <button id="closeModal" type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center" data-modal-toggle="crud-modal">
+                    <button id="closeModal" type="button" onclick="closeRegisterModal()" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center" data-modal-toggle="crud-modal">
                         <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
                             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" />
                         </svg>
@@ -128,10 +142,15 @@
                     <div class="grid gap-4 mb-4">
                         <div class="col-span-2">
                             <label for="nombreCompleto" class="block mb-2 text-sm font-medium text-gray-900">Nombre Completo</label>
-                            <input type="text" id="nombreCompleto" name="nombreCompleto" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 shadow-sm" required>
+                            <input type="text" id="nombreCompleto" name="nombreCompleto" 
+                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 shadow-sm" 
+                                   required 
+                                   placeholder="Ej: Juan Pérez o María García López"
+                                   oninput="validateNombreCompleto(this)">
+                            <p id="nombreCompletoHelp" class="text-xs text-gray-500 mt-1">Ingrese su(s) nombre(s) y apellido(s) completo(s)</p>
                             @if (ViewData.ModelState.ContainsKey("nombreCompleto") && ViewData.ModelState["nombreCompleto"].Errors.Count > 0)
                             {
-                                <span class="text-red-500 text-sm">@ViewData.ModelState["nombreCompleto"].Errors[0].ErrorMessage</span>
+                                <span id="nombreCompletoError" class="text-red-500 text-sm">@ViewData.ModelState["nombreCompleto"].Errors[0].ErrorMessage</span>
                             }
                         </div>
                         <div class="col-span-2">
@@ -159,7 +178,7 @@
                         <div class="col-span-2">
                             <label for="password" class="block mb-2 text-sm font-medium text-gray-900">Contraseña</label>
                             <div class="relative">
-                                <input type="password" id="modalPassword" name="password" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 shadow-sm" required>
+                                <input type="password" id="modalPassword" name="password" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 shadow-sm" required oninput="validatePasswordStrength(this)">
                                 <span class="absolute inset-y-0 end-0 grid place-content-center px-4 cursor-pointer" onclick="togglePasswordVisibility('modalPassword', 'toggleModalPasswordIcon')">
                                     <svg id="toggleModalPasswordIcon" xmlns="http://www.w3.org/2000/svg"
                                          class="size-4 text-gray-400"
@@ -177,11 +196,34 @@
                                     </svg>
                                 </span>
                             </div>
-                            <p class="text-sm text-gray-500">La contraseña debe contener al menos 6 caracteres</p>
+                            <p id="passwordHelp" class="text-xs text-gray-500 mt-1">La contraseña debe contener al menos 6 caracteres, una mayúscula, una minúscula y un número</p>
                             @if (ViewData.ModelState.ContainsKey("password") && ViewData.ModelState["password"].Errors.Count > 0)
                             {
-                                <span class="text-red-500 text-sm">@ViewData.ModelState["password"].Errors[0].ErrorMessage</span>
+                                <span id="passwordError" class="text-red-500 text-sm">@ViewData.ModelState["password"].Errors[0].ErrorMessage</span>
                             }
+                        </div>
+                        <div class="col-span-2">
+                            <label for="confirmPassword" class="block mb-2 text-sm font-medium text-gray-900">Repetir Contraseña</label>
+                            <div class="relative">
+                                <input type="password" id="confirmPassword" name="confirmPassword" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 shadow-sm" required oninput="validatePasswordMatch()">
+                                <span class="absolute inset-y-0 end-0 grid place-content-center px-4 cursor-pointer" onclick="togglePasswordVisibility('confirmPassword', 'toggleConfirmPasswordIcon')">
+                                    <svg id="toggleConfirmPasswordIcon" xmlns="http://www.w3.org/2000/svg"
+                                         class="size-4 text-gray-400"
+                                         fill="none"
+                                         viewBox="0 0 24 24"
+                                         stroke="currentColor">
+                                        <path stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                              stroke-width="2"
+                                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                              stroke-width="2"
+                                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </span>
+                            </div>
+                            <span id="confirmPasswordError" class="text-red-500 text-sm hidden">Las contraseñas no coinciden</span>
                         </div>
                     </div>
                     <button type="submit" class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
@@ -337,139 +379,36 @@
 <script type="module" src="~/js/googleconnectionmodule.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
-    function togglePasswordVisibility(passwordFieldId, iconId) {
-        var passwordField = document.getElementById(passwordFieldId);
-        var icon = document.getElementById(iconId);
-        if (passwordField.type === "password") {
-            passwordField.type = "text";
-            icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10S6.477 0 12 0c2.21 0 4.26.72 5.875 1.925M15 12a3 3 0 11-6 0 3 3 0 016 0z" />';
-        } else {
-            passwordField.type = "password";
-            icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />';
-        }
-    }
-</script>
-<script>
-    document.getElementById('google-login-button').addEventListener('click', function () {
+    // Inicialización de Google Sign-In
+    document.getElementById('google-login-button')?.addEventListener('click', function () {
         google.accounts.id.prompt();
     });
-    document.querySelector('button.underline').addEventListener('click', function () {
-        document.getElementById('registerModal').classList.remove('hidden');
+    
+    // Abrir modal de registro
+    document.querySelector('button.underline')?.addEventListener('click', function () {
+        document.getElementById('registerModal')?.classList.remove('hidden');
     });
 
-    document.getElementById('closeModal').addEventListener('click', function () {
-        document.getElementById('registerModal').classList.add('hidden');
+    // Cerrar modal de registro con el botón X
+    document.getElementById('closeModal')?.addEventListener('click', function () {
+        document.getElementById('registerModal')?.classList.add('hidden');
     });
-    // Abrir el modal si hay errores de validación
+    
+    // Abrir el modal si hay errores de validación del servidor
     @if (ViewData.ModelState.ContainsKey("nombreCompleto") && ViewData.ModelState["nombreCompleto"].Errors.Count > 0 ||
         ViewData.ModelState.ContainsKey("email") && ViewData.ModelState["email"].Errors.Count > 0 ||
-        ViewData.ModelState.ContainsKey("password") && ViewData.ModelState["password"].Errors.Count > 0)
+        ViewData.ModelState.ContainsKey("password") && ViewData.ModelState["password"].Errors.Count > 0 ||
+        TempData["ShowRegisterModal"] as bool? == true)
     {
         <text>
-                document.getElementById('registerModal').classList.remove('hidden');
+        document.getElementById('registerModal')?.classList.remove('hidden');
         </text>
     }
 </script>
-<script>
-    function closeVerificationModal() {
+<!-- Todas las funciones de validación y manejo de modales están ahora en login.js -->
+<script src="~/js/login.js" asp-append-version="true"></script>
         const m = document.getElementById('verificationModal');
         if (m) m.classList.add('hidden');
-    }
-    async function resendVerificationEmail() {
-        const feedback = document.getElementById('verificationFeedback');
-        if (feedback) {
-            feedback.className = 'mt-4 text-sm text-gray-600 dark:text-gray-300';
-            feedback.textContent = 'Reenviando...';
-            feedback.classList.remove('hidden');
-        }
-        try {
-            // Punto extensible: implementar endpoint si se desea reenviar (POST /Login/ResendVerification)
-            const resp = await fetch('/Login/ResendVerification', { method: 'POST', headers: { "Content-Type": "application/json" } });
-            if (!resp.ok) throw new Error();
-            if (feedback) {
-                feedback.textContent = 'Correo de verificación reenviado.';
-                feedback.className = 'mt-4 text-sm text-green-600 dark:text-green-400';
-            }
-        } catch {
-            if (feedback) {
-                feedback.textContent = 'No se pudo reenviar el correo.';
-                feedback.className = 'mt-4 text-sm text-red-600 dark:text-red-400';
-            }
-        }
-    }
-    
-    function closeForgotPasswordModal() {
-        const modal = document.getElementById('forgotPasswordModal');
-        const feedback = document.getElementById('forgotPasswordFeedback');
-        const emailInput = document.getElementById('resetEmail');
-        
-        if (modal) modal.classList.add('hidden');
-        if (feedback) {
-            feedback.classList.add('hidden');
-            feedback.textContent = '';
-        }
-        if (emailInput) emailInput.value = '';
-    }
-    
-    async function sendPasswordResetEmail() {
-        const emailInput = document.getElementById('resetEmail');
-        const feedback = document.getElementById('forgotPasswordFeedback');
-        const email = emailInput?.value?.trim();
-        
-        if (!email) {
-            if (feedback) {
-                feedback.textContent = 'Por favor, ingrese un correo electrónico.';
-                feedback.className = 'mt-4 text-sm text-red-600 dark:text-red-400 text-center';
-                feedback.classList.remove('hidden');
-            }
-            return;
-        }
-        
-        // Validar formato de email
-        const emailRegex = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
-        if (!emailRegex.test(email)) {
-            if (feedback) {
-                feedback.textContent = 'Por favor, ingrese un correo electrónico válido.';
-                feedback.className = 'mt-4 text-sm text-red-600 dark:text-red-400 text-center';
-                feedback.classList.remove('hidden');
-            }
-            return;
-        }
-        
-        if (feedback) {
-            feedback.className = 'mt-4 text-sm text-gray-600 dark:text-gray-300 text-center';
-            feedback.textContent = 'Enviando...';
-            feedback.classList.remove('hidden');
-        }
-        
-        try {
-            const resp = await fetch('/Login/ForgotPassword', {
-                method: 'POST',
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: email })
-            });
-            
-            const data = await resp.json();
-            
-            if (!resp.ok) {
-                throw new Error(data.error || 'Error al enviar el correo');
-            }
-            
-            if (feedback) {
-                feedback.textContent = 'Correo de recuperación enviado. Revise su bandeja de entrada.';
-                feedback.className = 'mt-4 text-sm text-green-600 dark:text-green-400 text-center';
-            }
-            
-            // Cerrar modal después de 3 segundos
-            setTimeout(() => {
-                closeForgotPasswordModal();
-            }, 3000);
-        } catch (error) {
-            if (feedback) {
-                feedback.textContent = error.message || 'No se pudo enviar el correo de recuperación.';
-                feedback.className = 'mt-4 text-sm text-red-600 dark:text-red-400 text-center';
-            }
-        }
     }
 </script>
 <script src="~/js/login.js" asp-append-version="true"></script>

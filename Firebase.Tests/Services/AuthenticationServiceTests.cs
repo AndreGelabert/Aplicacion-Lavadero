@@ -78,12 +78,14 @@ namespace Firebase.Tests.Services
             {
                 NombreCompleto = "Juan Pérez",
                 Email = "juan@example.com",
-                Password = "SecurePassword123!"
+                Password = "SecurePassword123!",
+                ConfirmPassword = "SecurePassword123!"
             };
 
             Assert.Equal("Juan Pérez", registerRequest.NombreCompleto);
             Assert.Equal("juan@example.com", registerRequest.Email);
             Assert.Equal("SecurePassword123!", registerRequest.Password);
+            Assert.Equal("SecurePassword123!", registerRequest.ConfirmPassword);
         }
 
         [Theory]
