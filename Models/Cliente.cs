@@ -31,19 +31,23 @@ namespace Firebase.Models
         public required string NumeroDocumento { get; set; }
 
         /// <summary>
-        /// Nombre del cliente.
+        /// Nombre del cliente. Puede contener múltiples nombres (mínimo 2 letras por palabra).
+        /// Ejemplos válidos: "Juan", "María José", "José Luis Alberto"
         /// </summary>
         [FirestoreProperty]
         [Required(ErrorMessage = "El nombre es obligatorio")]
-        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", ErrorMessage = "El nombre solo puede contener letras y espacios")]
+        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,}(\s+[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,})*$", 
+            ErrorMessage = "El nombre debe tener al menos 2 letras por palabra. Ejemplo: Juan María")]
         public required string Nombre { get; set; }
 
         /// <summary>
-        /// Apellido del cliente.
+        /// Apellido del cliente. Puede contener múltiples apellidos (mínimo 2 letras por palabra).
+        /// Ejemplos válidos: "Pérez", "García López", "Rodríguez Martínez Fernández"
         /// </summary>
         [FirestoreProperty]
         [Required(ErrorMessage = "El apellido es obligatorio")]
-        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", ErrorMessage = "El apellido solo puede contener letras y espacios")]
+        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,}(\s+[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,})*$", 
+            ErrorMessage = "El apellido debe tener al menos 2 letras por palabra. Ejemplo: García López")]
         public required string Apellido { get; set; }
 
         /// <summary>

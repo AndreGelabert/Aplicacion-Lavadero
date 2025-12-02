@@ -61,12 +61,31 @@
                             <span class="sr-only">Close modal</span>
                         </button>
                     </div>
-                    <form asp-controller="TipoVehiculo" asp-action="CrearTipoVehiculo" id="formCrearTipoVehiculo">
+                    <form asp-controller="Servicio" asp-action="CrearTipoVehiculo" id="formCrearTipoVehiculo">
                         @Html.AntiForgeryToken()
                         <div class="grid gap-4 mb-4 sm:grid-cols-1">
                             <div>
-                                <label for="nombreTipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre</label>
-                                <input type="text" name="nombreTipo" id="nombreTipoVehiculo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Ej: Auto, Camioneta, Moto" required="">
+                                <label for="nombreTipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre <span class="text-red-600">*</span></label>
+                                <input type="text" name="nombreTipo" id="nombreTipoVehiculo" 
+                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
+                                       placeholder="Ej: Auto, Camioneta, Moto" 
+                                       minlength="3"
+                                       required>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 caracteres</p>
+                            </div>
+                            <div>
+                                <label for="formatoPatenteVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Formato de Patente (opcional)</label>
+                                <input type="text" name="formatoPatente" id="formatoPatenteVehiculo" 
+                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
+                                       placeholder="Ej: llnnnll|lllnnn">
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Usa <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">l</code> para letras y 
+                                    <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">n</code> para números. 
+                                    Separa formatos múltiples con <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">|</code>
+                                </p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Ejemplo: <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">llnnnll|lllnnn</code> para autos argentinos (AB123CD o ABC123)
+                                </p>
                             </div>
                         </div>
                         <div class="flex justify-end gap-2">

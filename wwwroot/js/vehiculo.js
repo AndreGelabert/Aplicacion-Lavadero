@@ -8,6 +8,7 @@
  *  - Formulario AJAX solo para edición
  *  - Gestión de activación/desactivación (modal de confirmación)
  *  - Notificaciones de operaciones
+ *  - Validación dinámica de patente según tipo de vehículo
  */
 
 (function () {
@@ -25,6 +26,9 @@
     // Listas para filtros dinámicos
     let marcasDisponibles = [];
     let coloresDisponibles = [];
+    
+    // Cache de formatos de tipos de vehículo para validación de patente
+    let tiposVehiculoFormatos = {};
 
     // ===================== Inicialización del módulo =====================
     window.PageModules = window.PageModules || {};
@@ -44,10 +48,162 @@
         setupFilterFormSubmit();
         setupDynamicFilters();
         setupModals();
+        setupPatenteValidation(); // Nueva funcionalidad de validación de patente
         checkEditMode();
         // Solo llamar una vez al inicio, no después de cada recarga
         // window.CommonUtils?.setupDefaultFilterForm();
     }
+
+    // ===================== Validación dinámica de patente =====================
+
+    /**
+     * Configura la validación dinámica de la patente basada en el tipo de vehículo seleccionado.
+     */
+    async function setupPatenteValidation() {
+        // Cargar formatos de tipos de vehículo
+        await loadTiposVehiculoFormatos();
+
+        // Agregar listener al cambio de tipo de vehículo
+        const tipoVehiculoSelect = document.getElementById('TipoVehiculo');
+        if (tipoVehiculoSelect) {
+            tipoVehiculoSelect.addEventListener('change', function() {
+                updatePatenteFormatoHint(this.value);
+                validatePatente();
+            });
+            
+            // Inicializar con el valor actual
+            if (tipoVehiculoSelect.value) {
+                updatePatenteFormatoHint(tipoVehiculoSelect.value);
+            }
+        }
+
+        // Agregar validación en tiempo real al campo de patente
+        const patenteInput = document.getElementById('Patente');
+        if (patenteInput) {
+            patenteInput.addEventListener('input', function() {
+                // Convertir a mayúsculas mientras se escribe
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                this.value = this.value.toUpperCase();
+                this.setSelectionRange(start, end);
+                validatePatente();
+            });
+            patenteInput.addEventListener('blur', validatePatente);
+        }
+    }
+
+    /**
+     * Carga los formatos de todos los tipos de vehículo desde el servidor.
+     */
+    async function loadTiposVehiculoFormatos() {
+        try {
+            const response = await fetch('/Servicio/ObtenerTiposConFormatos');
+            const tipos = await response.json();
+            
+            tiposVehiculoFormatos = {};
+            tipos.forEach(t => {
+                tiposVehiculoFormatos[t.nombre] = {
+                    formatoPatente: t.formatoPatente,
+                    regex: t.regex
+                };
+            });
+        } catch (error) {
+            console.error('Error al cargar formatos de tipos de vehículo:', error);
+        }
+    }
+
+    /**
+     * Actualiza el mensaje de ayuda del formato de la patente.
+     */
+    function updatePatenteFormatoHint(tipoVehiculo) {
+        const hintElement = document.getElementById('patente-formato-hint');
+        const patenteInput = document.getElementById('Patente');
+        
+        if (!hintElement) return;
+        
+        if (!tipoVehiculo) {
+            hintElement.textContent = 'Seleccione un tipo de vehículo';
+            if (patenteInput) {
+                patenteInput.placeholder = 'Seleccione tipo de vehículo primero';
+            }
+            return;
+        }
+
+        const tipoInfo = tiposVehiculoFormatos[tipoVehiculo];
+        
+        if (tipoInfo && tipoInfo.formatoPatente) {
+            // Mostrar formato legible
+            const formatoLegible = tipoInfo.formatoPatente
+                .replace(/l/g, 'L')
+                .replace(/n/g, 'N')
+                .replace(/\|/g, ' o ');
+            hintElement.innerHTML = `Formato: <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">${formatoLegible}</code> (L=letra, N=número)`;
+            if (patenteInput) {
+                patenteInput.placeholder = formatoLegible.split(' o ')[0]; // Mostrar el primer formato como placeholder
+            }
+        } else {
+            hintElement.textContent = 'Ingrese la patente del vehículo';
+            if (patenteInput) {
+                patenteInput.placeholder = 'Ej: AA123BB';
+            }
+        }
+    }
+
+    /**
+     * Valida la patente según el formato del tipo de vehículo seleccionado.
+     * @returns {boolean} true si es válida, false si no
+     */
+    function validatePatente() {
+        const tipoVehiculoSelect = document.getElementById('TipoVehiculo');
+        const patenteInput = document.getElementById('Patente');
+        const errorSpan = document.getElementById('patente-validation-error');
+        
+        if (!tipoVehiculoSelect || !patenteInput) return true;
+
+        const tipoVehiculo = tipoVehiculoSelect.value;
+        const patente = patenteInput.value.toUpperCase();
+
+        // Limpiar error previo
+        if (errorSpan) {
+            errorSpan.classList.add('hidden');
+            errorSpan.textContent = '';
+        }
+        patenteInput.classList.remove('border-red-500');
+
+        // Si no hay tipo seleccionado o patente, no validar
+        if (!tipoVehiculo || !patente) return true;
+
+        const tipoInfo = tiposVehiculoFormatos[tipoVehiculo];
+        
+        // Si no hay formato definido, aceptar cualquier valor alfanumérico
+        if (!tipoInfo || !tipoInfo.regex) return true;
+
+        // Validar contra el regex
+        try {
+            const regex = new RegExp(tipoInfo.regex, 'i');
+            if (!regex.test(patente)) {
+                const formatoLegible = tipoInfo.formatoPatente
+                    .replace(/l/g, 'L')
+                    .replace(/n/g, 'N')
+                    .replace(/\|/g, ' o ');
+                if (errorSpan) {
+                    errorSpan.textContent = `El formato debe ser: ${formatoLegible}`;
+                    errorSpan.classList.remove('hidden');
+                }
+                patenteInput.classList.add('border-red-500');
+                return false;
+            }
+        } catch (e) {
+            console.error('Error en regex de tipo de vehículo:', e);
+        }
+
+        return true;
+    }
+    
+    // Exponer función para uso externo (ej: desde cliente.js)
+    window.validatePatente = validatePatente;
+    window.loadTiposVehiculoFormatos = loadTiposVehiculoFormatos;
+    window.updatePatenteFormatoHint = updatePatenteFormatoHint;
 
     // ===================== Configuración inicial =====================
 

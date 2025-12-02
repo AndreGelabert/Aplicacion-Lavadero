@@ -47,8 +47,141 @@
         setupFilterFormSubmit();
         setupModals();
         setupAccordionListener(); // NUEVO: Escuchar apertura del acordeón
+        setupDocumentoValidation(); // Validación dinámica de número de documento
         checkEditMode();
         //window.CommonUtils?.setupDefaultFilterForm();
+    }
+
+    // ===================== Validación dinámica de documento =====================
+
+    let tiposDocumentoFormatos = {}; // Cache de formatos de tipos de documento
+
+    /**
+     * Configura la validación dinámica del número de documento basada en el tipo seleccionado.
+     */
+    async function setupDocumentoValidation() {
+        // Cargar formatos de tipos de documento
+        await loadTiposDocumentoFormatos();
+
+        // Agregar listener al cambio de tipo de documento
+        const tipoDocSelect = document.getElementById('TipoDocumento');
+        if (tipoDocSelect) {
+            tipoDocSelect.addEventListener('change', function() {
+                updateDocumentoFormatoHint(this.value);
+                validateDocumentoNumero();
+            });
+            
+            // Inicializar con el valor actual
+            if (tipoDocSelect.value) {
+                updateDocumentoFormatoHint(tipoDocSelect.value);
+            }
+        }
+
+        // Agregar validación en tiempo real al campo de número de documento
+        const numeroDocInput = document.getElementById('NumeroDocumento');
+        if (numeroDocInput) {
+            numeroDocInput.addEventListener('input', validateDocumentoNumero);
+            numeroDocInput.addEventListener('blur', validateDocumentoNumero);
+        }
+    }
+
+    /**
+     * Carga los formatos de todos los tipos de documento desde el servidor.
+     */
+    async function loadTiposDocumentoFormatos() {
+        try {
+            const response = await fetch('/TipoDocumento/ObtenerTiposConFormatos');
+            const tipos = await response.json();
+            
+            tiposDocumentoFormatos = {};
+            tipos.forEach(t => {
+                tiposDocumentoFormatos[t.nombre] = {
+                    formato: t.formato,
+                    regex: t.regex
+                };
+            });
+        } catch (error) {
+            console.error('Error al cargar formatos de tipos de documento:', error);
+        }
+    }
+
+    /**
+     * Actualiza el mensaje de ayuda del formato del documento.
+     */
+    function updateDocumentoFormatoHint(tipoDocumento) {
+        const hintElement = document.getElementById('documento-formato-hint');
+        const numeroDocInput = document.getElementById('NumeroDocumento');
+        
+        if (!hintElement) return;
+        
+        if (!tipoDocumento) {
+            hintElement.textContent = 'Seleccione un tipo de documento';
+            if (numeroDocInput) {
+                numeroDocInput.removeAttribute('pattern');
+                numeroDocInput.placeholder = 'Ingrese número';
+            }
+            return;
+        }
+
+        const tipoInfo = tiposDocumentoFormatos[tipoDocumento];
+        
+        if (tipoInfo && tipoInfo.formato) {
+            hintElement.textContent = `Formato: ${tipoInfo.formato}`;
+            if (numeroDocInput) {
+                numeroDocInput.placeholder = tipoInfo.formato;
+            }
+        } else {
+            hintElement.textContent = 'Ingrese el número de documento';
+            if (numeroDocInput) {
+                numeroDocInput.placeholder = 'Ingrese número';
+            }
+        }
+    }
+
+    /**
+     * Valida el número de documento según el formato del tipo seleccionado.
+     */
+    function validateDocumentoNumero() {
+        const tipoDocSelect = document.getElementById('TipoDocumento');
+        const numeroDocInput = document.getElementById('NumeroDocumento');
+        const errorSpan = document.getElementById('documento-validation-error');
+        
+        if (!tipoDocSelect || !numeroDocInput) return true;
+
+        const tipoDocumento = tipoDocSelect.value;
+        const numeroDoc = numeroDocInput.value;
+
+        // Limpiar error previo
+        if (errorSpan) {
+            errorSpan.classList.add('hidden');
+            errorSpan.textContent = '';
+        }
+        numeroDocInput.classList.remove('border-red-500');
+
+        // Si no hay tipo seleccionado o número, no validar
+        if (!tipoDocumento || !numeroDoc) return true;
+
+        const tipoInfo = tiposDocumentoFormatos[tipoDocumento];
+        
+        // Si no hay formato definido, aceptar cualquier valor
+        if (!tipoInfo || !tipoInfo.regex) return true;
+
+        // Validar contra el regex
+        try {
+            const regex = new RegExp(tipoInfo.regex);
+            if (!regex.test(numeroDoc)) {
+                if (errorSpan) {
+                    errorSpan.textContent = `El formato debe ser: ${tipoInfo.formato}`;
+                    errorSpan.classList.remove('hidden');
+                }
+                numeroDocInput.classList.add('border-red-500');
+                return false;
+            }
+        } catch (e) {
+            console.error('Error en regex de tipo de documento:', e);
+        }
+
+        return true;
     }
 
     /**
@@ -296,6 +429,9 @@
 
             // CRÍTICO: Esperar a que setupVehiculoSelector termine
             await setupVehiculoSelector();
+            
+            // Reconfigurar validación de documento
+            await setupDocumentoValidation();
 
             const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
             const accordionBody = document.getElementById("accordion-flush-body-1");
@@ -321,6 +457,12 @@
         if (event) {
             event.preventDefault();
             event.stopPropagation();
+        }
+
+        // Validar número de documento antes de enviar
+        if (!validateDocumentoNumero()) {
+            showFormMessage('error', 'El formato del número de documento no es válido.');
+            return false;
         }
 
         // Prevenir doble envío

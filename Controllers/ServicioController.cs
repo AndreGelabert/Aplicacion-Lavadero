@@ -232,6 +232,11 @@ public class ServicioController : Controller
                     return Json(new { success = false, message = "El nombre del tipo de servicio es obligatorio." });
                 }
 
+                if (nombreTipo.Length < 3)
+                {
+                    return Json(new { success = false, message = "El nombre debe tener al menos 3 caracteres." });
+                }
+
                 if (await _tipoServicioService.ExisteTipoServicio(nombreTipo))
                 {
                     return Json(new { success = false, message = "Ya existe un tipo de servicio con el mismo nombre." });
@@ -327,7 +332,7 @@ public class ServicioController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CrearTipoVehiculo(string nombreTipo)
+    public async Task<IActionResult> CrearTipoVehiculo(string nombreTipo, string? formatoPatente = null)
     {
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
@@ -338,21 +343,27 @@ public class ServicioController : Controller
                     return Json(new { success = false, message = "El nombre del tipo de vehículo es obligatorio." });
                 }
 
+                if (nombreTipo.Length < 3)
+                {
+                    return Json(new { success = false, message = "El nombre debe tener al menos 3 caracteres." });
+                }
+
                 if (await _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo))
                 {
                     return Json(new { success = false, message = "Ya existe un tipo de vehículo con el mismo nombre." });
                 }
 
-                var vehDocId = await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo);
+                var vehDocId = await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo, formatoPatente);
                 await RegistrarEvento("Creacion de tipo de vehiculo", vehDocId, "TipoVehiculo");
 
-                var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculos();
+                var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculosCompletos();
 
                 return Json(new
                 {
                     success = true,
                     message = "Tipo de vehículo creado correctamente.",
-                    tipos = tiposActualizados
+                    tipos = tiposActualizados.Select(t => t.Nombre).ToList(),
+                    tiposCompletos = tiposActualizados.Select(t => new { nombre = t.Nombre, formatoPatente = t.FormatoPatente, regex = t.ObtenerRegexPattern() })
                 });
             }
             catch (Exception ex)
@@ -365,10 +376,51 @@ public class ServicioController : Controller
         return await GestionarTipoConId(
             nombreTipo,
             () => _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo),
-            () => _tipoVehiculoService.CrearTipoVehiculo(nombreTipo),
+            () => _tipoVehiculoService.CrearTipoVehiculo(nombreTipo, formatoPatente),
             "TipoVehiculo",
             "Creacion de tipo de vehiculo"
         );
+    }
+
+    /// <summary>
+    /// Obtiene el formato de patente para un tipo de vehículo específico.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> ObtenerFormatoPatente(string nombreTipo)
+    {
+        if (string.IsNullOrWhiteSpace(nombreTipo))
+        {
+            return Json(new { success = false, formatoPatente = (string?)null, regex = (string?)null });
+        }
+
+        var tipo = await _tipoVehiculoService.ObtenerTipoVehiculoPorNombre(nombreTipo);
+        if (tipo == null)
+        {
+            return Json(new { success = false, formatoPatente = (string?)null, regex = (string?)null });
+        }
+
+        return Json(new 
+        { 
+            success = true, 
+            formatoPatente = tipo.FormatoPatente,
+            regex = tipo.ObtenerRegexPattern()
+        });
+    }
+
+    /// <summary>
+    /// Obtiene todos los tipos de vehículo con sus formatos de patente.
+    /// </summary>
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> ObtenerTiposConFormatos()
+    {
+        var tipos = await _tipoVehiculoService.ObtenerTiposVehiculosCompletos();
+        return Json(tipos.Select(t => new 
+        { 
+            nombre = t.Nombre, 
+            formatoPatente = t.FormatoPatente,
+            regex = t.ObtenerRegexPattern()
+        }));
     }
 
     /// <summary>

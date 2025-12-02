@@ -20,7 +20,7 @@ public class TipoDocumentoController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CrearTipoDocumento(string nombreTipo)
+    public async Task<IActionResult> CrearTipoDocumento(string nombreTipo, string? formato = null)
     {
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
@@ -31,21 +31,27 @@ public class TipoDocumentoController : Controller
                     return Json(new { success = false, message = "El nombre del tipo de documento es obligatorio." });
                 }
 
+                if (nombreTipo.Length < 3)
+                {
+                    return Json(new { success = false, message = "El nombre debe tener al menos 3 caracteres." });
+                }
+
                 if (await _tipoDocumentoService.ExisteTipoDocumento(nombreTipo))
                 {
                     return Json(new { success = false, message = "Ya existe un tipo de documento con el mismo nombre." });
                 }
 
-                var docId = await _tipoDocumentoService.CrearTipoDocumento(nombreTipo);
+                var docId = await _tipoDocumentoService.CrearTipoDocumento(nombreTipo, formato);
                 await RegistrarEvento("Creacion de tipo de documento", docId, "TipoDocumento");
 
-                var tiposActualizados = await _tipoDocumentoService.ObtenerTiposDocumento();
+                var tiposActualizados = await _tipoDocumentoService.ObtenerTiposDocumentoCompletos();
 
                 return Json(new
                 {
                     success = true,
                     message = "Tipo de documento creado correctamente.",
-                    tipos = tiposActualizados
+                    tipos = tiposActualizados.Select(t => t.Nombre).ToList(),
+                    tiposCompletos = tiposActualizados
                 });
             }
             catch (Exception ex)
@@ -54,6 +60,46 @@ public class TipoDocumentoController : Controller
             }
         }
         return BadRequest();
+    }
+
+    /// <summary>
+    /// Obtiene el formato de un tipo de documento específico.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> ObtenerFormato(string nombreTipo)
+    {
+        if (string.IsNullOrWhiteSpace(nombreTipo))
+        {
+            return Json(new { success = false, formato = (string?)null, regex = (string?)null });
+        }
+
+        var tipo = await _tipoDocumentoService.ObtenerTipoDocumentoPorNombre(nombreTipo);
+        if (tipo == null)
+        {
+            return Json(new { success = false, formato = (string?)null, regex = (string?)null });
+        }
+
+        return Json(new 
+        { 
+            success = true, 
+            formato = tipo.Formato,
+            regex = tipo.ObtenerRegexPattern()
+        });
+    }
+
+    /// <summary>
+    /// Obtiene todos los tipos de documento con sus formatos.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> ObtenerTiposConFormatos()
+    {
+        var tipos = await _tipoDocumentoService.ObtenerTiposDocumentoCompletos();
+        return Json(tipos.Select(t => new 
+        { 
+            nombre = t.Nombre, 
+            formato = t.Formato,
+            regex = t.ObtenerRegexPattern()
+        }));
     }
 
     [HttpPost]

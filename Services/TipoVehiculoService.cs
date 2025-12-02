@@ -1,3 +1,4 @@
+using Firebase.Models;
 using Google.Cloud.Firestore;
 
 /// <summary>
@@ -29,7 +30,7 @@ public class TipoVehiculoService
     #region Operaciones de Consulta
 
     /// <summary>
-    /// Obtiene todos los tipos de vehículo registrados.
+    /// Obtiene todos los tipos de vehículo registrados (solo nombres).
     /// </summary>
     /// <returns>Lista de nombres de tipos de vehículo. Retorna lista vacía si hay error.</returns>
     public async Task<List<string>> ObtenerTiposVehiculos()
@@ -45,6 +46,66 @@ public class TipoVehiculoService
         {
             Console.WriteLine($"Error al obtener tipos de servicio: {ex.Message}");
             return new List<string>();
+        }
+    }
+
+    /// <summary>
+    /// Obtiene todos los tipos de vehículo con sus formatos de patente.
+    /// </summary>
+    /// <returns>Lista completa de tipos de vehículo con todos sus campos.</returns>
+    public async Task<List<TipoVehiculo>> ObtenerTiposVehiculosCompletos()
+    {
+        try
+        {
+            var snapshot = await _firestore.Collection("tiposVehiculos").GetSnapshotAsync();
+            var tipos = new List<TipoVehiculo>();
+            
+            foreach (var doc in snapshot.Documents)
+            {
+                tipos.Add(new TipoVehiculo
+                {
+                    Id = doc.Id,
+                    Nombre = doc.GetValue<string>("Nombre") ?? "",
+                    FormatoPatente = doc.ContainsField("FormatoPatente") ? doc.GetValue<string>("FormatoPatente") : null
+                });
+            }
+            
+            return tipos;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al obtener tipos de vehículo: {ex.Message}");
+            return new List<TipoVehiculo>();
+        }
+    }
+
+    /// <summary>
+    /// Obtiene un tipo de vehículo por su nombre.
+    /// </summary>
+    /// <param name="nombre">Nombre del tipo de vehículo.</param>
+    /// <returns>El tipo de vehículo o null si no existe.</returns>
+    public async Task<TipoVehiculo?> ObtenerTipoVehiculoPorNombre(string nombre)
+    {
+        try
+        {
+            var query = _firestore.Collection("tiposVehiculos").WhereEqualTo("Nombre", nombre);
+            var snapshot = await query.GetSnapshotAsync();
+            
+            if (snapshot.Documents.Count == 0)
+                return null;
+
+            var doc = snapshot.Documents.First();
+            return new TipoVehiculo
+            {
+                Id = doc.Id,
+                Nombre = doc.GetValue<string>("Nombre") ?? "",
+                FormatoPatente = doc.ContainsField("FormatoPatente") ? doc.GetValue<string>("FormatoPatente") : null
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al obtener tipo de vehículo: {ex.Message}");
+            return null;
         }
     }
 
@@ -83,14 +144,21 @@ public class TipoVehiculoService
     /// Crea un nuevo tipo de vehículo en la base de datos.
     /// </summary>
     /// <param name="nombre">Nombre del tipo de vehículo a crear.</param>
+    /// <param name="formatoPatente">Formato de patente opcional (ej: "llnnnll|lllnnn").</param>
     /// <returns>ID del documento creado en Firestore.</returns>
-    public async Task<string> CrearTipoVehiculo(string nombre)
+    public async Task<string> CrearTipoVehiculo(string nombre, string? formatoPatente = null)
     {
         var tipoRef = _firestore.Collection("tiposVehiculos").Document();
         var tipo = new Dictionary<string, object>
         {
             { "Nombre", nombre }
         };
+        
+        if (!string.IsNullOrWhiteSpace(formatoPatente))
+        {
+            tipo["FormatoPatente"] = formatoPatente;
+        }
+        
         await tipoRef.SetAsync(tipo);
         return tipoRef.Id;
     }

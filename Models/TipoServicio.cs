@@ -1,4 +1,5 @@
-﻿using Google.Cloud.Firestore;
+using System.ComponentModel.DataAnnotations;
+using Google.Cloud.Firestore;
 
 namespace Firebase.Models
 {
@@ -28,9 +29,11 @@ namespace Firebase.Models
         /// <summary>
         /// Nombre descriptivo del tipo de servicio.
         /// Este nombre se muestra en las interfaces de usuario y formularios.
-        /// Debe ser único y descriptivo (ej: "Lavado Básico", "Lavado Premium").
+        /// Debe ser único, descriptivo y tener al menos 3 caracteres (ej: "Lavado Básico", "Lavado Premium").
         /// </summary>
         [FirestoreProperty]
+        [Required(ErrorMessage = "El nombre del tipo de servicio es obligatorio")]
+        [MinLength(3, ErrorMessage = "El nombre debe tener al menos 3 caracteres")]
         public required string Nombre { get; set; }
     }
 }
