@@ -180,7 +180,7 @@
 
         // Validar contra el regex
         try {
-            const regex = new RegExp(tipoInfo.regex, 'i');
+            const regex = new RegExp(tipoInfo.regex);
             if (!regex.test(patente)) {
                 const formatoLegible = tipoInfo.formatoPatente
                     .replace(/l/g, 'L')

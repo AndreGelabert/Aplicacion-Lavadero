@@ -411,7 +411,6 @@ public class ServicioController : Controller
     /// Obtiene todos los tipos de vehículo con sus formatos de patente.
     /// </summary>
     [HttpGet]
-    [AllowAnonymous]
     public async Task<IActionResult> ObtenerTiposConFormatos()
     {
         var tipos = await _tipoVehiculoService.ObtenerTiposVehiculosCompletos();
