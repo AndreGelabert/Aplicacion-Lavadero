@@ -10,6 +10,66 @@ const LoginModule = {
     init() {
         this.setupPasswordToggle();
         this.setupFormValidation();
+        this.setupRealTimeValidation();
+    },
+
+    /**
+     * Configura validación en tiempo real para el formulario de login
+     */
+    setupRealTimeValidation() {
+        const email = document.getElementById('email');
+        const password = document.getElementById('password');
+
+        // Validación en tiempo real para email
+        if (email) {
+            email.addEventListener('input', () => this.validateEmailField(email));
+            email.addEventListener('blur', () => this.validateEmailField(email));
+        }
+
+        // Validación en tiempo real para password
+        if (password) {
+            password.addEventListener('input', () => this.validatePasswordField(password));
+            password.addEventListener('blur', () => this.validatePasswordField(password));
+        }
+    },
+
+    /**
+     * Valida el campo de email en tiempo real
+     * @param {HTMLElement} field - Campo de email
+     */
+    validateEmailField(field) {
+        const value = field.value.trim();
+        const errorContainer = document.getElementById('email-validation-error');
+        
+        if (!value) {
+            this.showFieldErrorWithContainer(field, errorContainer, 'El correo electrónico es obligatorio');
+            return false;
+        }
+        
+        if (!this.isValidEmail(value)) {
+            this.showFieldErrorWithContainer(field, errorContainer, 'Ingrese un correo electrónico válido');
+            return false;
+        }
+        
+        this.clearFieldErrorWithContainer(field, errorContainer);
+        return true;
+    },
+
+    /**
+     * Valida el campo de contraseña en tiempo real
+     * @param {HTMLElement} field - Campo de contraseña
+     */
+    validatePasswordField(field) {
+        const value = field.value.trim();
+        const errorContainer = document.getElementById('password-validation-error');
+        
+        if (!value) {
+            this.showFieldErrorWithContainer(field, errorContainer, 'La contraseña es obligatoria');
+            return false;
+        }
+        
+        this.clearFieldErrorWithContainer(field, errorContainer);
+        return true;
     },
 
     /**
@@ -26,22 +86,13 @@ const LoginModule = {
             let hasErrors = false;
 
             // Validar email
-            if (!email.value.trim()) {
-                this.showFieldError(email, 'El email es obligatorio');
+            if (!this.validateEmailField(email)) {
                 hasErrors = true;
-            } else if (!this.isValidEmail(email.value)) {
-                this.showFieldError(email, 'Ingrese un email válido');
-                hasErrors = true;
-            } else {
-                this.clearFieldError(email);
             }
 
             // Validar contraseña
-            if (!password.value.trim()) {
-                this.showFieldError(password, 'La contraseña es obligatoria');
+            if (!this.validatePasswordField(password)) {
                 hasErrors = true;
-            } else {
-                this.clearFieldError(password);
             }
 
             // Si hay errores, prevenir envío
@@ -83,6 +134,39 @@ const LoginModule = {
     isValidEmail(email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
+    },
+
+    /**
+     * Muestra error en un campo usando un contenedor específico
+     * @param {HTMLElement} field - Campo con error
+     * @param {HTMLElement} container - Contenedor del mensaje de error
+     * @param {string} message - Mensaje de error
+     */
+    showFieldErrorWithContainer(field, container, message) {
+        field.classList.add('border-red-500');
+        field.classList.remove('border-gray-200');
+        
+        if (container) {
+            container.textContent = message;
+            container.classList.remove('hidden');
+            container.style.display = 'block';
+        }
+    },
+
+    /**
+     * Limpia error de un campo usando un contenedor específico
+     * @param {HTMLElement} field - Campo a limpiar
+     * @param {HTMLElement} container - Contenedor del mensaje de error
+     */
+    clearFieldErrorWithContainer(field, container) {
+        field.classList.remove('border-red-500');
+        field.classList.add('border-gray-200');
+        
+        if (container) {
+            container.textContent = '';
+            container.classList.add('hidden');
+            container.style.display = 'none';
+        }
     },
 
     /**

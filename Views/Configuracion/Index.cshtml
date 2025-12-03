@@ -131,7 +131,7 @@
                 <div class="grid gap-4 grid-cols-1 md:grid-cols-3">
                     <div>
                         <label asp-for="CancelacionAnticipadaDescuento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                            Descuento (%)
+                            Descuento (%) <span class="text-red-600">*</span>
                         </label>
                         <input type="number" asp-for="CancelacionAnticipadaDescuento" 
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
@@ -141,7 +141,7 @@
                     
                     <div>
                         <label asp-for="CancelacionAnticipadaHorasMinimas" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                            Horas Mínimas de Anticipación
+                            Horas Mínimas de Anticipación <span class="text-red-600">*</span>
                         </label>
                         <input type="number" asp-for="CancelacionAnticipadaHorasMinimas" 
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
@@ -151,7 +151,7 @@
                     
                     <div>
                         <label asp-for="CancelacionAnticipadaValidezDias" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                            Validez del Descuento (días)
+                            Validez del Descuento (días) <span class="text-red-600">*</span>
                         </label>
                         <input type="number" asp-for="CancelacionAnticipadaValidezDias" 
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
@@ -173,7 +173,7 @@
                 <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
                     <div>
                         <label asp-for="NombreLavadero" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                            Nombre del Lavadero
+                            Nombre del Lavadero <span class="text-red-600">*</span>
                         </label>
                         <input type="text" asp-for="NombreLavadero" 
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
@@ -211,7 +211,7 @@
                 <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
                     <div>
                         <label asp-for="PaquetesDescuentoStep" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                            Paso de Descuento (%)
+                            Paso de Descuento (%) <span class="text-red-600">*</span>
                         </label>
                         <input type="number" asp-for="PaquetesDescuentoStep" 
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
@@ -343,7 +343,7 @@
                 <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
                     <div>
                         <label asp-for="CapacidadMaximaConcurrente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                            Capacidad Máxima Concurrente
+                            Capacidad Máxima Concurrente <span class="text-red-600">*</span>
                         </label>
                         <input type="number" asp-for="CapacidadMaximaConcurrente" 
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
@@ -369,7 +369,7 @@
                     
                     <div>
                         <label asp-for="EmpleadosMaximosPorLavado" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                            Empleados Máximos por Lavado
+                            Empleados Máximos por Lavado <span class="text-red-600">*</span>
                         </label>
                         <input type="number" asp-for="EmpleadosMaximosPorLavado" 
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
@@ -393,7 +393,7 @@
        <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
      <div>
 <label asp-for="SesionDuracionHoras" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-           Duración Máxima de Sesión (horas)
+           Duración Máxima de Sesión (horas) <span class="text-red-600">*</span>
                </label>
       <input type="number" asp-for="SesionDuracionHoras" 
   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
@@ -405,7 +405,7 @@
           </div>  
           <div>
   <label asp-for="SesionInactividadMinutos" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                   Tiempo de Inactividad (minutos)
+                   Tiempo de Inactividad (minutos) <span class="text-red-600">*</span>
      </label>
       <input type="number" asp-for="SesionInactividadMinutos" 
        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"

@@ -25,7 +25,7 @@
             <span asp-validation-for="Nombre" class="text-red-600 text-xs"></span>
         </div>
         <div>
-            <label for="Precio" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Precio</label>
+            <label for="Precio" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Precio <span class="text-red-600">*</span></label>
             <input type="number" name="Precio" id="Precio"
                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                    placeholder="Precio del servicio"
@@ -34,7 +34,7 @@
             <span asp-validation-for="Precio" class="text-red-600 text-xs"></span>
         </div>
         <div class="col-span-2">
-            <label for="Tipo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Servicio</label>
+            <label for="Tipo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Servicio <span class="text-red-600">*</span></label>
             <div class="flex">
                 <select name="Tipo" id="Tipo" 
                         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")" 
@@ -78,7 +78,7 @@
         </div>
         <!-- Tipo de Vehículo -->
         <div>
-            <label for="TipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Vehículo</label>
+            <label for="TipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Vehículo <span class="text-red-600">*</span></label>
             <div class="flex">
                 <select name="TipoVehiculo" id="TipoVehiculo"
                         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")"
@@ -122,7 +122,7 @@
         </div>
         <div>
             <label for="TiempoEstimado" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-        Tiempo Estimado 
+        Tiempo Estimado <span class="text-red-600">*</span>
     @if (Model?.TiempoEstimado >= 60)
 {
             var horas = (Model.TiempoEstimado / 60.0).ToString("0.##");
@@ -158,7 +158,7 @@
             <input type="hidden" id="etapas-json" name="EtapasJson" value='@etapasJson' />
         </div>
         <div class="col-span-3">
-            <label for="Descripcion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Descripción</label>
+            <label for="Descripcion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Descripción <span class="text-red-600">*</span></label>
             <textarea id="Descripcion" name="Descripcion" rows="1" style="min-height: 2.5rem; overflow-y: hidden;" oninput="autoGrow(this)" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Descripción del servicio" required>@(Model?.Descripcion)</textarea>
             <span asp-validation-for="Descripcion" class="text-red-600 text-xs"></span>
         </div>

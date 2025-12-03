@@ -13,7 +13,7 @@
         <div class="grid grid-cols-2">
             <!-- Tipo de Documento -->
             <div>
-                <label for="TipoDocumento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Documento</label>
+                <label for="TipoDocumento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Documento <span class="text-red-600">*</span></label>
                 <div class="flex">
                     <select name="TipoDocumento" id="TipoDocumento"
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")"
@@ -52,7 +52,7 @@
 
             <!-- Número de Documento -->
             <div class="pl-2">
-                <label for="NumeroDocumento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Número de Documento</label>
+                <label for="NumeroDocumento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Número de Documento <span class="text-red-600">*</span></label>
                 <input type="text" name="NumeroDocumento" id="NumeroDocumento"
                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")"
                        placeholder="Ingrese número"
@@ -69,7 +69,7 @@
         </div>
         <!-- Nombre -->
         <div>
-            <label for="Nombre" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre</label>
+            <label for="Nombre" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre <span class="text-red-600">*</span></label>
             <input type="text" name="Nombre" id="Nombre"
                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                    placeholder="Ej: Juan María"
@@ -83,7 +83,7 @@
 
         <!-- Apellido -->
         <div>
-            <label for="Apellido" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Apellido</label>
+            <label for="Apellido" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Apellido <span class="text-red-600">*</span></label>
             <input type="text" name="Apellido" id="Apellido"
                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                    placeholder="Ej: García López"
@@ -98,7 +98,7 @@
             <div class="grid grid-cols-2">
                 <!-- Teléfono -->
                 <div>
-                    <label for="Telefono" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Teléfono</label>
+                    <label for="Telefono" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Teléfono <span class="text-red-600">*</span></label>
                     <input type="tel" name="Telefono" id="Telefono"
                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                            placeholder="Teléfono"
@@ -111,7 +111,7 @@
 
                 <!-- Email -->
                 <div class="pl-2">
-                    <label for="Email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email</label>
+                    <label for="Email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email <span class="text-red-600">*</span></label>
                     <input type="email" name="Email" id="Email"
                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                            placeholder="Email"
