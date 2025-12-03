@@ -144,7 +144,7 @@ const LoginModule = {
      */
     showFieldErrorWithContainer(field, container, message) {
         field.classList.add('border-red-500');
-        field.classList.remove('border-gray-200');
+        field.classList.remove('border-gray-300');
         
         if (container) {
             container.textContent = message;
@@ -160,7 +160,7 @@ const LoginModule = {
      */
     clearFieldErrorWithContainer(field, container) {
         field.classList.remove('border-red-500');
-        field.classList.add('border-gray-200');
+        field.classList.add('border-gray-300');
         
         if (container) {
             container.textContent = '';

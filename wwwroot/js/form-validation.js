@@ -84,12 +84,17 @@
                     errorContainer.className = 'text-red-600 text-xs mt-1 block validation-error-message';
                     errorContainer.style.display = 'none';
                     
-                    // Insertar después del campo o del contenedor flex si existe
-                    const parent = field.closest('.flex') || field;
-                    if (parent.nextSibling) {
-                        parent.parentNode.insertBefore(errorContainer, parent.nextSibling);
-                    } else {
-                        parent.parentNode.appendChild(errorContainer);
+                    // Insertar después del campo de forma segura
+                    // Primero intentar insertar después del campo directamente
+                    const parentElement = field.parentElement;
+                    if (parentElement) {
+                        // Si el campo tiene un siguiente hermano, insertar antes de él
+                        if (field.nextSibling) {
+                            parentElement.insertBefore(errorContainer, field.nextSibling);
+                        } else {
+                            // Si no, agregar al final del padre
+                            parentElement.appendChild(errorContainer);
+                        }
                     }
                 }
             }
@@ -185,8 +190,8 @@
             // Buscar label asociado
             const label = document.querySelector(`label[for="${field.id}"]`);
             if (label) {
-                // Obtener solo el texto, sin el asterisco
-                let text = label.textContent.replace('*', '').trim();
+                // Obtener solo el texto, sin el asterisco (reemplazar todas las ocurrencias)
+                let text = label.textContent.replace(/\*/g, '').trim();
                 return text || field.name || 'Este campo';
             }
             
