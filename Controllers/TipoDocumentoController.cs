@@ -11,11 +11,16 @@ public class TipoDocumentoController : Controller
 {
     private readonly TipoDocumentoService _tipoDocumentoService;
     private readonly AuditService _auditService;
+    private readonly ClienteService _clienteService;
 
-    public TipoDocumentoController(TipoDocumentoService tipoDocumentoService, AuditService auditService)
+    public TipoDocumentoController(
+        TipoDocumentoService tipoDocumentoService,
+        AuditService auditService,
+        ClienteService clienteService)
     {
         _tipoDocumentoService = tipoDocumentoService;
         _auditService = auditService;
+        _clienteService = clienteService;
     }
 
     [HttpPost]
@@ -34,6 +39,23 @@ public class TipoDocumentoController : Controller
                 if (nombreTipo.Length < 3)
                 {
                     return Json(new { success = false, message = "El nombre debe tener al menos 3 caracteres." });
+                }
+
+                // ✅ NUEVO: Validar que el formato sea obligatorio
+                if (string.IsNullOrWhiteSpace(formato))
+                {
+                    return Json(new { success = false, message = "El formato del documento es obligatorio." });
+                }
+
+                if (formato.Length < 3)
+                {
+                    return Json(new { success = false, message = "El formato debe tener al menos 3 caracteres." });
+                }
+
+                // ✅ NUEVO: Validar que el formato solo contenga caracteres permitidos
+                if (!System.Text.RegularExpressions.Regex.IsMatch(formato, @"^[nl.\-]{3,}$"))
+                {
+                    return Json(new { success = false, message = "El formato solo puede contener 'n' (números), 'l' (letras), '.' y '-'. Mínimo 3 caracteres." });
                 }
 
                 if (await _tipoDocumentoService.ExisteTipoDocumento(nombreTipo))
@@ -79,9 +101,9 @@ public class TipoDocumentoController : Controller
             return Json(new { success = false, formato = (string?)null, regex = (string?)null });
         }
 
-        return Json(new 
-        { 
-            success = true, 
+        return Json(new
+        {
+            success = true,
             formato = tipo.Formato,
             regex = tipo.ObtenerRegexPattern()
         });
@@ -94,9 +116,9 @@ public class TipoDocumentoController : Controller
     public async Task<IActionResult> ObtenerTiposConFormatos()
     {
         var tipos = await _tipoDocumentoService.ObtenerTiposDocumentoCompletos();
-        return Json(tipos.Select(t => new 
-        { 
-            nombre = t.Nombre, 
+        return Json(tipos.Select(t => new
+        {
+            nombre = t.Nombre,
             formato = t.Formato,
             regex = t.ObtenerRegexPattern()
         }));
@@ -115,8 +137,15 @@ public class TipoDocumentoController : Controller
                     return Json(new { success = false, message = "Debe seleccionar un tipo de documento." });
                 }
 
-                // TODO: Validar si hay clientes usando este tipo antes de eliminar (si es requerido)
-                // Por ahora permitimos eliminar, pero idealmente deberíamos chequear.
+                // ✅ NUEVO: Verificar si está en uso antes de eliminar
+                var enUso = await _clienteService.ExisteTipoDocumentoEnUso(nombreTipo);
+                if (enUso)
+                {
+                    return Json(new {
+                        success = false,
+                        message = $"No se puede eliminar el tipo '{nombreTipo}' porque está en uso por uno o más clientes."
+                    });
+                }
 
                 var idsEliminados = await _tipoDocumentoService.EliminarTipoDocumento(nombreTipo);
                 foreach (var id in idsEliminados)

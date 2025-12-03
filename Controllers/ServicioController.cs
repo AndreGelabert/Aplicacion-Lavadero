@@ -16,7 +16,8 @@ public class ServicioController : Controller
     private readonly AuditService _auditService;
     private readonly TipoServicioService _tipoServicioService;
     private readonly TipoVehiculoService _tipoVehiculoService;
-    private readonly PaqueteServicioService _paqueteServicioService; // ✅ NUEVO
+    private readonly PaqueteServicioService _paqueteServicioService;
+    private readonly VehiculoService _vehiculoService; // ✅ NUEVO
 
     /// <summary>
     /// Crea una nueva instancia del controlador de servicios.
@@ -26,13 +27,15 @@ public class ServicioController : Controller
         AuditService auditService,
         TipoServicioService tipoServicioService,
         TipoVehiculoService tipoVehiculoService,
-        PaqueteServicioService paqueteServicioService) // ✅ NUEVO
+        PaqueteServicioService paqueteServicioService,
+        VehiculoService vehiculoService) // ✅ NUEVO
     {
         _servicioService = servicioService;
         _auditService = auditService;
         _tipoServicioService = tipoServicioService;
         _tipoVehiculoService = tipoVehiculoService;
-        _paqueteServicioService = paqueteServicioService; // ✅ NUEVO
+        _paqueteServicioService = paqueteServicioService;
+        _vehiculoService = vehiculoService; // ✅ NUEVO
     }
     #endregion
 
@@ -348,6 +351,23 @@ public class ServicioController : Controller
                     return Json(new { success = false, message = "El nombre debe tener al menos 3 caracteres." });
                 }
 
+                // ✅ NUEVO: Validar que el formato sea obligatorio
+                if (string.IsNullOrWhiteSpace(formatoPatente))
+                {
+                    return Json(new { success = false, message = "El formato de patente es obligatorio." });
+                }
+
+                if (formatoPatente.Length < 3)
+                {
+                    return Json(new { success = false, message = "El formato debe tener al menos 3 caracteres." });
+                }
+
+                // ✅ NUEVO: Validar que el formato solo contenga caracteres permitidos
+                if (!System.Text.RegularExpressions.Regex.IsMatch(formatoPatente, @"^[nl.\-|]{3,}$"))
+                {
+                    return Json(new { success = false, message = "El formato solo puede contener 'n' (números), 'l' (letras), '.' '-' y '|'. Mínimo 3 caracteres." });
+                }
+
                 if (await _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo))
                 {
                     return Json(new { success = false, message = "Ya existe un tipo de vehículo con el mismo nombre." });
@@ -399,9 +419,9 @@ public class ServicioController : Controller
             return Json(new { success = false, formatoPatente = (string?)null, regex = (string?)null });
         }
 
-        return Json(new 
-        { 
-            success = true, 
+        return Json(new
+        {
+            success = true,
             formatoPatente = tipo.FormatoPatente,
             regex = tipo.ObtenerRegexPattern()
         });
@@ -414,9 +434,9 @@ public class ServicioController : Controller
     public async Task<IActionResult> ObtenerTiposConFormatos()
     {
         var tipos = await _tipoVehiculoService.ObtenerTiposVehiculosCompletos();
-        return Json(tipos.Select(t => new 
-        { 
-            nombre = t.Nombre, 
+        return Json(tipos.Select(t => new
+        {
+            nombre = t.Nombre,
             formatoPatente = t.FormatoPatente,
             regex = t.ObtenerRegexPattern()
         }));
@@ -438,13 +458,25 @@ public class ServicioController : Controller
                     return Json(new { success = false, message = "Debe seleccionar un tipo de vehículo." });
                 }
 
+                // ✅ Validar si hay servicios usando este tipo
                 var serviciosUsandoTipo = await _servicioService.ObtenerServiciosPorTipoVehiculo(nombreTipo);
                 if (serviciosUsandoTipo.Any())
                 {
                     return Json(new
                     {
                         success = false,
-                        message = "No se puede eliminar el tipo de vehículo porque hay servicios que lo utilizan."
+                        message = $"No se puede eliminar el tipo '{nombreTipo}' porque hay servicios que lo utilizan."
+                    });
+                }
+
+                // ✅ NUEVO: Validar si hay vehículos usando este tipo
+                var vehiculosUsandoTipo = await _vehiculoService.ExisteTipoVehiculoEnUso(nombreTipo);
+                if (vehiculosUsandoTipo)
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = $"No se puede eliminar el tipo '{nombreTipo}' porque está en uso por uno o más vehículos."
                     });
                 }
 

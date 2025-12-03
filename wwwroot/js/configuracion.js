@@ -544,7 +544,8 @@
     function getFlowbiteModal(modalEl) {
         if (!modalEl || typeof window !== 'object' || typeof window.Modal === 'undefined') return null;
 
-        const opts = { backdrop: 'dynamic', closable: true };
+        // 🔒 NUEVO: backdrop 'static' para que NO se cierre clickeando fuera
+        const opts = { backdrop: 'static', closable: false };
 
         if (typeof Modal.getInstance === 'function') {
             const existing = Modal.getInstance(modalEl);

@@ -859,13 +859,16 @@
 
     function getFlowbiteModal(modalEl) {
         if (!modalEl || typeof window !== 'object' || typeof window.Modal === 'undefined') return null;
-        const opts = { backdrop: 'dynamic', closable: true };
+        
+        // 🔒 NUEVO: backdrop 'static' y closable false para que NO se cierre clickeando fuera
+        const opts = { backdrop: 'static', closable: false };
+   
         if (typeof Modal.getInstance === 'function') {
             const existing = Modal.getInstance(modalEl);
             if (existing) return existing;
-        }
+   }
         if (typeof Modal.getOrCreateInstance === 'function') {
-            return Modal.getOrCreateInstance(modalEl, opts);
+     return Modal.getOrCreateInstance(modalEl, opts);
         }
         try { return new Modal(modalEl, opts); } catch { return null; }
     }

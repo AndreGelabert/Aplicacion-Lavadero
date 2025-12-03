@@ -31,23 +31,27 @@ namespace Firebase.Models
         public required string NumeroDocumento { get; set; }
 
         /// <summary>
-        /// Nombre del cliente. Puede contener múltiples nombres (mínimo 2 letras por palabra).
-        /// Ejemplos válidos: "Juan", "María José", "José Luis Alberto"
+        /// Nombre del cliente. Debe contener al menos 3 letras.
+        /// Puede contener múltiples nombres separados por espacios.
+        /// Ejemplos válidos: "Juan", "María José", "José Luis"
         /// </summary>
         [FirestoreProperty]
         [Required(ErrorMessage = "El nombre es obligatorio")]
-        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,}(\s+[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,})*$", 
-            ErrorMessage = "El nombre debe tener al menos 2 letras por palabra. Ejemplo: Juan María")]
+        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]{3,}$", 
+            ErrorMessage = "El nombre debe contener al menos 3 letras")]
+        [MinLength(3, ErrorMessage = "El nombre debe tener al menos 3 caracteres")]
         public required string Nombre { get; set; }
 
         /// <summary>
-        /// Apellido del cliente. Puede contener múltiples apellidos (mínimo 2 letras por palabra).
-        /// Ejemplos válidos: "Pérez", "García López", "Rodríguez Martínez Fernández"
+        /// Apellido del cliente. Debe contener al menos 3 letras.
+        /// Puede contener múltiples apellidos separados por espacios.
+        /// Ejemplos válidos: "Pérez", "García López", "Rodríguez Martínez"
         /// </summary>
         [FirestoreProperty]
         [Required(ErrorMessage = "El apellido es obligatorio")]
-        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,}(\s+[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,})*$", 
-            ErrorMessage = "El apellido debe tener al menos 2 letras por palabra. Ejemplo: García López")]
+        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]{3,}$", 
+            ErrorMessage = "El apellido debe contener al menos 3 letras")]
+        [MinLength(3, ErrorMessage = "El apellido debe tener al menos 3 caracteres")]
         public required string Apellido { get; set; }
 
         /// <summary>
@@ -65,11 +69,15 @@ namespace Firebase.Models
 
         /// <summary>
         /// Correo electrónico de contacto.
+        /// Debe tener un formato válido con al menos 3 caracteres en el dominio después del @.
+        /// Ejemplo: usuario@dominio.com
         /// </summary>
         [FirestoreProperty]
         [Required(ErrorMessage = "El email es obligatorio")]
         [EmailAddress(ErrorMessage = "El formato del email no es válido")]
-        public required string Email { get; set; }
+        [RegularExpression(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]{3,}\.[a-zA-Z]{2,}$",
+            ErrorMessage = "El email debe tener al menos 3 caracteres después del @")]
+      public required string Email { get; set; }
 
         /// <summary>
         /// Lista de IDs de los vehículos asociados a este cliente.

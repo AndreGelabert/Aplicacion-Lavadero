@@ -839,11 +839,12 @@
         });
     }
 
-    // Helper: obtiene o crea la instancia Flowbite del modal
+    // Helper: obtiene la instancia Flowbite del modal
     function getFlowbiteModal(modalEl) {
         if (!modalEl || typeof window !== 'object' || typeof window.Modal === 'undefined') return null;
 
-        const opts = { backdrop: 'dynamic', closable: true };
+        // 🔒 NUEVO: backdrop 'static' y closable false para que NO se cierre clickeando fuera
+        const opts = { backdrop: 'static', closable: false };
 
         // Flowbite 2.x expone getInstance y getOrCreateInstance
         if (typeof Modal.getInstance === 'function') {
