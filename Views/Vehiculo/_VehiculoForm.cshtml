@@ -62,12 +62,13 @@
                    placeholder="Seleccione tipo de vehículo primero"
                    value="@(Model?.Patente)"
                    required @(edit ? "readonly" : "")>
-            <p id="patente-formato-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Seleccione un tipo de vehículo</p>
+
             @if (edit)
             {
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">No editable</p>
             }
             <span asp-validation-for="Patente" class="text-red-600 text-xs"></span>
+            <p id="patente-formato-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Seleccione un tipo de vehículo</p>
             <span id="patente-validation-error" class="text-red-600 text-xs hidden"></span>
         </div>
 

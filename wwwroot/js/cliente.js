@@ -55,7 +55,7 @@
     // ===================== Validación dinámica de documento =====================
 
     let tiposDocumentoFormatos = {}; // Cache de formatos de tipos de documento
-
+    let tiposVehiculoFormatos = {}; // Cache de formatos de tipos de vehículo
     /**
      * Configura la validación dinámica del número de documento basada en el tipo seleccionado.
      */
@@ -219,7 +219,25 @@
             console.error('Error al cargar formatos de tipos de documento:', error);
         }
     }
+    /**
+    * Carga los formatos de todos los tipos de vehículodesde el servidor.
+    */
+    async function loadTiposVehiculoFormatos() {
+        try {
+            const response = await fetch('/TipoVehiculo/ObtenerTiposConFormatos');
+            const tipos = await response.json();
 
+            tiposVehiculoFormatos = {};
+            tipos.forEach(t => {
+                tiposVehiculoFormatos[t.nombre] = {
+                    formato: t.formato,
+                    regex: t.regex
+                };
+            });
+        } catch (error) {
+            console.error('Error al cargar formatos de tipos de vehículo:', error);
+        }
+    }
     /**
      * Actualiza el mensaje de ayuda del formato del documento.
      */
@@ -252,7 +270,38 @@
             }
         }
     }
+    /**
+ * Actualiza el mensaje de ayuda del formato de la patente.
+ */
+    function updatePatenteFormatoHint(tipoVehiculo) {
+        const hintElement = document.getElementById('patente-formato-hint');
+        const patenteInput = document.getElementById('Patente');
 
+        if (!hintElement) return;
+
+        if (!tipoVehiculo) {
+            hintElement.textContent = 'Seleccione un tipo de vehículo';
+            if (patenteInput) {
+                patenteInput.removeAttribute('pattern');
+                patenteInput.placeholder = 'Ingrese patente';
+            }
+            return;
+        }
+
+        const tipoInfo = tiposVehiculoFormatos[tipoVehiculo];
+
+        if (tipoInfo && tipoInfo.formato) {
+            hintElement.textContent = `Formato: ${tipoInfo.formato}`;
+            if (patenteInput) {
+                patenteInput.placeholder = tipoInfo.formato;
+            }
+        } else {
+            hintElement.textContent = 'Ingrese la patente del vehículo';
+            if (patenteInput) {
+                patenteInput.placeholder = 'Ingrese patente';
+            }
+        }
+    }
     /**
      * Valida el número de documento según el formato del tipo seleccionado.
      */
@@ -298,7 +347,51 @@
 
         return true;
     }
+    /**
+ * Valida la patente según el formato del tipo de vehículo seleccionado.
+ */
+    function validatePatenteVehiculo() {
+        const tipoVehiculoSelect = document.getElementById('TipoVehiculo');
+        const patenteInput = document.getElementById('Patente');
+        const errorSpan = document.getElementById('patente-validation-error');
 
+        if (!tipoVehiculoSelect || !patenteInput) return true;
+
+        const tipoVehiculo = tipoVehiculoSelect.value;
+        const patente = patenteInput.value;
+
+        // Limpiar error previo
+        if (errorSpan) {
+            errorSpan.classList.add('hidden');
+            errorSpan.textContent = '';
+        }
+        patenteInput.classList.remove('border-red-500');
+
+        // Si no hay tipo seleccionado o patente, no validar
+        if (!tipoVehiculo || !patente) return true;
+
+        const tipoInfo = tiposVehiculoFormatos[tipoVehiculo];
+
+        // Si no hay formato definido, aceptar cualquier valor
+        if (!tipoInfo || !tipoInfo.regex) return true;
+
+        // Validar contra el regex
+        try {
+            const regex = new RegExp(tipoInfo.regex);
+            if (!regex.test(patente)) {
+                if (errorSpan) {
+                    errorSpan.textContent = `El formato debe ser: ${tipoInfo.formato}`;
+                    errorSpan.classList.remove('hidden');
+                }
+                patenteInput.classList.add('border-red-500');
+                return false;
+            }
+        } catch (e) {
+            console.error('Error en regex de tipo de vehículo:', e);
+        }
+
+        return true;
+    }
     /**
      * Configura listener para cuando se abre el acordeón del formulario
      */
@@ -1112,124 +1205,127 @@
 
     // ===================== Modal de Creación Rápida de Vehículo =====================
 
-    window.openQuickCreateVehiculoModal = function () {
-        fetch('/Vehiculo/FormPartial')
-            .then(response => response.text())
-            .then(html => {
-                // Eliminar modal anterior si existe
-                const existingModal = document.getElementById("quick-create-modal");
-                if (existingModal) {
-                    existingModal.remove();
-                }
-                const existingBackdrop = document.querySelector('[modal-backdrop]');
-                if (existingBackdrop) {
-                    existingBackdrop.remove();
-                }
+    window.openQuickCreateVehiculoModal = async function () {
+        try {
+            // Primero cargar los formatos
+            await loadTiposVehiculoFormatos();
 
-                // Crear estructura de modal Flowbite completa
-                const modalHtml = `
-                    <div id="quick-create-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
-                        <div class="relative p-4 w-full max-w-3xl max-h-full">
-                            <div class="relative bg-white rounded-lg shadow dark:bg-gray-800">
-                                <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
-                                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                                        Registrar Nuevo Vehículo
-                                    </h3>
-                                    <button type="button" onclick="closeQuickCreateModal()" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white">
-                                        <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-                                        </svg>
-                                        <span class="sr-only">Cerrar modal</span>
-                                    </button>
-                                </div>
-                                <div class="p-4 md:p-5 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-                                    <!-- Contenedor de mensajes dentro del modal -->
-                                    <div id="quick-vehiculo-messages" class="mb-4"></div>
-                                    
-                                    <div id="quick-vehiculo-form-content">
-                                        ${html}
-                                    </div>
-                                </div>
+            const response = await fetch('/Vehiculo/FormPartial');
+            const html = await response.text();
+
+            // Eliminar modal anterior si existe
+            const existingModal = document.getElementById("quick-create-modal");
+            if (existingModal) {
+                existingModal.remove();
+            }
+            const existingBackdrop = document.querySelector('[modal-backdrop]');
+            if (existingBackdrop) {
+                existingBackdrop.remove();
+            }
+
+            // Crear estructura de modal Flowbite completa
+            const modalHtml = `
+            <div id="quick-create-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                <div class="relative p-4 w-full max-w-3xl max-h-full">
+                    <div class="relative bg-white rounded-lg shadow dark:bg-gray-800">
+                        <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                                Registrar Nuevo Vehículo
+                            </h3>
+                            <button type="button" onclick="closeQuickCreateModal()" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white">
+                                <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                                </svg>
+                                <span class="sr-only">Cerrar modal</span>
+                            </button>
+                        </div>
+                        <div class="p-4 md:p-5 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+                            <div id="quick-vehiculo-messages" class="mb-4"></div>
+                            <div id="quick-vehiculo-form-content">
+                                ${html}
                             </div>
                         </div>
                     </div>
-                `;
+                </div>
+            </div>
+        `;
 
-                // Insertar en el DOM
-                document.body.insertAdjacentHTML('beforeend', modalHtml);
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-                // Obtener el modal y crear instancia Flowbite
-                const modalEl = document.getElementById('quick-create-modal');
+            const modalEl = document.getElementById('quick-create-modal');
 
-                // Configurar Flowbite Modal
-                if (typeof Modal !== 'undefined') {
-                    const modalOptions = {
-                        placement: 'center',
-                        backdrop: 'static', // NO se cierra al clickear fuera
-                        closable: false, // NO se cierra con ESC
-                        onHide: () => {
-                            document.body.style.overflow = '';
-                        },
-                        onShow: () => {
-                            document.body.style.overflow = 'hidden';
-                        }
-                    };
+            if (typeof Modal !== 'undefined') {
+                const modalOptions = {
+                    placement: 'center',
+                    backdrop: 'static',
+                    closable: false,
+                    onHide: () => { document.body.style.overflow = ''; },
+                    onShow: () => { document.body.style.overflow = 'hidden'; }
+                };
 
-                    const modal = new Modal(modalEl, modalOptions);
-                    modal.show();
+                const modal = new Modal(modalEl, modalOptions);
+                modal.show();
+                window._quickVehiculoModal = modal;
+            } else {
+                modalEl.classList.remove('hidden');
+                modalEl.classList.add('flex');
+                document.body.style.overflow = 'hidden';
 
-                    // Guardar referencia para cerrar después
-                    window._quickVehiculoModal = modal;
-                } else {
-                    // Fallback sin Flowbite
-                    modalEl.classList.remove('hidden');
-                    modalEl.classList.add('flex');
-                    document.body.style.overflow = 'hidden';
+                const backdrop = document.createElement('div');
+                backdrop.setAttribute('modal-backdrop', '');
+                backdrop.className = 'bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40';
+                document.body.appendChild(backdrop);
+            }
 
-                    // Crear backdrop manual
-                    const backdrop = document.createElement('div');
-                    backdrop.setAttribute('modal-backdrop', '');
-                    backdrop.className = 'bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40';
-                    document.body.appendChild(backdrop);
-                }
+            const messagesContainer = document.getElementById('quick-vehiculo-messages');
+            if (messagesContainer) {
+                messagesContainer.innerHTML = '';
+            }
 
-                // Limpiar mensajes previos si el contenedor ya existe
-                const messagesContainer = document.getElementById('quick-vehiculo-messages');
-                if (messagesContainer) {
-                    messagesContainer.innerHTML = '';
-                }
+            const form = modalEl.querySelector("form");
+            if (form) {
+                form.onsubmit = function (e) {
+                    e.preventDefault();
+                    submitQuickVehiculo(this);
+                    return false;
+                };
 
-                // Configurar el formulario
-                const form = modalEl.querySelector("form");
-                if (form) {
-                    form.onsubmit = function (e) {
+                const cancelBtn = form.querySelector("#clear-button");
+                if (cancelBtn) {
+                    cancelBtn.onclick = function (e) {
                         e.preventDefault();
-                        submitQuickVehiculo(this);
+                        closeQuickCreateModal();
                         return false;
                     };
+                }
 
-                    const cancelBtn = form.querySelector("#clear-button");
-                    if (cancelBtn) {
-                        cancelBtn.onclick = function (e) {
-                            e.preventDefault();
-                            closeQuickCreateModal();
-                            return false;
-                        };
-                    }
+                const tipoVehiculoSelect = modalEl.querySelector('#TipoVehiculo');
+                if (tipoVehiculoSelect) {
+                    tipoVehiculoSelect.addEventListener('change', function () {
+                        updatePatenteFormatoHint(this.value);
+                        validatePatenteVehiculo();
+                    });
 
-                    // Convertir patente a mayúsculas mientras se escribe
-                    const patenteInput = form.querySelector("#Patente");
-                    if (patenteInput) {
-                        patenteInput.addEventListener('input', function () {
-                            const start = this.selectionStart;
-                            const end = this.selectionEnd;
-                            this.value = this.value.toUpperCase();
-                            this.setSelectionRange(start, end);
-                        });
+                    if (tipoVehiculoSelect.value) {
+                        updatePatenteFormatoHint(tipoVehiculoSelect.value);
                     }
                 }
-            })
-            .catch(error => console.error('Error al cargar form vehiculo:', error));
+
+                const patenteInput = modalEl.querySelector('#Patente');
+                if (patenteInput) {
+                    patenteInput.addEventListener('input', function () {
+                        validatePatenteVehiculo();
+                        const start = this.selectionStart;
+                        const end = this.selectionEnd;
+                        this.value = this.value.toUpperCase();
+                        this.setSelectionRange(start, end);
+                    });
+                    patenteInput.addEventListener('blur', validatePatenteVehiculo);
+                }
+            }
+        } catch (error) {
+            console.error('Error al cargar form vehiculo:', error);
+        }
     };
 
     window.closeQuickCreateModal = function () {
@@ -1287,7 +1383,11 @@
             showQuickVehiculoMessage('error', 'Todos los campos son obligatorios.', 5000);
             return false;
         }
-
+        // Validar patente según el tipo de vehículo
+        if (!validatePatenteVehiculo()) {
+            showQuickVehiculoMessage('error', 'El formato de la patente no es válido.', 5000);
+            return false;
+        }
         // Verificar que no exista ya en los vehículos temporales o seleccionados
         const patenteExiste = [...vehiculosTemporales, ...vehiculosSeleccionados].some(v =>
             v.patente && v.patente.toLowerCase() === patente.toLowerCase()
