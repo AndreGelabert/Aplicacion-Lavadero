@@ -8,6 +8,7 @@
  *  - Formulario AJAX solo para edición
  *  - Gestión de activación/desactivación (modal de confirmación)
  *  - Notificaciones de operaciones
+ *  - Validación dinámica de patente según tipo de vehículo
  */
 
 (function () {
@@ -25,6 +26,9 @@
     // Listas para filtros dinámicos
     let marcasDisponibles = [];
     let coloresDisponibles = [];
+    
+    // Cache de formatos de tipos de vehículo para validación de patente
+    let tiposVehiculoFormatos = {};
 
     // ===================== Inicialización del módulo =====================
     window.PageModules = window.PageModules || {};
@@ -44,10 +48,281 @@
         setupFilterFormSubmit();
         setupDynamicFilters();
         setupModals();
+        setupPatenteValidation(); // Nueva funcionalidad de validación de patente
         checkEditMode();
         // Solo llamar una vez al inicio, no después de cada recarga
         // window.CommonUtils?.setupDefaultFilterForm();
     }
+
+    // ===================== Validación dinámica de patente =====================
+
+    /**
+     * Valida la patente según el formato del tipo de vehículo seleccionado.
+     * @returns {boolean} true si es válida, false si no
+     */
+    function validatePatente() {
+        const tipoVehiculoSelect = document.getElementById('TipoVehiculo');
+        const patenteInput = document.getElementById('Patente');
+        const errorSpan = document.getElementById('patente-validation-error');
+
+        if (!tipoVehiculoSelect || !patenteInput) return true;
+
+        const tipoVehiculo = tipoVehiculoSelect.value;
+        const patente = patenteInput.value.trim().toUpperCase();
+
+        // Limpiar error previo
+        if (errorSpan) {
+            errorSpan.classList.add('hidden');
+            errorSpan.textContent = '';
+        }
+        patenteInput.classList.remove('border-red-500');
+
+        // Si no hay tipo seleccionado, no validar
+        if (!tipoVehiculo) {
+            patenteInput.setCustomValidity('Debe seleccionar un tipo de vehículo primero');
+            return false;
+        }
+
+        // Si la patente está vacía, no validar aún
+        if (!patente || patente.length === 0) {
+            patenteInput.setCustomValidity('');
+            return true;
+        }
+
+        const tipoInfo = tiposVehiculoFormatos[tipoVehiculo];
+
+        // Si no hay formato definido, aceptar cualquier alfanumérico de al menos 3 caracteres
+        if (!tipoInfo || !tipoInfo.regex) {
+            if (patente.length < 3) {
+                patenteInput.setCustomValidity('La patente debe tener al menos 3 caracteres');
+                if (errorSpan) {
+                    errorSpan.textContent = 'La patente debe tener al menos 3 caracteres';
+                    errorSpan.classList.remove('hidden');
+                }
+                patenteInput.classList.add('border-red-500');
+                return false;
+            }
+            patenteInput.setCustomValidity('');
+            return true;
+        }
+
+        // ✅ CRÍTICO: Validar contra el regex estrictamente
+        try {
+            const regex = new RegExp(tipoInfo.regex);
+            if (!regex.test(patente)) {
+                const formatoLegible = tipoInfo.formatoPatente
+                    .replace(/l/g, 'L')
+                    .replace(/n/g, 'N')
+                    .replace(/\|/g, ' o ');
+
+                const mensajeError = `El formato debe ser: ${formatoLegible} (L=letra, N=número)`;
+
+                patenteInput.setCustomValidity(mensajeError);
+                if (errorSpan) {
+                    errorSpan.textContent = mensajeError;
+                    errorSpan.classList.remove('hidden');
+                }
+                patenteInput.classList.add('border-red-500');
+                return false;
+            }
+        } catch (e) {
+            console.error('Error en regex de tipo de vehículo:', e);
+        }
+
+        patenteInput.setCustomValidity('');
+        if (errorSpan) {
+            errorSpan.classList.add('hidden');
+            errorSpan.textContent = '';
+        }
+        patenteInput.classList.remove('border-red-500');
+        return true;
+    }
+
+    /**
+     * Valida que el caracter ingresado sea válido según el formato esperado
+     * @param {string} formato - Formato de la patente (ej: "lllnnn")
+     * @param {string} valor - Valor actual del input
+     * @param {string} caracter - Caracter que se está intentando ingresar
+     * @returns {boolean} true si el caracter es válido, false si no
+     */
+    function esCaracterValido(formato, valor, caracter) {
+        // Permitir siempre el borrado
+        if (caracter === '') return true;
+        
+        // Obtener la posición actual (sin contar separadores como puntos o guiones)
+        const posicionSinSeparadores = valor.replace(/[.\-\s]/g, '').length;
+        
+        // Obtener los formatos posibles (separados por |)
+        const formatosPosibles = formato.split('|');
+        
+        for (const fmt of formatosPosibles) {
+            // Remover separadores del formato para obtener solo las posiciones de caracteres
+            const formatoLimpio = fmt.replace(/[.\-\s]/g, '');
+            
+            if (posicionSinSeparadores < formatoLimpio.length) {
+                const caracterEsperado = formatoLimpio[posicionSinSeparadores];
+                
+                if (caracterEsperado === 'l' || caracterEsperado === 'L') {
+                    // Se espera una letra
+                    if (/[A-Za-z]/.test(caracter)) return true;
+                } else if (caracterEsperado === 'n' || caracterEsperado === 'N') {
+                    // Se espera un número
+                    if (/[0-9]/.test(caracter)) return true;
+                }
+            }
+        }
+        
+        // Permitir separadores comunes
+        if (/[.\-\s]/.test(caracter)) return true;
+        
+        return false;
+    }
+
+    /**
+     * Configura la validación dinámica de la patente basada en el tipo de vehículo seleccionado.
+     */
+    async function setupPatenteValidation() {
+        // Cargar formatos de tipos de vehículo
+        await loadTiposVehiculoFormatos();
+
+        // Agregar listener al cambio de tipo de vehículo
+        const tipoVehiculoSelect = document.getElementById('TipoVehiculo');
+        if (tipoVehiculoSelect) {
+            tipoVehiculoSelect.addEventListener('change', function() {
+                updatePatenteFormatoHint(this.value);
+                validatePatente();
+            });
+            
+            // Inicializar con el valor actual
+            if (tipoVehiculoSelect.value) {
+                updatePatenteFormatoHint(tipoVehiculoSelect.value);
+            }
+        }
+
+        // Agregar validación en tiempo real al campo de patente
+        const patenteInput = document.getElementById('Patente');
+        if (patenteInput) {
+            let lastValidValue = patenteInput.value;
+            
+            patenteInput.addEventListener('input', function (e) {
+                const tipoVehiculo = tipoVehiculoSelect?.value;
+                const tipoInfo = tiposVehiculoFormatos[tipoVehiculo];
+                
+                // Convertir a mayúsculas
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                const valorAnterior = lastValidValue;
+                let valorActual = this.value.toUpperCase();
+                
+                // Si hay un formato definido, validar caracter por caracter
+                if (tipoInfo && tipoInfo.formatoPatente) {
+                    const formato = tipoInfo.formatoPatente;
+                    
+                    // Si se está ingresando texto (no borrando)
+                    if (valorActual.length > valorAnterior.length) {
+                        const ultimoCaracter = valorActual[valorActual.length - 1];
+                        const valorSinUltimo = valorActual.slice(0, -1);
+                        
+                        // Validar si el caracter es válido
+                        if (!esCaracterValido(formato, valorSinUltimo, ultimoCaracter)) {
+                            // Rechazar el caracter, restaurar valor anterior
+                            this.value = valorAnterior;
+                            this.setSelectionRange(start - 1, end - 1);
+                            return;
+                        }
+                    }
+                }
+                
+                this.value = valorActual;
+                this.setSelectionRange(start, end);
+                lastValidValue = valorActual;
+                validatePatente();
+            });
+            
+            patenteInput.addEventListener('blur', function () {
+                validatePatente();
+            });
+            
+            patenteInput.addEventListener('paste', function (e) {
+                e.preventDefault();
+                const pastedText = (e.clipboardData || window.clipboardData).getData('text').toUpperCase();
+                
+                // Permitir pegar y luego validar
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                const valorActual = this.value;
+                const nuevoValor = valorActual.substring(0, start) + pastedText + valorActual.substring(end);
+                
+                this.value = nuevoValor;
+                this.setSelectionRange(start + pastedText.length, start + pastedText.length);
+                
+                // Validar después de pegar
+                setTimeout(() => validatePatente(), 0);
+            });
+        }
+    }
+
+    /**
+     * Carga los formatos de todos los tipos de vehículo desde el servidor.
+     */
+    async function loadTiposVehiculoFormatos() {
+        try {
+            const response = await fetch('/Servicio/ObtenerTiposConFormatos');
+            const tipos = await response.json();
+            
+            tiposVehiculoFormatos = {};
+            tipos.forEach(t => {
+                tiposVehiculoFormatos[t.nombre] = {
+                    formatoPatente: t.formatoPatente,
+                    regex: t.regex
+                };
+            });
+        } catch (error) {
+            console.error('Error al cargar formatos de tipos de vehículo:', error);
+        }
+    }
+
+    /**
+     * Actualiza el mensaje de ayuda del formato de la patente.
+     */
+    function updatePatenteFormatoHint(tipoVehiculo) {
+        const hintElement = document.getElementById('patente-formato-hint');
+        const patenteInput = document.getElementById('Patente');
+        
+        if (!hintElement) return;
+        
+        if (!tipoVehiculo) {
+            hintElement.textContent = 'Seleccione un tipo de vehículo';
+            if (patenteInput) {
+                patenteInput.placeholder = 'Seleccione tipo de vehículo primero';
+            }
+            return;
+        }
+
+        const tipoInfo = tiposVehiculoFormatos[tipoVehiculo];
+        
+        if (tipoInfo && tipoInfo.formatoPatente) {
+            // Mostrar formato legible
+            const formatoLegible = tipoInfo.formatoPatente
+                .replace(/l/g, 'L')
+                .replace(/n/g, 'N')
+                .replace(/\|/g, ' o ');
+            hintElement.innerHTML = `Formato: <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">${formatoLegible}</code> (L=letra, N=número)`;
+            if (patenteInput) {
+                patenteInput.placeholder = formatoLegible.split(' o ')[0]; // Mostrar el primer formato como placeholder
+            }
+        } else {
+            hintElement.textContent = 'Ingrese la patente del vehículo';
+            if (patenteInput) {
+                patenteInput.placeholder = 'Ej: AA123BB';
+            }
+        }
+    }
+    
+    // Exponer función para uso externo (ej: desde cliente.js)
+    window.validatePatente = validatePatente;
+    window.loadTiposVehiculoFormatos = loadTiposVehiculoFormatos;
+    window.updatePatenteFormatoHint = updatePatenteFormatoHint;
 
     // ===================== Configuración inicial =====================
 
@@ -417,7 +692,18 @@
             // Guardar el HTML original para restaurarlo
             submitBtn.dataset.originalHtml = originalText;
         }
+        // Validar patente antes de enviar
+        if (!validatePatente()) {
+            showFormMessage('error', 'La patente no cumple con el formato requerido.');
 
+            // Re-habilitar botón
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = submitBtn.dataset.originalHtml || 'Guardar';
+            }
+
+            return false;
+        }
         const formData = new FormData(form);
 
         fetch(form.action, {
@@ -644,7 +930,7 @@
         if (!container) {
             container = document.createElement('div');
             container.id = 'table-messages-container';
-            container.className = 'mb-4';
+            container.className = 'mb-4');
 
             const tableContainer = document.getElementById('vehiculo-table-container');
             if (tableContainer?.parentNode) {
@@ -703,13 +989,16 @@
 
     function getFlowbiteModal(modalEl) {
         if (!modalEl || typeof window !== 'object' || typeof window.Modal === 'undefined') return null;
-        const opts = { backdrop: 'dynamic', closable: true };
+        
+        // 🔒 NUEVO: backdrop 'static' y closable false para que NO se cierre clickeando fuera
+        const opts = { backdrop: 'static', closable: false };
+   
         if (typeof Modal.getInstance === 'function') {
             const existing = Modal.getInstance(modalEl);
             if (existing) return existing;
-        }
+   }
         if (typeof Modal.getOrCreateInstance === 'function') {
-            return Modal.getOrCreateInstance(modalEl, opts);
+     return Modal.getOrCreateInstance(modalEl, opts);
         }
         try { return new Modal(modalEl, opts); } catch { return null; }
     }

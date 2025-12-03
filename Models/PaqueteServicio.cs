@@ -29,9 +29,11 @@ namespace Firebase.Models
         /// <summary>
         /// Nombre descriptivo del paquete de servicios.
         /// Solo permite letras, acentos y espacios.
+        /// Debe tener al menos 3 caracteres.
         /// </summary>
         [FirestoreProperty]
         [Required(ErrorMessage = "El nombre del paquete es obligatorio")]
+        [MinLength(3, ErrorMessage = "El nombre debe tener al menos 3 caracteres")]
         [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", ErrorMessage = "El nombre solo puede contener letras y espacios")]
         public required string Nombre { get; set; }
 

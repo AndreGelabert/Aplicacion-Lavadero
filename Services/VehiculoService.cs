@@ -205,6 +205,23 @@ public class VehiculoService
         await _firestore.Collection("vehiculos").Document(id).DeleteAsync();
     }
 
+    /// <summary>
+    /// Verifica si un tipo de vehículo está siendo usado por algún vehículo.
+    /// Útil para prevenir la eliminación de tipos en uso.
+    /// </summary>
+    /// <param name="tipoVehiculo">Nombre del tipo de vehículo a verificar</param>
+    /// <returns>True si hay al menos un vehículo usando este tipo</returns>
+    public async Task<bool> ExisteTipoVehiculoEnUso(string tipoVehiculo)
+    {
+        if (string.IsNullOrWhiteSpace(tipoVehiculo))
+            return false;
+
+        var vehiculosRef = _firestore.Collection("vehiculos");
+        var query = vehiculosRef.WhereEqualTo("TipoVehiculo", tipoVehiculo).Limit(1);
+        var snapshot = await query.GetSnapshotAsync();
+        return snapshot.Count > 0;
+    }
+
     private object GetPropValue(object src, string propName)
     {
         if (src == null) return null;

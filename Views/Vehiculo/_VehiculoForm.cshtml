@@ -11,31 +11,14 @@
     <input type="hidden" name="ClienteId" value="@(Model?.ClienteId)" />
 
     <div class="grid gap-4 m-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        <!-- Patente -->
+        <!-- Tipo de Vehículo (PRIMERO) -->
         <div>
-            <label for="Patente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Patente</label>
-            <input type="text" name="Patente" id="Patente"
-                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")"
-                   placeholder="Ej: AA123BB"
-                   value="@(Model?.Patente)"
-                   pattern="[a-zA-Z0-9\s]+"
-                   title="Letras y números"
-                   required @(edit ? "readonly" : "")>
-            @if (edit)
-            {
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">No editable</p>
-            }
-            <span asp-validation-for="Patente" class="text-red-600 text-xs"></span>
-        </div>
-
-        <!-- Tipo de Vehículo -->
-        <div>
-            <label for="TipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Vehículo</label>
+            <label for="TipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Vehículo <span class="text-red-600">*</span></label>
             <div class="flex">
                 <select name="TipoVehiculo" id="TipoVehiculo"
                         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")"
                         required @(edit ? "disabled" : "")>
-                    <option value="">Seleccione...</option>
+                    <option value="">Seleccione primero...</option>
                     @foreach (var tipo in (ViewBag.TiposVehiculo as List<string>) ?? new List<string>())
                     {
                         if (Model?.TipoVehiculo != null && string.Equals(Model.TipoVehiculo, tipo, StringComparison.OrdinalIgnoreCase))
@@ -64,12 +47,34 @@
                 <input type="hidden" name="TipoVehiculo" value="@Model.TipoVehiculo" />
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">No editable</p>
             }
+            else
+            {
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Seleccione para habilitar el formato de patente</p>
+            }
             <span asp-validation-for="TipoVehiculo" class="text-red-600 text-xs"></span>
+        </div>
+
+        <!-- Patente (SEGUNDO, depende del tipo) -->
+        <div>
+            <label for="Patente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Patente <span class="text-red-600">*</span></label>
+            <input type="text" name="Patente" id="Patente"
+                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")"
+                   placeholder="Seleccione tipo de vehículo primero"
+                   value="@(Model?.Patente)"
+                   required @(edit ? "readonly" : "")>
+
+            @if (edit)
+            {
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">No editable</p>
+            }
+            <span asp-validation-for="Patente" class="text-red-600 text-xs"></span>
+            <p id="patente-formato-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Seleccione un tipo de vehículo</p>
+            <span id="patente-validation-error" class="text-red-600 text-xs hidden"></span>
         </div>
 
         <!-- Marca -->
         <div>
-            <label for="Marca" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Marca</label>
+            <label for="Marca" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Marca <span class="text-red-600">*</span></label>
             <input type="text" name="Marca" id="Marca"
                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")"
                    placeholder="Marca"
@@ -84,7 +89,7 @@
 
         <!-- Modelo -->
         <div>
-            <label for="Modelo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Modelo</label>
+            <label for="Modelo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Modelo <span class="text-red-600">*</span></label>
             <input type="text" name="Modelo" id="Modelo"
                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                    placeholder="Modelo"
@@ -95,7 +100,7 @@
 
         <!-- Color -->
         <div>
-            <label for="Color" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Color</label>
+            <label for="Color" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Color <span class="text-red-600">*</span></label>
             <input type="text" name="Color" id="Color"
                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                    placeholder="Color"

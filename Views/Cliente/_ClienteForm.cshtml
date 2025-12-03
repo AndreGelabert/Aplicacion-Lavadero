@@ -57,14 +57,14 @@
                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")"
                        placeholder="Ingrese número"
                        value="@(Model?.NumeroDocumento)"
-                       pattern="[0-9]+"
-                       title="Solo números"
                        required @(edit ? "readonly" : "")>
+                <p id="documento-formato-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Seleccione un tipo de documento</p>
                 @if (edit)
                 {
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">No editable</p>
                 }
                 <span asp-validation-for="NumeroDocumento" class="text-red-600 text-xs"></span>
+                <span id="documento-validation-error" class="text-red-600 text-xs hidden"></span>
             </div>
         </div>
         <!-- Nombre -->
@@ -72,11 +72,12 @@
             <label for="Nombre" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre</label>
             <input type="text" name="Nombre" id="Nombre"
                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                   placeholder="Nombre"
+                   placeholder="Ej: Juan María"
                    value="@(Model?.Nombre)"
-                   pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+"
-                   title="Solo letras y espacios"
+                   pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ]{3,}(\s+[a-zA-ZáéíóúÁÉÍÓÚñÑ]{3,})*$"
+                   title="El nombre debe tener al menos 3 letras por palabra. Ejemplo: Juan María"
                    required>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 letras por palabra</p>
             <span asp-validation-for="Nombre" class="text-red-600 text-xs"></span>
         </div>
 
@@ -85,11 +86,12 @@
             <label for="Apellido" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Apellido</label>
             <input type="text" name="Apellido" id="Apellido"
                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                   placeholder="Apellido"
+                   placeholder="Ej: García López"
                    value="@(Model?.Apellido)"
-                   pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+"
-                   title="Solo letras y espacios"
+                   pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ]{3,}(\s+[a-zA-ZáéíóúÁÉÍÓÚñÑ]{3,})*$"
+                   title="El apellido debe tener al menos 3 letras por palabra. Ejemplo: García López"
                    required>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 letras por palabra</p>
             <span asp-validation-for="Apellido" class="text-red-600 text-xs"></span>
         </div>
         <div class="col-span-3">

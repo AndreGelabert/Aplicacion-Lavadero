@@ -22,7 +22,7 @@
     let searchTimeout;
     let clienteMsgTimeout = null;
     let tableMsgTimeout = null;
-
+    
     // Variables para gestión de vehículos
     let vehiculosSeleccionados = [];
     let vehiculosDisponibles = [];
@@ -47,10 +47,351 @@
         setupFilterFormSubmit();
         setupModals();
         setupAccordionListener(); // NUEVO: Escuchar apertura del acordeón
+        setupDocumentoValidation();// Validación dinámica de número de documento
+        setupFormatoDocumentoValidation();
         checkEditMode();
-        //window.CommonUtils?.setupDefaultFilterForm();
     }
 
+    // ===================== Validación dinámica de documento =====================
+
+    let tiposDocumentoFormatos = {}; // Cache de formatos de tipos de documento
+    let tiposVehiculoFormatos = {}; // Cache de formatos de tipos de vehículo
+    /**
+     * Configura la validación dinámica del número de documento basada en el tipo seleccionado.
+     */
+    async function setupDocumentoValidation() {
+        const nombreInput = document.getElementById('Nombre');
+        if (nombreInput && !nombreInput.dataset.validationSetup) {
+            const allowedRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]*$/;
+            const minLength = 3;
+
+            nombreInput.addEventListener('input', function () {
+                // Filtrar caracteres no permitidos
+                if (!allowedRegex.test(this.value)) {
+                    this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '');
+                }
+
+                // Validar longitud mínima
+                if (this.value.trim().length > 0 && this.value.trim().length < minLength) {
+                    this.setCustomValidity(`El nombre debe tener al menos ${minLength} letras`);
+                } else {
+                    this.setCustomValidity('');
+                }
+            });
+
+            nombreInput.dataset.validationSetup = 'true';
+        }
+        const apellidoInput = document.getElementById('Apellido');
+        if (apellidoInput && !apellidoInput.dataset.validationSetup) {
+            const allowedRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]*$/;
+            const minLength = 3;
+
+            apellidoInput.addEventListener('input', function () {
+                if (!allowedRegex.test(this.value)) {
+                    this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '');
+                }
+
+                if (this.value.trim().length > 0 && this.value.trim().length < minLength) {
+                    this.setCustomValidity(`El apellido debe tener al menos ${minLength} letras`);
+                } else {
+                    this.setCustomValidity('');
+                }
+            });
+
+            apellidoInput.dataset.validationSetup = 'true';
+        }
+        const emailInput = document.getElementById('Email');
+        if (emailInput && !emailInput.dataset.validationSetup) {
+            emailInput.addEventListener('input', function () {
+                const emailValue = this.value.trim();
+
+                if (emailValue.length === 0) {
+                    this.setCustomValidity('');
+                    return;
+                }
+
+                // Validar que tenga @ y al menos 3 caracteres después
+                const atIndex = emailValue.indexOf('@');
+                if (atIndex === -1) {
+                    this.setCustomValidity('El email debe contener @');
+                } else {
+                    const afterAt = emailValue.substring(atIndex + 1);
+                    if (afterAt.length < 3) {
+                        this.setCustomValidity('Debe haber al menos 3 caracteres después de @');
+                    } else {
+                        // Validación básica de formato de email
+                        const emailRegex = /^[^\s@]+@[^\s@]{3,}\.[^\s@]+$/;
+                        if (!emailRegex.test(emailValue)) {
+                            this.setCustomValidity('Formato de email inválido');
+                        } else {
+                            this.setCustomValidity('');
+                        }
+                    }
+                }
+            });
+
+            emailInput.addEventListener('blur', function () {
+                if (this.value.trim().length > 0) {
+                    this.dispatchEvent(new Event('input'));
+                }
+            });
+
+            emailInput.dataset.validationSetup = 'true';
+        }
+        // Cargar formatos de tipos de documento
+        await loadTiposDocumentoFormatos();
+
+        // Agregar listener al cambio de tipo de documento
+        const tipoDocSelect = document.getElementById('TipoDocumento');
+        if (tipoDocSelect) {
+            tipoDocSelect.addEventListener('change', function() {
+                updateDocumentoFormatoHint(this.value);
+                validateDocumentoNumero();
+            });
+            
+            // Inicializar con el valor actual
+            if (tipoDocSelect.value) {
+                updateDocumentoFormatoHint(tipoDocSelect.value);
+            }
+        }
+
+        // Agregar validación en tiempo real al campo de número de documento
+        const numeroDocInput = document.getElementById('NumeroDocumento');
+        if (numeroDocInput) {
+            numeroDocInput.addEventListener('input', validateDocumentoNumero);
+            numeroDocInput.addEventListener('blur', validateDocumentoNumero);
+        }
+    }
+    /**
+ * Configura la validación del campo de formato de documento en tiempo real
+ */
+    function setupFormatoDocumentoValidation() {
+        const formatoInput = document.getElementById('formatoTipoDocumento');
+
+        if (!formatoInput) return;
+
+        formatoInput.addEventListener('input', function (e) {
+            const valor = this.value;
+            const cursorPos = this.selectionStart;
+
+            // Filtrar solo caracteres válidos: n, l, ., -
+            const valorFiltrado = valor
+                .split('')
+                .filter(char => /[nNlL.\-]/.test(char))
+                .join('')
+                .toLowerCase(); // Convertir a minúsculas
+
+            if (valor !== valorFiltrado) {
+                this.value = valorFiltrado;
+                // Ajustar posición del cursor
+                const diff = valor.length - valorFiltrado.length;
+                this.setSelectionRange(cursorPos - diff, cursorPos - diff);
+            }
+        });
+
+        formatoInput.addEventListener('blur', function () {
+            const valor = this.value.trim();
+
+            if (valor.length > 0 && valor.length < 3) {
+                this.setCustomValidity('El formato debe tener al menos 3 caracteres');
+                this.reportValidity();
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+    /**
+     * Carga los formatos de todos los tipos de documento desde el servidor.
+     */
+    async function loadTiposDocumentoFormatos() {
+        try {
+            const response = await fetch('/TipoDocumento/ObtenerTiposConFormatos');
+            const tipos = await response.json();
+            
+            tiposDocumentoFormatos = {};
+            tipos.forEach(t => {
+                tiposDocumentoFormatos[t.nombre] = {
+                    formato: t.formato,
+                    regex: t.regex
+                };
+            });
+        } catch (error) {
+            console.error('Error al cargar formatos de tipos de documento:', error);
+        }
+    }
+    /**
+    * Carga los formatos de todos los tipos de vehículodesde el servidor.
+    */
+    async function loadTiposVehiculoFormatos() {
+        try {
+            const response = await fetch('/TipoVehiculo/ObtenerTiposConFormatos');
+            const tipos = await response.json();
+
+            tiposVehiculoFormatos = {};
+            tipos.forEach(t => {
+                tiposVehiculoFormatos[t.nombre] = {
+                    formato: t.formato,
+                    regex: t.regex
+                };
+            });
+        } catch (error) {
+            console.error('Error al cargar formatos de tipos de vehículo:', error);
+        }
+    }
+    /**
+     * Actualiza el mensaje de ayuda del formato del documento.
+     */
+    function updateDocumentoFormatoHint(tipoDocumento) {
+        const hintElement = document.getElementById('documento-formato-hint');
+        const numeroDocInput = document.getElementById('NumeroDocumento');
+        
+        if (!hintElement) return;
+        
+        if (!tipoDocumento) {
+            hintElement.textContent = 'Seleccione un tipo de documento';
+            if (numeroDocInput) {
+                numeroDocInput.removeAttribute('pattern');
+                numeroDocInput.placeholder = 'Ingrese número';
+            }
+            return;
+        }
+
+        const tipoInfo = tiposDocumentoFormatos[tipoDocumento];
+        
+        if (tipoInfo && tipoInfo.formato) {
+            hintElement.textContent = `Formato: ${tipoInfo.formato}`;
+            if (numeroDocInput) {
+                numeroDocInput.placeholder = tipoInfo.formato;
+            }
+        } else {
+            hintElement.textContent = 'Ingrese el número de documento';
+            if (numeroDocInput) {
+                numeroDocInput.placeholder = 'Ingrese número';
+            }
+        }
+    }
+    /**
+ * Actualiza el mensaje de ayuda del formato de la patente.
+ */
+    function updatePatenteFormatoHint(tipoVehiculo) {
+        const hintElement = document.getElementById('patente-formato-hint');
+        const patenteInput = document.getElementById('Patente');
+
+        if (!hintElement) return;
+
+        if (!tipoVehiculo) {
+            hintElement.textContent = 'Seleccione un tipo de vehículo';
+            if (patenteInput) {
+                patenteInput.removeAttribute('pattern');
+                patenteInput.placeholder = 'Ingrese patente';
+            }
+            return;
+        }
+
+        const tipoInfo = tiposVehiculoFormatos[tipoVehiculo];
+
+        if (tipoInfo && tipoInfo.formato) {
+            hintElement.textContent = `Formato: ${tipoInfo.formato}`;
+            if (patenteInput) {
+                patenteInput.placeholder = tipoInfo.formato;
+            }
+        } else {
+            hintElement.textContent = 'Ingrese la patente del vehículo';
+            if (patenteInput) {
+                patenteInput.placeholder = 'Ingrese patente';
+            }
+        }
+    }
+    /**
+     * Valida el número de documento según el formato del tipo seleccionado.
+     */
+    function validateDocumentoNumero() {
+        const tipoDocSelect = document.getElementById('TipoDocumento');
+        const numeroDocInput = document.getElementById('NumeroDocumento');
+        const errorSpan = document.getElementById('documento-validation-error');
+        
+        if (!tipoDocSelect || !numeroDocInput) return true;
+
+        const tipoDocumento = tipoDocSelect.value;
+        const numeroDoc = numeroDocInput.value;
+
+        // Limpiar error previo
+        if (errorSpan) {
+            errorSpan.classList.add('hidden');
+            errorSpan.textContent = '';
+        }
+        numeroDocInput.classList.remove('border-red-500');
+
+        // Si no hay tipo seleccionado o número, no validar
+        if (!tipoDocumento || !numeroDoc) return true;
+
+        const tipoInfo = tiposDocumentoFormatos[tipoDocumento];
+        
+        // Si no hay formato definido, aceptar cualquier valor
+        if (!tipoInfo || !tipoInfo.regex) return true;
+
+        // Validar contra el regex
+        try {
+            const regex = new RegExp(tipoInfo.regex);
+            if (!regex.test(numeroDoc)) {
+                if (errorSpan) {
+                    errorSpan.textContent = `El formato debe ser: ${tipoInfo.formato}`;
+                    errorSpan.classList.remove('hidden');
+                }
+                numeroDocInput.classList.add('border-red-500');
+                return false;
+            }
+        } catch (e) {
+            console.error('Error en regex de tipo de documento:', e);
+        }
+
+        return true;
+    }
+    /**
+ * Valida la patente según el formato del tipo de vehículo seleccionado.
+ */
+    function validatePatenteVehiculo() {
+        const tipoVehiculoSelect = document.getElementById('TipoVehiculo');
+        const patenteInput = document.getElementById('Patente');
+        const errorSpan = document.getElementById('patente-validation-error');
+
+        if (!tipoVehiculoSelect || !patenteInput) return true;
+
+        const tipoVehiculo = tipoVehiculoSelect.value;
+        const patente = patenteInput.value;
+
+        // Limpiar error previo
+        if (errorSpan) {
+            errorSpan.classList.add('hidden');
+            errorSpan.textContent = '';
+        }
+        patenteInput.classList.remove('border-red-500');
+
+        // Si no hay tipo seleccionado o patente, no validar
+        if (!tipoVehiculo || !patente) return true;
+
+        const tipoInfo = tiposVehiculoFormatos[tipoVehiculo];
+
+        // Si no hay formato definido, aceptar cualquier valor
+        if (!tipoInfo || !tipoInfo.regex) return true;
+
+        // Validar contra el regex
+        try {
+            const regex = new RegExp(tipoInfo.regex);
+            if (!regex.test(patente)) {
+                if (errorSpan) {
+                    errorSpan.textContent = `El formato debe ser: ${tipoInfo.formato}`;
+                    errorSpan.classList.remove('hidden');
+                }
+                patenteInput.classList.add('border-red-500');
+                return false;
+            }
+        } catch (e) {
+            console.error('Error en regex de tipo de vehículo:', e);
+        }
+
+        return true;
+    }
     /**
      * Configura listener para cuando se abre el acordeón del formulario
      */
@@ -296,6 +637,9 @@
 
             // CRÍTICO: Esperar a que setupVehiculoSelector termine
             await setupVehiculoSelector();
+            
+            // Reconfigurar validación de documento
+            await setupDocumentoValidation();
 
             const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
             const accordionBody = document.getElementById("accordion-flush-body-1");
@@ -321,6 +665,12 @@
         if (event) {
             event.preventDefault();
             event.stopPropagation();
+        }
+
+        // Validar número de documento antes de enviar
+        if (!validateDocumentoNumero()) {
+            showFormMessage('error', 'El formato del número de documento no es válido.');
+            return false;
         }
 
         // Prevenir doble envío
@@ -855,124 +1205,127 @@
 
     // ===================== Modal de Creación Rápida de Vehículo =====================
 
-    window.openQuickCreateVehiculoModal = function () {
-        fetch('/Vehiculo/FormPartial')
-            .then(response => response.text())
-            .then(html => {
-                // Eliminar modal anterior si existe
-                const existingModal = document.getElementById("quick-create-modal");
-                if (existingModal) {
-                    existingModal.remove();
-                }
-                const existingBackdrop = document.querySelector('[modal-backdrop]');
-                if (existingBackdrop) {
-                    existingBackdrop.remove();
-                }
+    window.openQuickCreateVehiculoModal = async function () {
+        try {
+            // Primero cargar los formatos
+            await loadTiposVehiculoFormatos();
 
-                // Crear estructura de modal Flowbite completa
-                const modalHtml = `
-                    <div id="quick-create-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
-                        <div class="relative p-4 w-full max-w-3xl max-h-full">
-                            <div class="relative bg-white rounded-lg shadow dark:bg-gray-800">
-                                <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
-                                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                                        Registrar Nuevo Vehículo
-                                    </h3>
-                                    <button type="button" onclick="closeQuickCreateModal()" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white">
-                                        <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-                                        </svg>
-                                        <span class="sr-only">Cerrar modal</span>
-                                    </button>
-                                </div>
-                                <div class="p-4 md:p-5 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-                                    <!-- Contenedor de mensajes dentro del modal -->
-                                    <div id="quick-vehiculo-messages" class="mb-4"></div>
-                                    
-                                    <div id="quick-vehiculo-form-content">
-                                        ${html}
-                                    </div>
-                                </div>
+            const response = await fetch('/Vehiculo/FormPartial');
+            const html = await response.text();
+
+            // Eliminar modal anterior si existe
+            const existingModal = document.getElementById("quick-create-modal");
+            if (existingModal) {
+                existingModal.remove();
+            }
+            const existingBackdrop = document.querySelector('[modal-backdrop]');
+            if (existingBackdrop) {
+                existingBackdrop.remove();
+            }
+
+            // Crear estructura de modal Flowbite completa
+            const modalHtml = `
+            <div id="quick-create-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                <div class="relative p-4 w-full max-w-3xl max-h-full">
+                    <div class="relative bg-white rounded-lg shadow dark:bg-gray-800">
+                        <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                                Registrar Nuevo Vehículo
+                            </h3>
+                            <button type="button" onclick="closeQuickCreateModal()" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white">
+                                <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                                </svg>
+                                <span class="sr-only">Cerrar modal</span>
+                            </button>
+                        </div>
+                        <div class="p-4 md:p-5 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+                            <div id="quick-vehiculo-messages" class="mb-4"></div>
+                            <div id="quick-vehiculo-form-content">
+                                ${html}
                             </div>
                         </div>
                     </div>
-                `;
+                </div>
+            </div>
+        `;
 
-                // Insertar en el DOM
-                document.body.insertAdjacentHTML('beforeend', modalHtml);
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-                // Obtener el modal y crear instancia Flowbite
-                const modalEl = document.getElementById('quick-create-modal');
+            const modalEl = document.getElementById('quick-create-modal');
 
-                // Configurar Flowbite Modal
-                if (typeof Modal !== 'undefined') {
-                    const modalOptions = {
-                        placement: 'center',
-                        backdrop: 'static', // NO se cierra al clickear fuera
-                        closable: false, // NO se cierra con ESC
-                        onHide: () => {
-                            document.body.style.overflow = '';
-                        },
-                        onShow: () => {
-                            document.body.style.overflow = 'hidden';
-                        }
-                    };
+            if (typeof Modal !== 'undefined') {
+                const modalOptions = {
+                    placement: 'center',
+                    backdrop: 'static',
+                    closable: false,
+                    onHide: () => { document.body.style.overflow = ''; },
+                    onShow: () => { document.body.style.overflow = 'hidden'; }
+                };
 
-                    const modal = new Modal(modalEl, modalOptions);
-                    modal.show();
+                const modal = new Modal(modalEl, modalOptions);
+                modal.show();
+                window._quickVehiculoModal = modal;
+            } else {
+                modalEl.classList.remove('hidden');
+                modalEl.classList.add('flex');
+                document.body.style.overflow = 'hidden';
 
-                    // Guardar referencia para cerrar después
-                    window._quickVehiculoModal = modal;
-                } else {
-                    // Fallback sin Flowbite
-                    modalEl.classList.remove('hidden');
-                    modalEl.classList.add('flex');
-                    document.body.style.overflow = 'hidden';
+                const backdrop = document.createElement('div');
+                backdrop.setAttribute('modal-backdrop', '');
+                backdrop.className = 'bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40';
+                document.body.appendChild(backdrop);
+            }
 
-                    // Crear backdrop manual
-                    const backdrop = document.createElement('div');
-                    backdrop.setAttribute('modal-backdrop', '');
-                    backdrop.className = 'bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40';
-                    document.body.appendChild(backdrop);
-                }
+            const messagesContainer = document.getElementById('quick-vehiculo-messages');
+            if (messagesContainer) {
+                messagesContainer.innerHTML = '';
+            }
 
-                // Limpiar mensajes previos si el contenedor ya existe
-                const messagesContainer = document.getElementById('quick-vehiculo-messages');
-                if (messagesContainer) {
-                    messagesContainer.innerHTML = '';
-                }
+            const form = modalEl.querySelector("form");
+            if (form) {
+                form.onsubmit = function (e) {
+                    e.preventDefault();
+                    submitQuickVehiculo(this);
+                    return false;
+                };
 
-                // Configurar el formulario
-                const form = modalEl.querySelector("form");
-                if (form) {
-                    form.onsubmit = function (e) {
+                const cancelBtn = form.querySelector("#clear-button");
+                if (cancelBtn) {
+                    cancelBtn.onclick = function (e) {
                         e.preventDefault();
-                        submitQuickVehiculo(this);
+                        closeQuickCreateModal();
                         return false;
                     };
+                }
 
-                    const cancelBtn = form.querySelector("#clear-button");
-                    if (cancelBtn) {
-                        cancelBtn.onclick = function (e) {
-                            e.preventDefault();
-                            closeQuickCreateModal();
-                            return false;
-                        };
-                    }
+                const tipoVehiculoSelect = modalEl.querySelector('#TipoVehiculo');
+                if (tipoVehiculoSelect) {
+                    tipoVehiculoSelect.addEventListener('change', function () {
+                        updatePatenteFormatoHint(this.value);
+                        validatePatenteVehiculo();
+                    });
 
-                    // Convertir patente a mayúsculas mientras se escribe
-                    const patenteInput = form.querySelector("#Patente");
-                    if (patenteInput) {
-                        patenteInput.addEventListener('input', function () {
-                            const start = this.selectionStart;
-                            const end = this.selectionEnd;
-                            this.value = this.value.toUpperCase();
-                            this.setSelectionRange(start, end);
-                        });
+                    if (tipoVehiculoSelect.value) {
+                        updatePatenteFormatoHint(tipoVehiculoSelect.value);
                     }
                 }
-            })
-            .catch(error => console.error('Error al cargar form vehiculo:', error));
+
+                const patenteInput = modalEl.querySelector('#Patente');
+                if (patenteInput) {
+                    patenteInput.addEventListener('input', function () {
+                        validatePatenteVehiculo();
+                        const start = this.selectionStart;
+                        const end = this.selectionEnd;
+                        this.value = this.value.toUpperCase();
+                        this.setSelectionRange(start, end);
+                    });
+                    patenteInput.addEventListener('blur', validatePatenteVehiculo);
+                }
+            }
+        } catch (error) {
+            console.error('Error al cargar form vehiculo:', error);
+        }
     };
 
     window.closeQuickCreateModal = function () {
@@ -1030,7 +1383,11 @@
             showQuickVehiculoMessage('error', 'Todos los campos son obligatorios.', 5000);
             return false;
         }
-
+        // Validar patente según el tipo de vehículo
+        if (!validatePatenteVehiculo()) {
+            showQuickVehiculoMessage('error', 'El formato de la patente no es válido.', 5000);
+            return false;
+        }
         // Verificar que no exista ya en los vehículos temporales o seleccionados
         const patenteExiste = [...vehiculosTemporales, ...vehiculosSeleccionados].some(v =>
             v.patente && v.patente.toLowerCase() === patente.toLowerCase()
@@ -1288,6 +1645,15 @@
         }
 
         try {
+            // Verificar si está en uso
+            const checkResponse = await fetch(`/TipoDocumento/VerificarEnUso?nombre=${encodeURIComponent(tipoSeleccionado)}`);
+            const checkData = await checkResponse.json();
+
+            if (checkData.enUso) {
+                cerrarModal('eliminarTipoDocumentoModal');
+                showFormMessage('error', `No se puede eliminar el tipo de documento "${tipoSeleccionado}" porque está siendo usado por ${checkData.cantidad} cliente(s).`);
+                return;
+            }
             const formData = new FormData();
             formData.append('nombreTipo', tipoSeleccionado);
 
@@ -1326,8 +1692,20 @@
 
     async function handleCrearTipoDocumento(form) {
         const nombreTipo = document.getElementById('nombreTipoDocumento')?.value?.trim();
+        const formato = document.getElementById('formatoTipoDocumento')?.value?.trim();
+
         if (!nombreTipo) {
-            showTableMessage('error', 'El nombre del tipo de documento es obligatorio.');
+            showTipoDocumentoModalMessage('error', 'El nombre del tipo de documento es obligatorio.');
+            return;
+        }
+
+        if (!formato) {
+            showTipoDocumentoModalMessage('error', 'El formato del documento es obligatorio.');
+            return;
+        }
+
+        if (formato.length < 3) {
+            showTipoDocumentoModalMessage('error', 'El formato debe tener al menos 3 caracteres.');
             return;
         }
 
@@ -1348,12 +1726,14 @@
                 cerrarModal('tipoDocumentoModal');
                 form.reset();
                 showTableMessage('success', message);
+                // Recargar formatos
+                await loadTiposDocumentoFormatos();
             } else {
-                showTableMessage('error', message);
+                showTipoDocumentoModalMessage('error', message);
             }
         } catch (error) {
             console.error('Error:', error);
-            showTableMessage('error', 'Error al crear el tipo de documento.');
+            showTipoDocumentoModalMessage('error', 'Error al crear el tipo de documento.');
         }
     }
 
@@ -1853,7 +2233,44 @@
             }, disappearMs);
         }
     }
+    /**
+ * Muestra un mensaje dentro del modal de tipo documento
+ */
+    function showTipoDocumentoModalMessage(type, message, disappearMs = 5000) {
+        const container = document.getElementById('tipo-documento-modal-messages');
+        if (!container) {
+            showTableMessage(type, message, disappearMs);
+            return;
+        }
 
+        const color = type === 'success'
+            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z' }
+            : type === 'info'
+                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z' }
+                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z' };
+
+        container.innerHTML = `
+        <div class="flex items-center p-4 mb-4 text-sm rounded-lg border bg-${color.bg} text-${color.text} border-${color.border} dark:bg-gray-800 dark:text-${color.darkText}" role="alert">
+            <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                <path d="${color.icon}"/>
+            </svg>
+            <span class="sr-only">${type === 'error' ? 'Error' : type === 'success' ? 'Success' : 'Info'}</span>
+            <div class="flex-1">${escapeHtml(message)}</div>
+        </div>
+    `;
+
+        if (disappearMs > 0) {
+            setTimeout(() => {
+                const alertEl = container.firstElementChild;
+                if (alertEl) {
+                    alertEl.classList.add('opacity-0', 'transition-opacity', 'duration-700');
+                    setTimeout(() => {
+                        try { container.innerHTML = ''; } catch { }
+                    }, 700);
+                }
+            }, disappearMs);
+        }
+    }
     function escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -1882,7 +2299,7 @@
 
     function getFlowbiteModal(modalEl) {
         if (!modalEl || typeof window !== 'object' || typeof window.Modal === 'undefined') return null;
-        const opts = { backdrop: 'dynamic', closable: true };
+        const opts = { backdrop: 'static', closable: false };
         if (typeof Modal.getInstance === 'function') {
             const existing = Modal.getInstance(modalEl);
             if (existing) return existing;
@@ -1925,5 +2342,18 @@
         document.querySelectorAll('[modal-backdrop]').forEach(b => b.remove());
         document.body.classList.remove('overflow-hidden');
     }
+    /**
+    * Cierra el modal de tipo documento y limpia campos
+    */
+    window.closeTipoDocumentoModal = function () {
+        // Limpiar campos
+        const nombreInput = document.getElementById('nombreTipoDocumento');
+        const formatoInput = document.getElementById('formatoTipoDocumento');
+        if (nombreInput) nombreInput.value = '';
+        if (formatoInput) formatoInput.value = '';
 
+        // Limpiar mensajes
+        const messagesContainer = document.getElementById('tipo-documento-modal-messages');
+        if (messagesContainer) messagesContainer.innerHTML = '';
+    };
 })();

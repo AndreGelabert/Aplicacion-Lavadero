@@ -20,11 +20,14 @@ namespace Firebase.Models
 
         /// <summary>
         /// Nombre descriptivo de la etapa.
+        /// Debe contener al menos 3 letras.
         /// Ejemplo: "Lavado exterior", "Aspirado interior", "Encerado"
         /// </summary>
         [FirestoreProperty]
         [Required(ErrorMessage = "El nombre de la etapa es obligatorio")]
-        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", ErrorMessage = "El nombre de la etapa solo puede contener letras y espacios")]
+        [MinLength(3, ErrorMessage = "El nombre debe tener al menos 3 caracteres")]
+        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]{3,}$", 
+        ErrorMessage = "El nombre debe contener al menos 3 letras")]
         public string Nombre { get; set; } = string.Empty;
     }
 }

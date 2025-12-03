@@ -284,7 +284,6 @@
             backdrop.id = 'modal-backdrop';
             backdrop.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 z-40';
             backdrop.style.backgroundColor = 'rgba(17, 24, 39, 0.5)'; // Forzar opacidad
-            backdrop.onclick = () => cerrarModal(modalId);
             document.body.appendChild(backdrop);
         }
 
