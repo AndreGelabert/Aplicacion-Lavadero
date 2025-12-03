@@ -22,7 +22,7 @@
     let searchTimeout;
     let clienteMsgTimeout = null;
     let tableMsgTimeout = null;
-
+    
     // Variables para gestión de vehículos
     let vehiculosSeleccionados = [];
     let vehiculosDisponibles = [];
@@ -47,9 +47,9 @@
         setupFilterFormSubmit();
         setupModals();
         setupAccordionListener(); // NUEVO: Escuchar apertura del acordeón
-        setupDocumentoValidation(); // Validación dinámica de número de documento
+        setupDocumentoValidation();// Validación dinámica de número de documento
+        setupFormatoDocumentoValidation();
         checkEditMode();
-        //window.CommonUtils?.setupDefaultFilterForm();
     }
 
     // ===================== Validación dinámica de documento =====================
@@ -60,6 +60,84 @@
      * Configura la validación dinámica del número de documento basada en el tipo seleccionado.
      */
     async function setupDocumentoValidation() {
+        const nombreInput = document.getElementById('Nombre');
+        if (nombreInput && !nombreInput.dataset.validationSetup) {
+            const allowedRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]*$/;
+            const minLength = 3;
+
+            nombreInput.addEventListener('input', function () {
+                // Filtrar caracteres no permitidos
+                if (!allowedRegex.test(this.value)) {
+                    this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '');
+                }
+
+                // Validar longitud mínima
+                if (this.value.trim().length > 0 && this.value.trim().length < minLength) {
+                    this.setCustomValidity(`El nombre debe tener al menos ${minLength} letras`);
+                } else {
+                    this.setCustomValidity('');
+                }
+            });
+
+            nombreInput.dataset.validationSetup = 'true';
+        }
+        const apellidoInput = document.getElementById('Apellido');
+        if (apellidoInput && !apellidoInput.dataset.validationSetup) {
+            const allowedRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]*$/;
+            const minLength = 3;
+
+            apellidoInput.addEventListener('input', function () {
+                if (!allowedRegex.test(this.value)) {
+                    this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '');
+                }
+
+                if (this.value.trim().length > 0 && this.value.trim().length < minLength) {
+                    this.setCustomValidity(`El apellido debe tener al menos ${minLength} letras`);
+                } else {
+                    this.setCustomValidity('');
+                }
+            });
+
+            apellidoInput.dataset.validationSetup = 'true';
+        }
+        const emailInput = document.getElementById('Email');
+        if (emailInput && !emailInput.dataset.validationSetup) {
+            emailInput.addEventListener('input', function () {
+                const emailValue = this.value.trim();
+
+                if (emailValue.length === 0) {
+                    this.setCustomValidity('');
+                    return;
+                }
+
+                // Validar que tenga @ y al menos 3 caracteres después
+                const atIndex = emailValue.indexOf('@');
+                if (atIndex === -1) {
+                    this.setCustomValidity('El email debe contener @');
+                } else {
+                    const afterAt = emailValue.substring(atIndex + 1);
+                    if (afterAt.length < 3) {
+                        this.setCustomValidity('Debe haber al menos 3 caracteres después de @');
+                    } else {
+                        // Validación básica de formato de email
+                        const emailRegex = /^[^\s@]+@[^\s@]{3,}\.[^\s@]+$/;
+                        if (!emailRegex.test(emailValue)) {
+                            this.setCustomValidity('Formato de email inválido');
+                        } else {
+                            this.setCustomValidity('');
+                        }
+                    }
+                }
+            });
+
+            emailInput.addEventListener('blur', function () {
+                if (this.value.trim().length > 0) {
+                    this.dispatchEvent(new Event('input'));
+                }
+            });
+
+            emailInput.dataset.validationSetup = 'true';
+        }
         // Cargar formatos de tipos de documento
         await loadTiposDocumentoFormatos();
 
@@ -84,7 +162,44 @@
             numeroDocInput.addEventListener('blur', validateDocumentoNumero);
         }
     }
+    /**
+ * Configura la validación del campo de formato de documento en tiempo real
+ */
+    function setupFormatoDocumentoValidation() {
+        const formatoInput = document.getElementById('formatoTipoDocumento');
 
+        if (!formatoInput) return;
+
+        formatoInput.addEventListener('input', function (e) {
+            const valor = this.value;
+            const cursorPos = this.selectionStart;
+
+            // Filtrar solo caracteres válidos: n, l, ., -
+            const valorFiltrado = valor
+                .split('')
+                .filter(char => /[nNlL.\-]/.test(char))
+                .join('')
+                .toLowerCase(); // Convertir a minúsculas
+
+            if (valor !== valorFiltrado) {
+                this.value = valorFiltrado;
+                // Ajustar posición del cursor
+                const diff = valor.length - valorFiltrado.length;
+                this.setSelectionRange(cursorPos - diff, cursorPos - diff);
+            }
+        });
+
+        formatoInput.addEventListener('blur', function () {
+            const valor = this.value.trim();
+
+            if (valor.length > 0 && valor.length < 3) {
+                this.setCustomValidity('El formato debe tener al menos 3 caracteres');
+                this.reportValidity();
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
     /**
      * Carga los formatos de todos los tipos de documento desde el servidor.
      */
@@ -1430,6 +1545,15 @@
         }
 
         try {
+            // Verificar si está en uso
+            const checkResponse = await fetch(`/TipoDocumento/VerificarEnUso?nombre=${encodeURIComponent(tipoSeleccionado)}`);
+            const checkData = await checkResponse.json();
+
+            if (checkData.enUso) {
+                cerrarModal('eliminarTipoDocumentoModal');
+                showFormMessage('error', `No se puede eliminar el tipo de documento "${tipoSeleccionado}" porque está siendo usado por ${checkData.cantidad} cliente(s).`);
+                return;
+            }
             const formData = new FormData();
             formData.append('nombreTipo', tipoSeleccionado);
 
@@ -1468,8 +1592,20 @@
 
     async function handleCrearTipoDocumento(form) {
         const nombreTipo = document.getElementById('nombreTipoDocumento')?.value?.trim();
+        const formato = document.getElementById('formatoTipoDocumento')?.value?.trim();
+
         if (!nombreTipo) {
-            showTableMessage('error', 'El nombre del tipo de documento es obligatorio.');
+            showTipoDocumentoModalMessage('error', 'El nombre del tipo de documento es obligatorio.');
+            return;
+        }
+
+        if (!formato) {
+            showTipoDocumentoModalMessage('error', 'El formato del documento es obligatorio.');
+            return;
+        }
+
+        if (formato.length < 3) {
+            showTipoDocumentoModalMessage('error', 'El formato debe tener al menos 3 caracteres.');
             return;
         }
 
@@ -1490,12 +1626,14 @@
                 cerrarModal('tipoDocumentoModal');
                 form.reset();
                 showTableMessage('success', message);
+                // Recargar formatos
+                await loadTiposDocumentoFormatos();
             } else {
-                showTableMessage('error', message);
+                showTipoDocumentoModalMessage('error', message);
             }
         } catch (error) {
             console.error('Error:', error);
-            showTableMessage('error', 'Error al crear el tipo de documento.');
+            showTipoDocumentoModalMessage('error', 'Error al crear el tipo de documento.');
         }
     }
 
@@ -1995,7 +2133,44 @@
             }, disappearMs);
         }
     }
+    /**
+ * Muestra un mensaje dentro del modal de tipo documento
+ */
+    function showTipoDocumentoModalMessage(type, message, disappearMs = 5000) {
+        const container = document.getElementById('tipo-documento-modal-messages');
+        if (!container) {
+            showTableMessage(type, message, disappearMs);
+            return;
+        }
 
+        const color = type === 'success'
+            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z' }
+            : type === 'info'
+                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z' }
+                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z' };
+
+        container.innerHTML = `
+        <div class="flex items-center p-4 mb-4 text-sm rounded-lg border bg-${color.bg} text-${color.text} border-${color.border} dark:bg-gray-800 dark:text-${color.darkText}" role="alert">
+            <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                <path d="${color.icon}"/>
+            </svg>
+            <span class="sr-only">${type === 'error' ? 'Error' : type === 'success' ? 'Success' : 'Info'}</span>
+            <div class="flex-1">${escapeHtml(message)}</div>
+        </div>
+    `;
+
+        if (disappearMs > 0) {
+            setTimeout(() => {
+                const alertEl = container.firstElementChild;
+                if (alertEl) {
+                    alertEl.classList.add('opacity-0', 'transition-opacity', 'duration-700');
+                    setTimeout(() => {
+                        try { container.innerHTML = ''; } catch { }
+                    }, 700);
+                }
+            }, disappearMs);
+        }
+    }
     function escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -2067,5 +2242,18 @@
         document.querySelectorAll('[modal-backdrop]').forEach(b => b.remove());
         document.body.classList.remove('overflow-hidden');
     }
+    /**
+    * Cierra el modal de tipo documento y limpia campos
+    */
+    window.closeTipoDocumentoModal = function () {
+        // Limpiar campos
+        const nombreInput = document.getElementById('nombreTipoDocumento');
+        const formatoInput = document.getElementById('formatoTipoDocumento');
+        if (nombreInput) nombreInput.value = '';
+        if (formatoInput) formatoInput.value = '';
 
+        // Limpiar mensajes
+        const messagesContainer = document.getElementById('tipo-documento-modal-messages');
+        if (messagesContainer) messagesContainer.innerHTML = '';
+    };
 })();

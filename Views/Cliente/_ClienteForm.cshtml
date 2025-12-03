@@ -74,10 +74,10 @@
                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                    placeholder="Ej: Juan María"
                    value="@(Model?.Nombre)"
-                   pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,}(\s+[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,})*$"
-                   title="El nombre debe tener al menos 2 letras por palabra. Ejemplo: Juan María"
+                   pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ]{3,}(\s+[a-zA-ZáéíóúÁÉÍÓÚñÑ]{3,})*$"
+                   title="El nombre debe tener al menos 3 letras por palabra. Ejemplo: Juan María"
                    required>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 2 letras por palabra</p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 letras por palabra</p>
             <span asp-validation-for="Nombre" class="text-red-600 text-xs"></span>
         </div>
 
@@ -88,10 +88,10 @@
                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                    placeholder="Ej: García López"
                    value="@(Model?.Apellido)"
-                   pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,}(\s+[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,})*$"
-                   title="El apellido debe tener al menos 2 letras por palabra. Ejemplo: García López"
+                   pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ]{3,}(\s+[a-zA-ZáéíóúÁÉÍÓÚñÑ]{3,})*$"
+                   title="El apellido debe tener al menos 3 letras por palabra. Ejemplo: García López"
                    required>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 2 letras por palabra</p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 letras por palabra</p>
             <span asp-validation-for="Apellido" class="text-red-600 text-xs"></span>
         </div>
         <div class="col-span-3">

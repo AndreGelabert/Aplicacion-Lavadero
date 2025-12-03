@@ -57,6 +57,128 @@
     // ===================== Validación dinámica de patente =====================
 
     /**
+     * Valida la patente según el formato del tipo de vehículo seleccionado.
+     * @returns {boolean} true si es válida, false si no
+     */
+    function validatePatente() {
+        const tipoVehiculoSelect = document.getElementById('TipoVehiculo');
+        const patenteInput = document.getElementById('Patente');
+        const errorSpan = document.getElementById('patente-validation-error');
+
+        if (!tipoVehiculoSelect || !patenteInput) return true;
+
+        const tipoVehiculo = tipoVehiculoSelect.value;
+        const patente = patenteInput.value.trim().toUpperCase();
+
+        // Limpiar error previo
+        if (errorSpan) {
+            errorSpan.classList.add('hidden');
+            errorSpan.textContent = '';
+        }
+        patenteInput.classList.remove('border-red-500');
+
+        // Si no hay tipo seleccionado, no validar
+        if (!tipoVehiculo) {
+            patenteInput.setCustomValidity('Debe seleccionar un tipo de vehículo primero');
+            return false;
+        }
+
+        // Si la patente está vacía, no validar aún
+        if (!patente || patente.length === 0) {
+            patenteInput.setCustomValidity('');
+            return true;
+        }
+
+        const tipoInfo = tiposVehiculoFormatos[tipoVehiculo];
+
+        // Si no hay formato definido, aceptar cualquier alfanumérico de al menos 3 caracteres
+        if (!tipoInfo || !tipoInfo.regex) {
+            if (patente.length < 3) {
+                patenteInput.setCustomValidity('La patente debe tener al menos 3 caracteres');
+                if (errorSpan) {
+                    errorSpan.textContent = 'La patente debe tener al menos 3 caracteres';
+                    errorSpan.classList.remove('hidden');
+                }
+                patenteInput.classList.add('border-red-500');
+                return false;
+            }
+            patenteInput.setCustomValidity('');
+            return true;
+        }
+
+        // ✅ CRÍTICO: Validar contra el regex estrictamente
+        try {
+            const regex = new RegExp(tipoInfo.regex);
+            if (!regex.test(patente)) {
+                const formatoLegible = tipoInfo.formatoPatente
+                    .replace(/l/g, 'L')
+                    .replace(/n/g, 'N')
+                    .replace(/\|/g, ' o ');
+
+                const mensajeError = `El formato debe ser: ${formatoLegible} (L=letra, N=número)`;
+
+                patenteInput.setCustomValidity(mensajeError);
+                if (errorSpan) {
+                    errorSpan.textContent = mensajeError;
+                    errorSpan.classList.remove('hidden');
+                }
+                patenteInput.classList.add('border-red-500');
+                return false;
+            }
+        } catch (e) {
+            console.error('Error en regex de tipo de vehículo:', e);
+        }
+
+        patenteInput.setCustomValidity('');
+        if (errorSpan) {
+            errorSpan.classList.add('hidden');
+            errorSpan.textContent = '';
+        }
+        patenteInput.classList.remove('border-red-500');
+        return true;
+    }
+
+    /**
+     * Valida que el caracter ingresado sea válido según el formato esperado
+     * @param {string} formato - Formato de la patente (ej: "lllnnn")
+     * @param {string} valor - Valor actual del input
+     * @param {string} caracter - Caracter que se está intentando ingresar
+     * @returns {boolean} true si el caracter es válido, false si no
+     */
+    function esCaracterValido(formato, valor, caracter) {
+        // Permitir siempre el borrado
+        if (caracter === '') return true;
+        
+        // Obtener la posición actual (sin contar separadores como puntos o guiones)
+        const posicionSinSeparadores = valor.replace(/[.\-\s]/g, '').length;
+        
+        // Obtener los formatos posibles (separados por |)
+        const formatosPosibles = formato.split('|');
+        
+        for (const fmt of formatosPosibles) {
+            // Remover separadores del formato para obtener solo las posiciones de caracteres
+            const formatoLimpio = fmt.replace(/[.\-\s]/g, '');
+            
+            if (posicionSinSeparadores < formatoLimpio.length) {
+                const caracterEsperado = formatoLimpio[posicionSinSeparadores];
+                
+                if (caracterEsperado === 'l' || caracterEsperado === 'L') {
+                    // Se espera una letra
+                    if (/[A-Za-z]/.test(caracter)) return true;
+                } else if (caracterEsperado === 'n' || caracterEsperado === 'N') {
+                    // Se espera un número
+                    if (/[0-9]/.test(caracter)) return true;
+                }
+            }
+        }
+        
+        // Permitir separadores comunes
+        if (/[.\-\s]/.test(caracter)) return true;
+        
+        return false;
+    }
+
+    /**
      * Configura la validación dinámica de la patente basada en el tipo de vehículo seleccionado.
      */
     async function setupPatenteValidation() {
@@ -80,15 +202,63 @@
         // Agregar validación en tiempo real al campo de patente
         const patenteInput = document.getElementById('Patente');
         if (patenteInput) {
-            patenteInput.addEventListener('input', function() {
-                // Convertir a mayúsculas mientras se escribe
+            let lastValidValue = patenteInput.value;
+            
+            patenteInput.addEventListener('input', function (e) {
+                const tipoVehiculo = tipoVehiculoSelect?.value;
+                const tipoInfo = tiposVehiculoFormatos[tipoVehiculo];
+                
+                // Convertir a mayúsculas
                 const start = this.selectionStart;
                 const end = this.selectionEnd;
-                this.value = this.value.toUpperCase();
+                const valorAnterior = lastValidValue;
+                let valorActual = this.value.toUpperCase();
+                
+                // Si hay un formato definido, validar caracter por caracter
+                if (tipoInfo && tipoInfo.formatoPatente) {
+                    const formato = tipoInfo.formatoPatente;
+                    
+                    // Si se está ingresando texto (no borrando)
+                    if (valorActual.length > valorAnterior.length) {
+                        const ultimoCaracter = valorActual[valorActual.length - 1];
+                        const valorSinUltimo = valorActual.slice(0, -1);
+                        
+                        // Validar si el caracter es válido
+                        if (!esCaracterValido(formato, valorSinUltimo, ultimoCaracter)) {
+                            // Rechazar el caracter, restaurar valor anterior
+                            this.value = valorAnterior;
+                            this.setSelectionRange(start - 1, end - 1);
+                            return;
+                        }
+                    }
+                }
+                
+                this.value = valorActual;
                 this.setSelectionRange(start, end);
+                lastValidValue = valorActual;
                 validatePatente();
             });
-            patenteInput.addEventListener('blur', validatePatente);
+            
+            patenteInput.addEventListener('blur', function () {
+                validatePatente();
+            });
+            
+            patenteInput.addEventListener('paste', function (e) {
+                e.preventDefault();
+                const pastedText = (e.clipboardData || window.clipboardData).getData('text').toUpperCase();
+                
+                // Permitir pegar y luego validar
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                const valorActual = this.value;
+                const nuevoValor = valorActual.substring(0, start) + pastedText + valorActual.substring(end);
+                
+                this.value = nuevoValor;
+                this.setSelectionRange(start + pastedText.length, start + pastedText.length);
+                
+                // Validar después de pegar
+                setTimeout(() => validatePatente(), 0);
+            });
         }
     }
 
@@ -147,57 +317,6 @@
                 patenteInput.placeholder = 'Ej: AA123BB';
             }
         }
-    }
-
-    /**
-     * Valida la patente según el formato del tipo de vehículo seleccionado.
-     * @returns {boolean} true si es válida, false si no
-     */
-    function validatePatente() {
-        const tipoVehiculoSelect = document.getElementById('TipoVehiculo');
-        const patenteInput = document.getElementById('Patente');
-        const errorSpan = document.getElementById('patente-validation-error');
-        
-        if (!tipoVehiculoSelect || !patenteInput) return true;
-
-        const tipoVehiculo = tipoVehiculoSelect.value;
-        const patente = patenteInput.value.toUpperCase();
-
-        // Limpiar error previo
-        if (errorSpan) {
-            errorSpan.classList.add('hidden');
-            errorSpan.textContent = '';
-        }
-        patenteInput.classList.remove('border-red-500');
-
-        // Si no hay tipo seleccionado o patente, no validar
-        if (!tipoVehiculo || !patente) return true;
-
-        const tipoInfo = tiposVehiculoFormatos[tipoVehiculo];
-        
-        // Si no hay formato definido, aceptar cualquier valor alfanumérico
-        if (!tipoInfo || !tipoInfo.regex) return true;
-
-        // Validar contra el regex
-        try {
-            const regex = new RegExp(tipoInfo.regex);
-            if (!regex.test(patente)) {
-                const formatoLegible = tipoInfo.formatoPatente
-                    .replace(/l/g, 'L')
-                    .replace(/n/g, 'N')
-                    .replace(/\|/g, ' o ');
-                if (errorSpan) {
-                    errorSpan.textContent = `El formato debe ser: ${formatoLegible}`;
-                    errorSpan.classList.remove('hidden');
-                }
-                patenteInput.classList.add('border-red-500');
-                return false;
-            }
-        } catch (e) {
-            console.error('Error en regex de tipo de vehículo:', e);
-        }
-
-        return true;
     }
     
     // Exponer función para uso externo (ej: desde cliente.js)
@@ -573,7 +692,18 @@
             // Guardar el HTML original para restaurarlo
             submitBtn.dataset.originalHtml = originalText;
         }
+        // Validar patente antes de enviar
+        if (!validatePatente()) {
+            showFormMessage('error', 'La patente no cumple con el formato requerido.');
 
+            // Re-habilitar botón
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = submitBtn.dataset.originalHtml || 'Guardar';
+            }
+
+            return false;
+        }
         const formData = new FormData(form);
 
         fetch(form.action, {
@@ -800,7 +930,7 @@
         if (!container) {
             container = document.createElement('div');
             container.id = 'table-messages-container';
-            container.className = 'mb-4';
+            container.className = 'mb-4');
 
             const tableContainer = document.getElementById('vehiculo-table-container');
             if (tableContainer?.parentNode) {

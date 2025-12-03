@@ -339,8 +339,7 @@ public class ServicioController : Controller
     {
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
-            try
-            {
+            try {
                 if (string.IsNullOrWhiteSpace(nombreTipo))
                 {
                     return Json(new { success = false, message = "El nombre del tipo de vehículo es obligatorio." });
@@ -351,7 +350,7 @@ public class ServicioController : Controller
                     return Json(new { success = false, message = "El nombre debe tener al menos 3 caracteres." });
                 }
 
-                // ✅ NUEVO: Validar que el formato sea obligatorio
+                // ✅ Validar que el formato sea obligatorio
                 if (string.IsNullOrWhiteSpace(formatoPatente))
                 {
                     return Json(new { success = false, message = "El formato de patente es obligatorio." });
@@ -362,7 +361,7 @@ public class ServicioController : Controller
                     return Json(new { success = false, message = "El formato debe tener al menos 3 caracteres." });
                 }
 
-                // ✅ NUEVO: Validar que el formato solo contenga caracteres permitidos
+                // ✅ Validar que el formato solo contenga caracteres permitidos
                 if (!System.Text.RegularExpressions.Regex.IsMatch(formatoPatente, @"^[nl.\-|]{3,}$"))
                 {
                     return Json(new { success = false, message = "El formato solo puede contener 'n' (números), 'l' (letras), '.' '-' y '|'. Mínimo 3 caracteres." });
@@ -383,7 +382,12 @@ public class ServicioController : Controller
                     success = true,
                     message = "Tipo de vehículo creado correctamente.",
                     tipos = tiposActualizados.Select(t => t.Nombre).ToList(),
-                    tiposCompletos = tiposActualizados.Select(t => new { nombre = t.Nombre, formatoPatente = t.FormatoPatente, regex = t.ObtenerRegexPattern() })
+                    tiposCompletos = tiposActualizados.Select(t => new 
+                    { 
+                        nombre = t.Nombre, 
+                        formatoPatente = t.FormatoPatente,
+                        regex = !string.IsNullOrWhiteSpace(t.FormatoPatente) ? t.ObtenerRegexPattern() : null
+                    })
                 });
             }
             catch (Exception ex)

@@ -61,6 +61,7 @@
                             <span class="sr-only">Close modal</span>
                         </button>
                     </div>
+                    <div id="tipo-documento-modal-messages" class="mb-4"></div>
                     <form asp-controller="TipoDocumento" asp-action="CrearTipoDocumento" id="formCrearTipoDocumento">
                         @Html.AntiForgeryToken()
                         <div class="grid gap-4 mb-4 sm:grid-cols-1">
@@ -74,13 +75,21 @@
                                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 caracteres</p>
                             </div>
                             <div>
-                                <label for="formatoTipoDocumento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Formato (opcional)</label>
+                                <label for="formatoTipoDocumento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Formato del número
+                                    <span class="text-red-600">*</span>
+                                </label>
                                 <input type="text" name="formato" id="formatoTipoDocumento" 
                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
-                                       placeholder="Ej: nn.nnn.nnn">
+                                       placeholder="Ej: nn.nnn.nnn o lllnnnnnn"
+                                       minlength="3"
+                                       pattern="^[nNlL.\-]+$"
+                                       title="Solo se permiten: n (número), l (letra), punto (.) y guión (-)"
+                                       required>
                                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    Usa <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">n</code> para dígitos. 
-                                    Ejemplo: <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">nn.nnn.nnn</code> para DNI (12.345.678)
+                                    Usa <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded font-semibold">n</code> para números y 
+                                    <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded font-semibold">l</code> para letras. 
+                                    Puedes usar <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">.</code> y <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">-</code> como separadores.
+                                    Mínimo 3 caracteres. Ejemplos: <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">nn.nnn.nnn</code> (DNI), <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">lllnnnnnn</code> (Pasaporte)
                                 </p>
                             </div>
                         </div>
@@ -91,7 +100,7 @@
                                 </svg>
                                 Registrar
                             </button>
-                            <button type="button" data-modal-hide="tipoDocumentoModal" class="text-white inline-flex items-center bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
+                            <button type="button" data-modal-hide="tipoDocumentoModal" onclick="closeTipoDocumentoModal()" class="text-white inline-flex items-center bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-1">
                                     <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
                                 </svg>
