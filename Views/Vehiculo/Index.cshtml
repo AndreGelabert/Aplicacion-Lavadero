@@ -30,7 +30,7 @@
         <!-- Formulario de Edición (Oculto por defecto) -->
         <div id="accordion-flush" data-accordion="collapse" data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white" data-inactive-classes="text-gray-500 dark:text-gray-400" class="@(ViewBag.EditVehiculo == null ? "hidden" : "")">
             <h2 id="accordion-flush-heading-1">
-                <button type="button" class="flex items-center justify-between w-full p-2 py-5 font-medium rtl:text-right text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400 gap-3" data-accordion-target="#accordion-flush-body-1" aria-expanded="false" aria-controls="accordion-flush-body-1">
+                <button type="button" class="flex items-center justify-between w-full p-2 py-5 font-medium rtl:text-right text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400 gap-3" data-accordion-target="#accordion-flush-body-1" aria-expanded="false" aria-controls="accordFlush-body-1">
                     <div class="flex items-center gap-2">
                         <span id="form-title">@ViewBag.FormTitle</span>
                         <svg data-accordion-icon class="w-3 h-3 rotate-180 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
@@ -263,4 +263,5 @@
 
     </div>
 </section>
+<script src="~/js/form-validation.js" asp-append-version="true"></script>
 <script src="~/js/vehiculo.js" asp-append-version="true"></script>

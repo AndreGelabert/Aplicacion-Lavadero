@@ -6,6 +6,7 @@
  *  - Validación en tiempo real de campos obligatorios
  *  - Mostrar/ocultar mensajes de error debajo de inputs
  *  - Estilos de error para campos inválidos
+ *  - Integración con validaciones personalizadas
  */
 
 (function () {
@@ -15,6 +16,18 @@
      * Módulo de validación de formularios
      */
     const FormValidation = {
+        // Almacén de validadores personalizados
+        customValidators: {},
+
+        /**
+         * Registra un validador personalizado
+         * @param {string} fieldId - ID del campo
+         * @param {Function} validator - Función que retorna {isValid: boolean, message: string}
+         */
+        registerCustomValidator(fieldId, validator) {
+            this.customValidators[fieldId] = validator;
+        },
+
         /**
          * Inicializa la validación para un formulario específico
          * @param {string|HTMLFormElement} formSelector - Selector CSS o elemento del formulario
@@ -25,15 +38,64 @@
                 ? document.querySelector(formSelector) 
                 : formSelector;
             
-            if (!form) return;
+            if (!form) {
+                console.warn('FormValidation: Formulario no encontrado', formSelector);
+                return;
+            }
+
+            // Verificar si ya fue inicializado
+            if (form.dataset.formValidationInitialized === 'true') {
+                console.log('FormValidation: Formulario ya inicializado, saltando...', form.id || form.className);
+                return;
+            }
+
+            // Marcar como inicializado
+            form.dataset.formValidationInitialized = 'true';
 
             const config = {
                 validateOnBlur: true,
                 validateOnInput: true,
+                showAsterisk: true,
                 ...options
             };
 
             this.setupValidationListeners(form, config);
+            
+            // Agregar asteriscos rojos a campos obligatorios
+            if (config.showAsterisk) {
+                this.addRequiredAsterisks(form);
+            }
+
+            console.log('FormValidation inicializado para:', form.id || form.className);
+        },
+
+        /**
+         * Agrega asteriscos rojos a labels de campos obligatorios
+         * @param {HTMLFormElement} form - Elemento del formulario
+         */
+        addRequiredAsterisks(form) {
+            const requiredFields = form.querySelectorAll('input[required], select[required], textarea[required]');
+            
+            requiredFields.forEach(field => {
+                const label = field.labels ? field.labels[0] : document.querySelector(`label[for="${field.id}"]`);
+                
+                if (label) {
+                    // Verificar si ya tiene asterisco (rojo o en texto)
+                    const hasRedAsterisk = label.querySelector('.text-red-600, .text-red-500');
+                    const hasTextAsterisk = label.textContent.includes('*');
+                    
+                    if (!hasRedAsterisk && !hasTextAsterisk) {
+                        // Agregar asterisco rojo
+                        const asterisk = document.createElement('span');
+                        asterisk.className = 'text-red-600 ml-1';
+                        asterisk.textContent = '*';
+                        label.appendChild(asterisk);
+                    } else if (hasTextAsterisk && !hasRedAsterisk) {
+                        // Reemplazar asterisco de texto por uno rojo
+                        label.innerHTML = label.innerHTML.replace(/\*/, '<span class="text-red-600 ml-1">*</span>');
+                    }
+                }
+            });
         },
 
         /**
@@ -45,6 +107,14 @@
             const fields = form.querySelectorAll('input[required], select[required], textarea[required]');
             
             fields.forEach(field => {
+                // Verificar si ya se inicializó para evitar duplicados
+                if (field.dataset.formValidationInitialized === 'true') {
+                    return;
+                }
+                
+                // Marcar como inicializado
+                field.dataset.formValidationInitialized = 'true';
+                
                 // Crear contenedor de error si no existe
                 this.ensureErrorContainer(field);
 
@@ -53,7 +123,13 @@
                 }
 
                 if (config.validateOnInput) {
-                    field.addEventListener('input', () => this.validateField(field));
+                    field.addEventListener('input', () => {
+                        // Pequeño debounce para mejorar rendimiento
+                        clearTimeout(field._validationTimeout);
+                        field._validationTimeout = setTimeout(() => {
+                            this.validateField(field);
+                        }, 300);
+                    });
                 }
 
                 // Para selects, también validar en change
@@ -71,30 +147,45 @@
             const fieldId = field.id || field.name;
             let errorContainer = document.getElementById(`${fieldId}-validation-error`);
             
-            if (!errorContainer) {
-                // Buscar si ya existe un span de error asp-validation-for
-                const existingValidation = field.parentElement?.querySelector('[class*="text-red"]');
+            // Si ya existe, retornarlo
+            if (errorContainer) {
+                return errorContainer;
+            }
+            
+            // Buscar si ya existe un span de error asp-validation-for
+            const parentElement = field.parentElement;
+            if (parentElement) {
+                const existingValidation = parentElement.querySelector(`span[data-valmsg-for="${field.name}"]`);
                 if (existingValidation) {
-                    errorContainer = existingValidation;
-                    errorContainer.id = `${fieldId}-validation-error`;
+                    existingValidation.id = `${fieldId}-validation-error`;
+                    existingValidation.classList.add('validation-error-message');
+                    return existingValidation;
+                }
+            }
+            
+            // Crear nuevo contenedor de error
+            errorContainer = document.createElement('span');
+            errorContainer.id = `${fieldId}-validation-error`;
+            errorContainer.className = 'text-red-600 text-xs mt-1 block validation-error-message hidden';
+            
+            // Insertar DESPUÉS del campo (abajo)
+            if (parentElement) {
+                // Buscar el label del campo para insertar después de él si está después del input
+                const label = parentElement.querySelector(`label[for="${field.id}"]`);
+                
+                // Si el label está después del input, insertar después del label
+                if (label && field.compareDocumentPosition(label) === Node.DOCUMENT_POSITION_FOLLOWING) {
+                    if (label.nextSibling) {
+                        parentElement.insertBefore(errorContainer, label.nextSibling);
+                    } else {
+                        parentElement.appendChild(errorContainer);
+                    }
                 } else {
-                    // Crear nuevo contenedor de error
-                    errorContainer = document.createElement('span');
-                    errorContainer.id = `${fieldId}-validation-error`;
-                    errorContainer.className = 'text-red-600 text-xs mt-1 block validation-error-message';
-                    errorContainer.style.display = 'none';
-                    
-                    // Insertar después del campo de forma segura
-                    // Primero intentar insertar después del campo directamente
-                    const parentElement = field.parentElement;
-                    if (parentElement) {
-                        // Si el campo tiene un siguiente hermano, insertar antes de él
-                        if (field.nextSibling) {
-                            parentElement.insertBefore(errorContainer, field.nextSibling);
-                        } else {
-                            // Si no, agregar al final del padre
-                            parentElement.appendChild(errorContainer);
-                        }
+                    // Insertar después del input directamente
+                    if (field.nextSibling) {
+                        parentElement.insertBefore(errorContainer, field.nextSibling);
+                    } else {
+                        parentElement.appendChild(errorContainer);
                     }
                 }
             }
@@ -108,6 +199,13 @@
          * @returns {boolean} - true si es válido
          */
         validateField(field) {
+            // Primero verificar si hay un validador personalizado
+            if (this.customValidators[field.id]) {
+                const result = this.customValidators[field.id]();
+                this.showFieldError(field, result.isValid ? '' : result.message);
+                return result.isValid;
+            }
+
             const value = field.value?.trim() || '';
             const fieldName = this.getFieldLabel(field);
             let isValid = true;
@@ -188,9 +286,9 @@
          */
         getFieldLabel(field) {
             // Buscar label asociado
-            const label = document.querySelector(`label[for="${field.id}"]`);
+            const label = field.labels ? field.labels[0] : document.querySelector(`label[for="${field.id}"]`);
             if (label) {
-                // Obtener solo el texto, sin el asterisco (reemplazar todas las ocurrencias)
+                // Obtener solo el texto, sin el asterisco
                 let text = label.textContent.replace(/\*/g, '').trim();
                 return text || field.name || 'Este campo';
             }
@@ -217,19 +315,45 @@
                 errorContainer = this.ensureErrorContainer(field);
             }
 
+            // Limpiar timeout anterior si existe
+            if (errorContainer._hideTimeout) {
+                clearTimeout(errorContainer._hideTimeout);
+                delete errorContainer._hideTimeout;
+            }
+
             if (message) {
-                // Mostrar error
-                errorContainer.textContent = message;
-                errorContainer.style.display = 'block';
+                // Mostrar error solo si el mensaje cambió (evita re-renders innecesarios)
+                if (errorContainer.textContent !== message) {
+                    errorContainer.textContent = message;
+                }
                 errorContainer.classList.remove('hidden');
                 
                 // Añadir clases de error al campo
                 field.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
                 field.classList.remove('border-gray-300', 'focus:border-primary-600', 'focus:ring-primary-600');
+
+                // Auto-ocultar SOLO mensajes de "obligatorio" después de 3 segundos
+                const isRequiredMessage = message.toLowerCase().includes('obligatorio') || 
+                                         message.toLowerCase().includes('requerido') ||
+                                         message.toLowerCase().includes('seleccione');
+                
+                if (isRequiredMessage) {
+                    errorContainer._hideTimeout = setTimeout(() => {
+                        // Solo ocultar si el campo sigue vacío y el mensaje no cambió
+                        const currentValue = field.value?.trim() || '';
+                        if (!currentValue && errorContainer.textContent === message) {
+                            errorContainer.textContent = '';
+                            errorContainer.classList.add('hidden');
+                            
+                            // Remover clases de error del campo
+                            field.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+                            field.classList.add('border-gray-300', 'focus:border-primary-600', 'focus:ring-primary-600');
+                        }
+                    }, 3000); // 3 segundos
+                }
             } else {
                 // Ocultar error
                 errorContainer.textContent = '';
-                errorContainer.style.display = 'none';
                 errorContainer.classList.add('hidden');
                 
                 // Remover clases de error del campo
@@ -277,7 +401,6 @@
             const errorContainers = form.querySelectorAll('.validation-error-message, [id$="-validation-error"]');
             errorContainers.forEach(container => {
                 container.textContent = '';
-                container.style.display = 'none';
                 container.classList.add('hidden');
             });
 
@@ -295,6 +418,7 @@
     // Auto-inicialización para formularios con data-validate="true"
     document.addEventListener('DOMContentLoaded', () => {
         const forms = document.querySelectorAll('form[data-validate="true"]');
+        console.log(`FormValidation: Encontrados ${forms.length} formularios con data-validate="true"`);
         forms.forEach(form => FormValidation.init(form));
     });
 })();

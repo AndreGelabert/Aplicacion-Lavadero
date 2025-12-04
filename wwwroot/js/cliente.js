@@ -1,14 +1,14 @@
-Ôªø/**
+/**
  * ================================================
- * CLIENTE.JS - FUNCIONALIDAD DE LA P√ÅGINA DE CLIENTES
+ * CLIENTE.JS - FUNCIONALIDAD DE LA P¡GINA DE CLIENTES
  * ================================================
  * Responsabilidades:
- *  - B√∫squeda con debounce y ordenamiento de tabla
+ *  - B˙squeda con debounce y ordenamiento de tabla
  *  - Filtros y recarga parcial (tabla y formulario)
  *  - Formulario AJAX crear/actualizar
- *  - Selector din√°mico de veh√≠culos (estilo paquetes)
- *  - Gesti√≥n de activaci√≥n/desactivaci√≥n (modal de confirmaci√≥n)
- *  - Creaci√≥n r√°pida de veh√≠culos desde modal
+ *  - Selector din·mico de vehÌculos (estilo paquetes)
+ *  - GestiÛn de activaciÛn/desactivaciÛn (modal de confirmaciÛn)
+ *  - CreaciÛn r·pida de vehÌculos desde modal
  */
 
 (function () {
@@ -23,13 +23,13 @@
     let clienteMsgTimeout = null;
     let tableMsgTimeout = null;
     
-    // Variables para gesti√≥n de veh√≠culos
+    // Variables para gestiÛn de vehÌculos
     let vehiculosSeleccionados = [];
     let vehiculosDisponibles = [];
     let vehiculoSeleccionadoDropdown = null;
-    let vehiculosTemporales = []; // Veh√≠culos creados en memoria (a√∫n no guardados en BD)
+    let vehiculosTemporales = []; // VehÌculos creados en memoria (a˙n no guardados en BD)
 
-    // ===================== Inicializaci√≥n del m√≥dulo =====================
+    // ===================== InicializaciÛn del mÛdulo =====================
     window.PageModules = window.PageModules || {};
     window.PageModules.clientes = { init: initializeClientesPage };
 
@@ -39,39 +39,39 @@
     });
 
     /**
-     * Inicializa el comportamiento principal de la p√°gina de Clientes
+     * Inicializa el comportamiento principal de la p·gina de Clientes
      */
     function initializeClientesPage() {
         setupInitialState();
         setupSearchWithDebounce();
         setupFilterFormSubmit();
         setupModals();
-        setupAccordionListener(); // NUEVO: Escuchar apertura del acorde√≥n
-        setupDocumentoValidation();// Validaci√≥n din√°mica de n√∫mero de documento
+        setupAccordionListener(); // NUEVO: Escuchar apertura del acordeÛn
+        setupDocumentoValidation();// ValidaciÛn din·mica de n˙mero de documento
         setupFormatoDocumentoValidation();
         checkEditMode();
     }
 
-    // ===================== Validaci√≥n din√°mica de documento =====================
+    // ===================== ValidaciÛn din·mica de documento =====================
 
     let tiposDocumentoFormatos = {}; // Cache de formatos de tipos de documento
-    let tiposVehiculoFormatos = {}; // Cache de formatos de tipos de veh√≠culo
+    let tiposVehiculoFormatos = {}; // Cache de formatos de tipos de vehÌculo
     /**
-     * Configura la validaci√≥n din√°mica del n√∫mero de documento basada en el tipo seleccionado.
+     * Configura la validaciÛn din·mica del n˙mero de documento basada en el tipo seleccionado.
      */
     async function setupDocumentoValidation() {
         const nombreInput = document.getElementById('Nombre');
         if (nombreInput && !nombreInput.dataset.validationSetup) {
-            const allowedRegex = /^[a-zA-Z√°√©√≠√≥√∫√Å√â√ç√ì√ö√±√ë√º√ú\s]*$/;
+            const allowedRegex = /^[a-zA-Z·ÈÌÛ˙¡…Õ”⁄Ò—¸‹\s]*$/;
             const minLength = 3;
 
             nombreInput.addEventListener('input', function () {
                 // Filtrar caracteres no permitidos
                 if (!allowedRegex.test(this.value)) {
-                    this.value = this.value.replace(/[^a-zA-Z√°√©√≠√≥√∫√Å√â√ç√ì√ö√±√ë√º√ú\s]/g, '');
+                    this.value = this.value.replace(/[^a-zA-Z·ÈÌÛ˙¡…Õ”⁄Ò—¸‹\s]/g, '');
                 }
 
-                // Validar longitud m√≠nima
+                // Validar longitud mÌnima
                 if (this.value.trim().length > 0 && this.value.trim().length < minLength) {
                     this.setCustomValidity(`El nombre debe tener al menos ${minLength} letras`);
                 } else {
@@ -83,12 +83,12 @@
         }
         const apellidoInput = document.getElementById('Apellido');
         if (apellidoInput && !apellidoInput.dataset.validationSetup) {
-            const allowedRegex = /^[a-zA-Z√°√©√≠√≥√∫√Å√â√ç√ì√ö√±√ë√º√ú\s]*$/;
+            const allowedRegex = /^[a-zA-Z·ÈÌÛ˙¡…Õ”⁄Ò—¸‹\s]*$/;
             const minLength = 3;
 
             apellidoInput.addEventListener('input', function () {
                 if (!allowedRegex.test(this.value)) {
-                    this.value = this.value.replace(/[^a-zA-Z√°√©√≠√≥√∫√Å√â√ç√ì√ö√±√ë√º√ú\s]/g, '');
+                    this.value = this.value.replace(/[^a-zA-Z·ÈÌÛ˙¡…Õ”⁄Ò—¸‹\s]/g, '');
                 }
 
                 if (this.value.trim().length > 0 && this.value.trim().length < minLength) {
@@ -110,19 +110,19 @@
                     return;
                 }
 
-                // Validar que tenga @ y al menos 3 caracteres despu√©s
+                // Validar que tenga @ y al menos 3 caracteres despuÈs
                 const atIndex = emailValue.indexOf('@');
                 if (atIndex === -1) {
                     this.setCustomValidity('El email debe contener @');
                 } else {
                     const afterAt = emailValue.substring(atIndex + 1);
                     if (afterAt.length < 3) {
-                        this.setCustomValidity('Debe haber al menos 3 caracteres despu√©s de @');
+                        this.setCustomValidity('Debe haber al menos 3 caracteres despuÈs de @');
                     } else {
-                        // Validaci√≥n b√°sica de formato de email
+                        // ValidaciÛn b·sica de formato de email
                         const emailRegex = /^[^\s@]+@[^\s@]{3,}\.[^\s@]+$/;
                         if (!emailRegex.test(emailValue)) {
-                            this.setCustomValidity('Formato de email inv√°lido');
+                            this.setCustomValidity('Formato de email inv·lido');
                         } else {
                             this.setCustomValidity('');
                         }
@@ -155,7 +155,7 @@
             }
         }
 
-        // Agregar validaci√≥n en tiempo real al campo de n√∫mero de documento
+        // Agregar validaciÛn en tiempo real al campo de n˙mero de documento
         const numeroDocInput = document.getElementById('NumeroDocumento');
         if (numeroDocInput) {
             numeroDocInput.addEventListener('input', validateDocumentoNumero);
@@ -163,7 +163,7 @@
         }
     }
     /**
- * Configura la validaci√≥n del campo de formato de documento en tiempo real
+ * Configura la validaciÛn del campo de formato de documento en tiempo real
  */
     function setupFormatoDocumentoValidation() {
         const formatoInput = document.getElementById('formatoTipoDocumento');
@@ -174,16 +174,16 @@
             const valor = this.value;
             const cursorPos = this.selectionStart;
 
-            // Filtrar solo caracteres v√°lidos: n, l, ., -
+            // Filtrar solo caracteres v·lidos: n, l, ., -
             const valorFiltrado = valor
                 .split('')
                 .filter(char => /[nNlL.\-]/.test(char))
                 .join('')
-                .toLowerCase(); // Convertir a min√∫sculas
+                .toLowerCase(); // Convertir a min˙sculas
 
             if (valor !== valorFiltrado) {
                 this.value = valorFiltrado;
-                // Ajustar posici√≥n del cursor
+                // Ajustar posiciÛn del cursor
                 const diff = valor.length - valorFiltrado.length;
                 this.setSelectionRange(cursorPos - diff, cursorPos - diff);
             }
@@ -220,7 +220,7 @@
         }
     }
     /**
-    * Carga los formatos de todos los tipos de veh√≠culodesde el servidor.
+    * Carga los formatos de todos los tipos de vehÌculodesde el servidor.
     */
     async function loadTiposVehiculoFormatos() {
         try {
@@ -235,7 +235,7 @@
                 };
             });
         } catch (error) {
-            console.error('Error al cargar formatos de tipos de veh√≠culo:', error);
+            console.error('Error al cargar formatos de tipos de vehÌculo:', error);
         }
     }
     /**
@@ -251,7 +251,7 @@
             hintElement.textContent = 'Seleccione un tipo de documento';
             if (numeroDocInput) {
                 numeroDocInput.removeAttribute('pattern');
-                numeroDocInput.placeholder = 'Ingrese n√∫mero';
+                numeroDocInput.placeholder = 'Ingrese n˙mero';
             }
             return;
         }
@@ -264,9 +264,9 @@
                 numeroDocInput.placeholder = tipoInfo.formato;
             }
         } else {
-            hintElement.textContent = 'Ingrese el n√∫mero de documento';
+            hintElement.textContent = 'Ingrese el n˙mero de documento';
             if (numeroDocInput) {
-                numeroDocInput.placeholder = 'Ingrese n√∫mero';
+                numeroDocInput.placeholder = 'Ingrese n˙mero';
             }
         }
     }
@@ -280,7 +280,7 @@
         if (!hintElement) return;
 
         if (!tipoVehiculo) {
-            hintElement.textContent = 'Seleccione un tipo de veh√≠culo';
+            hintElement.textContent = 'Seleccione un tipo de vehÌculo';
             if (patenteInput) {
                 patenteInput.removeAttribute('pattern');
                 patenteInput.placeholder = 'Ingrese patente';
@@ -296,14 +296,14 @@
                 patenteInput.placeholder = tipoInfo.formato;
             }
         } else {
-            hintElement.textContent = 'Ingrese la patente del veh√≠culo';
+            hintElement.textContent = 'Ingrese la patente del vehÌculo';
             if (patenteInput) {
                 patenteInput.placeholder = 'Ingrese patente';
             }
         }
     }
     /**
-     * Valida el n√∫mero de documento seg√∫n el formato del tipo seleccionado.
+     * Valida el n˙mero de documento seg˙n el formato del tipo seleccionado.
      */
     function validateDocumentoNumero() {
         const tipoDocSelect = document.getElementById('TipoDocumento');
@@ -322,7 +322,7 @@
         }
         numeroDocInput.classList.remove('border-red-500');
 
-        // Si no hay tipo seleccionado o n√∫mero, no validar
+        // Si no hay tipo seleccionado o n˙mero, no validar
         if (!tipoDocumento || !numeroDoc) return true;
 
         const tipoInfo = tiposDocumentoFormatos[tipoDocumento];
@@ -348,7 +348,7 @@
         return true;
     }
     /**
- * Valida la patente seg√∫n el formato del tipo de veh√≠culo seleccionado.
+ * Valida la patente seg˙n el formato del tipo de vehÌculo seleccionado.
  */
     function validatePatenteVehiculo() {
         const tipoVehiculoSelect = document.getElementById('TipoVehiculo');
@@ -387,36 +387,36 @@
                 return false;
             }
         } catch (e) {
-            console.error('Error en regex de tipo de veh√≠culo:', e);
+            console.error('Error en regex de tipo de vehÌculo:', e);
         }
 
         return true;
     }
     /**
-     * Configura listener para cuando se abre el acorde√≥n del formulario
+     * Configura listener para cuando se abre el acordeÛn del formulario
      */
     function setupAccordionListener() {
         const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
         const accordionBody = document.getElementById('accordion-flush-body-1');
 
         if (!accordionBtn || !accordionBody) {
-            console.warn('‚ö† Elementos del acorde√≥n no encontrados');
+            console.warn('? Elementos del acordeÛn no encontrados');
             return;
         }
 
-        // Usar MutationObserver para detectar cuando el acorde√≥n se abre
+        // Usar MutationObserver para detectar cuando el acordeÛn se abre
         const observer = new MutationObserver(async (mutations) => {
             for (const mutation of mutations) {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                     const isHidden = accordionBody.classList.contains('hidden');
 
                     if (!isHidden) {
-                        // El acorde√≥n se acaba de abrir
+                        // El acordeÛn se acaba de abrir
 
-                        // Esperar un poco para asegurar que el DOM est√© completamente renderizado
+                        // Esperar un poco para asegurar que el DOM estÈ completamente renderizado
                         await new Promise(resolve => setTimeout(resolve, 100));
 
-                        // Verificar si ya se inicializ√≥ (para evitar duplicados)
+                        // Verificar si ya se inicializÛ (para evitar duplicados)
                         if (vehiculosDisponibles.length === 0) {
                             await setupVehiculoSelector();
                         } else {
@@ -431,7 +431,7 @@
 
     }
 
-    // ===================== Configuraci√≥n inicial =====================
+    // ===================== ConfiguraciÛn inicial =====================
 
     function setupInitialState() {
         const pageInput = document.getElementById("current-page-value");
@@ -451,13 +451,13 @@
             if (accordion) {
                 accordion.classList.remove('hidden');
 
-                // CR√çTICO: Inicializar selector de veh√≠culos cuando se abre en modo edici√≥n
+                // CRÕTICO: Inicializar selector de vehÌculos cuando se abre en modo ediciÛn
                 await setupVehiculoSelector();
             }
         }
     }
 
-    // ===================== B√∫squeda (debounce) =====================
+    // ===================== B˙squeda (debounce) =====================
 
     function setupSearchWithDebounce() {
         const searchInput = document.getElementById("simple-search");
@@ -564,7 +564,7 @@
             const searchInput = document.getElementById('simple-search');
             if (searchInput) currentSearchTerm = searchInput.value.trim();
 
-            // Cerrar el dropdown de filtros usando el bot√≥n de toggle
+            // Cerrar el dropdown de filtros usando el botÛn de toggle
             const filterButton = document.getElementById('filterDropdownButton');
             if (filterButton) {
                 filterButton.click();
@@ -601,7 +601,7 @@
         if (searchInput) searchInput.value = '';
         currentSearchTerm = '';
 
-        // Cerrar el dropdown de filtros usando el bot√≥n de toggle
+        // Cerrar el dropdown de filtros usando el botÛn de toggle
         const filterButton = document.getElementById('filterDropdownButton');
         if (filterButton) {
             filterButton.click();
@@ -618,7 +618,7 @@
     // ===================== Formulario =====================
 
     window.loadClienteForm = async function (id) {
-        // NUEVO: Limpiar veh√≠culos temporales al cambiar/limpiar formulario
+        // NUEVO: Limpiar vehÌculos temporales al cambiar/limpiar formulario
         vehiculosTemporales = [];
 
         const url = id ? `/Cliente/FormPartial?id=${id}` : "/Cliente/FormPartial";
@@ -635,10 +635,10 @@
                 titleSpan.textContent = isEdit ? 'Editando Cliente' : 'Registrando Cliente';
             }
 
-            // CR√çTICO: Esperar a que setupVehiculoSelector termine
+            // CRÕTICO: Esperar a que setupVehiculoSelector termine
             await setupVehiculoSelector();
             
-            // Reconfigurar validaci√≥n de documento
+            // Reconfigurar validaciÛn de documento
             await setupDocumentoValidation();
 
             const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
@@ -667,28 +667,28 @@
             event.stopPropagation();
         }
 
-        // Validar n√∫mero de documento antes de enviar
+        // Validar n˙mero de documento antes de enviar
         if (!validateDocumentoNumero()) {
-            showFormMessage('error', 'El formato del n√∫mero de documento no es v√°lido.');
+            showFormMessage('error', 'El formato del n˙mero de documento no es v·lido.');
             return false;
         }
 
-        // Prevenir doble env√≠o
+        // Prevenir doble envÌo
         const submitBtn = document.getElementById('submit-button');
         if (submitBtn && submitBtn.disabled) {
             return false;
         }
 
-        // Validar que al menos haya un veh√≠culo
+        // Validar que al menos haya un vehÌculo
         if (vehiculosSeleccionados.length === 0) {
-            showFormMessage('error', 'Debe agregar al menos un veh√≠culo para el cliente.');
+            showFormMessage('error', 'Debe agregar al menos un vehÌculo para el cliente.');
             document.getElementById('vehiculos-error')?.classList.remove('hidden');
             return false;
         }
 
         document.getElementById('vehiculos-error')?.classList.add('hidden');
 
-        // Deshabilitar bot√≥n de env√≠o
+        // Deshabilitar botÛn de envÌo
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.innerHTML = `
@@ -701,7 +701,7 @@
         }
 
         try {
-            // NUEVO: Preparar datos de veh√≠culos
+            // NUEVO: Preparar datos de vehÌculos
             const vehiculosData = vehiculosSeleccionados.map(v => ({
                 id: v.esTemporalNuevo ? null : v.id, // null para nuevos, ID para existentes
                 patente: v.patente,
@@ -710,7 +710,7 @@
                 color: v.color,
                 tipoVehiculo: v.tipoVehiculo,
                 esNuevo: v.esTemporalNuevo || false,
-                esReasignacion: v.esReasignacion || false // Flag para reasignaci√≥n
+                esReasignacion: v.esReasignacion || false // Flag para reasignaciÛn
             }));
 
             // Crear FormData del formulario
@@ -732,7 +732,7 @@
 
             document.getElementById('cliente-form-container').innerHTML = html;
 
-            // CR√çTICO: Esperar setup de veh√≠culos
+            // CRÕTICO: Esperar setup de vehÌculos
             await setupVehiculoSelector();
 
             const isEdit = !!document.getElementById('Id')?.value;
@@ -742,15 +742,15 @@
             }
 
             if (valid) {
-                // Limpiar veh√≠culos temporales si se guard√≥ exitosamente
+                // Limpiar vehÌculos temporales si se guardÛ exitosamente
                 vehiculosTemporales = [];
                 vehiculosSeleccionados = [];
                 vehiculosDisponibles = [];
 
-                showFormMessage('success', msg || 'Cliente guardado correctamente. Los veh√≠culos han sido asignados.', 4000);
+                showFormMessage('success', msg || 'Cliente guardado correctamente. Los vehÌculos han sido asignados.', 4000);
                 reloadClienteTable(1);
 
-                // Cerrar el acorde√≥n
+                // Cerrar el acordeÛn
                 setTimeout(() => {
                     const accordionBody = document.getElementById('accordion-flush-body-1');
                     const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
@@ -767,10 +767,10 @@
                 showFormMessage('error', 'Revise los errores del formulario.', 8000);
             }
         } catch (e) {
-            console.error('‚ùå Error al enviar formulario:', e);
-            showFormMessage('error', 'Error de comunicaci√≥n con el servidor.', 8000);
+            console.error('? Error al enviar formulario:', e);
+            showFormMessage('error', 'Error de comunicaciÛn con el servidor.', 8000);
         } finally {
-            // Re-habilitar bot√≥n de env√≠o
+            // Re-habilitar botÛn de envÌo
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = `
@@ -785,7 +785,7 @@
         return false;
     };
 
-    // ===================== Selector de Veh√≠culos (Estilo Paquetes) =====================
+    // ===================== Selector de VehÌculos (Estilo Paquetes) =====================
 
     async function setupVehiculoSelector() {
         await loadVehiculosDisponibles();
@@ -830,7 +830,7 @@
             updateVehiculosSeleccionadosList();
 
         } catch (error) {
-            console.error('Error al cargar veh√≠culos:', error);
+            console.error('Error al cargar vehÌculos:', error);
             vehiculosDisponibles = [];
             vehiculosSeleccionados = [];
         }
@@ -841,7 +841,7 @@
         if (!target) return;
 
         if (!Array.isArray(vehiculos) || vehiculos.length === 0) {
-            target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No hay veh√≠culos disponibles. Use "Nuevo Veh√≠culo" para crear uno.</p>';
+            target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No hay vehÌculos disponibles. Use "Nuevo VehÌculo" para crear uno.</p>';
             return;
         }
 
@@ -859,7 +859,7 @@
         lista = lista.filter(v => !vehiculosSeleccionados.some(sel => sel.id === v.id));
 
         if (lista.length === 0) {
-            target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No se encontraron veh√≠culos con ese criterio</p>';
+            target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No se encontraron vehÌculos con ese criterio</p>';
             return;
         }
 
@@ -890,7 +890,7 @@
         } else {
             const target = document.getElementById('vehiculo-dropdown-content');
             if (target) {
-                target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No hay veh√≠culos disponibles. Cree uno nuevo usando el bot√≥n "Nuevo Veh√≠culo".</p>';
+                target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No hay vehÌculos disponibles. Cree uno nuevo usando el botÛn "Nuevo VehÌculo".</p>';
             }
             dropdown.classList.remove('hidden');
         }
@@ -909,7 +909,7 @@
             } else {
                 const target = document.getElementById('vehiculo-dropdown-content');
                 if (target) {
-                    target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No hay veh√≠culos disponibles.</p>';
+                    target.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 p-2">No hay vehÌculos disponibles.</p>';
                 }
                 dropdown.classList.remove('hidden');
             }
@@ -930,17 +930,17 @@
     };
 
     /**
-     * Agrega el veh√≠culo seleccionado a la lista del cliente.
+     * Agrega el vehÌculo seleccionado a la lista del cliente.
      */
     window.agregarVehiculoSeleccionado = function () {
         if (!vehiculoSeleccionadoDropdown) {
-            showFormMessage('error', 'Debe seleccionar un veh√≠culo del listado.');
+            showFormMessage('error', 'Debe seleccionar un vehÌculo del listado.');
             return;
         }
 
-        // Verificar si ya est√° en la lista
+        // Verificar si ya est· en la lista
         if (vehiculosSeleccionados.some(v => v.id === vehiculoSeleccionadoDropdown.id)) {
-            showFormMessage('error', 'Este veh√≠culo ya est√° en la lista.');
+            showFormMessage('error', 'Este vehÌculo ya est· en la lista.');
             return;
         }
 
@@ -965,10 +965,10 @@
         // Remover de seleccionados
         vehiculosSeleccionados = vehiculosSeleccionados.filter(v => v.id !== id);
 
-        // NUEVO: Si es un veh√≠culo temporal, lo devolvemos al dropdown
+        // NUEVO: Si es un vehÌculo temporal, lo devolvemos al dropdown
         const vehiculoRemovido = vehiculosTemporales.find(v => v.id === id);
         if (vehiculoRemovido) {
-            // Ya est√° en vehiculosTemporales, solo actualizar disponibles
+            // Ya est· en vehiculosTemporales, solo actualizar disponibles
             if (!vehiculosDisponibles.some(v => v.id === id)) {
                 vehiculosDisponibles.push(vehiculoRemovido);
             }
@@ -1006,23 +1006,23 @@
                             </svg>
                         </div>
 
-                        <!-- N√∫mero de orden -->
+                        <!-- N˙mero de orden -->
                         <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full font-bold text-sm">
                             ${index + 1}
                         </div>
 
-                        <!-- Informaci√≥n del veh√≠culo -->
+                        <!-- InformaciÛn del vehÌculo -->
                         <div class="flex-1 min-w-0">
                             <div class="font-medium text-gray-900 dark:text-white truncate">${escapeHtml(v.patente)}</div>
                             <div class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(v.marca)} ${escapeHtml(v.modelo)} - ${escapeHtml(v.color)} (${escapeHtml(v.tipoVehiculo)})</div>
                         </div>
 
-                        <!-- Bot√≥n eliminar -->
+                        <!-- BotÛn eliminar -->
                         <button type="button"
                                 onclick="event.stopPropagation(); removerVehiculoSeleccionado('${v.id}')"
                                 class="flex-shrink-0 w-8 h-8 flex items-center justify-center overflow-visible bg-transparent rounded-md border border-transparent hover:border-red-200 dark:hover:border-red-700 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                                title="Quitar veh√≠culo"
-                                aria-label="Quitar veh√≠culo"
+                                title="Quitar vehÌculo"
+                                aria-label="Quitar vehÌculo"
                                 style="line-height:0;">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd"/>
@@ -1036,7 +1036,7 @@
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">' +
             '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />' +
             '</svg>' +
-            'Arrastra los veh√≠culos para cambiar su orden. El primero ser√° el veh√≠culo principal.' +
+            'Arrastra los vehÌculos para cambiar su orden. El primero ser· el vehÌculo principal.' +
             '</p>';
 
         // Configurar drag and drop
@@ -1058,7 +1058,7 @@
     }
 
     /**
-     * Configura la funcionalidad de drag and drop para reordenar veh√≠culos.
+     * Configura la funcionalidad de drag and drop para reordenar vehÌculos.
      */
     function setupVehiculoDragAndDrop() {
         const list = document.getElementById('vehiculos-sortable-list');
@@ -1203,7 +1203,7 @@
         }
     }
 
-    // ===================== Modal de Creaci√≥n R√°pida de Veh√≠culo =====================
+    // ===================== Modal de CreaciÛn R·pida de VehÌculo =====================
 
     window.openQuickCreateVehiculoModal = async function () {
         try {
@@ -1230,7 +1230,7 @@
                     <div class="relative bg-white rounded-lg shadow dark:bg-gray-800">
                         <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
                             <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                                Registrar Nuevo Veh√≠culo
+                                Registrar Nuevo VehÌculo
                             </h3>
                             <button type="button" onclick="closeQuickCreateModal()" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white">
                                 <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
@@ -1339,7 +1339,7 @@
         if (window._quickVehiculoModal && typeof window._quickVehiculoModal.hide === 'function') {
             window._quickVehiculoModal.hide();
 
-            // Limpiar despu√©s de cerrar
+            // Limpiar despuÈs de cerrar
             setTimeout(() => {
                 const modalEl = document.getElementById('quick-create-modal');
                 if (modalEl) modalEl.remove();
@@ -1362,67 +1362,67 @@
     };
 
     async function submitQuickVehiculo(form) {
-        // Prevenir el env√≠o al servidor
+        // Prevenir el envÌo al servidor
         event.preventDefault();
         
-        // Validar el formulario usando el API de validaci√≥n del navegador
+        // Validar el formulario usando el API de validaciÛn del navegador
         if (!form.checkValidity()) {
             form.reportValidity();
             return false;
         }
 
-        // Capturar datos del formulario (patente en may√∫sculas)
+        // Capturar datos del formulario (patente en may˙sculas)
         const patente = form.querySelector('#Patente')?.value?.trim().toUpperCase();
         const marca = form.querySelector('#Marca')?.value?.trim();
         const modelo = form.querySelector('#Modelo')?.value?.trim();
         const color = form.querySelector('#Color')?.value?.trim();
         const tipoVehiculo = form.querySelector('#TipoVehiculo')?.value;
 
-        // Validaciones b√°sicas
+        // Validaciones b·sicas
         if (!patente || !marca || !modelo || !color || !tipoVehiculo) {
             showQuickVehiculoMessage('error', 'Todos los campos son obligatorios.', 5000);
             return false;
         }
-        // Validar patente seg√∫n el tipo de veh√≠culo
+        // Validar patente seg˙n el tipo de vehÌculo
         if (!validatePatenteVehiculo()) {
-            showQuickVehiculoMessage('error', 'El formato de la patente no es v√°lido.', 5000);
+            showQuickVehiculoMessage('error', 'El formato de la patente no es v·lido.', 5000);
             return false;
         }
-        // Verificar que no exista ya en los veh√≠culos temporales o seleccionados
+        // Verificar que no exista ya en los vehÌculos temporales o seleccionados
         const patenteExiste = [...vehiculosTemporales, ...vehiculosSeleccionados].some(v =>
             v.patente && v.patente.toLowerCase() === patente.toLowerCase()
         );
 
         if (patenteExiste) {
-            showQuickVehiculoMessage('error', 'Ya existe un veh√≠culo con esta patente en la lista.', 5000);
+            showQuickVehiculoMessage('error', 'Ya existe un vehÌculo con esta patente en la lista.', 5000);
             return false;
         }
 
-        // NUEVO: Verificar si existe un veh√≠culo con esta patente
+        // NUEVO: Verificar si existe un vehÌculo con esta patente
         try {
             const verificarUrl = `/Vehiculo/VerificarVehiculoSinDueno?patente=${encodeURIComponent(patente)}&marca=${encodeURIComponent(marca)}&modelo=${encodeURIComponent(modelo)}`;
             const respuesta = await fetch(verificarUrl);
             const data = await respuesta.json();
 
             if (data.existe && data.vehiculo) {
-                // Existe veh√≠culo inactivo sin due√±o ‚Üí Mostrar modal de reasignaci√≥n
+                // Existe vehÌculo inactivo sin dueÒo ? Mostrar modal de reasignaciÛn
                 mostrarModalReasignacion(data.vehiculo, color, tipoVehiculo);
                 return false;
             }
             
             if (data.existe === false && data.error) {
-                // Existe un veh√≠culo activo o con due√±o ‚Üí Bloquear
+                // Existe un vehÌculo activo o con dueÒo ? Bloquear
                 showQuickVehiculoMessage('error', data.error, 8000);
                 return false;
             }
         } catch (error) {
-            console.error('Error al verificar veh√≠culo:', error);
-            showQuickVehiculoMessage('error', 'Error al verificar el veh√≠culo. Intente nuevamente.', 5000);
+            console.error('Error al verificar vehÌculo:', error);
+            showQuickVehiculoMessage('error', 'Error al verificar el vehÌculo. Intente nuevamente.', 5000);
         }
 
-        // Crear veh√≠culo temporal (solo en memoria)
+        // Crear vehÌculo temporal (solo en memoria)
         const vehiculoTemporal = {
-            id: 'temp_' + Date.now(), // ID temporal √∫nico
+            id: 'temp_' + Date.now(), // ID temporal ˙nico
             patente: patente,
             marca: marca,
             modelo: modelo,
@@ -1442,13 +1442,13 @@
         // Actualizar UI
         updateVehiculosSeleccionadosList();
 
-        showFormMessage('success', `Veh√≠culo ${patente} agregado. Guarde el cliente para registrarlo.`, 4000);
+        showFormMessage('success', `VehÌculo ${patente} agregado. Guarde el cliente para registrarlo.`, 4000);
         
         return false;
     }
 
     /**
-     * Muestra modal de confirmaci√≥n para reasignar veh√≠culo existente
+     * Muestra modal de confirmaciÛn para reasignar vehÌculo existente
      */
     function mostrarModalReasignacion(vehiculoExistente, nuevoColor, nuevoTipo) {
         // Eliminar modal anterior si existe
@@ -1463,11 +1463,11 @@
         const cambiosHTML = colorCambio || tipoCambio ? `
             <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
                 <p class="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">
-                    üìù Se detectaron cambios que se aplicar√°n:
+                    ?? Se detectaron cambios que se aplicar·n:
                 </p>
                 <ul class="text-xs text-blue-700 dark:text-blue-400 list-disc list-inside space-y-1">
-                    ${colorCambio ? `<li>Color: <span class="font-semibold">${escapeHtml(vehiculoExistente.color)}</span> ‚Üí <span class="font-semibold">${escapeHtml(nuevoColor)}</span></li>` : ''}
-                    ${tipoCambio ? `<li>Tipo: <span class="font-semibold">${escapeHtml(vehiculoExistente.tipoVehiculo)}</span> ‚Üí <span class="font-semibold">${escapeHtml(nuevoTipo)}</span></li>` : ''}
+                    ${colorCambio ? `<li>Color: <span class="font-semibold">${escapeHtml(vehiculoExistente.color)}</span> ? <span class="font-semibold">${escapeHtml(nuevoColor)}</span></li>` : ''}
+                    ${tipoCambio ? `<li>Tipo: <span class="font-semibold">${escapeHtml(vehiculoExistente.tipoVehiculo)}</span> ? <span class="font-semibold">${escapeHtml(nuevoTipo)}</span></li>` : ''}
                 </ul>
             </div>
         ` : '';
@@ -1488,28 +1488,28 @@
                                     <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                 </svg>
                             </div>
-                            <h3 class="mb-2 text-lg font-normal text-gray-900 dark:text-white">Veh√≠culo Ya Registrado</h3>
+                            <h3 class="mb-2 text-lg font-normal text-gray-900 dark:text-white">VehÌculo Ya Registrado</h3>
                             <div class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-                                <p class="mb-2">Este veh√≠culo ya est√° registrado en el sistema pero <strong>no tiene due√±o asignado</strong>.</p>
+                                <p class="mb-2">Este vehÌculo ya est· registrado en el sistema pero <strong>no tiene dueÒo asignado</strong>.</p>
                                 <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-left mb-3">
-                                    <p class="font-semibold text-gray-900 dark:text-white mb-1">üìã Datos actuales:</p>
+                                    <p class="font-semibold text-gray-900 dark:text-white mb-1">?? Datos actuales:</p>
                                     <ul class="text-xs space-y-1">
-                                        <li>‚Ä¢ Patente: <span class="font-semibold">${escapeHtml(vehiculoExistente.patente)}</span></li>
-                                        <li>‚Ä¢ Marca/Modelo: <span class="font-semibold">${escapeHtml(vehiculoExistente.marca)} ${escapeHtml(vehiculoExistente.modelo)}</span></li>
-                                        <li>‚Ä¢ Color: <span class="font-semibold">${escapeHtml(vehiculoExistente.color)}</span></li>
-                                        <li>‚Ä¢ Tipo: <span class="font-semibold">${escapeHtml(vehiculoExistente.tipoVehiculo)}</span></li>
-                                        <li>‚Ä¢ Estado: <span class="font-semibold text-red-600">Inactivo</span></li>
+                                        <li>ï Patente: <span class="font-semibold">${escapeHtml(vehiculoExistente.patente)}</span></li>
+                                        <li>ï Marca/Modelo: <span class="font-semibold">${escapeHtml(vehiculoExistente.marca)} ${escapeHtml(vehiculoExistente.modelo)}</span></li>
+                                        <li>ï Color: <span class="font-semibold">${escapeHtml(vehiculoExistente.color)}</span></li>
+                                        <li>ï Tipo: <span class="font-semibold">${escapeHtml(vehiculoExistente.tipoVehiculo)}</span></li>
+                                        <li>ï Estado: <span class="font-semibold text-red-600">Inactivo</span></li>
                                     </ul>
                                 </div>
                                 ${cambiosHTML}
-                                <p class="mt-3 font-medium">¬øDesea reasignarlo a este cliente?</p>
+                                <p class="mt-3 font-medium">øDesea reasignarlo a este cliente?</p>
                             </div>
                             <div class="flex justify-center items-center space-x-4">
                                 <button type="button" onclick="closeReasignarModal()" class="py-2 px-4 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600">
                                     No, cancelar
                                 </button>
                                 <button type="button" onclick="confirmarReasignacion('${vehiculoExistente.id}', '${escapeHtml(nuevoColor)}', '${escapeHtml(nuevoTipo)}')" class="py-2 px-4 text-sm font-medium text-center text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-900">
-                                    S√≠, reasignar
+                                    SÌ, reasignar
                                 </button>
                             </div>
                         </div>
@@ -1557,29 +1557,29 @@
 
     window.confirmarReasignacion = async function (vehiculoId, nuevoColor, nuevoTipo) {
         try {
-            // Obtener el veh√≠culo completo del servidor
+            // Obtener el vehÌculo completo del servidor
             const respuesta = await fetch(`/Vehiculo/FormPartial?id=${vehiculoId}`);
             const vehiculoHTML = await respuesta.text();
             
-            // Parsear para extraer datos (alternativa: hacer un endpoint espec√≠fico)
+            // Parsear para extraer datos (alternativa: hacer un endpoint especÌfico)
             const respVehiculo = await fetch(`/Vehiculo/VerificarVehiculoSinDueno?patente=${encodeURIComponent('')}&marca=&modelo=`);
             
-            // En su lugar, vamos a usar los datos que ya tenemos y hacer la petici√≥n correcta
+            // En su lugar, vamos a usar los datos que ya tenemos y hacer la peticiÛn correcta
             const vehiculoData = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${vehiculoId}`);
             
-            // M√©todo m√°s directo: agregar el veh√≠culo existente con los nuevos datos
+            // MÈtodo m·s directo: agregar el vehÌculo existente con los nuevos datos
             const vehiculoReasignado = {
-                id: vehiculoId, // ID del veh√≠culo existente
-                patente: '', // Se llenar√° desde el modal original
+                id: vehiculoId, // ID del vehÌculo existente
+                patente: '', // Se llenar· desde el modal original
                 marca: '',
                 modelo: '',
                 color: nuevoColor,
                 tipoVehiculo: nuevoTipo,
-                esTemporalNuevo: false, // NO es nuevo, es reasignaci√≥n
-                esReasignacion: true // Flag especial para indicar reasignaci√≥n
+                esTemporalNuevo: false, // NO es nuevo, es reasignaciÛn
+                esReasignacion: true // Flag especial para indicar reasignaciÛn
             };
 
-            // Obtener datos del formulario que se qued√≥ abierto
+            // Obtener datos del formulario que se quedÛ abierto
             const quickModal = document.getElementById('quick-create-modal');
             if (quickModal) {
                 const form = quickModal.querySelector('form');
@@ -1603,10 +1603,10 @@
             // Actualizar UI
             updateVehiculosSeleccionadosList();
 
-            showFormMessage('success', `Veh√≠culo ${vehiculoReasignado.patente} reasignado. Guarde el cliente para confirmar.`, 4000);
+            showFormMessage('success', `VehÌculo ${vehiculoReasignado.patente} reasignado. Guarde el cliente para confirmar.`, 4000);
         } catch (error) {
-            console.error('Error al reasignar veh√≠culo:', error);
-            showFormMessage('error', 'Error al procesar la reasignaci√≥n.', 5000);
+            console.error('Error al reasignar vehÌculo:', error);
+            showFormMessage('error', 'Error al procesar la reasignaciÛn.', 5000);
         }
     };
 
@@ -1645,13 +1645,13 @@
         }
 
         try {
-            // Verificar si est√° en uso
+            // Verificar si est· en uso
             const checkResponse = await fetch(`/TipoDocumento/VerificarEnUso?nombre=${encodeURIComponent(tipoSeleccionado)}`);
             const checkData = await checkResponse.json();
 
             if (checkData.enUso) {
                 cerrarModal('eliminarTipoDocumentoModal');
-                showFormMessage('error', `No se puede eliminar el tipo de documento "${tipoSeleccionado}" porque est√° siendo usado por ${checkData.cantidad} cliente(s).`);
+                showFormMessage('error', `No se puede eliminar el tipo de documento "${tipoSeleccionado}" porque est· siendo usado por ${checkData.cantidad} cliente(s).`);
                 return;
             }
             const formData = new FormData();
@@ -1741,7 +1741,7 @@
         const select = document.getElementById(selectId);
         if (!select) return;
 
-        // Mantener la opci√≥n "Seleccione..."
+        // Mantener la opciÛn "Seleccione..."
         select.innerHTML = '<option value="">Seleccione...</option>';
 
         tipos.forEach(tipo => {
@@ -1807,7 +1807,7 @@
 
         if (message) {
             if (esDesactivar) {
-                // Obtener veh√≠culos del cliente para mostrar advertencia
+                // Obtener vehÌculos del cliente para mostrar advertencia
                 try {
                     const resp = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${id}`);
                     const data = await resp.json();
@@ -1818,7 +1818,7 @@
                         if (vehiculosActivos.length > 0) {
                             mensajeVehiculos = `<div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg dark:bg-yellow-900/20 dark:border-yellow-800">
                                 <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-2">
-                                    ‚ö†Ô∏è Advertencia: Esta acci√≥n tambi√©n desactivar√° ${vehiculosActivos.length} veh√≠culo${vehiculosActivos.length > 1 ? 's' : ''} asociado${vehiculosActivos.length > 1 ? 's' : ''}:
+                                    ?? Advertencia: Esta acciÛn tambiÈn desactivar· ${vehiculosActivos.length} vehÌculo${vehiculosActivos.length > 1 ? 's' : ''} asociado${vehiculosActivos.length > 1 ? 's' : ''}:
                                 </p>
                                 <ul class="text-xs text-yellow-700 dark:text-yellow-400 list-disc list-inside space-y-1">
                                     ${vehiculosActivos.map(v => `<li>${escapeHtml(v.patente)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</li>`).join('')}
@@ -1828,14 +1828,14 @@
                     }
 
                     message.innerHTML = `
-                        <p class="mb-2">¬øConfirma desactivar el cliente <strong>${escapeHtml(nombre)}</strong>?</p>
+                        <p class="mb-2">øConfirma desactivar el cliente <strong>${escapeHtml(nombre)}</strong>?</p>
                         ${mensajeVehiculos}
                     `;
                 } catch (error) {
-                    message.innerHTML = '¬øConfirma desactivar el cliente <strong>' + escapeHtml(nombre) + '</strong>?';
+                    message.innerHTML = 'øConfirma desactivar el cliente <strong>' + escapeHtml(nombre) + '</strong>?';
                 }
             } else {
-                // Reactivaci√≥n: mostrar advertencia de veh√≠culos que se reactivar√°n
+                // ReactivaciÛn: mostrar advertencia de vehÌculos que se reactivar·n
                 try {
                     const resp = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${id}`);
                     const data = await resp.json();
@@ -1846,7 +1846,7 @@
                         if (vehiculosInactivos.length > 0) {
                             mensajeVehiculos = `<div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg dark:bg-green-900/20 dark:border-green-800">
                                 <p class="text-sm font-medium text-green-800 dark:text-green-300 mb-2">
-                                    ‚ÑπÔ∏è Esta acci√≥n tambi√©n reactivar√° ${vehiculosInactivos.length} veh√≠culo${vehiculosInactivos.length > 1 ? 's' : ''} asociado${vehiculosInactivos.length > 1 ? 's' : ''}:
+                                    ?? Esta acciÛn tambiÈn reactivar· ${vehiculosInactivos.length} vehÌculo${vehiculosInactivos.length > 1 ? 's' : ''} asociado${vehiculosInactivos.length > 1 ? 's' : ''}:
                                 </p>
                                 <ul class="text-xs text-green-700 dark:text-green-400 list-disc list-inside space-y-1">
                                     ${vehiculosInactivos.map(v => `<li>${escapeHtml(v.patente)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</li>`).join('')}
@@ -1856,11 +1856,11 @@
                     }
 
                     message.innerHTML = `
-                        <p class="mb-2">¬øConfirma reactivar el cliente <strong>${escapeHtml(nombre)}</strong>?</p>
+                        <p class="mb-2">øConfirma reactivar el cliente <strong>${escapeHtml(nombre)}</strong>?</p>
                         ${mensajeVehiculos}
                     `;
                 } catch (error) {
-                    message.innerHTML = '¬øConfirma reactivar el cliente <strong>' + escapeHtml(nombre) + '</strong>?';
+                    message.innerHTML = 'øConfirma reactivar el cliente <strong>' + escapeHtml(nombre) + '</strong>?';
                 }
             }
         }
@@ -1918,19 +1918,19 @@
                     const accion = form.action.includes('Deactivate') ? 'desactivado' : 'reactivado';
                     showTableMessage('success', `Cliente ${accion} correctamente.`);
                 } else {
-                    showTableMessage('error', data.message || 'No se pudo completar la acci√≥n.');
+                    showTableMessage('error', data.message || 'No se pudo completar la acciÛn.');
                 }
                 reloadClienteTable(getCurrentTablePage());
             })
             .catch(err => {
                 console.error('submitClienteEstado error:', err);
                 closeClienteConfirmModal();
-                showTableMessage('error', 'No se pudo completar la acci√≥n.');
+                showTableMessage('error', 'No se pudo completar la acciÛn.');
             });
         return false;
     };
 
-    // Ver veh√≠culos del cliente
+    // Ver vehÌculos del cliente
     window.verVehiculos = async function (clienteId) {
         try {
             const resp = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${clienteId}`);
@@ -1939,11 +1939,11 @@
             if (data.success && data.vehiculos) {
                 mostrarModalVehiculos(data.vehiculos);
             } else {
-                showTableMessage('info', 'No se pudieron cargar los veh√≠culos del cliente.');
+                showTableMessage('info', 'No se pudieron cargar los vehÌculos del cliente.');
             }
         } catch (error) {
             console.error('Error:', error);
-            showTableMessage('error', 'Error al cargar los veh√≠culos.');
+            showTableMessage('error', 'Error al cargar los vehÌculos.');
         }
     };
 
@@ -1957,7 +1957,7 @@
         // Construir el HTML del modal
         let vehiculosHtml = '';
         if (vehiculos.length === 0) {
-            vehiculosHtml = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">Este cliente no tiene veh√≠culos asociados.</p>';
+            vehiculosHtml = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">Este cliente no tiene vehÌculos asociados.</p>';
         } else {
             vehiculos.forEach(v => {
                 const estadoClass = v.estado === 'Activo'
@@ -1986,7 +1986,7 @@
                     <div class="relative bg-white rounded-lg shadow dark:bg-gray-800">
                         <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
                             <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                                Veh√≠culos del Cliente
+                                VehÌculos del Cliente
                             </h3>
                             <button type="button" onclick="closeVerVehiculosModal()" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white">
                                 <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
@@ -2017,7 +2017,7 @@
                 closable: true,
                 onHide: () => {
                     document.body.style.overflow = '';
-                    // Limpiar despu√©s de cerrar
+                    // Limpiar despuÈs de cerrar
                     setTimeout(() => {
                         const modalToRemove = document.getElementById('ver-vehiculos-modal');
                         if (modalToRemove) modalToRemove.remove();
@@ -2031,7 +2031,7 @@
             const modal = new Modal(modalEl, modalOptions);
             modal.show();
 
-            // Guardar referencia para cerrar despu√©s
+            // Guardar referencia para cerrar despuÈs
             window._verVehiculosModal = modal;
         } else {
             // Fallback sin Flowbite
@@ -2058,7 +2058,7 @@
         }
     };
 
-    // ===================== Mensajer√≠a =====================
+    // ===================== MensajerÌa =====================
 
     function showFormMessage(type, message, disappearMs = 5000) {
         const container = document.getElementById('ajax-form-messages');
@@ -2145,10 +2145,10 @@
         }, disappearMs);
     }
 
-    // ===================== B√∫squeda en servidor =====================
+    // ===================== B˙squeda en servidor =====================
 
     function performServerSearch(searchTerm = '') {
-        // Persistir b√∫squeda activa
+        // Persistir b˙squeda activa
         currentSearchTerm = searchTerm;
 
         // Obtener filtros actuales
@@ -2162,7 +2162,7 @@
             }
         }
 
-        // Agregar t√©rmino de b√∫squeda y ordenamiento
+        // Agregar tÈrmino de b˙squeda y ordenamiento
         params.set('searchTerm', searchTerm);
         params.set('pageNumber', '1');
         params.set('sortBy', currentSortBy);
@@ -2184,20 +2184,20 @@
                 }
             })
             .catch(e => {
-                console.error('Error en b√∫squeda:', e);
-                showTableMessage('error', 'Error al realizar la b√∫squeda.');
+                console.error('Error en b˙squeda:', e);
+                showTableMessage('error', 'Error al realizar la b˙squeda.');
             });
     }
 
     // ===================== Utilidades =====================
 
     /**
-     * Muestra un mensaje dentro del modal de creaci√≥n r√°pida de veh√≠culo
+     * Muestra un mensaje dentro del modal de creaciÛn r·pida de vehÌculo
      */
     function showQuickVehiculoMessage(type, message, disappearMs = 5000) {
         const container = document.getElementById('quick-vehiculo-messages');
         if (!container) {
-            // Si no existe el contenedor, usar la notificaci√≥n est√°ndar
+            // Si no existe el contenedor, usar la notificaciÛn est·ndar
             showFormMessage(type, message, disappearMs);
             return;
         }
@@ -2218,7 +2218,7 @@
             </div>
         `;
 
-        // Auto-ocultar despu√©s del tiempo especificado
+        // Auto-ocultar despuÈs del tiempo especificado
         if (disappearMs > 0) {
             setTimeout(() => {
                 const alertEl = container.firstElementChild;

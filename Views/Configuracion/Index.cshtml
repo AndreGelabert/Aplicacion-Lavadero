@@ -113,7 +113,7 @@
         }
 
         <!-- Formulario de Configuración -->
-        <form asp-action="Actualizar" method="post" class="p-4 grid grid-cols-2 gap-2">
+        <form id="configuracion-form" data-validate="true" asp-action="Actualizar" method="post" class="p-4 grid grid-cols-2 gap-2">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="FechaActualizacion" />
@@ -557,5 +557,6 @@
 </div>
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/js/form-validation.js" asp-append-version="true"></script>
     <script src="~/js/configuracion.js"></script>
 }

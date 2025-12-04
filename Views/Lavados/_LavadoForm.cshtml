@@ -2,7 +2,7 @@
 @{
     var edit = Model != null && !string.IsNullOrWhiteSpace(Model.Id);
 }
-<form id="lavado-form" data-edit="@edit">
+<form id="lavado-form" data-validate="true" data-edit="@edit">
     @Html.AntiForgeryToken()
     <input type="hidden" name="Id" id="lavadoId" value="@(Model?.Id)" />
 

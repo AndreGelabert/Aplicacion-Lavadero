@@ -5,7 +5,7 @@
     string submitText = edit ? "Guardar" : "Registrar";
     string clearText = edit ? "Cancelar" : "Limpiar Campos";
 }
-<form id="paquete-form" data-edit="@edit" method="post" action="@formAction" onsubmit="return submitPaqueteAjax(this, event);">
+<form id="paquete-form" data-validate="true" data-edit="@edit" method="post" action="@formAction" onsubmit="return submitPaqueteAjax(this, event);">
     @Html.AntiForgeryToken()
     <input type="hidden" name="Id" id="Id" value="@(Model?.Id)" />
     <input type="hidden" name="Estado" value="@(Model?.Estado ?? "Activo")" />
