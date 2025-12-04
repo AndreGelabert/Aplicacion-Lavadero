@@ -99,6 +99,13 @@ builder.Services.AddSingleton(provider =>
     }.Build();
 });
 
+// NUEVO: Servicio CarQuery API con HttpClient
+builder.Services.AddHttpClient<Firebase.Services.ICarQueryService, Firebase.Services.CarQueryService>(client =>
+{
+    client.BaseAddress = new Uri("https://www.carqueryapi.com/api/0.3/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<PersonalService>();
 builder.Services.AddScoped<ServicioService>();

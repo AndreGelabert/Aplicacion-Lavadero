@@ -1266,6 +1266,68 @@
                 const modal = new Modal(modalEl, modalOptions);
                 modal.show();
                 window._quickVehiculoModal = modal;
+                // ============================================================
+                console.log('?? Cargando vehiculo-api.js manualmente...');
+
+                // Verificar si el formulario NO está en modo edición
+                const vehiculoForm = modalEl.querySelector('#vehiculo-form');
+                const isEditMode = vehiculoForm?.dataset.edit === 'true' || vehiculoForm?.dataset.edit === 'True';
+
+                console.log('?? Modo edición:', isEditMode);
+
+                if (!isEditMode) {
+                    // Verificar si el script ya existe
+                    const existingScript = document.querySelector('script[src*="vehiculo-api.js"]');
+                    if (existingScript) {
+                        console.log('?? Script ya existe, REMOVIENDO y recargando...');
+                        // REMOVER el script viejo
+                        existingScript.remove();
+
+                        // Cargar script fresco
+                        const script = document.createElement('script');
+                        script.src = '/js/vehiculo-api.js?v=' + new Date().getTime();
+                        script.onload = function () {
+                            console.log('? Script RECARGADO, inicializando...');
+                            setTimeout(() => {
+                                if (window.initVehiculoApiSelects) {
+                                    console.log('?? Llamando initVehiculoApiSelects()');
+                                    window.initVehiculoApiSelects();
+                                } else {
+                                    console.error('? initVehiculoApiSelects TODAVÍA no encontrado');
+                                    console.log('window.VehiculoApi:', window.VehiculoApi);
+                                    console.log('window.initVehiculoApiSelects:', window.initVehiculoApiSelects);
+                                }
+                            }, 300);
+                        };
+                        script.onerror = function () {
+                            console.error('?? Error al RECARGAR vehiculo-api.js');
+                        };
+                        document.head.appendChild(script);
+                    } else {
+                        console.log('?? Cargando script por primera vez...');
+                        // Si no existe, cargarlo
+                        const script = document.createElement('script');
+                        script.src = '/js/vehiculo-api.js?v=' + new Date().getTime();
+                        script.onload = function () {
+                            console.log('? Script cargado, inicializando...');
+                            setTimeout(() => {
+                                if (window.initVehiculoApiSelects) {
+                                    console.log('?? Llamando initVehiculoApiSelects()');
+                                    window.initVehiculoApiSelects();
+                                } else {
+                                    console.error('? initVehiculoApiSelects no encontrado');
+                                }
+                            }, 300);
+                        };
+                        script.onerror = function () {
+                            console.error('?? Error al cargar vehiculo-api.js');
+                        };
+                        document.head.appendChild(script);
+                    }
+                } else {
+                    console.log('?? Modo edición, no se carga API');
+                }
+                // ============================================================
             } else {
                 modalEl.classList.remove('hidden');
                 modalEl.classList.add('flex');

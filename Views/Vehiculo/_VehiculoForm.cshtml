@@ -5,7 +5,7 @@
     string submitText = edit ? "Guardar" : "Registrar";
     string clearText = edit ? "Cancelar" : "Limpiar Campos";
 }
-<form id="vehiculo-form" data-validate="true" data-edit="@edit" method="post" action="@formAction" onsubmit="return submitVehiculoAjax(this, event);">
+<form id="vehiculo-form" data-validate="true" data-edit="@edit.ToString().ToLower()" method="post" action="@formAction" onsubmit="return submitVehiculoAjax(this, event);">
     @Html.AntiForgeryToken()
     <input type="hidden" name="Id" id="Id" value="@(Model?.Id)" />
     <input type="hidden" name="ClienteId" value="@(Model?.ClienteId)" />
@@ -75,14 +75,21 @@
         <!-- Marca -->
         <div>
             <label for="Marca" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Marca <span class="text-red-600">*</span></label>
-            <input type="text" name="Marca" id="Marca"
-                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")"
-                   placeholder="Marca"
-                   value="@(Model?.Marca)"
-                   required @(edit ? "readonly" : "")>
             @if (edit)
             {
+                <input type="text" name="Marca" id="Marca"
+                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white cursor-not-allowed opacity-60"
+                       value="@(Model?.Marca)"
+                       readonly required>
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">No editable</p>
+            }
+            else
+            {
+                <select name="Marca" id="Marca" required
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                    <option value="">Seleccione una marca...</option>
+                </select>
+                <span class="text-xs text-gray-500 dark:text-gray-400" id="marca-loading">Cargando marcas...</span>
             }
             <span asp-validation-for="Marca" class="text-red-600 text-xs"></span>
         </div>
@@ -90,22 +97,57 @@
         <!-- Modelo -->
         <div>
             <label for="Modelo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Modelo <span class="text-red-600">*</span></label>
-            <input type="text" name="Modelo" id="Modelo"
-                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                   placeholder="Modelo"
-                   value="@(Model?.Modelo)"
-                   required>
+            @if (edit)
+            {
+                <input type="text" name="Modelo" id="Modelo"
+                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                       value="@(Model?.Modelo)"
+                       required>
+            }
+            else
+            {
+                <select name="Modelo" id="Modelo" required disabled
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                    <option value="">Primero seleccione una marca</option>
+                </select>
+            }
             <span asp-validation-for="Modelo" class="text-red-600 text-xs"></span>
         </div>
 
         <!-- Color -->
         <div>
-            <label for="Color" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Color <span class="text-red-600">*</span></label>
-            <input type="text" name="Color" id="Color"
-                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                   placeholder="Color"
-                   value="@(Model?.Color)"
-                   required>
+            <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Color <span class="text-red-600">*</span></label>
+            
+            @if (!edit)
+            {
+                <!-- Toggle para color personalizado -->
+                <div class="flex items-center mb-2">
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="color-custom-toggle" class="sr-only peer">
+                        <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                        <span class="ms-3 text-sm text-gray-900 dark:text-gray-300">Color personalizado</span>
+                    </label>
+                </div>
+
+                <!-- Select de colores oficiales -->
+                <select id="Color" name="Color" required
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                    <option value="">Seleccione un color...</option>
+                </select>
+
+                <!-- Input de color personalizado (oculto por defecto) -->
+                <input type="text" id="ColorCustom" name="ColorCustom"
+                       class="hidden bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                       placeholder="Ej: Verde lima metalizado">
+            }
+            else
+            {
+                <input type="text" name="Color" id="Color"
+                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                       placeholder="Color"
+                       value="@(Model?.Color)"
+                       required>
+            }
             <span asp-validation-for="Color" class="text-red-600 text-xs"></span>
         </div>
 
@@ -137,3 +179,8 @@
     <div id="vehiculo-validation-summary" asp-validation-summary="All" class="hidden p-4 mt-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"></div>
     <div id="ajax-form-messages" class="mb-4"></div>
 </form>
+
+@if (!edit)
+{
+    <script src="~/js/vehiculo-api.js" asp-append-version="true"></script>
+}

@@ -2,25 +2,32 @@ using Firebase.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Firebase.Services;
 
 [Authorize(Roles = "Administrador,Empleado")]
 public class VehiculoController : Controller
 {
     private readonly VehiculoService _vehiculoService;
     private readonly TipoVehiculoService _tipoVehiculoService;
-    private readonly ClienteService _clienteService; // Para obtener info del dueño
+    private readonly ClienteService _clienteService;
     private readonly AuditService _auditService;
+    private readonly ICarQueryService _carQueryService;
+    private readonly ILogger<VehiculoController> _logger; // Agregado el logger
 
     public VehiculoController(
         VehiculoService vehiculoService,
         TipoVehiculoService tipoVehiculoService,
         ClienteService clienteService,
-        AuditService auditService)
+        AuditService auditService,
+        ICarQueryService carQueryService,
+        ILogger<VehiculoController> logger) // Inyectado el logger
     {
         _vehiculoService = vehiculoService;
         _tipoVehiculoService = tipoVehiculoService;
         _clienteService = clienteService;
         _auditService = auditService;
+        _carQueryService = carQueryService;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -451,5 +458,95 @@ public class VehiculoController : Controller
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var userEmail = User.FindFirstValue(ClaimTypes.Email);
         await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad);
+    }
+
+    /// <summary>
+    /// GET: /Vehiculo/GetMarcas
+    /// Retorna lista de marcas de vehículos desde CarQuery API
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetMarcas()
+    {
+        try
+        {
+            _logger.LogInformation("🎯 Endpoint GetMarcas llamado");
+            
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var marcas = await _carQueryService.GetMarcasAsync();
+            stopwatch.Stop();
+            
+            _logger.LogInformation($"✅ GetMarcas completado en {stopwatch.ElapsedMilliseconds}ms - Retornando {marcas.Count} marcas");
+            
+            return Json(marcas);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"💥 ERROR en endpoint GetMarcas: {ex.Message}");
+            return StatusCode(500, new { error = "Error al obtener marcas", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// GET: /Vehiculo/GetModelos?marcaId=toyota&year=2020
+    /// Retorna modelos de una marca (opcionalmente filtrado por año)
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetModelos(string marcaId, int? year = null)
+    {
+        if (string.IsNullOrWhiteSpace(marcaId))
+        {
+            return BadRequest(new { error = "marcaId es requerido" });
+        }
+
+        try
+        {
+            var modelos = await _carQueryService.GetModelosAsync(marcaId, year);
+            return Json(modelos);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Error al obtener modelos", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// GET: /Vehiculo/GetColores
+    /// Retorna lista de colores comunes
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetColores()
+    {
+        try
+        {
+            var colores = await _carQueryService.GetColoresComunes();
+            return Json(colores);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Error al obtener colores", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// GET: /Vehiculo/GetYears?marcaId=toyota
+    /// Retorna rango de años disponibles para una marca
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetYears(string marcaId)
+    {
+        if (string.IsNullOrWhiteSpace(marcaId))
+        {
+            return BadRequest(new { error = "marcaId es requerido" });
+        }
+
+        try
+        {
+            var (minYear, maxYear) = await _carQueryService.GetYearsAsync(marcaId);
+            return Json(new { minYear, maxYear });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Error al obtener años", details = ex.Message });
+        }
     }
 }
