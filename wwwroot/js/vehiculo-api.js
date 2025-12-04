@@ -1,6 +1,6 @@
-/**
- * VEHICULO-API.JS - INTEGRACI”N CON CARQUERY API
- * Soporta carga din·mica (modales AJAX) con dropdowns personalizados
+Ôªø/**
+ * VEHICULO-API.JS - INTEGRACI√ìN CON CARQUERY API
+ * Soporta carga din√°mica (modales AJAX) con dropdowns personalizados
  */
 
 (function () {
@@ -13,42 +13,42 @@
     let marcaSeleccionadaValida = null;
     let modeloSeleccionadoValido = null;
 
-    // ==================== FUNCI”N DE INICIALIZACI”N PRINCIPAL ====================
+    // ==================== FUNCI√ìN DE INICIALIZACI√ìN PRINCIPAL ====================
     function initVehiculoApiSelects() {
-        
 
-        // Evitar inicializaciÛn m˙ltiple
+
+        // Evitar inicializaci√≥n m√∫ltiple
         if (initialized) {
-            
+
             return;
         }
 
         const vehiculoForm = document.getElementById('vehiculo-form');
-        
+
 
         if (!vehiculoForm) {
-            console.error('? No se encontrÛ formulario vehiculo-form');
+            console.error('? No se encontr√≥ formulario vehiculo-form');
             return;
         }
 
         const editValue = vehiculoForm.dataset.edit;
-        
+
 
         const isEdit = editValue === 'true' || editValue === 'True' || editValue === true;
-        
+
 
         if (isEdit) {
-            
+
             return;
         }
 
-        
+
         initialized = true;
 
-        // Inicializar de forma asÌncrona
+        // Inicializar de forma as√≠ncrona
         setTimeout(async () => {
             try {
-                
+
                 // Inicializar estado
                 lockMarcaSelect();
                 resetModeloSelect();
@@ -63,39 +63,39 @@
                 await loadMarcas();
                 await loadColores();
 
-                
+
             } catch (error) {
-                console.error('?? ERROR en inicializaciÛn:', error);
+                console.error('?? ERROR en inicializaci√≥n:', error);
             }
-        }, 100); // PequeÒo delay para asegurar que el DOM estÈ listo
+        }, 100); // Peque√±o delay para asegurar que el DOM est√© listo
     }
 
-    // ==================== AUTO-INICIALIZACI”N ====================
+    // ==================== AUTO-INICIALIZACI√ìN ====================
 
     // Estrategia 1: DOMContentLoaded (para carga normal)
     if (document.readyState === 'loading') {
-        
+
         document.addEventListener('DOMContentLoaded', function () {
-            
+
             initVehiculoApiSelects();
         });
     } else {
-        // DOM ya est· listo
-        
+        // DOM ya est√° listo
+
         initVehiculoApiSelects();
     }
 
     // Estrategia 2: Exponer globalmente para llamadas manuales
     window.initVehiculoApiSelects = initVehiculoApiSelects;
 
-    // Estrategia 3: Observador de mutaciones para detectar cuando se aÒade el formulario
+    // Estrategia 3: Observador de mutaciones para detectar cuando se a√±ade el formulario
     const observer = new MutationObserver(function (mutations) {
         mutations.forEach(function (mutation) {
             mutation.addedNodes.forEach(function (node) {
                 if (node.nodeType === 1) { // Element node
                     // Verificar si es el formulario o lo contiene
                     if (node.id === 'vehiculo-form' || node.querySelector && node.querySelector('#vehiculo-form')) {
-                        
+
                         initVehiculoApiSelects();
                     }
                 }
@@ -109,7 +109,7 @@
             childList: true,
             subtree: true
         });
-        
+
     }
 
     // ==================== BLOQUEAR SELECT DE MARCA ====================
@@ -118,14 +118,14 @@
         if (!marcaInput) return;
 
         marcaInput.disabled = true;
-        marcaInput.placeholder = 'Primero seleccione un tipo de vehÌculo';
+        marcaInput.placeholder = 'Primero seleccione un tipo de veh√≠culo';
     }
 
-    // ==================== LISTENER DE TIPO DE VEHÕCULO ====================
+    // ==================== LISTENER DE TIPO DE VEH√çCULO ====================
     function setupTipoVehiculoChangeListener() {
         const tipoSelect = document.getElementById('TipoVehiculo');
         if (!tipoSelect) {
-            console.error('? No se encontrÛ select TipoVehiculo');
+            console.error('? No se encontr√≥ select TipoVehiculo');
             return;
         }
 
@@ -141,7 +141,7 @@
 
             await loadMarcasPorTipo(tipoVehiculo);
 
-            // Habilitar marca despuÈs de cargar
+            // Habilitar marca despu√©s de cargar
             const marcaInput = document.getElementById('Marca');
             if (marcaInput) {
                 marcaInput.disabled = false;
@@ -149,12 +149,12 @@
             }
         });
 
-        
+
     }
 
     // ==================== CARGAR MARCAS POR TIPO ====================
     async function loadMarcasPorTipo(tipoVehiculo) {
-        
+
 
         const marcaInput = document.getElementById('Marca');
         const loadingText = document.getElementById('marca-loading');
@@ -162,12 +162,12 @@
         if (!marcaInput) return;
 
         try {
-            
+
 
             const url = `/Vehiculo/GetMarcasPorTipo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`;
-            
 
-            const response = await fetch(url, { 
+
+            const response = await fetch(url, {
                 cache: 'no-cache',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
@@ -175,7 +175,7 @@
             if (!response.ok) throw new Error('Error marcas por tipo');
 
             const marcas = await response.json();
-            
+
 
             if (marcas && marcas.length > 0) {
                 renderMarcaOptions(marcas);
@@ -183,45 +183,45 @@
                 renderMarcaOptions([]);
             }
         } catch (error) {
-            
+
             renderMarcaOptions([]);
         } finally {
-            
+
         }
     }
 
     // ==================== CARGAR MARCAS (SIN FILTRO) ====================
     async function loadMarcas() {
-        
+
 
         const marcaInput = document.getElementById('Marca');
         const loadingText = document.getElementById('marca-loading');
 
-        
+
 
         if (!marcaInput) {
-            
+
             return;
         }
 
         try {
-            
+
 
             const response = await fetch('/Vehiculo/GetMarcas', { cache: 'no-cache' });
             if (!response.ok) throw new Error('Error marcas');
 
             const marcas = await response.json();
-            
+
 
             if (marcas && marcas.length > 0) {
                 marcasCache = marcas;
                 renderMarcaOptions(marcas);
             }
         } catch (error) {
-            
+
             renderMarcaOptions(['Toyota', 'Ford', 'Chevrolet', 'Honda', 'Nissan']);
         } finally {
-            
+
         }
     }
 
@@ -249,8 +249,8 @@
             div.textContent = nombre;
             div.dataset.marcaId = id;
             div.dataset.marcaNombre = nombre;
-            
-            div.addEventListener('click', function() {
+
+            div.addEventListener('click', function () {
                 selectMarca(id, nombre);
             });
 
@@ -265,17 +265,17 @@
     function setupMarcaChangeListener() {
         const marcaInput = document.getElementById('Marca');
         const marcaDropdown = document.getElementById('marca-dropdown');
-        
+
         if (!marcaInput || !marcaDropdown) return;
 
         // Input - mostrar dropdown y filtrar
-        marcaInput.addEventListener('input', function() {
+        marcaInput.addEventListener('input', function () {
             const valor = this.value.trim();
-            
-            // Limpiar validaciÛn custom
+
+            // Limpiar validaci√≥n custom
             this.setCustomValidity('');
-            
-            // Resetear marca v·lida si se modifica
+
+            // Resetear marca v√°lida si se modifica
             if (marcaSeleccionadaValida && marcaSeleccionadaValida.nombre !== valor) {
                 marcaSeleccionadaValida = null;
                 resetModeloSelect();
@@ -292,7 +292,7 @@
         });
 
         // Focus - mostrar todas las opciones
-        marcaInput.addEventListener('focus', function() {
+        marcaInput.addEventListener('focus', function () {
             if (marcasCache && marcasCache.length > 0) {
                 renderMarcaOptions(marcasCache);
                 positionDropdown(marcaInput, marcaDropdown);
@@ -301,18 +301,18 @@
         });
 
         // Blur - validar y ocultar dropdown
-        marcaInput.addEventListener('blur', function() {
-            // PequeÒo delay para permitir clicks en el dropdown
+        marcaInput.addEventListener('blur', function () {
+            // Peque√±o delay para permitir clicks en el dropdown
             setTimeout(() => {
                 validateMarca();
                 marcaDropdown.classList.add('hidden');
             }, 200);
         });
 
-        // ValidaciÛn al enviar formulario
+        // Validaci√≥n al enviar formulario
         const form = marcaInput.closest('form');
         if (form) {
-            form.addEventListener('submit', function(e) {
+            form.addEventListener('submit', function (e) {
                 if (!validateMarca()) {
                     e.preventDefault();
                     marcaInput.reportValidity();
@@ -325,17 +325,17 @@
     function setupModeloChangeListener() {
         const modeloInput = document.getElementById('Modelo');
         const modeloDropdown = document.getElementById('modelo-dropdown');
-        
+
         if (!modeloInput || !modeloDropdown) return;
 
         // Input - mostrar dropdown y filtrar
-        modeloInput.addEventListener('input', function() {
+        modeloInput.addEventListener('input', function () {
             const valor = this.value.trim();
-            
-            // Limpiar validaciÛn custom
+
+            // Limpiar validaci√≥n custom
             this.setCustomValidity('');
-            
-            // Resetear modelo v·lido si se modifica
+
+            // Resetear modelo v√°lido si se modifica
             if (modeloSeleccionadoValido !== valor) {
                 modeloSeleccionadoValido = null;
             }
@@ -351,7 +351,7 @@
         });
 
         // Focus - mostrar todas las opciones
-        modeloInput.addEventListener('focus', function() {
+        modeloInput.addEventListener('focus', function () {
             if (modelosCache && modelosCache.length > 0) {
                 renderModeloOptions(modelosCache);
                 positionDropdown(modeloInput, modeloDropdown);
@@ -360,18 +360,18 @@
         });
 
         // Blur - validar y ocultar dropdown
-        modeloInput.addEventListener('blur', function() {
-            // PequeÒo delay para permitir clicks en el dropdown
+        modeloInput.addEventListener('blur', function () {
+            // Peque√±o delay para permitir clicks en el dropdown
             setTimeout(() => {
                 validateModelo();
                 modeloDropdown.classList.add('hidden');
             }, 200);
         });
 
-        // ValidaciÛn al enviar formulario
+        // Validaci√≥n al enviar formulario
         const form = modeloInput.closest('form');
         if (form) {
-            form.addEventListener('submit', function(e) {
+            form.addEventListener('submit', function (e) {
                 if (!validateModelo()) {
                     e.preventDefault();
                     modeloInput.reportValidity();
@@ -381,7 +381,7 @@
     }
 
     async function loadModelos(marcaId) {
-        
+
 
         const modeloInput = document.getElementById('Modelo');
         if (!modeloInput) return;
@@ -391,18 +391,18 @@
 
         try {
             const url = `/Vehiculo/GetModelos?marcaId=${encodeURIComponent(marcaId)}`;
-            
+
 
             const response = await fetch(url, { cache: 'no-cache' });
             if (!response.ok) throw new Error('Error modelos');
 
             const modelos = await response.json();
             if (!modelos || modelos.length === 0) throw new Error('Sin modelos');
-            
+
 
             renderModeloOptions(modelos);
         } catch (error) {
-            
+
             renderModeloOptions([]);
         }
     }
@@ -428,8 +428,8 @@
             div.className = 'px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-white';
             div.textContent = nombre;
             div.dataset.modeloNombre = nombre;
-            
-            div.addEventListener('click', function() {
+
+            div.addEventListener('click', function () {
                 selectModelo(nombre);
             });
 
@@ -466,41 +466,41 @@
         if (!inputElement || !dropdownElement) return;
 
         const rect = inputElement.getBoundingClientRect();
-        
+
         // Posicionar justo debajo del input
         dropdownElement.style.top = `${rect.bottom + window.scrollY}px`;
         dropdownElement.style.left = `${rect.left + window.scrollX}px`;
         dropdownElement.style.width = `${rect.width}px`;
     }
 
-    // ==================== SELECCI”N DE MARCA ====================
+    // ==================== SELECCI√ìN DE MARCA ====================
     function selectMarca(id, nombre) {
         const marcaInput = document.getElementById('Marca');
         const marcaDropdown = document.getElementById('marca-dropdown');
-        
+
         if (marcaInput) {
             marcaInput.value = nombre;
             marcaSeleccionadaValida = { id, nombre };
         }
-        
+
         if (marcaDropdown) {
             marcaDropdown.classList.add('hidden');
         }
 
-        // Cargar modelos autom·ticamente
+        // Cargar modelos autom√°ticamente
         loadModelos(id);
     }
 
-    // ==================== SELECCI”N DE MODELO ====================
+    // ==================== SELECCI√ìN DE MODELO ====================
     function selectModelo(nombre) {
         const modeloInput = document.getElementById('Modelo');
         const modeloDropdown = document.getElementById('modelo-dropdown');
-        
+
         if (modeloInput) {
             modeloInput.value = nombre;
             modeloSeleccionadoValido = nombre;
         }
-        
+
         if (modeloDropdown) {
             modeloDropdown.classList.add('hidden');
         }
@@ -511,8 +511,8 @@
         const marcaDropdown = document.getElementById('marca-dropdown');
         if (!marcaDropdown || !marcasCache) return;
 
-        const filtered = searchText.trim() === '' 
-            ? marcasCache 
+        const filtered = searchText.trim() === ''
+            ? marcasCache
             : marcasCache.filter(m => {
                 const nombre = (m.nombre || m.Nombre || '').toLowerCase();
                 return nombre.includes(searchText.toLowerCase());
@@ -533,19 +533,19 @@
                 div.textContent = nombre;
                 div.dataset.marcaId = id;
                 div.dataset.marcaNombre = nombre;
-                
-                div.addEventListener('click', function() {
+
+                div.addEventListener('click', function () {
                     selectMarca(id, nombre);
                 });
 
-            marcaDropdown.appendChild(div);
-        });
-    }
+                marcaDropdown.appendChild(div);
+            });
+        }
 
         // Posicionar antes de mostrar
         const marcaInput = document.getElementById('Marca');
         positionDropdown(marcaInput, marcaDropdown);
-        
+
         marcaDropdown.classList.remove('hidden');
     }
 
@@ -554,8 +554,8 @@
         const modeloDropdown = document.getElementById('modelo-dropdown');
         if (!modeloDropdown || !modelosCache) return;
 
-        const filtered = searchText.trim() === '' 
-            ? modelosCache 
+        const filtered = searchText.trim() === ''
+            ? modelosCache
             : modelosCache.filter(m => {
                 const nombre = (m.nombre || m.Nombre || '').toLowerCase();
                 return nombre.includes(searchText.toLowerCase());
@@ -574,42 +574,42 @@
                 div.className = 'px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-white';
                 div.textContent = nombre;
                 div.dataset.modeloNombre = nombre;
-                
-                div.addEventListener('click', function() {
+
+                div.addEventListener('click', function () {
                     selectModelo(nombre);
                 });
 
-            modeloDropdown.appendChild(div);
-        });
-    }
+                modeloDropdown.appendChild(div);
+            });
+        }
 
         // Posicionar antes de mostrar
         const modeloInput = document.getElementById('Modelo');
         positionDropdown(modeloInput, modeloDropdown);
-        
+
         modeloDropdown.classList.remove('hidden');
     }
 
-    // ==================== VALIDACI”N DE MARCA ====================
+    // ==================== VALIDACI√ìN DE MARCA ====================
     function validateMarca() {
         const marcaInput = document.getElementById('Marca');
         if (!marcaInput) return true;
 
         const valorActual = marcaInput.value.trim();
-        
+
         if (!valorActual) {
             marcaSeleccionadaValida = null;
             return true;
         }
 
-        // Verificar si el valor coincide con la marca seleccionada v·lida
+        // Verificar si el valor coincide con la marca seleccionada v√°lida
         if (marcaSeleccionadaValida && marcaSeleccionadaValida.nombre === valorActual) {
             return true;
         }
 
         // Verificar si existe en el cache
         if (marcasCache) {
-            const marcaEncontrada = marcasCache.find(m => 
+            const marcaEncontrada = marcasCache.find(m =>
                 (m.nombre || m.Nombre) === valorActual
             );
 
@@ -622,31 +622,31 @@
             }
         }
 
-        // No es v·lida
+        // No es v√°lida
         marcaInput.setCustomValidity('Debe seleccionar una marca de la lista');
         return false;
     }
 
-    // ==================== VALIDACI”N DE MODELO ====================
+    // ==================== VALIDACI√ìN DE MODELO ====================
     function validateModelo() {
         const modeloInput = document.getElementById('Modelo');
         if (!modeloInput) return true;
 
         const valorActual = modeloInput.value.trim();
-        
+
         if (!valorActual) {
             modeloSeleccionadoValido = null;
             return true;
         }
 
-        // Verificar si el valor coincide con el modelo seleccionado v·lido
+        // Verificar si el valor coincide con el modelo seleccionado v√°lido
         if (modeloSeleccionadoValido === valorActual) {
             return true;
         }
 
         // Verificar si existe en el cache
         if (modelosCache) {
-            const modeloEncontrado = modelosCache.find(m => 
+            const modeloEncontrado = modelosCache.find(m =>
                 (m.nombre || m.Nombre) === valorActual
             );
 
@@ -656,21 +656,21 @@
             }
         }
 
-        // No es v·lido
+        // No es v√°lido
         modeloInput.setCustomValidity('Debe seleccionar un modelo de la lista');
         return false;
     }
 
     // ==================== CARGAR COLORES ====================
     async function loadColores() {
-        
+
 
         try {
             const response = await fetch('/Vehiculo/GetColores', { cache: 'no-cache' });
             if (!response.ok) throw new Error('Error colores');
 
             const colores = await response.json();
-            
+
 
             if (colores && colores.length > 0) {
                 coloresCache = colores;
@@ -695,12 +695,12 @@
             colorSelect.appendChild(option);
         });
 
-        
+
     }
 
     // ==================== TOGGLE COLOR ====================
     function setupColorToggle() {
-        
+
 
         const toggle = document.getElementById('color-custom-toggle');
         const colorSelect = document.getElementById('Color');
@@ -712,7 +712,7 @@
         }
 
         toggle.addEventListener('change', function () {
-            
+
 
             if (this.checked) {
                 colorSelect.style.display = 'none';
@@ -732,12 +732,12 @@
             }
         });
 
-        
+
     }
 
     // ==================== UTILIDADES ====================
     function convertToTextInput(selectElement, fieldName) {
-        
+
         const input = document.createElement('input');
         input.type = 'text';
         input.id = selectElement.id;
@@ -746,7 +746,7 @@
         input.placeholder = `Ingrese ${fieldName.toLowerCase()} manualmente`;
         input.required = selectElement.hasAttribute('required');
         selectElement.parentNode.replaceChild(input, selectElement);
-        
+
     }
 
     function showLoading(selectElement, loadingElement, message) {
@@ -760,22 +760,22 @@
     }
 
     // ==================== CERRAR DROPDOWNS AL CLICK FUERA ====================
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         const marcaInput = document.getElementById('Marca');
         const marcaDropdown = document.getElementById('marca-dropdown');
         const modeloInput = document.getElementById('Modelo');
         const modeloDropdown = document.getElementById('modelo-dropdown');
 
-        // Cerrar dropdown de marca si click est· fuera
-        if (marcaInput && marcaDropdown && 
-            !marcaInput.contains(e.target) && 
+        // Cerrar dropdown de marca si click est√° fuera
+        if (marcaInput && marcaDropdown &&
+            !marcaInput.contains(e.target) &&
             !marcaDropdown.contains(e.target)) {
             marcaDropdown.classList.add('hidden');
         }
 
-        // Cerrar dropdown de modelo si click est· fuera
-        if (modeloInput && modeloDropdown && 
-            !modeloInput.contains(e.target) && 
+        // Cerrar dropdown de modelo si click est√° fuera
+        if (modeloInput && modeloDropdown &&
+            !modeloInput.contains(e.target) &&
             !modeloDropdown.contains(e.target)) {
             modeloDropdown.classList.add('hidden');
         }
