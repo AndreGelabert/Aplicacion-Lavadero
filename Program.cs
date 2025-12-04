@@ -99,11 +99,11 @@ builder.Services.AddSingleton(provider =>
     }.Build();
 });
 
-// NUEVO: Servicio CarQuery API con HttpClient
+// NUEVO: Servicio NHTSA API con HttpClient
 builder.Services.AddHttpClient<Firebase.Services.ICarQueryService, Firebase.Services.CarQueryService>(client =>
 {
-    client.BaseAddress = new Uri("https://www.carqueryapi.com/api/0.3/");
-    client.Timeout = TimeSpan.FromSeconds(10);
+    client.BaseAddress = new Uri("https://vpic.nhtsa.dot.gov/api/vehicles/");
+    client.Timeout = TimeSpan.FromSeconds(30);
 });
 
 builder.Services.AddScoped<AuditService>();

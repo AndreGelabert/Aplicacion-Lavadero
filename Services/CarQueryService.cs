@@ -6,14 +6,14 @@ using System.Threading;
 namespace Firebase.Services
 {
     /// <summary>
-    /// Servicio para interactuar con la API de CarQuery
+    /// Servicio para interactuar con la API de NHTSA (https://vpic.nhtsa.dot.gov)
     /// </summary>
     public class CarQueryService : ICarQueryService
     {
         private readonly HttpClient _httpClient;
         private readonly IMemoryCache _cache;
         private readonly ILogger<CarQueryService> _logger;
-        private readonly string _baseUrl = "https://www.carqueryapi.com/api/0.3/";
+        private readonly string _baseUrl = "https://vpic.nhtsa.dot.gov/api/vehicles";
         private readonly JsonSerializerOptions _jsonOptions;
 
         public CarQueryService(
@@ -46,11 +46,12 @@ namespace Firebase.Services
             }
 
             // 2. Caché vacío, consultar API
-            _logger.LogInformation("?? Caché vacío, consultando API CarQuery...");
+            _logger.LogInformation("?? Caché vacío, consultando NHTSA...");
 
             try
             {
-                var url = $"{_baseUrl}?cmd=getMakes";
+                // NHTSA endpoint: GET /getallmakes?format=json
+                var url = $"{_baseUrl}/getallmakes?format=json";
                 var response = await _httpClient.GetAsync(url);
 
                 if (!response.IsSuccessStatusCode)
@@ -60,21 +61,21 @@ namespace Firebase.Services
                 }
 
                 var json = await response.Content.ReadAsStringAsync();
-                var apiResponse = JsonSerializer.Deserialize<CarQueryMakesResponse>(json, _jsonOptions);
+                var apiResponse = JsonSerializer.Deserialize<NhtsaMakesResponse>(json, _jsonOptions);
 
-                if (apiResponse?.Makes == null || apiResponse.Makes.Count == 0)
+                if (apiResponse?.Results == null || apiResponse.Results.Count == 0)
                 {
                     _logger.LogWarning("?? API retornó 0 marcas");
                     return new List<MarcaSimpleDto>();
                 }
 
                 // Mapear y ordenar
-                var marcas = apiResponse.Makes
-                    .Select(m => new MarcaSimpleDto(m.make_id, m.make_display))
+                var marcas = apiResponse.Results
+                    .Select(m => new MarcaSimpleDto(m.Make_ID.ToString(), m.Make_Name))
                     .OrderBy(m => m.Nombre)
                     .ToList();
 
-                _logger.LogInformation("? {Count} marcas obtenidas desde API", marcas.Count);
+                _logger.LogInformation("? {Count} marcas obtenidas desde NHTSA", marcas.Count);
 
                 // Guardar en caché (24 horas)
                 _cache.Set(cacheKey, marcas, TimeSpan.FromHours(24));
@@ -89,36 +90,51 @@ namespace Firebase.Services
         }
 
         /// <summary>
-        /// Obtiene modelos por marca consultando múltiples años (2010-actualidad)
+        /// Obtiene modelos por marca
         /// </summary>
         public async Task<List<ModeloSimpleDto>> GetModelosAsync(string marcaId, int? year = null)
         {
-            var cacheKey = $"modelos_{marcaId}_{year}";
+            var cacheKey = $"modelos_{marcaId}";
 
             // 1. Verificar caché
             if (_cache.TryGetValue(cacheKey, out List<ModeloSimpleDto>? cachedModelos) && cachedModelos != null)
             {
-                _logger.LogInformation("? {Count} modelos de '{MarcaId}' obtenidos desde caché", cachedModelos.Count, marcaId);
+                _logger.LogInformation("? {Count} modelos de marca '{MarcaId}' obtenidos desde caché", cachedModelos.Count, marcaId);
                 return cachedModelos;
             }
 
             // 2. Caché vacío, consultar API
-            _logger.LogInformation("?? Consultando modelos para '{MarcaId}'...", marcaId);
+            _logger.LogInformation("?? Consultando modelos para marca '{MarcaId}'...", marcaId);
 
             try
             {
-                List<ModeloSimpleDto> modelos;
+                // NHTSA endpoint: GET /GetModelsForMakeId/{makeId}?format=json
+                var url = $"{_baseUrl}/GetModelsForMakeId/{marcaId}?format=json";
+                var response = await _httpClient.GetAsync(url);
 
-                // Si no se especifica año, consultar rango 2010-actualidad
-                if (!year.HasValue)
+                if (!response.IsSuccessStatusCode)
                 {
-                    modelos = await GetModelosPorRangoDeAños(marcaId);
+                    _logger.LogWarning("?? Error HTTP {StatusCode}", response.StatusCode);
+                    return new List<ModeloSimpleDto>();
                 }
-                else
+
+                var json = await response.Content.ReadAsStringAsync();
+                var apiResponse = JsonSerializer.Deserialize<NhtsaModelsResponse>(json, _jsonOptions);
+
+                if (apiResponse?.Results == null || apiResponse.Results.Count == 0)
                 {
-                    // Consulta simple por año específico
-                    modelos = await GetModelosPorAño(marcaId, year.Value);
+                    _logger.LogWarning("?? 0 modelos para marca '{MarcaId}'", marcaId);
+                    return new List<ModeloSimpleDto>();
                 }
+
+                var modelos = apiResponse.Results
+                    .Where(m => !string.IsNullOrWhiteSpace(m.Model_Name))
+                    .Select(m => new ModeloSimpleDto(m.Model_Name.Trim(), marcaId))
+                    .Distinct()
+                    .OrderBy(m => m.Nombre)
+                    .ToList();
+
+                _logger.LogInformation("? {Count} modelos para marca '{MarcaId}'", modelos.Count, marcaId);
 
                 // Guardar en caché (1 hora)
                 _cache.Set(cacheKey, modelos, TimeSpan.FromHours(1));
@@ -127,163 +143,18 @@ namespace Firebase.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "?? Error al consultar modelos para '{MarcaId}'", marcaId);
+                _logger.LogError(ex, "?? Error al consultar modelos para marca '{MarcaId}'", marcaId);
                 return new List<ModeloSimpleDto>();
             }
-        }
-
-        /// <summary>
-        /// Consulta modelos para un rango de años (2010-actualidad) y devuelve lista única
-        /// </summary>
-        private async Task<List<ModeloSimpleDto>> GetModelosPorRangoDeAños(string marcaId)
-        {
-            int añoInicio = 2010;
-            int añoFin = DateTime.Now.Year;
-
-            _logger.LogInformation("?? Consultando años {Inicio}-{Fin} para '{MarcaId}'", añoInicio, añoFin, marcaId);
-
-            // Diccionario para consolidar modelos únicos (key = nombre normalizado)
-            var modelosUnicos = new Dictionary<string, ModeloSimpleDto>(StringComparer.OrdinalIgnoreCase);
-
-            // Consultar año por año con límite de concurrencia
-            using var semaphore = new SemaphoreSlim(3); // Máximo 3 peticiones simultáneas
-            var tasks = new List<Task>();
-
-            for (int año = añoInicio; año <= añoFin; año++)
-            {
-                int añoActual = año; // Capturar para el closure
-                
-                tasks.Add(Task.Run(async () =>
-                {
-                    await semaphore.WaitAsync();
-                    try
-                    {
-                        var url = $"{_baseUrl}?cmd=getModels&make={Uri.EscapeDataString(marcaId)}&year={añoActual}";
-                        var response = await _httpClient.GetAsync(url);
-                        
-                        if (response.IsSuccessStatusCode)
-                        {
-                            var json = await response.Content.ReadAsStringAsync();
-                            var apiResponse = JsonSerializer.Deserialize<CarQueryModelsResponse>(json, _jsonOptions);
-
-                            if (apiResponse?.Models != null)
-                            {
-                                lock (modelosUnicos)
-                                {
-                                    foreach (var modelo in apiResponse.Models)
-                                    {
-                                        if (!string.IsNullOrWhiteSpace(modelo.model_name))
-                                        {
-                                            var key = modelo.model_name.Trim();
-                                            if (!modelosUnicos.ContainsKey(key))
-                                            {
-                                                modelosUnicos[key] = new ModeloSimpleDto(key, marcaId);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning("?? Error consultando año {Año}: {Message}", añoActual, ex.Message);
-                    }
-                    finally
-                    {
-                        semaphore.Release();
-                    }
-                }));
-            }
-
-            // Esperar a que todas las peticiones terminen
-            await Task.WhenAll(tasks);
-
-            // Convertir a lista ordenada
-            var modelos = modelosUnicos.Values
-                .OrderBy(m => m.Nombre)
-                .ToList();
-
-            _logger.LogInformation("? {Count} modelos ÚNICOS encontrados para '{MarcaId}' (años {Inicio}-{Fin})", 
-                modelos.Count, marcaId, añoInicio, añoFin);
-
-            return modelos;
-        }
-
-        /// <summary>
-        /// Consulta modelos para un año específico
-        /// </summary>
-        private async Task<List<ModeloSimpleDto>> GetModelosPorAño(string marcaId, int year)
-        {
-            var url = $"{_baseUrl}?cmd=getModels&make={Uri.EscapeDataString(marcaId)}&year={year}";
-            var response = await _httpClient.GetAsync(url);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                return new List<ModeloSimpleDto>();
-            }
-
-            var json = await response.Content.ReadAsStringAsync();
-            var apiResponse = JsonSerializer.Deserialize<CarQueryModelsResponse>(json, _jsonOptions);
-
-            if (apiResponse?.Models == null)
-            {
-                return new List<ModeloSimpleDto>();
-            }
-
-            var modelos = apiResponse.Models
-                .Where(m => !string.IsNullOrWhiteSpace(m.model_name))
-                .Select(m => new ModeloSimpleDto(m.model_name.Trim(), marcaId))
-                .OrderBy(m => m.Nombre)
-                .ToList();
-
-            _logger.LogInformation("? {Count} modelos para '{MarcaId}' año {Year}", modelos.Count, marcaId, year);
-
-            return modelos;
         }
 
         /// <summary>
         /// Obtiene el rango de años disponibles para una marca
         /// </summary>
-        public async Task<(int minYear, int maxYear)> GetYearsAsync(string marcaId)
+        public Task<(int minYear, int maxYear)> GetYearsAsync(string marcaId)
         {
-            const string cacheKey = "years_{0}";
-            var key = string.Format(cacheKey, marcaId);
-
-            if (_cache.TryGetValue(key, out (int min, int max) cachedYears))
-            {
-                return cachedYears;
-            }
-
-            try
-            {
-                var url = $"{_baseUrl}?cmd=getYears&make={Uri.EscapeDataString(marcaId)}";
-                var response = await _httpClient.GetAsync(url);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    // Valores por defecto
-                    return (2010, DateTime.Now.Year);
-                }
-
-                var json = await response.Content.ReadAsStringAsync();
-                var apiResponse = JsonSerializer.Deserialize<CarQueryYearsDto>(json, _jsonOptions);
-
-                if (apiResponse?.Years == null)
-                {
-                    return (2010, DateTime.Now.Year);
-                }
-
-                var years = (apiResponse.Years.min_year, apiResponse.Years.max_year);
-                _cache.Set(key, years, TimeSpan.FromHours(24));
-
-                return years;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al consultar años para {MarcaId}", marcaId);
-                return (2010, DateTime.Now.Year);
-            }
+            // NHTSA tiene datos desde 1980 hasta el presente
+            return Task.FromResult((1980, DateTime.Now.Year));
         }
 
         /// <summary>
@@ -313,15 +184,29 @@ namespace Firebase.Services
         }
     }
 
-    #region DTOs Internos de CarQuery
-    internal class CarQueryMakesResponse
+    #region DTOs Internos de NHTSA
+    internal class NhtsaMakesResponse
     {
-        public List<CarQueryMakeDto> Makes { get; set; } = new();
+        public List<NhtsaMake> Results { get; set; } = new();
     }
 
-    internal class CarQueryModelsResponse
+    internal class NhtsaMake
     {
-        public List<CarQueryModelDto> Models { get; set; } = new();
+        public int Make_ID { get; set; }
+        public string Make_Name { get; set; } = string.Empty;
+    }
+
+    internal class NhtsaModelsResponse
+    {
+        public List<NhtsaModel> Results { get; set; } = new();
+    }
+
+    internal class NhtsaModel
+    {
+        public int Make_ID { get; set; }
+        public string Make_Name { get; set; } = string.Empty;
+        public int Model_ID { get; set; }
+        public string Model_Name { get; set; } = string.Empty;
     }
     #endregion
 }
