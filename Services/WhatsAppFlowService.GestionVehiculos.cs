@@ -134,7 +134,6 @@ public partial class WhatsAppFlowService
 
         var buttons = new List<(string id, string title)>
         {
-            ("modificar_modelo", "✏️ Editar modelo"),
             ("modificar_color", "🎨 Editar color"),
             ("eliminar_vehiculo", "🗑️ Eliminar vehículo")
         };
@@ -152,15 +151,7 @@ public partial class WhatsAppFlowService
     {
         var opcion = input.Trim().ToLowerInvariant();
 
-        if (opcion.Contains("modelo") || opcion == "modificar_modelo")
-        {
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "✏️ *Cambiar modelo*\n\n" +
-                "Ingresa el nuevo modelo del vehículo:");
-
-            await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MODIFICAR_VEHICULO_MODELO);
-        }
-        else if (opcion.Contains("color") || opcion == "modificar_color")
+        if (opcion.Contains("color") || opcion == "modificar_color")
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
                 "🎨 *Cambiar color*\n\n" +
