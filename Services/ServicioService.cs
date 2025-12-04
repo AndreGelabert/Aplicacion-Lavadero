@@ -45,6 +45,8 @@ public class ServicioService
         List<string> estados = null,
         List<string> tipos = null,
         List<string> tiposVehiculo = null,
+        decimal? precioDesde = null,
+        decimal? precioHasta = null,
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
@@ -55,7 +57,7 @@ public class ServicioService
         sortBy ??= ORDEN_DEFECTO;
         sortOrder ??= DIRECCION_DEFECTO;
 
-        var servicios = await ObtenerServiciosFiltrados(estados, tipos, tiposVehiculo, sortBy, sortOrder);
+        var servicios = await ObtenerServiciosFiltrados(estados, tipos, tiposVehiculo, precioDesde, precioHasta, sortBy, sortOrder);
 
         return AplicarPaginacion(servicios, pageNumber, pageSize);
     }
@@ -66,18 +68,22 @@ public class ServicioService
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
     /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="precioDesde">Precio mínimo a filtrar.</param>
+    /// <param name="precioHasta">Precio máximo a filtrar.</param>
     /// <param name="pageSize">Cantidad de elementos por página.</param>
     /// <returns>Número total de páginas.</returns>
     public async Task<int> ObtenerTotalPaginas(
         List<string> estados,
         List<string> tipos,
         List<string> tiposVehiculo,
+        decimal? precioDesde,
+        decimal? precioHasta,
         int pageSize)
     {
         if (pageSize <= 0)
             throw new ArgumentException("El tamaño de página debe ser mayor a 0", nameof(pageSize));
 
-        var totalServicios = await ObtenerTotalServicios(estados, tipos, tiposVehiculo);
+        var totalServicios = await ObtenerTotalServicios(estados, tipos, tiposVehiculo, precioDesde, precioHasta);
         return (int)Math.Ceiling(totalServicios / (double)pageSize);
     }
 
@@ -105,6 +111,8 @@ public class ServicioService
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
     /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="precioDesde">Precio mínimo a filtrar.</param>
+    /// <param name="precioHasta">Precio máximo a filtrar.</param>
     /// <param name="pageNumber">Número de página actual.</param>
     /// <param name="pageSize">Tamaño de página.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
@@ -115,12 +123,14 @@ public class ServicioService
         List<string> estados = null,
         List<string> tipos = null,
         List<string> tiposVehiculo = null,
+        decimal? precioDesde = null,
+        decimal? precioHasta = null,
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
         string sortOrder = null)
     {
-        var baseFiltrada = await ObtenerServiciosFiltrados(estados, tipos, tiposVehiculo, sortBy, sortOrder);
+        var baseFiltrada = await ObtenerServiciosFiltrados(estados, tipos, tiposVehiculo, precioDesde, precioHasta, sortBy, sortOrder);
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -139,15 +149,19 @@ public class ServicioService
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
     /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="precioDesde">Precio mínimo a filtrar.</param>
+    /// <param name="precioHasta">Precio máximo a filtrar.</param>
     /// <returns>Número total de servicios que coinciden.</returns>
     public async Task<int> ObtenerTotalServiciosBusqueda(
         string searchTerm,
         List<string> estados,
         List<string> tipos,
-        List<string> tiposVehiculo)
+        List<string> tiposVehiculo,
+        decimal? precioDesde,
+        decimal? precioHasta)
     {
         estados = ConfigurarEstadosDefecto(estados);
-        var baseFiltrada = await ObtenerServiciosFiltrados(estados, tipos, tiposVehiculo, ORDEN_DEFECTO, DIRECCION_DEFECTO);
+        var baseFiltrada = await ObtenerServiciosFiltrados(estados, tipos, tiposVehiculo, precioDesde, precioHasta, ORDEN_DEFECTO, DIRECCION_DEFECTO);
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -280,6 +294,8 @@ public class ServicioService
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
     /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="precioDesde">Precio mínimo a filtrar.</param>
+    /// <param name="precioHasta">Precio máximo a filtrar.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
     /// <param name="sortOrder">Dirección del ordenamiento.</param>
     /// <returns>Lista de servicios filtrados y ordenados.</returns>
@@ -287,6 +303,8 @@ public class ServicioService
         List<string> estados,
         List<string> tipos,
         List<string> tiposVehiculo,
+        decimal? precioDesde,
+        decimal? precioHasta,
         string sortBy,
         string sortOrder)
     {
@@ -300,6 +318,7 @@ public class ServicioService
             .ToList();
 
         servicios = AplicarFiltroTipoVehiculo(servicios, tiposVehiculo);
+        servicios = AplicarFiltroPrecio(servicios, precioDesde, precioHasta);
 
         return AplicarOrdenamiento(servicios, sortBy, sortOrder);
     }
@@ -310,11 +329,15 @@ public class ServicioService
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
     /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <param name="precioDesde">Precio mínimo a filtrar.</param>
+    /// <param name="precioHasta">Precio máximo a filtrar.</param>
     /// <returns>Número total de servicios.</returns>
     private async Task<int> ObtenerTotalServicios(
         List<string> estados,
         List<string> tipos,
-        List<string> tiposVehiculo)
+        List<string> tiposVehiculo,
+        decimal? precioDesde,
+        decimal? precioHasta)
     {
         estados = ConfigurarEstadosDefecto(estados);
 
@@ -326,7 +349,10 @@ public class ServicioService
             {
                 TipoVehiculo = doc.ContainsField("TipoVehiculo")
                     ? doc.GetValue<string>("TipoVehiculo")
-                    : TIPO_VEHICULO_DEFECTO
+                    : TIPO_VEHICULO_DEFECTO,
+                Precio = doc.ContainsField("Precio")
+                    ? (decimal)Convert.ToDouble(doc.GetValue<object>("Precio"))
+                    : 0m
             })
             .ToList();
 
@@ -335,6 +361,16 @@ public class ServicioService
             servicios = servicios
                 .Where(s => tiposVehiculo.Contains(s.TipoVehiculo))
                 .ToList();
+        }
+
+        if (precioDesde.HasValue)
+        {
+            servicios = servicios.Where(s => s.Precio >= precioDesde.Value).ToList();
+        }
+
+        if (precioHasta.HasValue)
+        {
+            servicios = servicios.Where(s => s.Precio <= precioHasta.Value).ToList();
         }
 
         return servicios.Count;
@@ -421,6 +457,28 @@ public class ServicioService
                 .Where(s => tiposVehiculo.Contains(s.TipoVehiculo))
                 .ToList();
         }
+        return servicios;
+    }
+
+    /// <summary>
+    /// Aplica filtro de rango de precios (post-proceso).
+    /// </summary>
+    /// <param name="servicios">Lista de servicios.</param>
+    /// <param name="precioDesde">Precio mínimo.</param>
+    /// <param name="precioHasta">Precio máximo.</param>
+    /// <returns>Lista filtrada.</returns>
+    private static List<Servicio> AplicarFiltroPrecio(List<Servicio> servicios, decimal? precioDesde, decimal? precioHasta)
+    {
+        if (precioDesde.HasValue)
+        {
+            servicios = servicios.Where(s => s.Precio >= precioDesde.Value).ToList();
+        }
+
+        if (precioHasta.HasValue)
+        {
+            servicios = servicios.Where(s => s.Precio <= precioHasta.Value).ToList();
+        }
+
         return servicios;
     }
 
@@ -662,12 +720,64 @@ public class ServicioService
     #region Clases Auxiliares
 
     /// <summary>
+    /// Obtiene el precio mínimo de los servicios activos según los filtros aplicados.
+    /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <returns>Precio mínimo encontrado o 0 si no hay servicios.</returns>
+    public async Task<decimal> ObtenerPrecioMinimo(
+        List<string> estados = null,
+        List<string> tipos = null,
+        List<string> tiposVehiculo = null)
+    {
+        estados = ConfigurarEstadosDefecto(estados);
+        var query = ConstruirQueryFiltros(estados, tipos);
+        var snapshot = await query.GetSnapshotAsync();
+        
+        var servicios = snapshot.Documents
+            .Select(MapearDocumentoAServicio)
+            .ToList();
+
+        servicios = AplicarFiltroTipoVehiculo(servicios, tiposVehiculo);
+
+        return servicios.Any() ? servicios.Min(s => s.Precio) : 0m;
+    }
+
+    /// <summary>
+    /// Obtiene el precio máximo de los servicios activos según los filtros aplicados.
+    /// </summary>
+    /// <param name="estados">Lista de estados a filtrar.</param>
+    /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
+    /// <returns>Precio máximo encontrado o 0 si no hay servicios.</returns>
+    public async Task<decimal> ObtenerPrecioMaximo(
+        List<string> estados = null,
+        List<string> tipos = null,
+        List<string> tiposVehiculo = null)
+    {
+        estados = ConfigurarEstadosDefecto(estados);
+        var query = ConstruirQueryFiltros(estados, tipos);
+        var snapshot = await query.GetSnapshotAsync();
+        
+        var servicios = snapshot.Documents
+            .Select(MapearDocumentoAServicio)
+            .ToList();
+
+        servicios = AplicarFiltroTipoVehiculo(servicios, tiposVehiculo);
+
+        return servicios.Any() ? servicios.Max(s => s.Precio) : 0m;
+    }
+
+    /// <summary>
     /// Clase auxiliar para conteo eficiente de servicios.
     /// </summary>
     private class ServicioConteo
     {
         /// <summary>Tipo de vehículo del servicio.</summary>
         public string TipoVehiculo { get; set; }
+        /// <summary>Precio del servicio.</summary>
+        public decimal Precio { get; set; }
     }
     #endregion
 }

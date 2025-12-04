@@ -64,6 +64,11 @@ namespace FirebaseLoginCustom.Controllers
             List<string>? estados,
             string? clienteId,
             string? vehiculoId,
+            DateTime? fechaDesde,
+            DateTime? fechaHasta,
+            decimal? precioDesde,
+            decimal? precioHasta,
+            List<string>? estadosPago,
             int pageNumber = 1,
             int pageSize = 10,
             string? sortBy = null,
@@ -75,15 +80,15 @@ namespace FirebaseLoginCustom.Controllers
             sortOrder ??= "desc";
 
             var lavados = await _lavadoService.ObtenerLavados(
-                estados, clienteId, vehiculoId, null, null, pageNumber, pageSize, sortBy, sortOrder);
+                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, pageNumber, pageSize, sortBy, sortOrder);
 
             var totalPages = await _lavadoService.ObtenerTotalPaginas(
-                estados, clienteId, vehiculoId, null, null, pageSize);
+                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, pageSize);
 
             var currentPage = Math.Clamp(pageNumber, 1, Math.Max(totalPages, 1));
             var visiblePages = GetVisiblePages(currentPage, totalPages);
 
-            await ConfigurarViewBag(estados, clienteId, vehiculoId, pageSize, currentPage, totalPages, visiblePages, sortBy, sortOrder);
+            await ConfigurarViewBag(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, pageSize, currentPage, totalPages, visiblePages, sortBy, sortOrder);
 
             return View(lavados);
         }
@@ -117,6 +122,11 @@ namespace FirebaseLoginCustom.Controllers
             List<string>? estados,
             string? clienteId,
             string? vehiculoId,
+            DateTime? fechaDesde,
+            DateTime? fechaHasta,
+            decimal? precioDesde,
+            decimal? precioHasta,
+            List<string>? estadosPago,
             int pageNumber = 1,
             int pageSize = 10,
             string? sortBy = null,
@@ -128,10 +138,10 @@ namespace FirebaseLoginCustom.Controllers
             sortOrder ??= "desc";
 
             var lavados = await _lavadoService.BuscarLavados(
-                searchTerm, estados, clienteId, vehiculoId, null, null, pageNumber, pageSize, sortBy, sortOrder);
+                searchTerm, estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, pageNumber, pageSize, sortBy, sortOrder);
 
             var totalLavados = await _lavadoService.ObtenerTotalLavadosBusqueda(
-                searchTerm, estados, clienteId, vehiculoId, null, null);
+                searchTerm, estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago);
 
             var totalPages = Math.Max((int)Math.Ceiling(totalLavados / (double)pageSize), 1);
 
@@ -141,6 +151,11 @@ namespace FirebaseLoginCustom.Controllers
             ViewBag.Estados = estados;
             ViewBag.ClienteId = clienteId;
             ViewBag.VehiculoId = vehiculoId;
+            ViewBag.FechaDesde = fechaDesde;
+            ViewBag.FechaHasta = fechaHasta;
+            ViewBag.PrecioDesde = precioDesde;
+            ViewBag.PrecioHasta = precioHasta;
+            ViewBag.EstadosPago = estadosPago;
             ViewBag.SortBy = sortBy;
             ViewBag.SortOrder = sortOrder;
             ViewBag.SearchTerm = searchTerm;
@@ -156,6 +171,11 @@ namespace FirebaseLoginCustom.Controllers
             List<string>? estados,
             string? clienteId,
             string? vehiculoId,
+            DateTime? fechaDesde,
+            DateTime? fechaHasta,
+            decimal? precioDesde,
+            decimal? precioHasta,
+            List<string>? estadosPago,
             int pageNumber = 1,
             int pageSize = 10,
             string? sortBy = null,
@@ -167,10 +187,10 @@ namespace FirebaseLoginCustom.Controllers
             sortOrder ??= "desc";
 
             var lavados = await _lavadoService.ObtenerLavados(
-                estados, clienteId, vehiculoId, null, null, pageNumber, pageSize, sortBy, sortOrder);
+                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, pageNumber, pageSize, sortBy, sortOrder);
 
             var totalPages = await _lavadoService.ObtenerTotalPaginas(
-                estados, clienteId, vehiculoId, null, null, pageSize);
+                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, pageSize);
             totalPages = Math.Max(totalPages, 1);
 
             ViewBag.CurrentPage = pageNumber;
@@ -179,6 +199,11 @@ namespace FirebaseLoginCustom.Controllers
             ViewBag.Estados = estados;
             ViewBag.ClienteId = clienteId;
             ViewBag.VehiculoId = vehiculoId;
+            ViewBag.FechaDesde = fechaDesde;
+            ViewBag.FechaHasta = fechaHasta;
+            ViewBag.PrecioDesde = precioDesde;
+            ViewBag.PrecioHasta = precioHasta;
+            ViewBag.EstadosPago = estadosPago;
             ViewBag.SortBy = sortBy;
             ViewBag.SortOrder = sortOrder;
 
@@ -872,6 +897,11 @@ namespace FirebaseLoginCustom.Controllers
             List<string> estados,
             string? clienteId,
             string? vehiculoId,
+            DateTime? fechaDesde,
+            DateTime? fechaHasta,
+            decimal? precioDesde,
+            decimal? precioHasta,
+            List<string>? estadosPago,
             int pageSize,
             int currentPage,
             int totalPages,
@@ -885,12 +915,22 @@ namespace FirebaseLoginCustom.Controllers
             ViewBag.Estados = estados;
             ViewBag.ClienteId = clienteId;
             ViewBag.VehiculoId = vehiculoId;
+            ViewBag.FechaDesde = fechaDesde;
+            ViewBag.FechaHasta = fechaHasta;
+            ViewBag.PrecioDesde = precioDesde;
+            ViewBag.PrecioHasta = precioHasta;
+            ViewBag.EstadosPago = estadosPago;
             ViewBag.PageSize = pageSize;
             ViewBag.SortBy = sortBy;
             ViewBag.SortOrder = sortOrder;
 
             // Cargar datos para filtros
             ViewBag.TodosLosEstados = new List<string> { "Pendiente", "EnProceso", "Realizado", "RealizadoParcialmente", "Cancelado" };
+            ViewBag.TodosLosEstadosPago = new List<string> { "Pendiente", "Parcial", "Pagado", "Cancelado" };
+
+            // Obtener límites de precios para mostrar en el formulario
+            ViewBag.PrecioMinimo = await _lavadoService.ObtenerPrecioMinimo(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, estadosPago);
+            ViewBag.PrecioMaximo = await _lavadoService.ObtenerPrecioMaximo(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, estadosPago);
 
             // Obtener configuración
             var config = await _configuracionService.ObtenerConfiguracion();

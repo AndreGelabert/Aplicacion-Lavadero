@@ -45,7 +45,8 @@ public class ClienteService
                 c.Nombre.ToLowerInvariant().Contains(term) ||
                 c.Apellido.ToLowerInvariant().Contains(term) ||
                 c.NumeroDocumento.Contains(term) ||
-                c.Email.ToLowerInvariant().Contains(term)
+                c.Email.ToLowerInvariant().Contains(term) ||
+                (!string.IsNullOrEmpty(c.Telefono) && c.Telefono.Contains(term))
             ).ToList();
         }
 
@@ -87,7 +88,8 @@ public class ClienteService
                 c.Nombre.ToLowerInvariant().Contains(term) ||
                 c.Apellido.ToLowerInvariant().Contains(term) ||
                 c.NumeroDocumento.Contains(term) ||
-                c.Email.ToLowerInvariant().Contains(term)
+                c.Email.ToLowerInvariant().Contains(term) ||
+                (!string.IsNullOrEmpty(c.Telefono) && c.Telefono.Contains(term))
             ).ToList();
         }
 

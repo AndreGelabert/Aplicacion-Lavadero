@@ -355,7 +355,7 @@ public class PaqueteServicioController : Controller
         }
 
         var servicios = await _servicioService.ObtenerServicios(
-            new List<string> { "Activo" }, null, new List<string> { tipoVehiculo }, 1, 1000, "Nombre", "asc");
+            new List<string> { "Activo" }, null, new List<string> { tipoVehiculo }, null, null, 1, 1000, "Nombre", "asc");
 
         var serviciosData = servicios.Select(s => new
         {

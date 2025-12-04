@@ -32,6 +32,7 @@
         setupSearchWithDebounce();
         setupFilterFormSubmit(); // nuevo: manejar submit de filtros
         setupFormatoPatenteValidation(); // Validación de formato de patente
+        initFilterTooltips(); // ✅ NUEVO: Inicializar validación de filtros
         window.CommonUtils?.setupDefaultFilterForm();
         protegerTipoVehiculoEnEdicion();
         protegerTipoServicioEnEdicion();
@@ -1852,6 +1853,74 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             e.stopPropagation();
+            
+            // Validar campos de precio antes de enviar
+            const precioDesde = document.getElementById('precioDesde');
+            const precioHasta = document.getElementById('precioHasta');
+            
+            let isValid = true;
+            
+            // Validar precioDesde
+            if (precioDesde && precioDesde.value.trim() !== '') {
+                const value = parseFloat(precioDesde.value);
+                const min = precioDesde.hasAttribute('min') ? parseFloat(precioDesde.getAttribute('min')) : 0;
+                const max = precioDesde.hasAttribute('max') ? parseFloat(precioDesde.getAttribute('max')) : null;
+                
+                if (isNaN(value) || value < 0) {
+                    precioDesde.setCustomValidity('Ingrese un precio válido');
+                    isValid = false;
+                } else if (value < min) {
+                    precioDesde.setCustomValidity(`El valor debe ser mayor de o igual a ${min.toFixed(2)}`);
+                    isValid = false;
+                } else if (max !== null && value > max) {
+                    precioDesde.setCustomValidity(`El valor debe ser menor de o igual a ${max.toFixed(2)}`);
+                    isValid = false;
+                } else {
+                    precioDesde.setCustomValidity('');
+                }
+            } else if (precioDesde) {
+                precioDesde.setCustomValidity('');
+            }
+            
+            // Validar precioHasta
+            if (precioHasta && precioHasta.value.trim() !== '') {
+                const value = parseFloat(precioHasta.value);
+                const min = precioHasta.hasAttribute('min') ? parseFloat(precioHasta.getAttribute('min')) : 0;
+                const max = precioHasta.hasAttribute('max') ? parseFloat(precioHasta.getAttribute('max')) : null;
+                
+                if (isNaN(value) || value < 0) {
+                    precioHasta.setCustomValidity('Ingrese un precio válido');
+                    isValid = false;
+                } else if (value < min) {
+                    precioHasta.setCustomValidity(`El valor debe ser mayor de o igual a ${min.toFixed(2)}`);
+                    isValid = false;
+                } else if (max !== null && value > max) {
+                    precioHasta.setCustomValidity(`El valor debe ser menor de o igual a ${max.toFixed(2)}`);
+                    isValid = false;
+                } else {
+                    precioHasta.setCustomValidity('');
+                }
+            } else if (precioHasta) {
+                precioHasta.setCustomValidity('');
+            }
+            
+            // Validar que precioDesde <= precioHasta
+            if (precioDesde && precioHasta && 
+                precioDesde.value.trim() !== '' && precioHasta.value.trim() !== '') {
+                const desde = parseFloat(precioDesde.value);
+                const hasta = parseFloat(precioHasta.value);
+                
+                if (!isNaN(desde) && !isNaN(hasta) && desde > hasta) {
+                    precioDesde.setCustomValidity('El precio mínimo no puede ser mayor que el precio máximo');
+                    isValid = false;
+                }
+            }
+            
+            // Usar checkValidity() para validar el formulario completo
+            if (!form.checkValidity() || !isValid) {
+                form.reportValidity();
+                return false;
+            }
 
             // Reiniciar paginación
             const pg = form.querySelector('input[name="pageNumber"]');
@@ -1873,7 +1942,9 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
 
             // Mensaje informativo
             showTableMessage('info', 'Filtros aplicados.');
-            schedulePriceHintsRefresh();
+            if (typeof schedulePriceHintsRefresh === 'function') {
+                schedulePriceHintsRefresh();
+            }
         });
 
         form.dataset.submitSetup = 'true';
@@ -1930,5 +2001,44 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
             }
         });
     }
+
+    // =====================================
+    // TOOLTIPS Y VALIDACIÓN DINÁMICA PARA FILTROS
+    // =====================================
+    function initFilterTooltips() {
+        // Tooltips y validación para campos de precio
+        const precioDesde = document.getElementById('precioDesde');
+        const precioHasta = document.getElementById('precioHasta');
+
+        if (precioDesde) {
+            // Prevenir entrada de caracteres no numéricos (excepto punto decimal)
+            precioDesde.addEventListener('keypress', function(e) {
+                const char = String.fromCharCode(e.which);
+                if (!/[\d.]/.test(char)) {
+                    e.preventDefault();
+                }
+                // Solo permitir un punto decimal
+                if (char === '.' && this.value.includes('.')) {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        if (precioHasta) {
+            // Prevenir entrada de caracteres no numéricos (excepto punto decimal)
+            precioHasta.addEventListener('keypress', function(e) {
+                const char = String.fromCharCode(e.which);
+                if (!/[\d.]/.test(char)) {
+                    e.preventDefault();
+                }
+                // Solo permitir un punto decimal
+                if (char === '.' && this.value.includes('.')) {
+                    e.preventDefault();
+                }
+            });
+        }
+    }
+
+    // Nota: initFilterTooltips() se llama desde initializeServiciosPage()
 
 })();

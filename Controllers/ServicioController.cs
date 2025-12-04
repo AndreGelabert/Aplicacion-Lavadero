@@ -49,6 +49,8 @@ public class ServicioController : Controller
         List<string> estados,
         List<string> tipos,
         List<string> tiposVehiculo,
+        decimal? precioDesde = null,
+        decimal? precioHasta = null,
         int pageNumber = 1,
         int pageSize = 10,
         string editId = null,
@@ -61,11 +63,11 @@ public class ServicioController : Controller
         sortOrder ??= "asc";
 
         var (servicios, currentPage, totalPages, visiblePages) = await ObtenerDatosServicios(
-            estados, tipos, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
+            estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
 
         var (tiposServicio, tiposVehiculoList) = await CargarListasDropdown();
 
-        ConfigurarViewBag(estados, tipos, tiposVehiculo, tiposServicio, tiposVehiculoList,
+        await ConfigurarViewBag(estados, tipos, tiposVehiculo, precioDesde, precioHasta, tiposServicio, tiposVehiculoList,
             pageSize, currentPage, totalPages, visiblePages, sortBy, sortOrder);
 
         await ConfigurarFormulario(editId);
@@ -134,6 +136,8 @@ public class ServicioController : Controller
         List<string> estados,
         List<string> tipos,
         List<string> tiposVehiculo,
+        decimal? precioDesde = null,
+        decimal? precioHasta = null,
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
@@ -145,10 +149,10 @@ public class ServicioController : Controller
         sortOrder ??= "asc";
 
         var servicios = await _servicioService.BuscarServicios(
-            searchTerm, estados, tipos, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
+            searchTerm, estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
 
         var totalServicios = await _servicioService.ObtenerTotalServiciosBusqueda(
-            searchTerm, estados, tipos, tiposVehiculo);
+            searchTerm, estados, tipos, tiposVehiculo, precioDesde, precioHasta);
 
         var totalPages = Math.Max((int)Math.Ceiling(totalServicios / (double)pageSize), 1);
 
@@ -173,6 +177,8 @@ public class ServicioController : Controller
         List<string> estados,
         List<string> tipos,
         List<string> tiposVehiculo,
+        decimal? precioDesde = null,
+        decimal? precioHasta = null,
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
@@ -183,8 +189,8 @@ public class ServicioController : Controller
         sortBy ??= "Nombre";
         sortOrder ??= "asc";
 
-        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
-        var totalPages = await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, pageSize);
+        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
+        var totalPages = await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageSize);
         totalPages = Math.Max(totalPages, 1);
 
         ViewBag.CurrentPage = pageNumber;
@@ -554,6 +560,8 @@ public class ServicioController : Controller
     /// <param name="estados">Estados a filtrar.</param>
     /// <param name="tipos">Tipos de servicio a filtrar.</param>
     /// <param name="tiposVehiculo">Tipos de vehículo a filtrar.</param>
+    /// <param name="precioDesde">Precio mínimo.</param>
+    /// <param name="precioHasta">Precio máximo.</param>
     /// <param name="pageNumber">Número de página actual (1-based).</param>
     /// <param name="pageSize">Cantidad de elementos por página.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
@@ -561,10 +569,10 @@ public class ServicioController : Controller
     /// <returns>Tupla con la lista de servicios, página actual, total de páginas y páginas visibles.</returns>
     private async Task<(List<Servicio> servicios, int currentPage, int totalPages, List<int> visiblePages)>
         ObtenerDatosServicios(List<string> estados, List<string> tipos, List<string> tiposVehiculo,
-        int pageNumber, int pageSize, string sortBy, string sortOrder)
+        decimal? precioDesde, decimal? precioHasta, int pageNumber, int pageSize, string sortBy, string sortOrder)
     {
-        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
-        var totalPages = Math.Max(await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, pageSize), 1);
+        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
+        var totalPages = Math.Max(await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageSize), 1);
         var currentPage = Math.Clamp(pageNumber, 1, totalPages);
         var visiblePages = GetVisiblePages(currentPage, totalPages);
 
@@ -826,10 +834,10 @@ public class ServicioController : Controller
         ViewBag.FormAction = esCreacion ? "CrearServicioAjax" : "ActualizarServicioAjax";
 
         var servicios = await _servicioService.ObtenerServicios(
-            new List<string> { "Activo" }, null, null, 1, 10, null, null);
+            new List<string> { "Activo" }, null, null, null, null, 1, 10, null, null);
 
         var totalPages = Math.Max(await _servicioService.ObtenerTotalPaginas(
-            new List<string> { "Activo" }, null, null, 10), 1);
+            new List<string> { "Activo" }, null, null, null, null, 10), 1);
 
         ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = GetVisiblePages(1, totalPages);
@@ -844,6 +852,8 @@ public class ServicioController : Controller
     /// <param name="estados">Estados activos en el filtro.</param>
     /// <param name="tipos">Tipos de servicio activos en el filtro.</param>
     /// <param name="tiposVehiculo">Tipos de vehículo activos en el filtro.</param>
+    /// <param name="precioDesde">Precio mínimo.</param>
+    /// <param name="precioHasta">Precio máximo.</param>
     /// <param name="tiposServicio">Lista completa para el dropdown de tipos de servicio.</param>
     /// <param name="tiposVehiculoList">Lista completa para el dropdown de tipos de vehículo.</param>
     /// <param name="pageSize">Tamaño de página actual.</param>
@@ -852,8 +862,9 @@ public class ServicioController : Controller
     /// <param name="visiblePages">Rango de páginas visibles.</param>
     /// <param name="sortBy">Campo de ordenamiento.</param>
     /// <param name="sortOrder">Dirección del ordenamiento.</param>
-    private void ConfigurarViewBag(
+    private async Task ConfigurarViewBag(
         List<string> estados, List<string> tipos, List<string> tiposVehiculo,
+        decimal? precioDesde, decimal? precioHasta,
         List<string> tiposServicio, List<string> tiposVehiculoList,
         int pageSize, int currentPage, int totalPages, List<int> visiblePages,
         string sortBy, string sortOrder)
@@ -864,12 +875,18 @@ public class ServicioController : Controller
         ViewBag.Estados = estados;
         ViewBag.Tipos = tipos;
         ViewBag.TiposVehiculo = tiposVehiculo;
+        ViewBag.PrecioDesde = precioDesde;
+        ViewBag.PrecioHasta = precioHasta;
         ViewBag.TodosLosTiposVehiculo = tiposVehiculoList;
         ViewBag.PageSize = pageSize;
         ViewBag.TiposServicio = tiposServicio;
         ViewBag.TodosLosTipos = tiposServicio;
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
+
+        // Obtener límites de precios para mostrar en el formulario
+        ViewBag.PrecioMinimo = await _servicioService.ObtenerPrecioMinimo(estados, tipos, tiposVehiculo);
+        ViewBag.PrecioMaximo = await _servicioService.ObtenerPrecioMaximo(estados, tipos, tiposVehiculo);
     }
 
     /// <summary>
