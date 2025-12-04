@@ -1,18 +1,17 @@
 /**
  * VEHICULO-API.JS - INTEGRACIÓN CON CARQUERY API
- * Soporta carga dinámica (modales AJAX)
+ * Soporta carga dinámica (modales AJAX) con dropdowns personalizados
  */
-
-
 
 (function () {
     'use strict';
 
-    
-
     let marcasCache = null;
+    let modelosCache = null;
     let coloresCache = null;
     let initialized = false;
+    let marcaSeleccionadaValida = null;
+    let modeloSeleccionadoValido = null;
 
     // ==================== FUNCIÓN DE INICIALIZACIÓN PRINCIPAL ====================
     function initVehiculoApiSelects() {
@@ -57,6 +56,7 @@
                 // Configurar listeners
                 setupTipoVehiculoChangeListener();
                 setupMarcaChangeListener();
+                setupModeloChangeListener();
                 setupColorToggle();
 
                 // Cargar datos iniciales
@@ -226,74 +226,158 @@
     }
 
     function renderMarcaOptions(marcas) {
-        
+        marcasCache = marcas;
+        const marcaDropdown = document.getElementById('marca-dropdown');
+        const marcaInput = document.getElementById('Marca');
+        if (!marcaDropdown) return;
 
-        const marcaDatalist = document.getElementById('marcas-datalist');
-        if (!marcaDatalist) {
-            
+        marcaDropdown.innerHTML = '';
+
+        if (!marcas || marcas.length === 0) {
+            marcaDropdown.innerHTML = '<div class="p-2 text-sm text-gray-500 dark:text-gray-400">No hay marcas disponibles</div>';
             return;
         }
 
-        marcaDatalist.innerHTML = '';
-
-        marcas.forEach((marca, index) => {
-            // Soportar tanto minúsculas (id, nombre) como mayúsculas (Id, Nombre)
+        marcas.forEach((marca) => {
             const id = marca.id || marca.Id;
             const nombre = marca.nombre || marca.Nombre;
 
-            if (!id || !nombre) {
-                
-                return; // Saltar esta marca
-            }
+            if (!id || !nombre) return;
 
-            const option = document.createElement('option');
-            option.value = nombre;
-            marcaDatalist.appendChild(option);
-
+            const div = document.createElement('div');
+            div.className = 'px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-white';
+            div.textContent = nombre;
+            div.dataset.marcaId = id;
+            div.dataset.marcaNombre = nombre;
             
+            div.addEventListener('click', function() {
+                selectMarca(id, nombre);
+            });
+
+            marcaDropdown.appendChild(div);
         });
 
-        
+        // Posicionar el dropdown
+        positionDropdown(marcaInput, marcaDropdown);
     }
 
-    // ==================== CARGAR MODELOS ====================
+    // ==================== LISTENER DE MARCA ====================
     function setupMarcaChangeListener() {
-        
-
         const marcaInput = document.getElementById('Marca');
-        if (!marcaInput) {
+        const marcaDropdown = document.getElementById('marca-dropdown');
+        
+        if (!marcaInput || !marcaDropdown) return;
+
+        // Input - mostrar dropdown y filtrar
+        marcaInput.addEventListener('input', function() {
+            const valor = this.value.trim();
             
-            return;
-        }
-
-        marcaInput.addEventListener('change', async function () {
+            // Limpiar validación custom
+            this.setCustomValidity('');
             
-
-            const marcaNombre = this.value.trim();
-            if (!marcaNombre) {
+            // Resetear marca válida si se modifica
+            if (marcaSeleccionadaValida && marcaSeleccionadaValida.nombre !== valor) {
+                marcaSeleccionadaValida = null;
                 resetModeloSelect();
-                return;
             }
 
-            // Buscar el ID de la marca por nombre
-            const marca = marcasCache.find(m => (m.nombre || m.Nombre) === marcaNombre);
-            if (!marca) {
-                
-                resetModeloSelect();
-                return;
+            if (valor.length > 0 && marcasCache) {
+                filterMarcas(valor);
+            } else if (marcasCache) {
+                renderMarcaOptions(marcasCache);
+                marcaDropdown.classList.remove('hidden');
+            } else {
+                marcaDropdown.classList.add('hidden');
             }
-
-            const marcaId = marca.id || marca.Id;
-            if (!marcaId) {
-                
-                resetModeloSelect();
-                return;
-            }
-
-            await loadModelos(marcaId);
         });
 
+        // Focus - mostrar todas las opciones
+        marcaInput.addEventListener('focus', function() {
+            if (marcasCache && marcasCache.length > 0) {
+                renderMarcaOptions(marcasCache);
+                positionDropdown(marcaInput, marcaDropdown);
+                marcaDropdown.classList.remove('hidden');
+            }
+        });
+
+        // Blur - validar y ocultar dropdown
+        marcaInput.addEventListener('blur', function() {
+            // Pequeño delay para permitir clicks en el dropdown
+            setTimeout(() => {
+                validateMarca();
+                marcaDropdown.classList.add('hidden');
+            }, 200);
+        });
+
+        // Validación al enviar formulario
+        const form = marcaInput.closest('form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                if (!validateMarca()) {
+                    e.preventDefault();
+                    marcaInput.reportValidity();
+                }
+            });
+        }
+    }
+
+    // ==================== LISTENER DE MODELO ====================
+    function setupModeloChangeListener() {
+        const modeloInput = document.getElementById('Modelo');
+        const modeloDropdown = document.getElementById('modelo-dropdown');
         
+        if (!modeloInput || !modeloDropdown) return;
+
+        // Input - mostrar dropdown y filtrar
+        modeloInput.addEventListener('input', function() {
+            const valor = this.value.trim();
+            
+            // Limpiar validación custom
+            this.setCustomValidity('');
+            
+            // Resetear modelo válido si se modifica
+            if (modeloSeleccionadoValido !== valor) {
+                modeloSeleccionadoValido = null;
+            }
+
+            if (valor.length > 0 && modelosCache) {
+                filterModelos(valor);
+            } else if (modelosCache) {
+                renderModeloOptions(modelosCache);
+                modeloDropdown.classList.remove('hidden');
+            } else {
+                modeloDropdown.classList.add('hidden');
+            }
+        });
+
+        // Focus - mostrar todas las opciones
+        modeloInput.addEventListener('focus', function() {
+            if (modelosCache && modelosCache.length > 0) {
+                renderModeloOptions(modelosCache);
+                positionDropdown(modeloInput, modeloDropdown);
+                modeloDropdown.classList.remove('hidden');
+            }
+        });
+
+        // Blur - validar y ocultar dropdown
+        modeloInput.addEventListener('blur', function() {
+            // Pequeño delay para permitir clicks en el dropdown
+            setTimeout(() => {
+                validateModelo();
+                modeloDropdown.classList.add('hidden');
+            }, 200);
+        });
+
+        // Validación al enviar formulario
+        const form = modeloInput.closest('form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                if (!validateModelo()) {
+                    e.preventDefault();
+                    modeloInput.reportValidity();
+                }
+            });
+        }
     }
 
     async function loadModelos(marcaId) {
@@ -324,33 +408,257 @@
     }
 
     function renderModeloOptions(modelos) {
-        const modeloDatalist = document.getElementById('modelos-datalist');
-        if (!modeloDatalist) return;
+        modelosCache = modelos;
+        const modeloDropdown = document.getElementById('modelo-dropdown');
+        const modeloInput = document.getElementById('Modelo');
+        if (!modeloDropdown) return;
 
-        modeloDatalist.innerHTML = '';
+        modeloDropdown.innerHTML = '';
+
+        if (!modelos || modelos.length === 0) {
+            modeloDropdown.innerHTML = '<div class="p-2 text-sm text-gray-500 dark:text-gray-400">No hay modelos disponibles</div>';
+            return;
+        }
 
         modelos.forEach(modelo => {
-            const option = document.createElement('option');
-            option.value = modelo.nombre;
-            modeloDatalist.appendChild(option);
+            const nombre = modelo.nombre || modelo.Nombre;
+            if (!nombre) return;
+
+            const div = document.createElement('div');
+            div.className = 'px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-white';
+            div.textContent = nombre;
+            div.dataset.modeloNombre = nombre;
+            
+            div.addEventListener('click', function() {
+                selectModelo(nombre);
+            });
+
+            modeloDropdown.appendChild(div);
         });
 
-        const modeloInput = document.getElementById('Modelo');
         if (modeloInput) {
             modeloInput.disabled = false;
             modeloInput.placeholder = 'Seleccione o escriba un modelo...';
         }
-        
+
+        // Posicionar el dropdown
+        positionDropdown(modeloInput, modeloDropdown);
     }
 
     function resetModeloSelect() {
-        const modeloDatalist = document.getElementById('modelos-datalist');
-        if (modeloDatalist) modeloDatalist.innerHTML = '';
+        const modeloDropdown = document.getElementById('modelo-dropdown');
+        if (modeloDropdown) {
+            modeloDropdown.innerHTML = '';
+            modeloDropdown.classList.add('hidden');
+        }
         const modeloInput = document.getElementById('Modelo');
         if (modeloInput) {
             modeloInput.value = '';
             modeloInput.disabled = true;
+            modeloInput.placeholder = 'Primero seleccione una marca...';
         }
+        modeloSeleccionadoValido = null;
+        modelosCache = null;
+    }
+
+    // ==================== POSICIONAR DROPDOWN ====================
+    function positionDropdown(inputElement, dropdownElement) {
+        if (!inputElement || !dropdownElement) return;
+
+        const rect = inputElement.getBoundingClientRect();
+        
+        // Posicionar justo debajo del input
+        dropdownElement.style.top = `${rect.bottom + window.scrollY}px`;
+        dropdownElement.style.left = `${rect.left + window.scrollX}px`;
+        dropdownElement.style.width = `${rect.width}px`;
+    }
+
+    // ==================== SELECCIÓN DE MARCA ====================
+    function selectMarca(id, nombre) {
+        const marcaInput = document.getElementById('Marca');
+        const marcaDropdown = document.getElementById('marca-dropdown');
+        
+        if (marcaInput) {
+            marcaInput.value = nombre;
+            marcaSeleccionadaValida = { id, nombre };
+        }
+        
+        if (marcaDropdown) {
+            marcaDropdown.classList.add('hidden');
+        }
+
+        // Cargar modelos automáticamente
+        loadModelos(id);
+    }
+
+    // ==================== SELECCIÓN DE MODELO ====================
+    function selectModelo(nombre) {
+        const modeloInput = document.getElementById('Modelo');
+        const modeloDropdown = document.getElementById('modelo-dropdown');
+        
+        if (modeloInput) {
+            modeloInput.value = nombre;
+            modeloSeleccionadoValido = nombre;
+        }
+        
+        if (modeloDropdown) {
+            modeloDropdown.classList.add('hidden');
+        }
+    }
+
+    // ==================== FILTRADO DE MARCA ====================
+    function filterMarcas(searchText) {
+        const marcaDropdown = document.getElementById('marca-dropdown');
+        if (!marcaDropdown || !marcasCache) return;
+
+        const filtered = searchText.trim() === '' 
+            ? marcasCache 
+            : marcasCache.filter(m => {
+                const nombre = (m.nombre || m.Nombre || '').toLowerCase();
+                return nombre.includes(searchText.toLowerCase());
+            });
+
+        marcaDropdown.innerHTML = '';
+
+        if (filtered.length === 0) {
+            marcaDropdown.innerHTML = '<div class="p-2 text-sm text-gray-500 dark:text-gray-400">No se encontraron coincidencias</div>';
+        } else {
+            filtered.forEach(marca => {
+                const id = marca.id || marca.Id;
+                const nombre = marca.nombre || marca.Nombre;
+                if (!id || !nombre) return;
+
+                const div = document.createElement('div');
+                div.className = 'px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-white';
+                div.textContent = nombre;
+                div.dataset.marcaId = id;
+                div.dataset.marcaNombre = nombre;
+                
+                div.addEventListener('click', function() {
+                    selectMarca(id, nombre);
+                });
+
+            marcaDropdown.appendChild(div);
+        });
+    }
+
+        // Posicionar antes de mostrar
+        const marcaInput = document.getElementById('Marca');
+        positionDropdown(marcaInput, marcaDropdown);
+        
+        marcaDropdown.classList.remove('hidden');
+    }
+
+    // ==================== FILTRADO DE MODELO ====================
+    function filterModelos(searchText) {
+        const modeloDropdown = document.getElementById('modelo-dropdown');
+        if (!modeloDropdown || !modelosCache) return;
+
+        const filtered = searchText.trim() === '' 
+            ? modelosCache 
+            : modelosCache.filter(m => {
+                const nombre = (m.nombre || m.Nombre || '').toLowerCase();
+                return nombre.includes(searchText.toLowerCase());
+            });
+
+        modeloDropdown.innerHTML = '';
+
+        if (filtered.length === 0) {
+            modeloDropdown.innerHTML = '<div class="p-2 text-sm text-gray-500 dark:text-gray-400">No se encontraron coincidencias</div>';
+        } else {
+            filtered.forEach(modelo => {
+                const nombre = modelo.nombre || modelo.Nombre;
+                if (!nombre) return;
+
+                const div = document.createElement('div');
+                div.className = 'px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-white';
+                div.textContent = nombre;
+                div.dataset.modeloNombre = nombre;
+                
+                div.addEventListener('click', function() {
+                    selectModelo(nombre);
+                });
+
+            modeloDropdown.appendChild(div);
+        });
+    }
+
+        // Posicionar antes de mostrar
+        const modeloInput = document.getElementById('Modelo');
+        positionDropdown(modeloInput, modeloDropdown);
+        
+        modeloDropdown.classList.remove('hidden');
+    }
+
+    // ==================== VALIDACIÓN DE MARCA ====================
+    function validateMarca() {
+        const marcaInput = document.getElementById('Marca');
+        if (!marcaInput) return true;
+
+        const valorActual = marcaInput.value.trim();
+        
+        if (!valorActual) {
+            marcaSeleccionadaValida = null;
+            return true;
+        }
+
+        // Verificar si el valor coincide con la marca seleccionada válida
+        if (marcaSeleccionadaValida && marcaSeleccionadaValida.nombre === valorActual) {
+            return true;
+        }
+
+        // Verificar si existe en el cache
+        if (marcasCache) {
+            const marcaEncontrada = marcasCache.find(m => 
+                (m.nombre || m.Nombre) === valorActual
+            );
+
+            if (marcaEncontrada) {
+                marcaSeleccionadaValida = {
+                    id: marcaEncontrada.id || marcaEncontrada.Id,
+                    nombre: marcaEncontrada.nombre || marcaEncontrada.Nombre
+                };
+                return true;
+            }
+        }
+
+        // No es válida
+        marcaInput.setCustomValidity('Debe seleccionar una marca de la lista');
+        return false;
+    }
+
+    // ==================== VALIDACIÓN DE MODELO ====================
+    function validateModelo() {
+        const modeloInput = document.getElementById('Modelo');
+        if (!modeloInput) return true;
+
+        const valorActual = modeloInput.value.trim();
+        
+        if (!valorActual) {
+            modeloSeleccionadoValido = null;
+            return true;
+        }
+
+        // Verificar si el valor coincide con el modelo seleccionado válido
+        if (modeloSeleccionadoValido === valorActual) {
+            return true;
+        }
+
+        // Verificar si existe en el cache
+        if (modelosCache) {
+            const modeloEncontrado = modelosCache.find(m => 
+                (m.nombre || m.Nombre) === valorActual
+            );
+
+            if (modeloEncontrado) {
+                modeloSeleccionadoValido = modeloEncontrado.nombre || modeloEncontrado.Nombre;
+                return true;
+            }
+        }
+
+        // No es válido
+        modeloInput.setCustomValidity('Debe seleccionar un modelo de la lista');
+        return false;
     }
 
     // ==================== CARGAR COLORES ====================
@@ -407,18 +715,18 @@
             
 
             if (this.checked) {
-                colorSelect.classList.add('hidden');
+                colorSelect.style.display = 'none';
                 colorSelect.removeAttribute('required');
                 colorSelect.removeAttribute('name');
-                colorInput.classList.remove('hidden');
+                colorInput.style.display = 'block';
                 colorInput.setAttribute('required', 'required');
                 colorInput.setAttribute('name', 'Color');
                 colorInput.focus();
             } else {
-                colorInput.classList.add('hidden');
+                colorInput.style.display = 'none';
                 colorInput.removeAttribute('required');
                 colorInput.removeAttribute('name');
-                colorSelect.classList.remove('hidden');
+                colorSelect.style.display = 'block';
                 colorSelect.setAttribute('required', 'required');
                 colorSelect.setAttribute('name', 'Color');
             }
@@ -451,6 +759,28 @@
         if (loadingElement) loadingElement.textContent = '';
     }
 
+    // ==================== CERRAR DROPDOWNS AL CLICK FUERA ====================
+    document.addEventListener('click', function(e) {
+        const marcaInput = document.getElementById('Marca');
+        const marcaDropdown = document.getElementById('marca-dropdown');
+        const modeloInput = document.getElementById('Modelo');
+        const modeloDropdown = document.getElementById('modelo-dropdown');
+
+        // Cerrar dropdown de marca si click está fuera
+        if (marcaInput && marcaDropdown && 
+            !marcaInput.contains(e.target) && 
+            !marcaDropdown.contains(e.target)) {
+            marcaDropdown.classList.add('hidden');
+        }
+
+        // Cerrar dropdown de modelo si click está fuera
+        if (modeloInput && modeloDropdown && 
+            !modeloInput.contains(e.target) && 
+            !modeloDropdown.contains(e.target)) {
+            modeloDropdown.classList.add('hidden');
+        }
+    });
+
     // Exponer funciones globalmente
     window.VehiculoApi = {
         init: initVehiculoApiSelects,
@@ -459,7 +789,5 @@
         loadColores,
         resetInitialized: () => { initialized = false; }
     };
-
-    
 
 })();
