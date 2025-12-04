@@ -487,6 +487,38 @@ public class VehiculoController : Controller
     }
 
     /// <summary>
+    /// GET: /Vehiculo/GetMarcasPorTipo?tipoVehiculo=Automóvil
+    /// Retorna marcas filtradas por tipo de vehículo
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetMarcasPorTipo(string tipoVehiculo)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(tipoVehiculo))
+            {
+                return BadRequest(new { error = "El parámetro tipoVehiculo es requerido" });
+            }
+
+            _logger.LogInformation("🎯 Endpoint GetMarcasPorTipo llamado - Tipo: {Tipo}", tipoVehiculo);
+            
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var marcas = await _carQueryService.GetMarcasPorTipoAsync(tipoVehiculo);
+            stopwatch.Stop();
+            
+            _logger.LogInformation("✅ GetMarcasPorTipo completado en {Elapsed}ms - Retornando {Count} marcas para tipo '{Tipo}'", 
+                stopwatch.ElapsedMilliseconds, marcas.Count, tipoVehiculo);
+            
+            return Json(marcas);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 ERROR en endpoint GetMarcasPorTipo: {Message}", ex.Message);
+            return StatusCode(500, new { error = "Error al obtener marcas", details = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// GET: /Vehiculo/GetModelos?marcaId=toyota&year=2020
     /// Retorna modelos de una marca (opcionalmente filtrado por año)
     /// </summary>

@@ -13,6 +13,12 @@ namespace Firebase.Services
         Task<List<MarcaSimpleDto>> GetMarcasAsync();
 
         /// <summary>
+        /// Obtiene marcas filtradas por tipo de vehículo
+        /// </summary>
+        /// <param name="tipoVehiculo">Tipo de vehículo: Automóvil, Camioneta, Motocicleta, Camión</param>
+        Task<List<MarcaSimpleDto>> GetMarcasPorTipoAsync(string tipoVehiculo);
+
+        /// <summary>
         /// Obtiene los modelos de una marca específica
         /// </summary>
         /// <param name="marcaId">ID de la marca (ej: "toyota")</param>

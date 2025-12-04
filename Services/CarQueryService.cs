@@ -71,7 +71,7 @@ namespace Firebase.Services
 
                 // Mapear y ordenar
                 var marcas = apiResponse.Results
-                    .Select(m => new MarcaSimpleDto(m.Make_ID.ToString(), m.Make_Name))
+                    .Select(m => new MarcaSimpleDto(m.Id.ToString(), m.Name))
                     .OrderBy(m => m.Nombre)
                     .ToList();
 
@@ -87,6 +87,93 @@ namespace Firebase.Services
                 _logger.LogError(ex, "?? Error al consultar marcas");
                 return new List<MarcaSimpleDto>();
             }
+        }
+
+        /// <summary>
+        /// Obtiene marcas filtradas por tipo de vehículo
+        /// </summary>
+        public async Task<List<MarcaSimpleDto>> GetMarcasPorTipoAsync(string tipoVehiculo)
+        {
+            var cacheKey = $"marcas_{tipoVehiculo}";
+
+            // 1. Verificar caché
+            if (_cache.TryGetValue(cacheKey, out List<MarcaSimpleDto>? cachedMarcas) && cachedMarcas != null)
+            {
+                _logger.LogInformation("? {Count} marcas de '{Tipo}' obtenidas desde caché", cachedMarcas.Count, tipoVehiculo);
+                return cachedMarcas;
+            }
+
+            // 2. Mapear tipo a categoría de NHTSA
+            var vehicleType = MapTipoVehiculoToNHTSA(tipoVehiculo);
+
+            _logger.LogInformation("?? Consultando marcas para tipo '{Tipo}' (NHTSA: {VehicleType})...", tipoVehiculo, vehicleType);
+
+            try
+            {
+                // NHTSA endpoint: GET /GetMakesForVehicleType/{type}?format=json
+                var url = $"{_baseUrl}/GetMakesForVehicleType/{Uri.EscapeDataString(vehicleType)}?format=json";
+                var response = await _httpClient.GetAsync(url);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("?? Error HTTP {StatusCode} para tipo '{Tipo}'", response.StatusCode, tipoVehiculo);
+                    return new List<MarcaSimpleDto>();
+                }
+
+                var json = await response.Content.ReadAsStringAsync();
+                
+                // DEBUG: Log del JSON para verificar estructura
+                _logger.LogInformation("?? Primeros 500 chars del JSON: {Json}", 
+                    json.Length > 500 ? json.Substring(0, 500) : json);
+                
+                var apiResponse = JsonSerializer.Deserialize<NhtsaMakesResponse>(json, _jsonOptions);
+
+                if (apiResponse?.Results == null || apiResponse.Results.Count == 0)
+                {
+                    _logger.LogWarning("?? 0 marcas para tipo '{Tipo}'", tipoVehiculo);
+                    return new List<MarcaSimpleDto>();
+                }
+
+                // DEBUG: Loggear las primeras 3 marcas
+                var primerasMarcas = apiResponse.Results.Take(3).ToList();
+                foreach (var m in primerasMarcas)
+                {
+                    _logger.LogInformation("?? Marca: ID={MakeID}, Name={MakeName}", m.Id, m.Name);
+                }
+
+                var marcas = apiResponse.Results
+                    .Where(m => !string.IsNullOrWhiteSpace(m.Name)) // Filtrar vacíos
+                    .Select(m => new MarcaSimpleDto(m.Id.ToString(), m.Name))
+                    .OrderBy(m => m.Nombre)
+                    .ToList();
+
+                _logger.LogInformation("? {Count} marcas obtenidas para tipo '{Tipo}'", marcas.Count, tipoVehiculo);
+
+                // Guardar en caché (6 horas)
+                _cache.Set(cacheKey, marcas, TimeSpan.FromHours(6));
+
+                return marcas;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "?? Error al consultar marcas para tipo '{Tipo}'", tipoVehiculo);
+                return new List<MarcaSimpleDto>();
+            }
+        }
+
+        /// <summary>
+        /// Mapea el tipo de vehículo local a la categoría de NHTSA
+        /// </summary>
+        private string MapTipoVehiculoToNHTSA(string tipoVehiculo)
+        {
+            return tipoVehiculo?.ToLower() switch
+            {
+                "automóvil" or "automovil" => "Passenger Car",
+                "camioneta" => "Truck",
+                "motocicleta" => "Motorcycle",
+                "camión" or "camion" => "Truck",
+                _ => "Passenger Car" // Default
+            };
         }
 
         /// <summary>
@@ -128,8 +215,8 @@ namespace Firebase.Services
                 }
 
                 var modelos = apiResponse.Results
-                    .Where(m => !string.IsNullOrWhiteSpace(m.Model_Name))
-                    .Select(m => new ModeloSimpleDto(m.Model_Name.Trim(), marcaId))
+                    .Where(m => !string.IsNullOrWhiteSpace(m.Name))
+                    .Select(m => new ModeloSimpleDto(m.Name.Trim(), marcaId))
                     .Distinct()
                     .OrderBy(m => m.Nombre)
                     .ToList();
@@ -192,8 +279,19 @@ namespace Firebase.Services
 
     internal class NhtsaMake
     {
+        // NHTSA usa MakeId en algunas APIs y Make_ID en otras
+        public int MakeId { get; set; }
         public int Make_ID { get; set; }
+        
+        public string MakeName { get; set; } = string.Empty;
         public string Make_Name { get; set; } = string.Empty;
+        
+        // Propiedad helper que retorna el valor correcto
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int Id => MakeId != 0 ? MakeId : Make_ID;
+        
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string Name => !string.IsNullOrEmpty(MakeName) ? MakeName : Make_Name;
     }
 
     internal class NhtsaModelsResponse
@@ -203,10 +301,22 @@ namespace Firebase.Services
 
     internal class NhtsaModel
     {
+        // NHTSA usa diferentes formatos de naming
+        public int MakeId { get; set; }
         public int Make_ID { get; set; }
+        
+        public string MakeName { get; set; } = string.Empty;
         public string Make_Name { get; set; } = string.Empty;
+        
+        public int ModelId { get; set; }
         public int Model_ID { get; set; }
+        
+        public string ModelName { get; set; } = string.Empty;
         public string Model_Name { get; set; } = string.Empty;
+        
+        // Propiedades helper
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string Name => !string.IsNullOrEmpty(ModelName) ? ModelName : Model_Name;
     }
     #endregion
 }

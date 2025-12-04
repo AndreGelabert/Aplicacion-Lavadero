@@ -49,13 +49,14 @@ console.log('🚀🚀🚀 SCRIPT vehiculo-api.js CARGADO');
         // Inicializar de forma asíncrona
         setTimeout(async () => {
             try {
-                console.log('1️⃣ Cargando marcas...');
-                await loadMarcas();
+                console.log('1️⃣ Bloqueando select de Marca (requiere Tipo de Vehículo)...');
+                lockMarcaSelect();
 
                 console.log('2️⃣ Cargando colores...');
                 await loadColores();
 
                 console.log('3️⃣ Configurando listeners...');
+                setupTipoVehiculoChangeListener(); // NUEVO
                 setupMarcaChangeListener();
                 setupColorToggle();
 
@@ -108,9 +109,96 @@ console.log('🚀🚀🚀 SCRIPT vehiculo-api.js CARGADO');
         console.log('👁️ Observer activado');
     }
 
-    // ==================== CARGAR MARCAS ====================
+    // ==================== BLOQUEAR SELECT DE MARCA ====================
+    function lockMarcaSelect() {
+        const marcaSelect = document.getElementById('Marca');
+        if (!marcaSelect) return;
+
+        marcaSelect.disabled = true;
+        marcaSelect.innerHTML = '<option value="">Primero seleccione un tipo de vehículo</option>';
+        console.log('🔒 Select de Marca bloqueado');
+    }
+
+    // ==================== LISTENER DE TIPO DE VEHÍCULO ====================
+    function setupTipoVehiculoChangeListener() {
+        console.log('🎧 setupTipoVehiculoChangeListener()');
+
+        const tipoSelect = document.getElementById('TipoVehiculo');
+        if (!tipoSelect) {
+            console.error('❌ No se encontró select TipoVehiculo');
+            return;
+        }
+
+        tipoSelect.addEventListener('change', async function () {
+            const tipoVehiculo = this.value;
+            console.log('🔄 Tipo de vehículo cambiado a:', tipoVehiculo);
+
+            const marcaSelect = document.getElementById('Marca');
+            const modeloSelect = document.getElementById('Modelo');
+
+            if (!tipoVehiculo) {
+                // Si no hay tipo seleccionado, bloquear marca
+                lockMarcaSelect();
+                resetModeloSelect();
+                return;
+            }
+
+            // Cargar marcas para el tipo seleccionado
+            await loadMarcasPorTipo(tipoVehiculo);
+        });
+
+        console.log('✅ Listener de TipoVehiculo registrado');
+    }
+
+    // ==================== CARGAR MARCAS POR TIPO ====================
+    async function loadMarcasPorTipo(tipoVehiculo) {
+        console.log('🚗 loadMarcasPorTipo() para:', tipoVehiculo);
+
+        const marcaSelect = document.getElementById('Marca');
+        const loadingText = document.getElementById('marca-loading');
+
+        if (!marcaSelect) return;
+
+        try {
+            showLoading(marcaSelect, loadingText, `Cargando marcas de ${tipoVehiculo}...`);
+
+            const url = `/Vehiculo/GetMarcasPorTipo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`;
+            console.log('📡 Fetch:', url);
+
+            const response = await fetch(url, { 
+                cache: 'no-cache',
+                headers: { 'Accept': 'application/json' }
+            });
+
+            console.log('📡 Response:', response.status, response.ok);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const marcas = await response.json();
+            console.log('📦 Marcas recibidas:', marcas.length);
+
+            if (!marcas || marcas.length === 0) {
+                throw new Error('Sin marcas para este tipo');
+            }
+
+            marcasCache = marcas;
+            renderMarcaOptions(marcas);
+            hideLoading(loadingText);
+
+            console.log(`✅ ${marcas.length} marcas cargadas para ${tipoVehiculo}`);
+
+        } catch (error) {
+            console.error('💥 Error al cargar marcas:', error);
+            convertToTextInput(marcaSelect, 'Marca');
+            hideLoading(loadingText);
+        }
+    }
+
+    // ==================== CARGAR MARCAS (SIN FILTRO) ====================
     async function loadMarcas() {
-        console.log('🔥🔥🔥 loadMarcas() INICIADO');
+        console.log('🔥🔥🔥 loadMarcas() INICIADO - SIN FILTRO');
 
         const marcaSelect = document.getElementById('Marca');
         const loadingText = document.getElementById('marca-loading');
@@ -180,13 +268,22 @@ console.log('🚀🚀🚀 SCRIPT vehiculo-api.js CARGADO');
         marcaSelect.innerHTML = '<option value="">Seleccione una marca...</option>';
 
         marcas.forEach((marca, index) => {
+            // Soportar tanto minúsculas (id, nombre) como mayúsculas (Id, Nombre)
+            const id = marca.id || marca.Id;
+            const nombre = marca.nombre || marca.Nombre;
+
+            if (!id || !nombre) {
+                console.warn('⚠️ Marca sin id o nombre:', marca);
+                return; // Saltar esta marca
+            }
+
             const option = document.createElement('option');
-            option.value = marca.id;
-            option.textContent = marca.nombre;
+            option.value = id;
+            option.textContent = nombre;
             marcaSelect.appendChild(option);
 
             if (index < 3) {
-                console.log(`   ➕ ${marca.id} - ${marca.nombre}`);
+                console.log(`   ➕ ${id} - ${nombre}`);
             }
         });
 
