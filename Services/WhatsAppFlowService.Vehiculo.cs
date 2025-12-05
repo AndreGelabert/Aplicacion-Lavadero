@@ -262,6 +262,10 @@ public partial class WhatsAppFlowService
                 return;
             }
 
+            // Generar clave de asociación para permitir que otros usuarios se asocien al vehículo
+            var claveAsociacion = VehiculoService.GenerarClaveAsociacion();
+            var claveHash = VehiculoService.HashClaveAsociacion(claveAsociacion);
+
             var vehiculo = new Vehiculo
             {
                 Id = "",
@@ -272,6 +276,8 @@ public partial class WhatsAppFlowService
                 Color = session.TemporaryData.GetValueOrDefault("VehiculoColor", ""),
                 ClienteId = session.ClienteId,
                 ClienteNombreCompleto = cliente.NombreCompleto,
+                ClientesIds = new List<string> { session.ClienteId },
+                ClaveAsociacionHash = claveHash,
                 Estado = "Activo"
             };
 
@@ -295,6 +301,15 @@ public partial class WhatsAppFlowService
                 $"✅ ¡Vehículo registrado con éxito!\n\n" +
                 $"🚗 {vehiculo.Marca} {vehiculo.Modelo}\n" +
                 $"🔢 Patente: {vehiculo.Patente}\n\n" +
+                $"🔑 *Clave de asociación:* `{claveAsociacion}`\n\n" +
+                $"⚠️ *Importante:* Guarda esta clave en un lugar seguro.\n" +
+                $"Con ella, otras personas podrán vincularse a este vehículo " +
+                $"(ej: familiares, pareja, etc.).\n\n" +
+                $"Esta clave se muestra *solo esta vez*.");
+
+            await Task.Delay(1500);
+
+            await _whatsAppService.SendTextMessage(phoneNumber,
                 $"Ya puedes disfrutar de nuestros servicios 🎉");
 
             await Task.Delay(1000);
@@ -308,6 +323,325 @@ public partial class WhatsAppFlowService
             _logger.LogError(ex, "Error creando vehículo desde sesión");
             await _whatsAppService.SendTextMessage(phoneNumber,
                 "❌ Ocurrió un error al registrar el vehículo. Por favor, intenta nuevamente más tarde.");
+        }
+    }
+
+    // ========================================================================
+    // MÉTODOS PARA ASOCIACIÓN DE VEHÍCULOS (MÚLTIPLES DUEÑOS)
+    // ========================================================================
+
+    /// <summary>
+    /// Inicia el proceso de asociación a un vehículo existente
+    /// </summary>
+    private async Task IniciarAsociacionVehiculo(string phoneNumber)
+    {
+        await _whatsAppService.SendTextMessage(phoneNumber,
+            "🔗 *Asociar vehículo existente*\n\n" +
+            "Este proceso te permite vincularte a un vehículo que ya está registrado " +
+            "en nuestro sistema (ej: vehículo familiar, de pareja, etc.).\n\n" +
+            "Necesitarás:\n" +
+            "• La *patente* del vehículo\n" +
+            "• La *clave de asociación* que te proporcionó el dueño\n\n" +
+            "📝 Por favor, ingresa la *patente* del vehículo:");
+
+        await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.ASOCIAR_VEHICULO_PATENTE);
+    }
+
+    /// <summary>
+    /// Maneja el ingreso de la patente para asociación
+    /// </summary>
+    private async Task HandleAsociarVehiculoPatente(string phoneNumber, WhatsAppSession session, string input)
+    {
+        var patente = input.Trim().ToUpperInvariant();
+
+        // Validar formato de patente
+        if (!EsPatenteValida(patente))
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "❌ La patente solo puede contener letras, números, espacios y guiones. Por favor, inténtalo nuevamente:");
+            return;
+        }
+
+        // Buscar el vehículo
+        var vehiculo = await _vehiculoService.ObtenerVehiculoPorPatente(patente);
+
+        if (vehiculo == null || vehiculo.Estado != "Activo")
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                $"❌ No se encontró un vehículo activo con la patente *{patente}*.\n\n" +
+                $"Verifica la patente e intenta nuevamente, o escribe *MENU* para volver al menú.");
+            return;
+        }
+
+        // Verificar que tenga clave de asociación
+        if (string.IsNullOrEmpty(vehiculo.ClaveAsociacionHash))
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                $"⚠️ El vehículo con patente *{patente}* no tiene habilitada la asociación.\n\n" +
+                $"El dueño del vehículo debe solicitar una nueva clave de asociación.\n\n" +
+                $"Escribe *MENU* para volver al menú.");
+            return;
+        }
+
+        // Verificar que el cliente no esté ya asociado
+        var clienteYaAsociado = vehiculo.ClienteId == session.ClienteId ||
+                                 (vehiculo.ClientesIds != null && vehiculo.ClientesIds.Contains(session.ClienteId!));
+
+        if (clienteYaAsociado)
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                $"⚠️ Ya estás asociado al vehículo *{patente}*.\n\n" +
+                $"Escribe *MENU* para volver al menú.");
+            return;
+        }
+
+        // Guardar datos temporales
+        await _sessionService.SaveTemporaryData(phoneNumber, "AsociarVehiculoId", vehiculo.Id);
+        await _sessionService.SaveTemporaryData(phoneNumber, "AsociarVehiculoPatente", patente);
+        await _sessionService.SaveTemporaryData(phoneNumber, "AsociarVehiculoInfo", $"{vehiculo.Marca} {vehiculo.Modelo} - {vehiculo.Color}");
+
+        await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.ASOCIAR_VEHICULO_CLAVE);
+
+        await _whatsAppService.SendTextMessage(phoneNumber,
+            $"✅ Vehículo encontrado:\n\n" +
+            $"🚗 *{patente}*\n" +
+            $"   {vehiculo.Marca} {vehiculo.Modelo} - {vehiculo.Color}\n\n" +
+            $"🔑 Ahora, ingresa la *clave de asociación* (formato: XXXX-XXXX):");
+    }
+
+    /// <summary>
+    /// Maneja el ingreso de la clave de asociación
+    /// </summary>
+    private async Task HandleAsociarVehiculoClave(string phoneNumber, WhatsAppSession session, string input)
+    {
+        var claveIngresada = input.Trim().ToUpperInvariant();
+
+        var vehiculoId = session.TemporaryData.GetValueOrDefault("AsociarVehiculoId", "");
+        var vehiculoPatente = session.TemporaryData.GetValueOrDefault("AsociarVehiculoPatente", "");
+        var vehiculoInfo = session.TemporaryData.GetValueOrDefault("AsociarVehiculoInfo", "");
+
+        if (string.IsNullOrEmpty(vehiculoId))
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "❌ Error: No se encontró información del vehículo. Por favor, reinicia el proceso.");
+            await MostrarMenuVehiculos(phoneNumber, session);
+            return;
+        }
+
+        var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
+        if (vehiculo == null)
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "❌ Error: Vehículo no encontrado.");
+            await MostrarMenuVehiculos(phoneNumber, session);
+            return;
+        }
+
+        // Validar la clave
+        if (!VehiculoService.ValidarClaveAsociacion(claveIngresada, vehiculo.ClaveAsociacionHash ?? ""))
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "❌ La clave de asociación es incorrecta.\n\n" +
+                "Verifica la clave e intenta nuevamente, o escribe *MENU* para cancelar:");
+            return;
+        }
+
+        // Clave correcta - pedir confirmación
+        await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.ASOCIAR_VEHICULO_CONFIRMACION);
+
+        await _whatsAppService.SendTextMessage(phoneNumber,
+            $"✅ *Clave correcta*\n\n" +
+            $"Estás a punto de asociarte al siguiente vehículo:\n\n" +
+            $"🚗 *{vehiculoPatente}*\n" +
+            $"   {vehiculoInfo}\n\n" +
+            $"Una vez asociado, podrás gestionar este vehículo desde tu cuenta.\n\n" +
+            $"¿Confirmas la asociación?\n\n" +
+            $"Responde *SÍ* para confirmar o *NO* para cancelar.");
+    }
+
+    /// <summary>
+    /// Maneja la confirmación de asociación del vehículo
+    /// </summary>
+    private async Task HandleAsociarVehiculoConfirmacion(string phoneNumber, WhatsAppSession session, string input)
+    {
+        var respuesta = input.Trim().ToUpperInvariant();
+
+        if (respuesta == "SI" || respuesta == "SÍ" || respuesta == "S")
+        {
+            await AsociarVehiculoACliente(phoneNumber, session);
+        }
+        else if (respuesta == "NO" || respuesta == "N")
+        {
+            // Limpiar datos temporales
+            session.TemporaryData.Remove("AsociarVehiculoId");
+            session.TemporaryData.Remove("AsociarVehiculoPatente");
+            session.TemporaryData.Remove("AsociarVehiculoInfo");
+
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "❌ Asociación cancelada.\n\n" +
+                "Volviendo al menú de vehículos...");
+
+            await Task.Delay(500);
+            await MostrarMenuVehiculos(phoneNumber, session);
+        }
+        else
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "⚠️ Por favor, responde *SÍ* para confirmar o *NO* para cancelar.");
+        }
+    }
+
+    /// <summary>
+    /// Asocia el vehículo al cliente actual
+    /// </summary>
+    private async Task AsociarVehiculoACliente(string phoneNumber, WhatsAppSession session)
+    {
+        try
+        {
+            var vehiculoId = session.TemporaryData.GetValueOrDefault("AsociarVehiculoId", "");
+            var vehiculoPatente = session.TemporaryData.GetValueOrDefault("AsociarVehiculoPatente", "");
+            var vehiculoInfo = session.TemporaryData.GetValueOrDefault("AsociarVehiculoInfo", "");
+
+            if (string.IsNullOrEmpty(session.ClienteId) || string.IsNullOrEmpty(vehiculoId))
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "❌ Error: Datos incompletos para la asociación.");
+                return;
+            }
+
+            // Asociar cliente al vehículo
+            var exitoso = await _vehiculoService.AsociarClienteAVehiculo(vehiculoId, session.ClienteId);
+
+            if (!exitoso)
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "❌ Error al asociar el vehículo. Por favor, intenta nuevamente.");
+                return;
+            }
+
+            // Actualizar lista de vehículos del cliente
+            var cliente = await _clienteService.ObtenerCliente(session.ClienteId);
+            if (cliente != null && !cliente.VehiculosIds.Contains(vehiculoId))
+            {
+                cliente.VehiculosIds.Add(vehiculoId);
+                await _clienteService.ActualizarCliente(cliente);
+            }
+
+            _logger.LogInformation("🔗 Cliente {ClienteId} asociado al vehículo {VehiculoId} ({Patente})",
+                session.ClienteId, vehiculoId, vehiculoPatente);
+
+            // Limpiar datos temporales
+            session.TemporaryData.Remove("AsociarVehiculoId");
+            session.TemporaryData.Remove("AsociarVehiculoPatente");
+            session.TemporaryData.Remove("AsociarVehiculoInfo");
+
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                $"✅ *¡Asociación exitosa!*\n\n" +
+                $"Ahora estás vinculado al vehículo:\n\n" +
+                $"🚗 *{vehiculoPatente}*\n" +
+                $"   {vehiculoInfo}\n\n" +
+                $"Ya puedes gestionar este vehículo desde tu cuenta 🎉");
+
+            await Task.Delay(1000);
+
+            // Volver al menú principal
+            await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO);
+            if (cliente != null)
+            {
+                await ShowClienteMenu(phoneNumber, cliente.Nombre);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error asociando vehículo a cliente");
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "❌ Ocurrió un error. Por favor, intenta nuevamente.");
+        }
+    }
+
+    /// <summary>
+    /// Maneja la visualización de la clave de asociación de un vehículo
+    /// </summary>
+    private async Task HandleMostrarClaveVehiculo(string phoneNumber, WhatsAppSession session, string input)
+    {
+        var opcion = input.Trim().ToLowerInvariant();
+
+        if (opcion.Contains("generar") || opcion == "generar_clave")
+        {
+            await RegenerarClaveAsociacion(phoneNumber, session);
+        }
+        else if (opcion.Contains("menu") || opcion.Contains("volver") || opcion == "menu_vehiculos")
+        {
+            await MostrarMenuVehiculos(phoneNumber, session);
+        }
+        else
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "⚠️ Opción no reconocida. Por favor, selecciona una de las opciones del menú.");
+        }
+    }
+
+    /// <summary>
+    /// Regenera la clave de asociación de un vehículo
+    /// </summary>
+    private async Task RegenerarClaveAsociacion(string phoneNumber, WhatsAppSession session)
+    {
+        try
+        {
+            var vehiculoId = session.TemporaryData.GetValueOrDefault("vehiculo_modificar_id", "");
+
+            if (string.IsNullOrEmpty(vehiculoId))
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "❌ Error: No se encontró información del vehículo.");
+                return;
+            }
+
+            var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
+            if (vehiculo == null)
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "❌ Error: Vehículo no encontrado.");
+                return;
+            }
+
+            // Verificar que el cliente sea el dueño principal
+            if (vehiculo.ClienteId != session.ClienteId)
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "❌ Solo el dueño principal puede generar una nueva clave de asociación.");
+                await MostrarMenuVehiculos(phoneNumber, session);
+                return;
+            }
+
+            // Generar nueva clave
+            var nuevaClave = VehiculoService.GenerarClaveAsociacion();
+            var nuevoHash = VehiculoService.HashClaveAsociacion(nuevaClave);
+
+            vehiculo.ClaveAsociacionHash = nuevoHash;
+            await _vehiculoService.ActualizarVehiculo(vehiculo);
+
+            _logger.LogInformation("🔑 Nueva clave de asociación generada para vehículo {Patente} por cliente {ClienteId}",
+                vehiculo.Patente, session.ClienteId);
+
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                $"✅ *Nueva clave de asociación generada*\n\n" +
+                $"🚗 Vehículo: *{vehiculo.Patente}*\n\n" +
+                $"🔑 *Nueva clave:* `{nuevaClave}`\n\n" +
+                $"⚠️ *Importante:*\n" +
+                $"• La clave anterior ya no funcionará\n" +
+                $"• Guarda esta clave en un lugar seguro\n" +
+                $"• Compártela solo con personas de confianza\n" +
+                $"• Esta clave se muestra *solo esta vez*");
+
+            await Task.Delay(1000);
+            await MostrarMenuVehiculos(phoneNumber, session);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error regenerando clave de asociación");
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "❌ Ocurrió un error. Por favor, intenta nuevamente.");
         }
     }
 }

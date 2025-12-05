@@ -384,6 +384,23 @@ public partial class WhatsAppFlowService
                     await HandleConfirmarEliminarVehiculo(phoneNumber, session, messageBody);
                     break;
 
+                // ========== ASOCIACIÓN DE VEHÍCULOS (MÚLTIPLES DUEÑOS) ==========
+                case WhatsAppFlowStates.ASOCIAR_VEHICULO_PATENTE:
+                    await HandleAsociarVehiculoPatente(phoneNumber, session, messageBody);
+                    break;
+
+                case WhatsAppFlowStates.ASOCIAR_VEHICULO_CLAVE:
+                    await HandleAsociarVehiculoClave(phoneNumber, session, messageBody);
+                    break;
+
+                case WhatsAppFlowStates.ASOCIAR_VEHICULO_CONFIRMACION:
+                    await HandleAsociarVehiculoConfirmacion(phoneNumber, session, messageBody);
+                    break;
+
+                case WhatsAppFlowStates.MOSTRAR_CLAVE_VEHICULO:
+                    await HandleMostrarClaveVehiculo(phoneNumber, session, messageBody);
+                    break;
+
                 default:
                     _logger.LogWarning("⚠️ Estado desconocido: {State}", state);
                     await _whatsAppService.SendTextMessage(phoneNumber,
