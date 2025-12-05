@@ -186,10 +186,17 @@
                                 <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
                                     Marca
                                 </h6>
-                                <input type="text" id="marca-filter-search" placeholder="Buscar marca..." 
-                                       class="mb-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white">
-                                <div id="marca-filter-list" class="space-y-2 max-h-40 overflow-y-auto text-sm">
-                                    <!-- Se llenará dinámicamente con JavaScript -->
+                                
+                                <!-- Contenedor de marcas seleccionadas -->
+                                <div id="marcas-seleccionadas-container" class="hidden mb-2"></div>
+                                
+                                <div class="relative">
+                                    <input type="text" id="marca-filter-search" placeholder="Escriba para buscar marca..." 
+                                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white"
+                                           autocomplete="off">
+                                    <div id="marca-filter-list" class="hidden absolute z-50 w-full max-h-60 overflow-y-auto bg-white border border-gray-300 rounded-lg shadow-lg dark:bg-gray-700 dark:border-gray-600 mt-1">
+                                        <!-- Se llenará dinámicamente con JavaScript -->
+                                    </div>
                                 </div>
                             </div>
 
@@ -198,10 +205,17 @@
                                 <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
                                     Color
                                 </h6>
-                                <input type="text" id="color-filter-search" placeholder="Buscar color..." 
-                                       class="mb-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white">
-                                <div id="color-filter-list" class="space-y-2 max-h-40 overflow-y-auto text-sm">
-                                    <!-- Se llenará dinámicamente con JavaScript -->
+                                
+                                <!-- Contenedor de colores seleccionados -->
+                                <div id="colores-seleccionados-container" class="hidden mb-2"></div>
+                                
+                                <div class="relative">
+                                    <input type="text" id="color-filter-search" placeholder="Escriba para buscar color..." 
+                                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white"
+                                           autocomplete="off">
+                                    <div id="color-filter-list" class="hidden absolute z-50 w-full max-h-60 overflow-y-auto bg-white border border-gray-300 rounded-lg shadow-lg dark:bg-gray-700 dark:border-gray-600 mt-1">
+                                        <!-- Se llenará dinámicamente con JavaScript -->
+                                    </div>
                                 </div>
                             </div>
                         </div>

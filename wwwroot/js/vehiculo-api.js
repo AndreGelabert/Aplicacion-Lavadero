@@ -37,12 +37,6 @@
         const isEdit = editValue === 'true' || editValue === 'True' || editValue === true;
 
 
-        if (isEdit) {
-
-            return;
-        }
-
-
         initialized = true;
 
         // Inicializar de forma asíncrona
@@ -674,55 +668,95 @@
 
             if (colores && colores.length > 0) {
                 coloresCache = colores;
-                renderColorOptions(colores);
+                renderColorOptions();
             }
         } catch (error) {
             console.warn('?? Error colores, usando fallback');
-            renderColorOptions(['Blanco', 'Negro', 'Gris', 'Plata', 'Rojo', 'Azul']);
+            renderColorOptions();
         }
     }
 
-    function renderColorOptions(colores) {
+    function renderColorOptions(colorForzado = null) {
         const colorSelect = document.getElementById('Color');
-        if (!colorSelect) return;
-
+        const colorInput = document.getElementById('ColorCustom');
+        const toggle = document.getElementById('color-custom-toggle');
+        
+        if (!colorSelect) {
+            console.warn('⚠️ No se encontró el select de colores');
+            return;
+        }
+        // CRÍTICO: Leer el valor inicial del data-attribute (viene del servidor)
+        const dataValue = colorSelect.getAttribute('data-initial-value');
+        // Usar color forzado si se proporciona (para AJAX), sino leer del data-attribute
+        const colorActualDelServidor = colorForzado || dataValue?.trim() || colorInput?.value?.trim() || '';
         colorSelect.innerHTML = '<option value="">Seleccione un color...</option>';
 
-        colores.forEach(color => {
-            const option = document.createElement('option');
-            option.value = color;
-            option.textContent = color;
-            colorSelect.appendChild(option);
-        });
+        // Usar coloresCache en lugar de colores
+        if (coloresCache && coloresCache.length > 0) {
+            coloresCache.forEach(color => {
+                const option = document.createElement('option');
+                option.value = color;
+                option.textContent = color;
+                colorSelect.appendChild(option);
+            });
+        } else {
+            console.warn('⚠️ No hay colores cacheados, usando fallback');
+            ['Blanco', 'Negro', 'Gris', 'Plata', 'Rojo', 'Azul'].forEach(color => {
+                const option = document.createElement('option');
+                option.value = color;
+                option.textContent = color;
+                colorSelect.appendChild(option);
+            });
+        }
 
-
+        // CRÍTICO: Si hay un color del servidor, procesarlo
+        if (colorActualDelServidor && colorActualDelServidor.length > 0) {
+            // Buscar si el color actual existe en la lista de colores oficiales
+            const esColorOficial = Array.from(colorSelect.options).some(
+                opt => opt.value === colorActualDelServidor
+            );         
+            if (esColorOficial) {
+                // Es un color oficial, seleccionarlo en el dropdown
+                colorSelect.value = colorActualDelServidor;
+            } else {
+                // Es un color personalizado, activar el toggle
+                if (toggle && colorInput) {
+                    toggle.checked = true;
+                    // Asignar el valor al input personalizado
+                    colorInput.value = colorActualDelServidor;
+                    // Mostrar input personalizado
+                    colorSelect.style.display = 'none';
+                    colorSelect.removeAttribute('required');
+                    colorSelect.removeAttribute('name');
+                    colorInput.style.display = 'block';
+                    colorInput.setAttribute('required', 'required');
+                    colorInput.setAttribute('name', 'Color');
+                }
+            }
+        }
     }
 
     // ==================== TOGGLE COLOR ====================
     function setupColorToggle() {
-
-
         const toggle = document.getElementById('color-custom-toggle');
         const colorSelect = document.getElementById('Color');
         const colorInput = document.getElementById('ColorCustom');
-
-        if (!toggle || !colorSelect || !colorInput) {
-            console.warn('?? Elementos toggle no encontrados');
-            return;
-        }
-
         toggle.addEventListener('change', function () {
-
-
             if (this.checked) {
+                // Activar modo personalizado
                 colorSelect.style.display = 'none';
                 colorSelect.removeAttribute('required');
                 colorSelect.removeAttribute('name');
                 colorInput.style.display = 'block';
                 colorInput.setAttribute('required', 'required');
                 colorInput.setAttribute('name', 'Color');
+                // Si había un valor seleccionado en el dropdown, transferirlo
+                if (colorSelect.value) {
+                    colorInput.value = colorSelect.value;
+                }
                 colorInput.focus();
             } else {
+                // Volver a modo dropdown
                 colorInput.style.display = 'none';
                 colorInput.removeAttribute('required');
                 colorInput.removeAttribute('name');
@@ -731,8 +765,6 @@
                 colorSelect.setAttribute('name', 'Color');
             }
         });
-
-
     }
 
     // ==================== UTILIDADES ====================
@@ -781,13 +813,21 @@
         }
     });
 
-    // Exponer funciones globalmente
+    // ==================== INICIALIZACIÓN DE COLOR DESPUÉS DE AJAX ====================
+    function initColorAfterAjax(colorDelServidor) {
+        // Simular que tenemos el color del servidor
+        renderColorOptions(colorDelServidor);
+    }
+
+    // ==================== EXPONER FUNCIONES ====================
     window.VehiculoApi = {
         init: initVehiculoApiSelects,
         loadMarcas,
         loadModelos,
         loadColores,
-        resetInitialized: () => { initialized = false; }
+        resetInitialized: () => { initialized = false; },
+        initColor: initColorAfterAjax,
+        coloresCache: coloresCache  // Exponer para verificar si está cargado
     };
 
 })();
