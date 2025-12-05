@@ -267,6 +267,16 @@
         window.lavadoData.vehiculoPatente = patente;
         window.lavadoData.tipoVehiculo = tipoVehiculo;
 
+        // Store the vehicle in the vehiculos array for later reference
+        window.lavadoData.vehiculos = [{
+            id: id,
+            patente: patente,
+            tipoVehiculo: tipoVehiculo,
+            marca: marca,
+            modelo: modelo,
+            color: color
+        }];
+
         // Mostrar información del vehículo
         const infoSection = document.getElementById('infoVehiculoSection');
         const infoDiv = document.getElementById('infoVehiculo');
@@ -1072,6 +1082,7 @@
             clienteId: null,
             clienteNombre: null,
             clientesAsociados: [],
+            vehiculos: [],
             vehiculosSeleccionados: [],
             serviciosPorVehiculo: {},
             serviciosDisponibles: {},

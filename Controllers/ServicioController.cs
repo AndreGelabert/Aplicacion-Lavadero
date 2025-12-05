@@ -341,7 +341,7 @@ public class ServicioController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CrearTipoVehiculo(string nombreTipo, string? formatoPatente = null)
+    public async Task<IActionResult> CrearTipoVehiculo(string nombreTipo, string? formatoPatente = null, int cantidadEmpleadosRequeridos = 1)
     {
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
@@ -373,12 +373,18 @@ public class ServicioController : Controller
                     return Json(new { success = false, message = "El formato solo puede contener 'n' (números), 'l' (letras), '.' '-' y '|'. Mínimo 3 caracteres." });
                 }
 
+                // Validar cantidad de empleados
+                if (cantidadEmpleadosRequeridos < 1 || cantidadEmpleadosRequeridos > 10)
+                {
+                    return Json(new { success = false, message = "La cantidad de empleados debe estar entre 1 y 10." });
+                }
+
                 if (await _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo))
                 {
                     return Json(new { success = false, message = "Ya existe un tipo de vehículo con el mismo nombre." });
                 }
 
-                var vehDocId = await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo, formatoPatente);
+                var vehDocId = await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos);
                 await RegistrarEvento("Creacion de tipo de vehiculo", vehDocId, "TipoVehiculo");
 
                 var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculosCompletos();
@@ -392,6 +398,7 @@ public class ServicioController : Controller
                     { 
                         nombre = t.Nombre, 
                         formatoPatente = t.FormatoPatente,
+                        cantidadEmpleadosRequeridos = t.CantidadEmpleadosRequeridos,
                         regex = !string.IsNullOrWhiteSpace(t.FormatoPatente) ? t.ObtenerRegexPattern() : null
                     })
                 });
@@ -406,7 +413,7 @@ public class ServicioController : Controller
         return await GestionarTipoConId(
             nombreTipo,
             () => _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo),
-            () => _tipoVehiculoService.CrearTipoVehiculo(nombreTipo, formatoPatente),
+            () => _tipoVehiculoService.CrearTipoVehiculo(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos),
             "TipoVehiculo",
             "Creacion de tipo de vehiculo"
         );

@@ -757,6 +757,7 @@
     async function handleCrearTipoVehiculo(form) {
         const nombreTipo = document.getElementById('nombreTipoVehiculo')?.value?.trim();
         const formatoPatente = document.getElementById('formatoPatenteServicio')?.value?.trim();
+        const cantidadEmpleados = parseInt(document.getElementById('cantidadEmpleadosRequeridos')?.value) || 1;
 
         // Validaciones con notificación dentro del modal
         if (!nombreTipo) {
@@ -786,6 +787,12 @@
             return;
         }
 
+        // Validar cantidad de empleados
+        if (cantidadEmpleados < 1 || cantidadEmpleados > 10) {
+            showTipoVehiculoModalMessage('error', 'La cantidad de empleados debe estar entre 1 y 10.');
+            return;
+        }
+
         try {
             const formData = new FormData(form);
             const response = await fetch(form.action, {
@@ -802,6 +809,9 @@
                 if (data?.tipos) actualizarDropdownTipos('TipoVehiculo', data.tipos, nombreTipo);
                 cerrarModal('tipoVehiculoModal');
                 form.reset();
+                // Resetear el valor del campo de empleados a 1
+                const empleadosInput = document.getElementById('cantidadEmpleadosRequeridos');
+                if (empleadosInput) empleadosInput.value = '1';
                 showTableMessage('success', message);
             } else {
                 showTipoVehiculoModalMessage('error', message);
@@ -1189,8 +1199,10 @@
     function limpiarModalTipoVehiculo() {
         const nombreInput = document.getElementById('nombreTipoVehiculo');
         const formatoInput = document.getElementById('formatoPatenteServicio');
+        const empleadosInput = document.getElementById('cantidadEmpleadosRequeridos');
         if (nombreInput) nombreInput.value = '';
         if (formatoInput) formatoInput.value = '';
+        if (empleadosInput) empleadosInput.value = '1';
 
         // Limpiar mensajes
         const messagesContainer = document.getElementById('tipo-vehiculo-modal-messages');
