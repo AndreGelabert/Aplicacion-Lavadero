@@ -1437,7 +1437,7 @@
                                                onfocus="mostrarDropdownPatentes()"
                                                onkeydown="handlePatenteKeydown(event)">
                                         <input type="hidden" id="asociacion-patente" value="">
-                                        <div id="patentes-dropdown" class="hidden absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg dark:bg-gray-700 dark:border-gray-600 max-h-48 overflow-y-auto mt-1">
+                                        <div id="patentes-dropdown" class="hidden fixed z-[60] bg-white border border-gray-300 rounded-lg shadow-lg dark:bg-gray-700 dark:border-gray-600 overflow-y-auto">
                                             <!-- Las opciones se llenan dinámicamente -->
                                         </div>
                                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -1470,15 +1470,18 @@
                                     
                                     <div class="flex justify-end gap-2 pt-4">
                                         <button type="button" onclick="validarClaveAsociacion()" 
-                                                class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-blue-500 dark:hover:bg-blue-600">
-                                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                class="text-white inline-flex items-center bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
+                                                <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
                                             </svg>
                                             Validar y Agregar
                                         </button>
                                         <button type="button" onclick="closeQuickCreateModal()" 
-                                                class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-300 rounded-lg border border-gray-200 text-sm font-medium px-4 py-2.5 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:bg-gray-600">
-                                            Cancelar
+                                                class="text-white inline-flex items-center bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
+                                                <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
+                                            </svg>
+                                                Cancelar
                                         </button>
                                     </div>
                                 </form>
@@ -1630,6 +1633,9 @@
     };
 
     window.closeQuickCreateModal = function () {
+        // Ocultar dropdown de patentes si está abierto
+        ocultarDropdownPatentesSinDelay();
+        
         // Limpiar mensajes del modal
         const messagesContainer = document.getElementById('quick-vehiculo-messages');
         if (messagesContainer) {
@@ -1798,16 +1804,65 @@
      */
     window.mostrarDropdownPatentes = function() {
         const dropdown = document.getElementById('patentes-dropdown');
-        if (dropdown && vehiculosParaAsociacion.length > 0) {
+        const input = document.getElementById('asociacion-patente-input');
+        
+        if (!dropdown || !input) return;
+        
+        if (vehiculosParaAsociacion.length > 0) {
+            posicionarDropdownPatentes();
             dropdown.classList.remove('hidden');
         }
     };
+    
+    /**
+     * Calcula y aplica la posición y altura dinámica del dropdown
+     */
+    function posicionarDropdownPatentes() {
+        const dropdown = document.getElementById('patentes-dropdown');
+        const input = document.getElementById('asociacion-patente-input');
+        
+        if (!dropdown || !input) return;
+        
+        // Obtener posición del input
+        const inputRect = input.getBoundingClientRect();
+        
+        // Calcular altura disponible debajo del input
+        const viewportHeight = window.innerHeight;
+        const espacioDebajo = viewportHeight - inputRect.bottom - 20; // 20px de padding
+        const espacioArriba = inputRect.top - 20;
+        
+        // Determinar si mostrar arriba o abajo
+        const mostrarArriba = espacioDebajo < 200 && espacioArriba > espacioDebajo;
+        
+        // Altura máxima basada en el espacio disponible (mínimo 150px, máximo 400px)
+        const alturaMaxima = Math.min(
+            Math.max(
+                mostrarArriba ? espacioArriba : espacioDebajo,
+                150
+            ),
+            400
+        );
+        
+        // Aplicar estilos
+        dropdown.style.width = `${inputRect.width}px`;
+        dropdown.style.maxHeight = `${alturaMaxima}px`;
+        
+        if (mostrarArriba) {
+            dropdown.style.bottom = `${viewportHeight - inputRect.top + 5}px`;
+            dropdown.style.top = 'auto';
+            dropdown.style.left = `${inputRect.left}px`;
+        } else {
+            dropdown.style.top = `${inputRect.bottom + 5}px`;
+            dropdown.style.bottom = 'auto';
+            dropdown.style.left = `${inputRect.left}px`;
+        }
+    }
 
     // Constant for dropdown hide delay to allow click events to register
     const DROPDOWN_HIDE_DELAY_MS = 200;
 
     /**
-     * Oculta el dropdown de patentes
+     * Oculta el dropdown de patentes con delay
      */
     function ocultarDropdownPatentes() {
         const dropdown = document.getElementById('patentes-dropdown');
@@ -1816,6 +1871,26 @@
             setTimeout(() => dropdown.classList.add('hidden'), DROPDOWN_HIDE_DELAY_MS);
         }
     }
+    
+    /**
+     * Event listener para reposicionar el dropdown cuando se redimensiona la ventana
+     */
+    window.addEventListener('resize', () => {
+        const dropdown = document.getElementById('patentes-dropdown');
+        if (dropdown && !dropdown.classList.contains('hidden')) {
+            posicionarDropdownPatentes();
+        }
+    });
+    
+    /**
+     * Event listener para ocultar el dropdown cuando se hace scroll
+     */
+    window.addEventListener('scroll', () => {
+        const dropdown = document.getElementById('patentes-dropdown');
+        if (dropdown && !dropdown.classList.contains('hidden')) {
+            posicionarDropdownPatentes();
+        }
+    }, true);
 
     /**
      * Filtra las patentes según el texto ingresado
@@ -1824,6 +1899,7 @@
         const dropdown = document.getElementById('patentes-dropdown');
         if (!dropdown) return;
         
+        posicionarDropdownPatentes();
         dropdown.classList.remove('hidden');
         
         if (!texto || texto.trim() === '') {
@@ -1905,11 +1981,21 @@
         if (hiddenInput) hiddenInput.value = patente;
         
         // Ocultar dropdown
-        if (dropdown) dropdown.classList.add('hidden');
+        ocultarDropdownPatentes();
         
         // Mostrar info del vehículo
         mostrarInfoVehiculoAsociacion(vehiculoData);
     };
+    
+    /**
+     * Oculta el dropdown de patentes
+     */
+    function ocultarDropdownPatentesSinDelay() {
+        const dropdown = document.getElementById('patentes-dropdown');
+        if (dropdown) {
+            dropdown.classList.add('hidden');
+        }
+    }
 
     /**
      * Muestra la información del vehículo seleccionado

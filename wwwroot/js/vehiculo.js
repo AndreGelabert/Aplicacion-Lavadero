@@ -954,7 +954,7 @@
         if (!container) {
             container = document.createElement('div');
             container.id = 'table-messages-container';
-            container.className = 'mb-4');
+            container.className = 'mb-4';
 
             const tableContainer = document.getElementById('vehiculo-table-container');
             if (tableContainer?.parentNode) {
