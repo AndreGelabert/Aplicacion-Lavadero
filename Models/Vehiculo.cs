@@ -5,6 +5,7 @@ namespace Firebase.Models
 {
     /// <summary>
     /// Modelo que representa un vehículo registrado en el lavadero.
+    /// Un vehículo puede tener múltiples clientes asociados (dueños compartidos).
     /// </summary>
     [FirestoreData]
     public class Vehiculo
@@ -52,17 +53,32 @@ namespace Firebase.Models
         public required string Color { get; set; }
 
         /// <summary>
-        /// ID del cliente dueño del vehículo.
+        /// ID del cliente dueño principal del vehículo (mantenido por compatibilidad).
+        /// Para nuevos vehículos, representa al primer cliente que registró el vehículo.
         /// </summary>
         [FirestoreProperty]
-        [Required(ErrorMessage = "El vehículo debe tener un dueño asignado")]
-        public required string ClienteId { get; set; }
+        public string ClienteId { get; set; } = "";
 
         /// <summary>
-        /// Nombre completo del dueño (solo lectura/visualización).
+        /// Nombre completo del dueño principal (solo lectura/visualización).
         /// </summary>
         [FirestoreProperty]
         public string? ClienteNombreCompleto { get; set; }
+
+        /// <summary>
+        /// Lista de IDs de todos los clientes asociados a este vehículo.
+        /// Incluye al cliente principal y a los clientes que se asociaron mediante clave.
+        /// </summary>
+        [FirestoreProperty]
+        public List<string> ClientesIds { get; set; } = new List<string>();
+
+        /// <summary>
+        /// Clave de asociación encriptada (hash SHA256) para permitir que otros clientes
+        /// se asocien a este vehículo. La clave en texto plano solo se muestra al momento
+        /// del registro inicial.
+        /// </summary>
+        [FirestoreProperty]
+        public string? ClaveAsociacionHash { get; set; }
 
         /// <summary>
         /// Estado del vehículo (Activo/Inactivo) para borrado lógico.

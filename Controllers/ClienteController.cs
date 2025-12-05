@@ -183,46 +183,94 @@ public class ClienteController : Controller
             await _clienteService.CrearCliente(cliente);
 
             var vehiculosIds = new List<string>();
+            var clavesAsociacionGeneradas = new List<string>(); // Para mostrar al usuario
 
             foreach (var vehiculoData in vehiculosData)
             {
-                if (vehiculoData.EsNuevo)
+                if (vehiculoData.EsAsociacion)
                 {
+                    // CASO: Asociación a vehículo existente mediante clave
+                    var vehiculoExistente = await _vehiculoService.ObtenerVehiculoPorPatente(vehiculoData.Patente.ToUpper());
+                    if (vehiculoExistente != null)
+                    {
+                        // Agregar cliente a la lista de clientes asociados del vehículo
+                        if (vehiculoExistente.ClientesIds == null)
+                        {
+                            vehiculoExistente.ClientesIds = new List<string>();
+                        }
+                        
+                        if (!vehiculoExistente.ClientesIds.Contains(cliente.Id))
+                        {
+                            vehiculoExistente.ClientesIds.Add(cliente.Id);
+                            await _vehiculoService.ActualizarVehiculo(vehiculoExistente);
+                        }
+                        
+                        vehiculosIds.Add(vehiculoExistente.Id);
+                        await RegistrarEvento("Asociacion de cliente a vehiculo compartido", vehiculoExistente.Id, "Vehiculo");
+                    }
+                }
+                else if (vehiculoData.EsNuevo)
+                {
+                    // CASO: Nuevo vehículo - Generar clave de asociación
+                    var claveTextoPlano = VehiculoService.GenerarClaveAsociacion();
+                    var claveHash = VehiculoService.HashClaveAsociacion(claveTextoPlano);
+                    
                     var nuevoVehiculo = new Vehiculo
                     {
                         Id = "",
-                        Patente = vehiculoData.Patente.ToUpper(), // Convertir a mayúsculas
+                        Patente = vehiculoData.Patente.ToUpper(),
                         Marca = vehiculoData.Marca,
                         Modelo = vehiculoData.Modelo,
                         Color = vehiculoData.Color,
                         TipoVehiculo = vehiculoData.TipoVehiculo,
                         ClienteId = cliente.Id,
                         ClienteNombreCompleto = cliente.NombreCompleto,
+                        ClientesIds = new List<string> { cliente.Id }, // Agregar también a la lista
+                        ClaveAsociacionHash = claveHash,
                         Estado = "Activo"
                     };
 
                     await _vehiculoService.CrearVehiculo(nuevoVehiculo);
                     vehiculosIds.Add(nuevoVehiculo.Id);
                     
-                    // Registrar evento de creación de vehículo
+                    // Guardar la clave para mostrarla al usuario
+                    clavesAsociacionGeneradas.Add($"{nuevoVehiculo.Patente}: {claveTextoPlano}");
+                    
                     await RegistrarEvento("Creacion de vehiculo", nuevoVehiculo.Id, "Vehiculo");
                 }
                 else if (!string.IsNullOrEmpty(vehiculoData.Id))
                 {
+                    // CASO: Reasignación de vehículo existente sin dueño
                     var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoData.Id);
                     if (vehiculo != null)
                     {
-                        // Actualizar datos del vehículo (reasignación o actualización normal)
+                        // Generar clave de asociación si no tiene
+                        if (string.IsNullOrEmpty(vehiculo.ClaveAsociacionHash))
+                        {
+                            var claveTextoPlano = VehiculoService.GenerarClaveAsociacion();
+                            vehiculo.ClaveAsociacionHash = VehiculoService.HashClaveAsociacion(claveTextoPlano);
+                            clavesAsociacionGeneradas.Add($"{vehiculo.Patente}: {claveTextoPlano}");
+                        }
+                        
                         vehiculo.ClienteId = cliente.Id;
                         vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
-                        vehiculo.Color = vehiculoData.Color; // Actualizar color si cambió
-                        vehiculo.TipoVehiculo = vehiculoData.TipoVehiculo; // Actualizar tipo si cambió
-                        vehiculo.Estado = "Activo"; // Reactivar si estaba inactivo
+                        vehiculo.Color = vehiculoData.Color;
+                        vehiculo.TipoVehiculo = vehiculoData.TipoVehiculo;
+                        vehiculo.Estado = "Activo";
+                        
+                        // Inicializar o actualizar lista de clientes
+                        if (vehiculo.ClientesIds == null)
+                        {
+                            vehiculo.ClientesIds = new List<string>();
+                        }
+                        if (!vehiculo.ClientesIds.Contains(cliente.Id))
+                        {
+                            vehiculo.ClientesIds.Add(cliente.Id);
+                        }
                         
                         await _vehiculoService.ActualizarVehiculo(vehiculo);
                         vehiculosIds.Add(vehiculo.Id);
                         
-                        // Registrar evento de reasignación si corresponde
                         if (vehiculoData.EsReasignacion)
                         {
                             await RegistrarEvento("Reasignacion de vehiculo sin dueno a nuevo cliente", vehiculo.Id, "Vehiculo");
@@ -233,6 +281,13 @@ public class ClienteController : Controller
 
             cliente.VehiculosIds = vehiculosIds;
             await _clienteService.ActualizarCliente(cliente);
+
+            // Si se generaron claves, incluirlas en el mensaje de respuesta
+            if (clavesAsociacionGeneradas.Any())
+            {
+                var clavesMsg = string.Join(", ", clavesAsociacionGeneradas);
+                Response.Headers["X-Association-Keys"] = System.Text.Json.JsonSerializer.Serialize(clavesAsociacionGeneradas);
+            }
 
             return await PrepararRespuestaAjax(true, cliente, "Creacion de cliente");
         }
@@ -254,6 +309,8 @@ public class ClienteController : Controller
         public string TipoVehiculo { get; set; } = "";
         public bool EsNuevo { get; set; }
         public bool EsReasignacion { get; set; } // Para indicar reasignación de vehículo sin dueño
+        public bool EsAsociacion { get; set; } // Para indicar asociación a vehículo existente con clave
+        public string? ClaveAsociacion { get; set; } // Clave de asociación para vehículos compartidos
     }
 
     [HttpPost]
@@ -300,11 +357,38 @@ public class ClienteController : Controller
 
             var vehiculosIds = new List<string>();
             var vehiculosAnteriores = clienteActual.VehiculosIds ?? new List<string>();
+            var clavesAsociacionGeneradas = new List<string>();
 
             foreach (var vehiculoData in vehiculosData)
             {
-                if (vehiculoData.EsNuevo)
+                if (vehiculoData.EsAsociacion)
                 {
+                    // CASO: Asociación a vehículo existente mediante clave
+                    var vehiculoExistente = await _vehiculoService.ObtenerVehiculoPorPatente(vehiculoData.Patente.ToUpper());
+                    if (vehiculoExistente != null)
+                    {
+                        // Agregar cliente a la lista de clientes asociados del vehículo
+                        if (vehiculoExistente.ClientesIds == null)
+                        {
+                            vehiculoExistente.ClientesIds = new List<string>();
+                        }
+                        
+                        if (!vehiculoExistente.ClientesIds.Contains(cliente.Id))
+                        {
+                            vehiculoExistente.ClientesIds.Add(cliente.Id);
+                            await _vehiculoService.ActualizarVehiculo(vehiculoExistente);
+                        }
+                        
+                        vehiculosIds.Add(vehiculoExistente.Id);
+                        await RegistrarEvento("Asociacion de cliente a vehiculo compartido", vehiculoExistente.Id, "Vehiculo");
+                    }
+                }
+                else if (vehiculoData.EsNuevo)
+                {
+                    // CASO: Nuevo vehículo - Generar clave de asociación
+                    var claveTextoPlano = VehiculoService.GenerarClaveAsociacion();
+                    var claveHash = VehiculoService.HashClaveAsociacion(claveTextoPlano);
+                    
                     var nuevoVehiculo = new Vehiculo
                     {
                         Id = "",
@@ -315,11 +399,16 @@ public class ClienteController : Controller
                         TipoVehiculo = vehiculoData.TipoVehiculo,
                         ClienteId = cliente.Id,
                         ClienteNombreCompleto = cliente.NombreCompleto,
+                        ClientesIds = new List<string> { cliente.Id },
+                        ClaveAsociacionHash = claveHash,
                         Estado = "Activo"
                     };
 
                     await _vehiculoService.CrearVehiculo(nuevoVehiculo);
                     vehiculosIds.Add(nuevoVehiculo.Id);
+                    
+                    // Guardar la clave para mostrarla al usuario
+                    clavesAsociacionGeneradas.Add($"{nuevoVehiculo.Patente}: {claveTextoPlano}");
                     
                     // Registrar evento de creación de vehículo
                     await RegistrarEvento("Creacion de vehiculo", nuevoVehiculo.Id, "Vehiculo");
@@ -329,12 +418,35 @@ public class ClienteController : Controller
                     var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoData.Id);
                     if (vehiculo != null)
                     {
-                        // Actualizar datos del vehículo (reasignación o actualización normal)
-                        vehiculo.ClienteId = cliente.Id;
-                        vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
-                        vehiculo.Color = vehiculoData.Color; // Actualizar color si cambió
-                        vehiculo.TipoVehiculo = vehiculoData.TipoVehiculo; // Actualizar tipo si cambió
-                        vehiculo.Estado = "Activo"; // Reactivar si estaba inactivo
+                        // Generar clave de asociación si no tiene
+                        if (string.IsNullOrEmpty(vehiculo.ClaveAsociacionHash))
+                        {
+                            var claveTextoPlano = VehiculoService.GenerarClaveAsociacion();
+                            vehiculo.ClaveAsociacionHash = VehiculoService.HashClaveAsociacion(claveTextoPlano);
+                            clavesAsociacionGeneradas.Add($"{vehiculo.Patente}: {claveTextoPlano}");
+                        }
+                        
+                        // Actualizar datos del vehículo
+                        vehiculo.Color = vehiculoData.Color;
+                        vehiculo.TipoVehiculo = vehiculoData.TipoVehiculo;
+                        vehiculo.Estado = "Activo";
+                        
+                        // Asegurar que el cliente esté en la lista de clientes
+                        if (vehiculo.ClientesIds == null)
+                        {
+                            vehiculo.ClientesIds = new List<string>();
+                        }
+                        if (!vehiculo.ClientesIds.Contains(cliente.Id))
+                        {
+                            vehiculo.ClientesIds.Add(cliente.Id);
+                        }
+                        
+                        // Solo actualizar ClienteId y ClienteNombreCompleto si era vacío (reasignación)
+                        if (string.IsNullOrEmpty(vehiculo.ClienteId))
+                        {
+                            vehiculo.ClienteId = cliente.Id;
+                            vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
+                        }
                         
                         await _vehiculoService.ActualizarVehiculo(vehiculo);
                         vehiculosIds.Add(vehiculo.Id);
@@ -351,22 +463,47 @@ public class ClienteController : Controller
             // Detectar vehículos removidos (que estaban antes pero ya no están)
             var vehiculosRemovidos = vehiculosAnteriores.Except(vehiculosIds).ToList();
             
-            // Desvincular y desactivar vehículos removidos
+            // Desvincular vehículos removidos
             foreach (var vehiculoRemovidoId in vehiculosRemovidos)
             {
                 var vehiculoRemovido = await _vehiculoService.ObtenerVehiculo(vehiculoRemovidoId);
                 if (vehiculoRemovido != null)
                 {
-                    vehiculoRemovido.ClienteId = "";
-                    vehiculoRemovido.ClienteNombreCompleto = null;
-                    vehiculoRemovido.Estado = "Inactivo";
+                    // Remover de ClientesIds
+                    if (vehiculoRemovido.ClientesIds != null && vehiculoRemovido.ClientesIds.Contains(cliente.Id))
+                    {
+                        vehiculoRemovido.ClientesIds.Remove(cliente.Id);
+                    }
+                    
+                    // Si era el cliente principal, limpiar ClienteId
+                    if (vehiculoRemovido.ClienteId == cliente.Id)
+                    {
+                        vehiculoRemovido.ClienteId = "";
+                        vehiculoRemovido.ClienteNombreCompleto = null;
+                    }
+                    
+                    // Si no quedan clientes, desactivar el vehículo
+                    bool tieneClientes = !string.IsNullOrEmpty(vehiculoRemovido.ClienteId) || 
+                                        (vehiculoRemovido.ClientesIds != null && vehiculoRemovido.ClientesIds.Any());
+                    
+                    if (!tieneClientes)
+                    {
+                        vehiculoRemovido.Estado = "Inactivo";
+                    }
+                    
                     await _vehiculoService.ActualizarVehiculo(vehiculoRemovido);
-                    await RegistrarEvento("Vehiculo desvinculado y desactivado (removido de cliente)", vehiculoRemovidoId, "Vehiculo");
+                    await RegistrarEvento("Vehiculo desvinculado de cliente", vehiculoRemovidoId, "Vehiculo");
                 }
             }
 
             cliente.VehiculosIds = vehiculosIds;
             await _clienteService.ActualizarCliente(cliente);
+
+            // Si se generaron claves, incluirlas en el mensaje de respuesta
+            if (clavesAsociacionGeneradas.Any())
+            {
+                Response.Headers["X-Association-Keys"] = System.Text.Json.JsonSerializer.Serialize(clavesAsociacionGeneradas);
+            }
 
             return await PrepararRespuestaAjax(true, cliente, "Actualizacion de cliente");
         }
@@ -385,23 +522,71 @@ public class ClienteController : Controller
             // Obtener vehículos del cliente
             var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(id);
             
-            // Desactivar todos los vehículos activos del cliente
+            int vehiculosDesactivados = 0;
+            int vehiculosCompartidosNoDesactivados = 0;
+            
+            // Procesar cada vehículo activo
             foreach (var vehiculo in vehiculos.Where(v => v.Estado == "Activo"))
             {
-                await _vehiculoService.CambiarEstadoVehiculo(vehiculo.Id, "Inactivo");
-                await RegistrarEvento("Desactivacion de vehiculo (por desactivacion de cliente)", vehiculo.Id, "Vehiculo");
+                // Verificar si el vehículo es compartido (tiene otros clientes activos)
+                bool tieneOtrosClientesActivos = false;
+                
+                if (vehiculo.ClientesIds != null && vehiculo.ClientesIds.Any())
+                {
+                    // Verificar si hay otros clientes activos que usan este vehículo
+                    foreach (var clienteId in vehiculo.ClientesIds.Where(c => c != id))
+                    {
+                        var otroCliente = await _clienteService.ObtenerCliente(clienteId);
+                        if (otroCliente != null && otroCliente.Estado == "Activo")
+                        {
+                            tieneOtrosClientesActivos = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // También verificar ClienteId principal si es diferente
+                if (!tieneOtrosClientesActivos && !string.IsNullOrEmpty(vehiculo.ClienteId) && vehiculo.ClienteId != id)
+                {
+                    var clientePrincipal = await _clienteService.ObtenerCliente(vehiculo.ClienteId);
+                    if (clientePrincipal != null && clientePrincipal.Estado == "Activo")
+                    {
+                        tieneOtrosClientesActivos = true;
+                    }
+                }
+                
+                if (tieneOtrosClientesActivos)
+                {
+                    // No desactivar el vehículo porque otros clientes activos lo usan
+                    vehiculosCompartidosNoDesactivados++;
+                }
+                else
+                {
+                    // Desactivar el vehículo porque es exclusivo de este cliente (o compartido solo con clientes inactivos)
+                    await _vehiculoService.CambiarEstadoVehiculo(vehiculo.Id, "Inactivo");
+                    await RegistrarEvento("Desactivacion de vehiculo (por desactivacion de cliente)", vehiculo.Id, "Vehiculo");
+                    vehiculosDesactivados++;
+                }
             }
             
             // Desactivar el cliente
             await _clienteService.CambiarEstadoCliente(id, "Inactivo");
             await RegistrarEvento("Desactivacion de cliente", id, "Cliente");
             
-            var cantidadVehiculos = vehiculos.Count(v => v.Estado == "Activo");
-            var mensaje = cantidadVehiculos > 0 
-                ? $"Cliente desactivado correctamente. Se desactivaron {cantidadVehiculos} vehículo(s) asociado(s)."
-                : "Cliente desactivado correctamente.";
+            // Construir mensaje informativo
+            var mensajeParts = new List<string> { "Cliente desactivado correctamente." };
             
-            return Json(new { success = true, message = mensaje });
+            if (vehiculosDesactivados > 0)
+            {
+                mensajeParts.Add($"Se desactivaron {vehiculosDesactivados} vehículo(s) exclusivo(s).");
+            }
+            
+            if (vehiculosCompartidosNoDesactivados > 0)
+            {
+                mensajeParts.Add($"{vehiculosCompartidosNoDesactivados} vehículo(s) compartido(s) permanecen activos (usados por otros clientes).");
+            }
+            
+            return Json(new { success = true, message = string.Join(" ", mensajeParts) });
         }
         catch (Exception ex)
         {
@@ -417,25 +602,71 @@ public class ClienteController : Controller
             // Obtener vehículos del cliente
             var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(id);
             
-            // Contar vehículos inactivos ANTES de reactivarlos
-            var cantidadVehiculosInactivos = vehiculos.Count(v => v.Estado == "Inactivo");
+            int vehiculosReactivados = 0;
+            int vehiculosYaActivos = 0;
             
-            // Reactivar todos los vehículos inactivos del cliente (solo si tienen dueño)
-            foreach (var vehiculo in vehiculos.Where(v => v.Estado == "Inactivo" && !string.IsNullOrEmpty(v.ClienteId)))
+            // Procesar cada vehículo inactivo
+            foreach (var vehiculo in vehiculos.Where(v => v.Estado == "Inactivo"))
             {
-                await _vehiculoService.CambiarEstadoVehiculo(vehiculo.Id, "Activo");
-                await RegistrarEvento("Reactivacion de vehiculo (por reactivacion de cliente)", vehiculo.Id, "Vehiculo");
+                // Solo reactivar si el vehículo tenía algún dueño (no quedó huérfano)
+                bool tieneAlgunCliente = !string.IsNullOrEmpty(vehiculo.ClienteId) || 
+                                         (vehiculo.ClientesIds != null && vehiculo.ClientesIds.Any());
+                
+                if (tieneAlgunCliente)
+                {
+                    // Verificar si algún otro cliente activo ya está usando este vehículo
+                    bool tieneOtroClienteActivo = false;
+                    
+                    if (vehiculo.ClientesIds != null)
+                    {
+                        foreach (var clienteId in vehiculo.ClientesIds.Where(c => c != id))
+                        {
+                            var otroCliente = await _clienteService.ObtenerCliente(clienteId);
+                            if (otroCliente != null && otroCliente.Estado == "Activo")
+                            {
+                                tieneOtroClienteActivo = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!tieneOtroClienteActivo && !string.IsNullOrEmpty(vehiculo.ClienteId) && vehiculo.ClienteId != id)
+                    {
+                        var clientePrincipal = await _clienteService.ObtenerCliente(vehiculo.ClienteId);
+                        if (clientePrincipal != null && clientePrincipal.Estado == "Activo")
+                        {
+                            tieneOtroClienteActivo = true;
+                        }
+                    }
+                    
+                    // Reactivar el vehículo (ya sea porque es exclusivo de este cliente o compartido)
+                    await _vehiculoService.CambiarEstadoVehiculo(vehiculo.Id, "Activo");
+                    await RegistrarEvento("Reactivacion de vehiculo (por reactivacion de cliente)", vehiculo.Id, "Vehiculo");
+                    vehiculosReactivados++;
+                }
             }
+            
+            // Contar vehículos que ya estaban activos (compartidos con otros clientes activos)
+            vehiculosYaActivos = vehiculos.Count(v => v.Estado == "Activo");
             
             // Reactivar el cliente
             await _clienteService.CambiarEstadoCliente(id, "Activo");
             await RegistrarEvento("Reactivacion de cliente", id, "Cliente");
             
-            var mensaje = cantidadVehiculosInactivos > 0 
-                ? $"Cliente reactivado correctamente. Se reactivaron {cantidadVehiculosInactivos} vehículo(s) asociado(s)."
-                : "Cliente reactivado correctamente.";
+            // Construir mensaje informativo
+            var mensajeParts = new List<string> { "Cliente reactivado correctamente." };
             
-            return Json(new { success = true, message = mensaje });
+            if (vehiculosReactivados > 0)
+            {
+                mensajeParts.Add($"Se reactivaron {vehiculosReactivados} vehículo(s).");
+            }
+            
+            if (vehiculosYaActivos > 0)
+            {
+                mensajeParts.Add($"{vehiculosYaActivos} vehículo(s) ya estaban activos (compartidos con otros clientes).");
+            }
+            
+            return Json(new { success = true, message = string.Join(" ", mensajeParts) });
         }
         catch (Exception ex)
         {
@@ -456,10 +687,39 @@ public class ClienteController : Controller
 
             var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(clienteId);
             
-            return Json(new
+            // Para cada vehículo, determinar si es compartido con otros clientes activos
+            var vehiculosConInfo = new List<object>();
+            foreach (var v in vehiculos)
             {
-                success = true,
-                vehiculos = vehiculos.Select(v => new
+                bool esCompartido = false;
+                int cantidadOtrosClientesActivos = 0;
+                
+                // Verificar si hay otros clientes activos que usan este vehículo
+                if (v.ClientesIds != null && v.ClientesIds.Any())
+                {
+                    foreach (var otroClienteId in v.ClientesIds.Where(c => c != clienteId))
+                    {
+                        var otroCliente = await _clienteService.ObtenerCliente(otroClienteId);
+                        if (otroCliente != null && otroCliente.Estado == "Activo")
+                        {
+                            esCompartido = true;
+                            cantidadOtrosClientesActivos++;
+                        }
+                    }
+                }
+                
+                // También verificar ClienteId principal si es diferente
+                if (!esCompartido && !string.IsNullOrEmpty(v.ClienteId) && v.ClienteId != clienteId)
+                {
+                    var clientePrincipal = await _clienteService.ObtenerCliente(v.ClienteId);
+                    if (clientePrincipal != null && clientePrincipal.Estado == "Activo")
+                    {
+                        esCompartido = true;
+                        cantidadOtrosClientesActivos++;
+                    }
+                }
+                
+                vehiculosConInfo.Add(new
                 {
                     id = v.Id,
                     patente = v.Patente,
@@ -467,8 +727,16 @@ public class ClienteController : Controller
                     modelo = v.Modelo,
                     color = v.Color,
                     tipoVehiculo = v.TipoVehiculo,
-                    estado = v.Estado
-                })
+                    estado = v.Estado,
+                    esCompartido = esCompartido,
+                    cantidadOtrosClientesActivos = cantidadOtrosClientesActivos
+                });
+            }
+            
+            return Json(new
+            {
+                success = true,
+                vehiculos = vehiculosConInfo
             });
         }
         catch (Exception ex)

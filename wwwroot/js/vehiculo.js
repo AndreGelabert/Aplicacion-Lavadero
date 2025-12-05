@@ -26,6 +26,8 @@
     // Listas para filtros dinámicos
     let marcasDisponibles = [];
     let coloresDisponibles = [];
+    let marcasSeleccionadas = [];
+    let coloresSeleccionados = [];
     
     // Cache de formatos de tipos de vehículo para validación de patente
     let tiposVehiculoFormatos = {};
@@ -456,6 +458,28 @@
             e.preventDefault();
             e.stopPropagation();
 
+            // Agregar inputs hidden para marcas y colores seleccionados
+            // Primero eliminar los anteriores
+            form.querySelectorAll('input[name="marcas"]').forEach(inp => inp.remove());
+            form.querySelectorAll('input[name="colores"]').forEach(inp => inp.remove());
+
+            // Agregar los nuevos
+            marcasSeleccionadas.forEach(marca => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'marcas';
+                input.value = marca;
+                form.appendChild(input);
+            });
+
+            coloresSeleccionados.forEach(color => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'colores';
+                input.value = color;
+                form.appendChild(input);
+            });
+
             const pg = form.querySelector('input[name="pageNumber"]');
             if (pg) pg.value = '1';
 
@@ -479,33 +503,64 @@
     }
 
     function setupDynamicFilters() {
-        // Cargar marcas y colores disponibles
-        fetch('/Vehiculo/Index')
-            .then(response => response.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                
-                // Extraer datos del ViewBag (si están disponibles en data attributes)
-                // Por ahora, cargaremos desde una llamada AJAX adicional si es necesario
-            })
-            .catch(error => console.error('Error cargando filtros:', error));
-
-        // Setup búsqueda de marcas
+        // Setup búsqueda de marcas con dropdown
         const marcaSearch = document.getElementById('marca-filter-search');
-        if (marcaSearch) {
+        const marcaDropdown = document.getElementById('marca-filter-list');
+        
+        if (marcaSearch && marcaDropdown) {
             marcaSearch.addEventListener('input', function() {
-                filterMarcaList(this.value);
+                const value = this.value.trim();
+                if (value.length > 0) {
+                    filterMarcaList(value);
+                    marcaDropdown.classList.remove('hidden');
+                } else {
+                    marcaDropdown.classList.add('hidden');
+                }
+            });
+            
+            marcaSearch.addEventListener('focus', function() {
+                if (this.value.trim().length > 0) {
+                    marcaDropdown.classList.remove('hidden');
+                }
             });
         }
 
-        // Setup búsqueda de colores
+        // Setup búsqueda de colores con dropdown
         const colorSearch = document.getElementById('color-filter-search');
-        if (colorSearch) {
+        const colorDropdown = document.getElementById('color-filter-list');
+        
+        if (colorSearch && colorDropdown) {
             colorSearch.addEventListener('input', function() {
-                filterColorList(this.value);
+                const value = this.value.trim();
+                if (value.length > 0) {
+                    filterColorList(value);
+                    colorDropdown.classList.remove('hidden');
+                } else {
+                    colorDropdown.classList.add('hidden');
+                }
+            });
+            
+            colorSearch.addEventListener('focus', function() {
+                if (this.value.trim().length > 0) {
+                    colorDropdown.classList.remove('hidden');
+                }
             });
         }
+        
+        // Cerrar dropdowns al hacer click fuera
+        document.addEventListener('click', function(e) {
+            if (marcaSearch && marcaDropdown && 
+                !marcaSearch.contains(e.target) && 
+                !marcaDropdown.contains(e.target)) {
+                marcaDropdown.classList.add('hidden');
+            }
+            
+            if (colorSearch && colorDropdown && 
+                !colorSearch.contains(e.target) && 
+                !colorDropdown.contains(e.target)) {
+                colorDropdown.classList.add('hidden');
+            }
+        });
 
         // Cargar listas iniciales
         loadMarcasYColores();
@@ -541,13 +596,19 @@
             marcas = marcas.filter(m => m.toLowerCase().includes(lower));
         }
 
+        // Filtrar las que ya están seleccionadas
+        marcas = marcas.filter(m => !marcasSeleccionadas.includes(m));
+
         container.innerHTML = marcas.map(marca => `
-            <label class="flex items-center">
-                <input type="checkbox" name="marcas" value="${escapeHtml(marca)}"
-                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-                <span class="ml-2 text-gray-900 dark:text-gray-100">${escapeHtml(marca)}</span>
-            </label>
+            <div class="px-3 py-2 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 text-sm text-gray-900 dark:text-white"
+                 onclick="event.stopPropagation(); agregarMarcaSeleccionada('${escapeHtml(marca)}')">
+                ${escapeHtml(marca)}
+            </div>
         `).join('');
+
+        if (marcas.length === 0) {
+            container.innerHTML = '<div class="p-2 text-sm text-gray-500 dark:text-gray-400">No hay más marcas disponibles</div>';
+        }
     }
 
     function renderColoresList(filterText = '') {
@@ -560,13 +621,19 @@
             colores = colores.filter(c => c.toLowerCase().includes(lower));
         }
 
+        // Filtrar los que ya están seleccionados
+        colores = colores.filter(c => !coloresSeleccionados.includes(c));
+
         container.innerHTML = colores.map(color => `
-            <label class="flex items-center">
-                <input type="checkbox" name="colores" value="${escapeHtml(color)}"
-                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-                <span class="ml-2 text-gray-900 dark:text-gray-100">${escapeHtml(color)}</span>
-            </label>
+            <div class="px-3 py-2 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 text-sm text-gray-900 dark:text-white"
+                 onclick="event.stopPropagation(); agregarColorSeleccionado('${escapeHtml(color)}')">
+                ${escapeHtml(color)}
+            </div>
         `).join('');
+
+        if (colores.length === 0) {
+            container.innerHTML = '<div class="p-2 text-sm text-gray-500 dark:text-gray-400">No hay más colores disponibles</div>';
+        }
     }
 
     function filterMarcaList(searchText) {
@@ -577,9 +644,149 @@
         renderColoresList(searchText);
     }
 
+    /**
+     * Agrega una marca a la lista de seleccionadas
+     */
+    window.agregarMarcaSeleccionada = function(marca) {
+        if (!marcasSeleccionadas.includes(marca)) {
+            marcasSeleccionadas.push(marca);
+            updateMarcasSeleccionadasUI();
+            
+            // Limpiar input y ocultar dropdown
+            const marcaSearch = document.getElementById('marca-filter-search');
+            const marcaDropdown = document.getElementById('marca-filter-list');
+            if (marcaSearch) marcaSearch.value = '';
+            if (marcaDropdown) marcaDropdown.classList.add('hidden');
+            
+            renderMarcasList('');
+        }
+    };
+
+    /**
+     * Remueve una marca de la lista de seleccionadas
+     */
+    window.removerMarcaSeleccionada = function(marca) {
+        marcasSeleccionadas = marcasSeleccionadas.filter(m => m !== marca);
+        updateMarcasSeleccionadasUI();
+        renderMarcasList(document.getElementById('marca-filter-search')?.value || '');
+    };
+
+    /**
+     * Agrega un color a la lista de seleccionados
+     */
+    window.agregarColorSeleccionado = function(color) {
+        if (!coloresSeleccionados.includes(color)) {
+            coloresSeleccionados.push(color);
+            updateColoresSeleccionadosUI();
+            
+            // Limpiar input y ocultar dropdown
+            const colorSearch = document.getElementById('color-filter-search');
+            const colorDropdown = document.getElementById('color-filter-list');
+            if (colorSearch) colorSearch.value = '';
+            if (colorDropdown) colorDropdown.classList.add('hidden');
+            
+            renderColoresList('');
+        }
+    };
+
+    /**
+     * Remueve un color de la lista de seleccionados
+     */
+    window.removerColorSeleccionado = function(color) {
+        coloresSeleccionados = coloresSeleccionados.filter(c => c !== color);
+        updateColoresSeleccionadosUI();
+        renderColoresList(document.getElementById('color-filter-search')?.value || '');
+    };
+
+    /**
+     * Actualiza la UI de marcas seleccionadas
+     */
+    function updateMarcasSeleccionadasUI() {
+        const container = document.getElementById('marcas-seleccionadas-container');
+        if (!container) return;
+
+        if (marcasSeleccionadas.length === 0) {
+            container.innerHTML = '';
+            container.classList.add('hidden');
+            return;
+        }
+
+        container.classList.remove('hidden');
+        container.innerHTML = `
+            <div class="flex flex-wrap gap-2 mb-2">
+                ${marcasSeleccionadas.map(marca => `
+                    <span class="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-800 bg-blue-100 rounded dark:bg-blue-900 dark:text-blue-300">
+                        ${escapeHtml(marca)}
+                        <button type="button" onclick="event.stopPropagation(); removerMarcaSeleccionada('${escapeHtml(marca)}')"
+                                class="ml-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                         </button>
+                    </span>
+                `).join('')}
+
+                <div class="w-full text-right">
+                    <button onclick="event.stopPropagation(); window.removerTodasLasMarcasSeleccionadas()" type="button" class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-800 bg-blue-100 rounded-lg hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Remover todas
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Actualiza la UI de colores seleccionados
+     */
+    function updateColoresSeleccionadosUI() {
+        const container = document.getElementById('colores-seleccionados-container');
+        if (!container) return;
+
+        if (coloresSeleccionados.length === 0) {
+            container.innerHTML = '';
+            container.classList.add('hidden');
+            return;
+        }
+
+        container.classList.remove('hidden');
+        container.innerHTML = `
+            <div class="flex flex-wrap gap-2 mb-2">
+                ${coloresSeleccionados.map(color => `
+                    <span class="inline-flex items-center px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded dark:bg-green-900 dark:text-green-300">
+                        ${escapeHtml(color)}
+                        <button type="button" onclick="event.stopPropagation(); removerColorSeleccionado('${escapeHtml(color)}')"
+                                class="ml-1 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </span>
+                `).join('')}
+
+                <div class="w-full text-right">
+                    <button onclick="event.stopPropagation(); window.removerTodosLosColoresSeleccionados()" type="button" class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-green-800 bg-green-100 rounded-lg hover:bg-green-200 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Remover todos
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
     window.clearVehiculoFilters = function () {
         const form = document.getElementById('filterForm');
         if (!form) return;
+        form.querySelectorAll('input[name="marcas"]').forEach(inp => {
+            inp.remove();
+        });
+        form.querySelectorAll('input[name="colores"]').forEach(inp => {
+            inp.remove();
+        });
 
         // Limpiar TODOS los checkboxes
         form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
@@ -592,6 +799,12 @@
             activoCheckbox.checked = true;
         }
 
+        // Limpiar selecciones de marcas y colores EN MEMORIA
+        marcasSeleccionadas = [];
+        coloresSeleccionados = [];
+        updateMarcasSeleccionadasUI();
+        updateColoresSeleccionadosUI();
+
         // Limpiar búsqueda principal
         const searchInput = document.getElementById('simple-search');
         if (searchInput) searchInput.value = '';
@@ -603,11 +816,17 @@
         const colorSearch = document.getElementById('color-filter-search');
         if (colorSearch) colorSearch.value = '';
 
+        // Ocultar dropdowns de marca y color
+        const marcaDropdown = document.getElementById('marca-filter-list');
+        if (marcaDropdown) marcaDropdown.classList.add('hidden');
+        const colorDropdown = document.getElementById('color-filter-list');
+        if (colorDropdown) colorDropdown.classList.add('hidden');
+
         // Re-renderizar listas sin filtros
         renderMarcasList();
         renderColoresList();
 
-        // Cerrar dropdown
+        // Cerrar dropdown de filtros
         const filterButton = document.getElementById('filterDropdownButton');
         if (filterButton) {
             filterButton.click();
@@ -618,6 +837,8 @@
         // NO llamar a setupDefaultFilterForm aquí, ya manejamos el estado manualmente
         // window.CommonUtils?.setupDefaultFilterForm?.();
 
+        // Recargar la tabla con página 1 y mostrar mensaje
+        currentPage = 1;
         reloadVehiculoTable(1);
         showTableMessage('info', 'Filtros restablecidos.');
     };
@@ -653,6 +874,28 @@
                         accordionBtn.click();
                     }
                 }
+
+                // 🔄 INICIALIZAR COLOR DESPUÉS DE CARGAR EL FORMULARIO
+                setTimeout(async () => {
+                    const vehiculoForm = document.getElementById('vehiculo-form');
+                    if (vehiculoForm) {
+                        // Leer el color del data-attribute del formulario
+                        const colorDelServidor = vehiculoForm.dataset.color || '';
+                        
+                        // Si hay color, inicializar el toggle
+                        if (colorDelServidor) {
+                            // Primero cargar colores si no están cargados
+                            if (!window.VehiculoApi || !window.VehiculoApi.coloresCache || window.VehiculoApi.coloresCache.length === 0) {
+                                await window.VehiculoApi.loadColores();
+                            }
+                            
+                            // Ahora inicializar el color
+                            if (window.VehiculoApi && window.VehiculoApi.initColor) {
+                                window.VehiculoApi.initColor(colorDelServidor);
+                            }
+                        }
+                    }
+                }, 100);
 
                 setTimeout(() => {
                     const formContainer = document.getElementById('accordion-flush');
@@ -762,6 +1005,30 @@
             });
 
         return false;
+    };
+
+    /**
+     * Cancela la edición del vehículo y oculta el acordeón de edición.
+     */
+    window.cancelarEdicionVehiculo = function() {
+        // Cerrar el acordeón de edición
+        const accordionBody = document.getElementById('accordion-flush-body-1');
+        const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
+        const accordion = document.getElementById('accordion-flush');
+        
+        // Cerrar el body del acordeón si está abierto
+        if (accordionBody && accordionBtn && !accordionBody.classList.contains('hidden')) {
+            accordionBtn.click();
+        }
+        
+        // Ocultar todo el acordeón después de la animación
+        setTimeout(() => {
+            if (accordion) {
+                accordion.classList.add('hidden');
+            }
+        }, 300);
+        
+        showTableMessage('info', 'Edición cancelada.');
     };
 
     // ===================== Modales =====================
@@ -930,7 +1197,7 @@
         if (!container) {
             container = document.createElement('div');
             container.id = 'table-messages-container';
-            container.className = 'mb-4');
+            container.className = 'mb-4';
 
             const tableContainer = document.getElementById('vehiculo-table-container');
             if (tableContainer?.parentNode) {
