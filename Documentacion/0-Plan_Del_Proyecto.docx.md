@@ -1,8 +1,8 @@
-1. **Plan del Proyecto**
+# 1.  Plan del Proyecto
 
 En esta sección se presenta la organización en fases e iteraciones y el calendario del proyecto.
 
-1. **Plan de las Fases**
+## 1. **Plan de las Fases**
 
    El desarrollo se llevará a cabo en base a fases con una o más iteraciones en cada una de ellas. La siguiente tabla muestra una la distribución de tiempos y el número de iteraciones de cada fase (para las fases de Construcción y Transición es sólo una aproximación muy preliminar)
 
@@ -22,47 +22,37 @@ Los hitos que marcan el final de cada fase se describen en la siguiente tabla.
 | Fase de Construcción | Durante la fase de construcción se terminan de analizar y diseñar todos los casos de uso, refinando el Modelo de Análisis / Diseño. El producto se construye en base a 2 iteraciones, cada una produciendo una release a la cual se le aplican las pruebas y se valida con el cliente / usuario. Se comienza la elaboración de material de apoyo al usuario. El hito que marca el fin de esta fase es la versión de la release 2.0, con la capacidad operacional parcial del producto que se haya considerado como crítica, lista para ser entregada a los usuarios para pruebas beta. |
 | Fase de Transición | En esta fase se prepararán dos releases para distribución, asegurando una implantación y cambio del sistema previo de manera adecuada, incluyendo el entrenamiento de los usuarios. El hito que marca el fin de esta fase incluye, la entrega de toda la documentación del proyecto con los manuales de instalación y todo el material de apoyo al usuario, la finalización del entrenamiento de los usuarios y el empaquetamiento del producto. |
 
-2. **Calendario del Proyecto**
+## 2. **Calendario del Proyecto**
 
    A continuación se presenta un calendario de las principales tareas del proyecto incluyendo sólo las fases de Inicio y Elaboración. Como se ha comentado, el proceso iterativo e incremental de RUP está caracterizado por la realización en paralelo de todas las disciplinas de desarrollo a lo largo del proyecto, con lo cual la mayoría de los artefactos son generados muy tempranamente en el proyecto pero van desarrollándose en mayor o menor grado de acuerdo a la fase e iteración del proyecto. La siguiente figura ilustra este enfoque, en ella lo ensombrecido marca el énfasis de cada disciplina (workflow) en un momento determinado del desarrollo.
 
-   
-
-   
-
-   CRONOGRAMA (DIAGRAMA DE GANTT)
+### CRONOGRAMA (DIAGRAMA DE GANTT)
 
  ![][image1]  
  
 
-3. **Casos de Usos y Actores** 
+## 3. **Casos de Usos y Actores**
 
-   1. *Actores*
+  ### 1. *Actores*
 
    A continuación, se presenta la lista de actores que se ha identificado en las primeras entrevistas.
 
 | *Actor* | *Descripción* |
 | :---- | :---- |
-| Trabajador | Se refiere al trabajador del lavadero, siendo así el principal usuario del sistema. El usuario tiene la responsabilidad de gestionar a los clientes y sus vehículos, registrar el uso de uno o más servicios y el registro de turnos, permitiendo así al lavadero llevar un mejor control de los tiempos y registros de lo más solicitado en el lavadero. |
-| Administrador | El administrador representa al dueño del lavadero o un trabajador de rango superior. Tiene las mismas capacidades que un usuario aunque sumándole la capacidad de gestionar los servicios que ofrece el lavadero, gestionar al resto de usuarios del sistema y además pueden generar reportes y consultar las estadísticas del lavadero. |
-| Cliente | Este actor hace referencia al cliente del lavadero, es el que utiliza los servicios del mismo. Puede registrarse como cliente, registrar los vehículos que utiliza y solicitar turnos, todo esto mediante whatsapp. |
-| Sistema | Este actor representa el sistema encargado de realizar todas las acciones requeridas por el usuario. |
+| **Trabajador (Empleado)** | Usuario operativo del sistema. Sus funciones principales son la gestión diaria del lavadero: registro y recepción de clientes, gestión de vehículos, operación del flujo de trabajo de lavados (cambio de etapas), cobro de servicios y gestión de la agenda de turnos. |
+| **Administrador** | Dueño o gerente del lavadero. Hereda todos los permisos del Trabajador, pero posee acceso exclusivo a módulos críticos: gestión de usuarios (empleados), configuración de servicios y precios, visualización de auditoría, reportes financieros y configuración global de reglas de negocio. |
+| **Cliente** | Usuario externo. Interactúa con el sistema principalmente a través de la integración con WhatsApp (Bot), permitiéndole registrarse por su cuenta, sus vehículos, solicitar turnos, consultar estados y recibir notificaciones automáticas. |
+| **Sistema** |  Actor lógico encargado de ejecutar procesos automáticos en segundo plano, como la validación de webhooks de WhatsApp, el cierre de sesiones inactivas, el cálculo de tiempos estimados y la asignación automática de turnos. |
 
-   
+  ### 2. *Diagrama de Caso de Uso*
 
-      2. *Diagrama de Caso de Uso*
+Se presenta un diagrama de caso de uso del sistema para definir los límites del sistema.
 
-   Se presenta un diagrama de caso de uso del sistema para definir los límites del sistema.
+![][image2]
 
-   
+## 3. *Casos de Usos de Alto Nivel*
 
-   ![][image2]
-
-      3. *Casos de Usos de Alto Nivel*
-
-   Se deben realizar una descripción de alto nivel de los Casos de usos identificados.
-
-   
+Se deben realizar una descripción de alto nivel de los Casos de usos identificados.
 
 **Módulo seguridad**
 
