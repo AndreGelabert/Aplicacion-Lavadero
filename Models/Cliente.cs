@@ -64,7 +64,8 @@ namespace Firebase.Models
         /// </summary>
         [FirestoreProperty]
         [Required(ErrorMessage = "El teléfono es obligatorio")]
-        [Phone(ErrorMessage = "El formato del teléfono no es válido")]
+        [StringLength(10, MinimumLength = 10, ErrorMessage = "El teléfono debe contener exactamente 10 dígitos")]
+        [RegularExpression(@"^\d{10}$", ErrorMessage = "El teléfono solo puede contener números")]
         public required string Telefono { get; set; }
 
         /// <summary>

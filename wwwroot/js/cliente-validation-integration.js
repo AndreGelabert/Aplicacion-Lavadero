@@ -1,4 +1,4 @@
-/**
+ï»¿/**
  * ================================================
  * CLIENTE-VALIDATION-INTEGRATION.JS
  * ================================================
@@ -8,24 +8,24 @@
 (function () {
     'use strict';
 
-    // Bandera para evitar inicialización múltiple
+    // Bandera para evitar inicializaciÃ³n mÃºltiple
     let initialized = false;
 
-    // Esperar a que DOMContentLoaded y que cliente.js estén listos
+    // Esperar a que DOMContentLoaded y que cliente.js estÃ©n listos
     document.addEventListener('DOMContentLoaded', function () {
         // Esperar un poco para asegurar que cliente.js se haya inicializado
         setTimeout(initializeClienteFormValidation, 300);
     });
 
     function initializeClienteFormValidation() {
-        // Evitar inicialización múltiple
+        // Evitar inicializaciÃ³n mÃºltiple
         if (initialized) {
             console.log('ClienteValidation: Ya inicializado, saltando...');
             return;
         }
 
         const form = document.getElementById('cliente-form');
-        
+
         if (!form) {
             console.log('ClienteValidation: Formulario no encontrado');
             return;
@@ -36,7 +36,7 @@
             return;
         }
 
-        console.log('ClienteValidation: Inicializando validación del formulario');
+        console.log('ClienteValidation: Inicializando validaciÃ³n del formulario');
 
         // Marcar como inicializado
         initialized = true;
@@ -49,32 +49,47 @@
         });
 
         // Registrar validador personalizado para NumeroDocumento
-        // Usa la función validateDocumentoNumero que ya existe en cliente.js
+        // Usa la funciÃ³n validateDocumentoNumero que ya existe en cliente.js
         if (typeof window.validateDocumentoNumero === 'function') {
-            window.FormValidation.registerCustomValidator('NumeroDocumento', function() {
+            window.FormValidation.registerCustomValidator('NumeroDocumento', function () {
                 const isValid = window.validateDocumentoNumero();
                 const numeroDocInput = document.getElementById('NumeroDocumento');
                 const errorSpan = document.getElementById('documento-validation-error');
-                
+
                 let message = '';
                 if (!isValid && errorSpan && !errorSpan.classList.contains('hidden')) {
                     message = errorSpan.textContent;
                 }
-                
+
                 return {
                     isValid: isValid,
-                    message: message || 'El formato del número de documento no es válido'
+                    message: message || 'El formato del nÃºmero de documento no es vÃ¡lido'
                 };
             });
             console.log('ClienteValidation: Validador de NumeroDocumento registrado');
         }
 
-        // Hacer disponible globalmente la validación del formulario
-        window.validateClienteForm = function() {
+        // Registrar validador personalizado para Telefono
+        window.FormValidation.registerCustomValidator('Telefono', function () {
+            const telefonoInput = document.getElementById('Telefono');
+            if (!telefonoInput) return { isValid: true, message: '' };
+
+            const value = telefonoInput.value.trim();
+            const isValid = value.length === 10 && /^[0-9]{10}$/.test(value);
+
+            return {
+                isValid: isValid,
+                message: isValid ? '' : 'El telÃ©fono debe contener exactamente 10 dÃ­gitos'
+            };
+        });
+        console.log('ClienteValidation: Validador de Telefono registrado');
+
+        // Hacer disponible globalmente la validaciÃ³n del formulario
+        window.validateClienteForm = function () {
             return window.FormValidation.validateForm(form);
         };
 
-        console.log('ClienteValidation: Inicialización completada');
+        console.log('ClienteValidation: InicializaciÃ³n completada');
     }
 
 })();
