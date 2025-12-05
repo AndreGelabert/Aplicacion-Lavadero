@@ -2593,15 +2593,41 @@
                     let mensajeVehiculos = '';
                     if (data.success && data.vehiculos && data.vehiculos.length > 0) {
                         const vehiculosActivos = data.vehiculos.filter(v => v.estado === 'Activo');
+                        
                         if (vehiculosActivos.length > 0) {
-                            mensajeVehiculos = `<div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg dark:bg-yellow-900/20 dark:border-yellow-800">
-                                <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-2">
-                                    ?? Advertencia: Esta acción también desactivará ${vehiculosActivos.length} vehículo${vehiculosActivos.length > 1 ? 's' : ''} asociado${vehiculosActivos.length > 1 ? 's' : ''}:
-                                </p>
-                                <ul class="text-xs text-yellow-700 dark:text-yellow-400 list-disc list-inside space-y-1">
-                                    ${vehiculosActivos.map(v => `<li>${escapeHtml(v.patente)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</li>`).join('')}
-                                </ul>
-                            </div>`;
+                            // Separar vehículos exclusivos de compartidos
+                            const vehiculosExclusivos = vehiculosActivos.filter(v => !v.esCompartido);
+                            const vehiculosCompartidos = vehiculosActivos.filter(v => v.esCompartido);
+                            
+                            let advertenciasHtml = '';
+                            
+                            // Advertencia para vehículos exclusivos (serán desactivados)
+                            if (vehiculosExclusivos.length > 0) {
+                                advertenciasHtml += `
+                                    <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg dark:bg-yellow-900/20 dark:border-yellow-800">
+                                        <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-2">
+                                            ⚠️ Se desactivarán ${vehiculosExclusivos.length} vehículo(s) exclusivo(s):
+                                        </p>
+                                        <ul class="text-xs text-yellow-700 dark:text-yellow-400 list-disc list-inside space-y-1">
+                                            ${vehiculosExclusivos.map(v => `<li>${escapeHtml(v.patente)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</li>`).join('')}
+                                        </ul>
+                                    </div>`;
+                            }
+                            
+                            // Información sobre vehículos compartidos (NO serán desactivados)
+                            if (vehiculosCompartidos.length > 0) {
+                                advertenciasHtml += `
+                                    <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
+                                        <p class="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">
+                                            ℹ️ ${vehiculosCompartidos.length} vehículo(s) compartido(s) permanecerán activos:
+                                        </p>
+                                        <ul class="text-xs text-blue-700 dark:text-blue-400 list-disc list-inside space-y-1">
+                                            ${vehiculosCompartidos.map(v => `<li>${escapeHtml(v.patente)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)} <span class="text-blue-500">(usado por ${v.cantidadOtrosClientesActivos} otro(s) cliente(s))</span></li>`).join('')}
+                                        </ul>
+                                    </div>`;
+                            }
+                            
+                            mensajeVehiculos = advertenciasHtml;
                         }
                     }
 
@@ -2621,16 +2647,37 @@
                     let mensajeVehiculos = '';
                     if (data.success && data.vehiculos && data.vehiculos.length > 0) {
                         const vehiculosInactivos = data.vehiculos.filter(v => v.estado === 'Inactivo');
+                        const vehiculosYaActivos = data.vehiculos.filter(v => v.estado === 'Activo');
+                        
+                        let infoHtml = '';
+                        
+                        // Vehículos que se reactivarán
                         if (vehiculosInactivos.length > 0) {
-                            mensajeVehiculos = `<div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg dark:bg-green-900/20 dark:border-green-800">
-                                <p class="text-sm font-medium text-green-800 dark:text-green-300 mb-2">
-                                    ?? Esta acción también reactivará ${vehiculosInactivos.length} vehículo${vehiculosInactivos.length > 1 ? 's' : ''} asociado${vehiculosInactivos.length > 1 ? 's' : ''}:
-                                </p>
-                                <ul class="text-xs text-green-700 dark:text-green-400 list-disc list-inside space-y-1">
-                                    ${vehiculosInactivos.map(v => `<li>${escapeHtml(v.patente)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</li>`).join('')}
-                                </ul>
-                            </div>`;
+                            infoHtml += `
+                                <div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg dark:bg-green-900/20 dark:border-green-800">
+                                    <p class="text-sm font-medium text-green-800 dark:text-green-300 mb-2">
+                                        ✅ Se reactivarán ${vehiculosInactivos.length} vehículo(s):
+                                    </p>
+                                    <ul class="text-xs text-green-700 dark:text-green-400 list-disc list-inside space-y-1">
+                                        ${vehiculosInactivos.map(v => `<li>${escapeHtml(v.patente)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</li>`).join('')}
+                                    </ul>
+                                </div>`;
                         }
+                        
+                        // Vehículos ya activos (compartidos que permanecieron activos)
+                        if (vehiculosYaActivos.length > 0) {
+                            infoHtml += `
+                                <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
+                                    <p class="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">
+                                        ℹ️ ${vehiculosYaActivos.length} vehículo(s) ya están activos (compartidos):
+                                    </p>
+                                    <ul class="text-xs text-blue-700 dark:text-blue-400 list-disc list-inside space-y-1">
+                                        ${vehiculosYaActivos.map(v => `<li>${escapeHtml(v.patente)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</li>`).join('')}
+                                    </ul>
+                                </div>`;
+                        }
+                        
+                        mensajeVehiculos = infoHtml;
                     }
 
                     message.innerHTML = `
@@ -2693,8 +2740,8 @@
             .then(data => {
                 closeClienteConfirmModal();
                 if (data.success) {
-                    const accion = form.action.includes('Deactivate') ? 'desactivado' : 'reactivado';
-                    showTableMessage('success', `Cliente ${accion} correctamente.`);
+                    // Usar el mensaje del servidor que incluye info detallada sobre vehículos
+                    showTableMessage('success', data.message || 'Operación completada correctamente.');
                 } else {
                     showTableMessage('error', data.message || 'No se pudo completar la acción.');
                 }

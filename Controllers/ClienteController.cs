@@ -687,10 +687,39 @@ public class ClienteController : Controller
 
             var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(clienteId);
             
-            return Json(new
+            // Para cada vehículo, determinar si es compartido con otros clientes activos
+            var vehiculosConInfo = new List<object>();
+            foreach (var v in vehiculos)
             {
-                success = true,
-                vehiculos = vehiculos.Select(v => new
+                bool esCompartido = false;
+                int cantidadOtrosClientesActivos = 0;
+                
+                // Verificar si hay otros clientes activos que usan este vehículo
+                if (v.ClientesIds != null && v.ClientesIds.Any())
+                {
+                    foreach (var otroClienteId in v.ClientesIds.Where(c => c != clienteId))
+                    {
+                        var otroCliente = await _clienteService.ObtenerCliente(otroClienteId);
+                        if (otroCliente != null && otroCliente.Estado == "Activo")
+                        {
+                            esCompartido = true;
+                            cantidadOtrosClientesActivos++;
+                        }
+                    }
+                }
+                
+                // También verificar ClienteId principal si es diferente
+                if (!esCompartido && !string.IsNullOrEmpty(v.ClienteId) && v.ClienteId != clienteId)
+                {
+                    var clientePrincipal = await _clienteService.ObtenerCliente(v.ClienteId);
+                    if (clientePrincipal != null && clientePrincipal.Estado == "Activo")
+                    {
+                        esCompartido = true;
+                        cantidadOtrosClientesActivos++;
+                    }
+                }
+                
+                vehiculosConInfo.Add(new
                 {
                     id = v.Id,
                     patente = v.Patente,
@@ -698,8 +727,16 @@ public class ClienteController : Controller
                     modelo = v.Modelo,
                     color = v.Color,
                     tipoVehiculo = v.TipoVehiculo,
-                    estado = v.Estado
-                })
+                    estado = v.Estado,
+                    esCompartido = esCompartido,
+                    cantidadOtrosClientesActivos = cantidadOtrosClientesActivos
+                });
+            }
+            
+            return Json(new
+            {
+                success = true,
+                vehiculos = vehiculosConInfo
             });
         }
         catch (Exception ex)
