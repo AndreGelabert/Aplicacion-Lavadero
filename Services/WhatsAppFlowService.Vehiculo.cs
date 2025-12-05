@@ -1,4 +1,5 @@
 ﻿using Firebase.Models;
+using Firebase.Models.Dtos;
 using Firebase.Models.WhatsApp;
 
 namespace Firebase.Services;
@@ -8,6 +9,13 @@ namespace Firebase.Services;
 /// </summary>
 public partial class WhatsAppFlowService
 {
+    // Lista de marcas populares en Argentina/Latinoamérica para priorizar en la lista
+    private static readonly string[] MarcasPopularesLista = { 
+        "TOYOTA", "VOLKSWAGEN", "FORD", "CHEVROLET", "FIAT", "RENAULT", 
+        "PEUGEOT", "HONDA", "HYUNDAI", "KIA", "NISSAN", "MAZDA",
+        "CITROEN", "MITSUBISHI", "SUZUKI", "JEEP", "BMW", "MERCEDES-BENZ",
+        "AUDI", "SUBARU" 
+    };
     /// <summary>
     /// Inicia el proceso de registro de vehículo
     /// </summary>
@@ -133,7 +141,8 @@ public partial class WhatsAppFlowService
 
         // Guardar marcas en sesión para validación posterior (solo las primeras 100 más comunes)
         var marcasPopulares = ObtenerMarcasPopulares(marcas);
-        var marcasIds = string.Join(",", marcasPopulares.Select(m => $"{m.Id}:{m.Nombre}"));
+        // Usar pipe como delimitador ya que es menos probable que aparezca en nombres de marcas
+        var marcasIds = string.Join(";", marcasPopulares.Select(m => $"{m.Id}|{m.Nombre}"));
         await _sessionService.SaveTemporaryData(phoneNumber, "MarcasDisponibles", marcasIds);
 
         await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.VEHICULO_MARCA);
@@ -151,20 +160,12 @@ public partial class WhatsAppFlowService
     /// <summary>
     /// Obtiene las marcas más populares de la lista
     /// </summary>
-    private List<Models.Dtos.MarcaSimpleDto> ObtenerMarcasPopulares(List<Models.Dtos.MarcaSimpleDto> marcas)
+    private List<MarcaSimpleDto> ObtenerMarcasPopulares(List<MarcaSimpleDto> marcas)
     {
-        // Lista de marcas populares en Argentina/Latinoamérica
-        var marcasPopulares = new[] { 
-            "TOYOTA", "VOLKSWAGEN", "FORD", "CHEVROLET", "FIAT", "RENAULT", 
-            "PEUGEOT", "HONDA", "HYUNDAI", "KIA", "NISSAN", "MAZDA",
-            "CITROEN", "MITSUBISHI", "SUZUKI", "JEEP", "BMW", "MERCEDES-BENZ",
-            "AUDI", "SUBARU" 
-        };
-
-        var resultado = new List<Models.Dtos.MarcaSimpleDto>();
+        var resultado = new List<MarcaSimpleDto>();
         
         // Primero agregar las marcas populares que existan en la lista
-        foreach (var popular in marcasPopulares)
+        foreach (var popular in MarcasPopularesLista)
         {
             var marca = marcas.FirstOrDefault(m => 
                 m.Nombre.Equals(popular, StringComparison.OrdinalIgnoreCase));
@@ -208,8 +209,9 @@ public partial class WhatsAppFlowService
         
         if (!string.IsNullOrEmpty(marcasDisponibles))
         {
-            var marcasList = marcasDisponibles.Split(',')
-                .Select(m => m.Split(':'))
+            // Usar punto y coma para separar marcas y pipe para separar id|nombre
+            var marcasList = marcasDisponibles.Split(';')
+                .Select(m => m.Split('|'))
                 .Where(parts => parts.Length == 2)
                 .ToList();
 
@@ -234,8 +236,8 @@ public partial class WhatsAppFlowService
 
             if (modelos != null && modelos.Any())
             {
-                // Guardar modelos disponibles para validación
-                var modelosNombres = string.Join(",", modelos.Take(100).Select(m => m.Nombre));
+                // Guardar modelos disponibles para validación (usar punto y coma como delimitador)
+                var modelosNombres = string.Join(";", modelos.Take(100).Select(m => m.Nombre));
                 await _sessionService.SaveTemporaryData(phoneNumber, "ModelosDisponibles", modelosNombres);
 
                 await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.VEHICULO_MODELO);
@@ -274,11 +276,11 @@ public partial class WhatsAppFlowService
             return;
         }
 
-        // Intentar hacer match con modelos disponibles
+        // Intentar hacer match con modelos disponibles (usar punto y coma como delimitador)
         var modelosDisponibles = session.TemporaryData.GetValueOrDefault("ModelosDisponibles", "");
         if (!string.IsNullOrEmpty(modelosDisponibles))
         {
-            var modelosList = modelosDisponibles.Split(',');
+            var modelosList = modelosDisponibles.Split(';');
             var modeloEncontrado = modelosList.FirstOrDefault(m => 
                 m.Equals(modelo, StringComparison.OrdinalIgnoreCase));
             
@@ -296,8 +298,8 @@ public partial class WhatsAppFlowService
 
         if (colores != null && colores.Any())
         {
-            // Guardar colores disponibles
-            var coloresStr = string.Join(",", colores);
+            // Guardar colores disponibles (usar punto y coma como delimitador)
+            var coloresStr = string.Join(";", colores);
             await _sessionService.SaveTemporaryData(phoneNumber, "ColoresDisponibles", coloresStr);
 
             await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.VEHICULO_COLOR);
@@ -339,11 +341,11 @@ public partial class WhatsAppFlowService
             return;
         }
 
-        // Intentar hacer match con colores disponibles
+        // Intentar hacer match con colores disponibles (usar punto y coma como delimitador)
         var coloresDisponibles = session.TemporaryData.GetValueOrDefault("ColoresDisponibles", "");
         if (!string.IsNullOrEmpty(coloresDisponibles))
         {
-            var coloresList = coloresDisponibles.Split(',');
+            var coloresList = coloresDisponibles.Split(';');
             var colorEncontrado = coloresList.FirstOrDefault(c => 
                 c.Equals(color, StringComparison.OrdinalIgnoreCase) ||
                 c.ToLowerInvariant().Replace(" ", "_") == color.ToLowerInvariant());
