@@ -1434,13 +1434,14 @@
                                                placeholder="Escriba para filtrar patentes..."
                                                autocomplete="off"
                                                oninput="filtrarPatentesAsociacion(this.value)"
-                                               onfocus="mostrarDropdownPatentes()">
+                                               onfocus="mostrarDropdownPatentes()"
+                                               onkeydown="handlePatenteKeydown(event)">
                                         <input type="hidden" id="asociacion-patente" value="">
                                         <div id="patentes-dropdown" class="hidden absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg dark:bg-gray-700 dark:border-gray-600 max-h-48 overflow-y-auto mt-1">
                                             <!-- Las opciones se llenan dinámicamente -->
                                         </div>
                                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                            Escriba para filtrar y seleccione el vehículo
+                                            Escriba para filtrar y seleccione el vehículo (↑↓ navegar, Enter seleccionar)
                                         </p>
                                     </div>
                                     
@@ -1773,10 +1774,10 @@
             return;
         }
         
-        dropdown.innerHTML = vehiculos.map(v => `
+        dropdown.innerHTML = vehiculos.map((v, index) => `
             <div class="patente-option p-2.5 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 border-b border-gray-100 dark:border-gray-600 last:border-b-0"
                  data-patente="${escapeHtml(v.patente)}"
-                 data-vehiculo='${JSON.stringify(v).replace(/'/g, "&apos;")}'
+                 data-vehiculo-index="${index}"
                  onclick="seleccionarPatenteAsociacion(this)">
                 <div class="flex justify-between items-center">
                     <span class="font-medium text-gray-900 dark:text-white">${escapeHtml(v.patente)}</span>
@@ -1787,6 +1788,9 @@
                 </div>
             </div>
         `).join('');
+        
+        // Store filtered vehicles for reference by index
+        dropdown._vehiculos = vehiculos;
     }
 
     /**
@@ -1799,14 +1803,17 @@
         }
     };
 
+    // Constant for dropdown hide delay to allow click events to register
+    const DROPDOWN_HIDE_DELAY_MS = 200;
+
     /**
      * Oculta el dropdown de patentes
      */
     function ocultarDropdownPatentes() {
         const dropdown = document.getElementById('patentes-dropdown');
         if (dropdown) {
-            // Usar un pequeño delay para permitir que el click en las opciones se registre primero
-            setTimeout(() => dropdown.classList.add('hidden'), 200);
+            // Delay to allow click events on options to register before hiding
+            setTimeout(() => dropdown.classList.add('hidden'), DROPDOWN_HIDE_DELAY_MS);
         }
     }
 
@@ -1835,11 +1842,60 @@
     };
 
     /**
+     * Keyboard navigation for patente dropdown
+     */
+    window.handlePatenteKeydown = function(event) {
+        const dropdown = document.getElementById('patentes-dropdown');
+        if (!dropdown || dropdown.classList.contains('hidden')) return;
+        
+        const options = dropdown.querySelectorAll('.patente-option');
+        if (!options.length) return;
+        
+        const currentFocus = dropdown.querySelector('.patente-option.bg-blue-200, .patente-option.dark\\:bg-blue-800');
+        let currentIndex = currentFocus ? Array.from(options).indexOf(currentFocus) : -1;
+        
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            currentIndex = (currentIndex + 1) % options.length;
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            currentIndex = currentIndex <= 0 ? options.length - 1 : currentIndex - 1;
+        } else if (event.key === 'Enter' && currentIndex >= 0) {
+            event.preventDefault();
+            options[currentIndex].click();
+            return;
+        } else if (event.key === 'Escape') {
+            dropdown.classList.add('hidden');
+            return;
+        } else {
+            return;
+        }
+        
+        // Update visual focus
+        options.forEach(opt => {
+            opt.classList.remove('bg-blue-200', 'dark:bg-blue-800');
+        });
+        if (options[currentIndex]) {
+            options[currentIndex].classList.add('bg-blue-200', 'dark:bg-blue-800');
+            options[currentIndex].scrollIntoView({ block: 'nearest' });
+        }
+    };
+
+    /**
      * Selecciona una patente del dropdown
      */
     window.seleccionarPatenteAsociacion = function(element) {
         const patente = element.dataset.patente;
-        const vehiculoData = JSON.parse(element.dataset.vehiculo.replace(/&apos;/g, "'"));
+        const vehiculoIndex = parseInt(element.dataset.vehiculoIndex);
+        
+        // Get vehicle data from the dropdown's cached list
+        const dropdown = document.getElementById('patentes-dropdown');
+        const vehiculoData = dropdown?._vehiculos?.[vehiculoIndex];
+        
+        if (!vehiculoData) {
+            console.error('Error: No se encontraron datos del vehículo');
+            return;
+        }
         
         // Actualizar el input visible y el hidden
         const input = document.getElementById('asociacion-patente-input');
@@ -1849,7 +1905,6 @@
         if (hiddenInput) hiddenInput.value = patente;
         
         // Ocultar dropdown
-        const dropdown = document.getElementById('patentes-dropdown');
         if (dropdown) dropdown.classList.add('hidden');
         
         // Mostrar info del vehículo
