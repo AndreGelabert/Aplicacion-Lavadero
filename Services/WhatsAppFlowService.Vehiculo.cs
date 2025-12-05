@@ -16,6 +16,15 @@ public partial class WhatsAppFlowService
         "CITROEN", "MITSUBISHI", "SUZUKI", "JEEP", "BMW", "MERCEDES-BENZ",
         "AUDI", "SUBARU" 
     };
+
+    /// <summary>
+    /// Genera un ID para un elemento de lista de WhatsApp a partir de un nombre
+    /// </summary>
+    private static string GenerarListItemId(string nombre)
+    {
+        return nombre.Replace(" ", "_").ToLowerInvariant();
+    }
+
     /// <summary>
     /// Inicia el proceso de registro de vehículo
     /// </summary>
@@ -100,11 +109,17 @@ public partial class WhatsAppFlowService
     {
         var patente = input.Trim().ToUpperInvariant();
 
-        // Validar formato de patente
+        // Validar formato de patente (mínimo 5 caracteres alfanuméricos, debe tener letras y números)
         if (!EsPatenteValida(patente))
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ La patente solo puede contener letras, números, espacios y guiones. Por favor, inténtalo nuevamente:");
+                "❌ La patente no es válida.\n\n" +
+                "La patente debe:\n" +
+                "• Contener letras y números\n" +
+                "• Tener al menos 5 caracteres\n" +
+                "• Solo puede incluir letras, números, espacios y guiones\n\n" +
+                "Ejemplos válidos: ABC123, AB 123 CD, AA-123-BB\n\n" +
+                "Por favor, inténtalo nuevamente:");
             return;
         }
 
@@ -139,7 +154,7 @@ public partial class WhatsAppFlowService
             return;
         }
 
-        // Guardar marcas en sesión para validación posterior (solo las primeras 100 más comunes)
+        // Guardar marcas en sesión para validación posterior (solo las primeras 50 más comunes)
         var marcasPopulares = ObtenerMarcasPopulares(marcas);
         // Usar pipe como delimitador ya que es menos probable que aparezca en nombres de marcas
         var marcasIds = string.Join(";", marcasPopulares.Select(m => $"{m.Id}|{m.Nombre}"));
@@ -147,14 +162,18 @@ public partial class WhatsAppFlowService
 
         await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.VEHICULO_MARCA);
 
-        // Crear mensaje con las marcas más populares
-        var listaMarcas = string.Join("\n", marcasPopulares.Take(20).Select(m => $"• {m.Nombre}"));
+        // Crear lista de opciones para WhatsApp (máximo 10 por lista)
+        var options = marcasPopulares.Take(10).Select(m => (
+            m.Id,
+            m.Nombre,
+            "Marca disponible"
+        )).ToList();
 
-        await _whatsAppService.SendTextMessage(phoneNumber,
-            $"✅ Patente: {patente}\n\n" +
-            $"🏷️ ¿Cuál es la *marca* del vehículo?\n\n" +
-            $"Algunas marcas populares:\n{listaMarcas}\n\n" +
-            $"📝 Escribe el nombre de la marca:");
+        await _whatsAppService.SendListMessage(phoneNumber,
+            $"✅ Patente: {patente}\n\n🏷️ Selecciona la *marca* de tu vehículo:",
+            "🏷️ Ver marcas",
+            "Marcas disponibles",
+            options);
     }
 
     /// <summary>
@@ -199,13 +218,14 @@ public partial class WhatsAppFlowService
         if (string.IsNullOrWhiteSpace(marca))
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Por favor, ingresa una marca válida:");
+                "❌ Por favor, selecciona una marca de la lista:");
             return;
         }
 
-        // Buscar el ID de la marca ingresada
+        // Buscar el ID de la marca ingresada en la lista de marcas disponibles
         var marcasDisponibles = session.TemporaryData.GetValueOrDefault("MarcasDisponibles", "");
         var marcaId = "";
+        var marcaNombre = "";
         
         if (!string.IsNullOrEmpty(marcasDisponibles))
         {
@@ -215,21 +235,45 @@ public partial class WhatsAppFlowService
                 .Where(parts => parts.Length == 2)
                 .ToList();
 
+            // Buscar por ID exacto (cuando el usuario selecciona de la lista) o por nombre
             var marcaEncontrada = marcasList.FirstOrDefault(m => 
-                m[1].Equals(marca, StringComparison.OrdinalIgnoreCase));
+                m[0].Equals(marca, StringComparison.OrdinalIgnoreCase) || // Match por ID
+                m[1].Equals(marca, StringComparison.OrdinalIgnoreCase));  // Match por nombre
 
             if (marcaEncontrada != null)
             {
                 marcaId = marcaEncontrada[0];
-                marca = marcaEncontrada[1]; // Usar el nombre exacto de la API
+                marcaNombre = marcaEncontrada[1]; // Usar el nombre exacto de la API
             }
+            else
+            {
+                // No se encontró la marca - mostrar error y volver a pedir
+                var options = marcasList.Take(10).Select(m => (
+                    m[0],
+                    m[1],
+                    "Marca disponible"
+                )).ToList();
+
+                await _whatsAppService.SendListMessage(phoneNumber,
+                    "❌ Marca no encontrada.\n\n" +
+                    "Por favor, selecciona una marca de la lista:",
+                    "🏷️ Ver marcas",
+                    "Marcas disponibles",
+                    options);
+                return;
+            }
+        }
+        else
+        {
+            // No hay lista de marcas - usar texto libre como fallback
+            marcaNombre = marca;
         }
 
         // Guardar marca y su ID
-        await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoMarca", marca);
+        await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoMarca", marcaNombre);
         await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoMarcaId", marcaId);
 
-        // Si tenemos el ID de la marca, intentar obtener modelos de la API
+        // Si tenemos el ID de la marca, obtener modelos de la API
         if (!string.IsNullOrEmpty(marcaId))
         {
             var modelos = await _carQueryService.GetModelosAsync(marcaId);
@@ -242,14 +286,18 @@ public partial class WhatsAppFlowService
 
                 await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.VEHICULO_MODELO);
 
-                // Mostrar lista de modelos populares
-                var listaModelos = string.Join("\n", modelos.Take(15).Select(m => $"• {m.Nombre}"));
+                // Crear lista de opciones para WhatsApp (máximo 10 por lista)
+                var options = modelos.Take(10).Select(m => (
+                    GenerarListItemId(m.Nombre),
+                    m.Nombre,
+                    $"Modelo de {marcaNombre}"
+                )).ToList();
 
-                await _whatsAppService.SendTextMessage(phoneNumber,
-                    $"✅ Marca: {marca}\n\n" +
-                    $"🚙 ¿Cuál es el *modelo*?\n\n" +
-                    $"Algunos modelos de {marca}:\n{listaModelos}\n\n" +
-                    $"📝 Escribe el nombre del modelo:");
+                await _whatsAppService.SendListMessage(phoneNumber,
+                    $"✅ Marca: {marcaNombre}\n\n🚙 Selecciona el *modelo* de tu vehículo:",
+                    "🚙 Ver modelos",
+                    $"Modelos de {marcaNombre}",
+                    options);
                 return;
             }
         }
@@ -257,7 +305,7 @@ public partial class WhatsAppFlowService
         // Fallback si no hay modelos disponibles - pedir texto libre
         await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.VEHICULO_MODELO);
         await _whatsAppService.SendTextMessage(phoneNumber,
-            $"✅ Marca: {marca}\n\n" +
+            $"✅ Marca: {marcaNombre}\n\n" +
             $"🚙 ¿Cuál es el *modelo*? (ej: Corolla, Fiesta, etc.)");
     }
 
@@ -272,26 +320,54 @@ public partial class WhatsAppFlowService
         if (string.IsNullOrWhiteSpace(modelo))
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Por favor, ingresa un modelo válido:");
+                "❌ Por favor, selecciona un modelo de la lista:");
             return;
         }
 
         // Intentar hacer match con modelos disponibles (usar punto y coma como delimitador)
         var modelosDisponibles = session.TemporaryData.GetValueOrDefault("ModelosDisponibles", "");
+        var modeloNombre = "";
+        
         if (!string.IsNullOrEmpty(modelosDisponibles))
         {
             var modelosList = modelosDisponibles.Split(';');
+            
+            // Buscar por ID (formato: nombre_en_minusculas) o por nombre exacto
             var modeloEncontrado = modelosList.FirstOrDefault(m => 
-                m.Equals(modelo, StringComparison.OrdinalIgnoreCase));
+                GenerarListItemId(m) == modelo.ToLowerInvariant() || // Match por ID
+                m.Equals(modelo, StringComparison.OrdinalIgnoreCase));                  // Match por nombre
             
             if (modeloEncontrado != null)
             {
-                modelo = modeloEncontrado; // Usar nombre exacto de la API
+                modeloNombre = modeloEncontrado; // Usar nombre exacto de la API
             }
+            else
+            {
+                // No se encontró el modelo - mostrar error y volver a pedir
+                var marca = session.TemporaryData.GetValueOrDefault("VehiculoMarca", "");
+                var options = modelosList.Take(10).Select(m => (
+                    GenerarListItemId(m),
+                    m,
+                    $"Modelo de {marca}"
+                )).ToList();
+
+                await _whatsAppService.SendListMessage(phoneNumber,
+                    "❌ Modelo no encontrado.\n\n" +
+                    "Por favor, selecciona un modelo de la lista:",
+                    "🚙 Ver modelos",
+                    $"Modelos de {marca}",
+                    options);
+                return;
+            }
+        }
+        else
+        {
+            // No hay lista de modelos - usar texto libre como fallback
+            modeloNombre = modelo;
         }
 
         // Guardar modelo
-        await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoModelo", modelo);
+        await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoModelo", modeloNombre);
 
         // Obtener colores comunes de la API
         var colores = await _carQueryService.GetColoresComunes();
@@ -306,13 +382,13 @@ public partial class WhatsAppFlowService
 
             // Crear lista con colores como opciones
             var options = colores.Take(10).Select(c => (
-                c.ToLowerInvariant().Replace(" ", "_"),
+                GenerarListItemId(c),
                 c,
                 "Color disponible"
             )).ToList();
 
             await _whatsAppService.SendListMessage(phoneNumber,
-                $"✅ Modelo: {modelo}\n\n🎨 ¿De qué *color* es tu vehículo?",
+                $"✅ Modelo: {modeloNombre}\n\n🎨 Selecciona el *color* de tu vehículo:",
                 "🎨 Ver colores",
                 "Colores disponibles",
                 options);
@@ -322,7 +398,7 @@ public partial class WhatsAppFlowService
         // Fallback si no hay colores - pedir texto libre
         await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.VEHICULO_COLOR);
         await _whatsAppService.SendTextMessage(phoneNumber,
-            $"✅ Modelo: {modelo}\n\n" +
+            $"✅ Modelo: {modeloNombre}\n\n" +
             $"🎨 ¿De qué *color* es tu vehículo?");
     }
 
@@ -337,27 +413,51 @@ public partial class WhatsAppFlowService
         if (string.IsNullOrWhiteSpace(color))
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Por favor, ingresa un color válido:");
+                "❌ Por favor, selecciona un color de la lista:");
             return;
         }
 
         // Intentar hacer match con colores disponibles (usar punto y coma como delimitador)
         var coloresDisponibles = session.TemporaryData.GetValueOrDefault("ColoresDisponibles", "");
+        var colorNombre = "";
+        
         if (!string.IsNullOrEmpty(coloresDisponibles))
         {
             var coloresList = coloresDisponibles.Split(';');
             var colorEncontrado = coloresList.FirstOrDefault(c => 
                 c.Equals(color, StringComparison.OrdinalIgnoreCase) ||
-                c.ToLowerInvariant().Replace(" ", "_") == color.ToLowerInvariant());
+                GenerarListItemId(c) == color.ToLowerInvariant());
             
             if (colorEncontrado != null)
             {
-                color = colorEncontrado; // Usar nombre exacto
+                colorNombre = colorEncontrado; // Usar nombre exacto
             }
+            else
+            {
+                // No se encontró el color - mostrar error y volver a pedir
+                var options = coloresList.Take(10).Select(c => (
+                    GenerarListItemId(c),
+                    c,
+                    "Color disponible"
+                )).ToList();
+
+                await _whatsAppService.SendListMessage(phoneNumber,
+                    "❌ Color no reconocido.\n\n" +
+                    "Por favor, selecciona un color de la lista:",
+                    "🎨 Ver colores",
+                    "Colores disponibles",
+                    options);
+                return;
+            }
+        }
+        else
+        {
+            // No hay lista de colores - usar texto libre como fallback
+            colorNombre = color;
         }
 
         // Guardar color
-        await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoColor", color);
+        await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoColor", colorNombre);
         await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.VEHICULO_CONFIRMACION);
 
         // Mostrar resumen para confirmación
@@ -371,7 +471,7 @@ public partial class WhatsAppFlowService
                       $"• Patente: {patente}\n" +
                       $"• Marca: {marca}\n" +
                       $"• Modelo: {modelo}\n" +
-                      $"• Color: {color}\n\n" +
+                      $"• Color: {colorNombre}\n\n" +
                       $"¿Los datos son correctos?\n\n" +
                       $"Responde *SÍ* para confirmar o *NO* para cancelar.";
 
@@ -530,11 +630,17 @@ public partial class WhatsAppFlowService
     {
         var patente = input.Trim().ToUpperInvariant();
 
-        // Validar formato de patente
+        // Validar formato de patente (mínimo 5 caracteres alfanuméricos, debe tener letras y números)
         if (!EsPatenteValida(patente))
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ La patente solo puede contener letras, números, espacios y guiones. Por favor, inténtalo nuevamente:");
+                "❌ La patente no es válida.\n\n" +
+                "La patente debe:\n" +
+                "• Contener letras y números\n" +
+                "• Tener al menos 5 caracteres\n" +
+                "• Solo puede incluir letras, números, espacios y guiones\n\n" +
+                "Ejemplos válidos: ABC123, AB 123 CD, AA-123-BB\n\n" +
+                "Por favor, inténtalo nuevamente:");
             return;
         }
 

@@ -79,11 +79,11 @@ public partial class WhatsAppFlowService
     {
         var nombre = input.Trim();
 
-        // Validar que solo contenga letras
+        // Validar que solo contenga letras y tenga mínimo 3 caracteres
         if (!EsTextoValido(nombre))
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ El nombre solo debe contener letras y espacios. Por favor, inténtalo nuevamente:");
+                "❌ El nombre debe contener al menos 3 letras (solo letras y espacios permitidos). Por favor, inténtalo nuevamente:");
             return;
         }
 
@@ -103,11 +103,11 @@ public partial class WhatsAppFlowService
     {
         var apellido = input.Trim();
 
-        // Validar que solo contenga letras
+        // Validar que solo contenga letras y tenga mínimo 3 caracteres
         if (!EsTextoValido(apellido))
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ El apellido solo debe contener letras y espacios. Por favor, inténtalo nuevamente:");
+                "❌ El apellido debe contener al menos 3 letras (solo letras y espacios permitidos). Por favor, inténtalo nuevamente:");
             return;
         }
 
@@ -131,12 +131,16 @@ public partial class WhatsAppFlowService
         if (!EsEmailValido(email))
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ El formato del email no es válido. Por favor, inténtalo nuevamente:");
+                "❌ El formato del email no es válido.\n\n" +
+                "El email debe tener:\n" +
+                "• Al menos 3 caracteres después del @\n" +
+                "• Un dominio válido (ej: .com, .ar)\n\n" +
+                "Por favor, inténtalo nuevamente:");
             return;
         }
 
-        // Guardar email
-        await _sessionService.SaveTemporaryData(phoneNumber, "Email", email);
+        // Guardar email en minúsculas (después de validar)
+        await _sessionService.SaveTemporaryData(phoneNumber, "Email", email.ToLowerInvariant());
         await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.REGISTRO_CONFIRMACION);
 
         // Mostrar resumen para confirmación
