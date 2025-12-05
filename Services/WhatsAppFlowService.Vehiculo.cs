@@ -384,8 +384,15 @@ public partial class WhatsAppFlowService
         }
 
         // Verificar que el cliente no esté ya asociado
+        if (string.IsNullOrEmpty(session.ClienteId))
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "❌ Error: No se pudo identificar tu usuario. Por favor, reinicia la conversación.");
+            return;
+        }
+
         var clienteYaAsociado = vehiculo.ClienteId == session.ClienteId ||
-                                 (vehiculo.ClientesIds != null && vehiculo.ClientesIds.Contains(session.ClienteId!));
+                                 (vehiculo.ClientesIds != null && vehiculo.ClientesIds.Contains(session.ClienteId));
 
         if (clienteYaAsociado)
         {
@@ -566,11 +573,12 @@ public partial class WhatsAppFlowService
     {
         var opcion = input.Trim().ToLowerInvariant();
 
-        if (opcion.Contains("generar") || opcion == "generar_clave")
+        // Use exact matches first, then fallback to contains for flexibility
+        if (opcion == "generar_clave" || opcion == "generar")
         {
             await RegenerarClaveAsociacion(phoneNumber, session);
         }
-        else if (opcion.Contains("menu") || opcion.Contains("volver") || opcion == "menu_vehiculos")
+        else if (opcion == "menu_vehiculos" || opcion == "menu" || opcion == "volver")
         {
             await MostrarMenuVehiculos(phoneNumber, session);
         }

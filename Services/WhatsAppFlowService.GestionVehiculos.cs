@@ -124,12 +124,25 @@ public partial class WhatsAppFlowService
         var session = await _sessionService.GetOrCreateSession(phoneNumber);
         var esDuenoPrincipal = vehiculo.ClienteId == session.ClienteId;
 
-        // Contar cuántos dueños tiene el vehículo
-        var cantidadDuenos = 1; // Al menos el dueño principal
-        if (vehiculo.ClientesIds != null && vehiculo.ClientesIds.Any())
+        // Contar cuántos dueños tiene el vehículo (evitar duplicados)
+        var todosLosDuenos = new HashSet<string>();
+        
+        // Agregar el dueño principal si existe
+        if (!string.IsNullOrEmpty(vehiculo.ClienteId))
         {
-            cantidadDuenos = vehiculo.ClientesIds.Distinct().Count();
+            todosLosDuenos.Add(vehiculo.ClienteId);
         }
+        
+        // Agregar los dueños de la lista ClientesIds
+        if (vehiculo.ClientesIds != null)
+        {
+            foreach (var clienteId in vehiculo.ClientesIds.Where(id => !string.IsNullOrEmpty(id)))
+            {
+                todosLosDuenos.Add(clienteId);
+            }
+        }
+        
+        var cantidadDuenos = todosLosDuenos.Count;
 
         var mensaje = $"🚗 *Gestionar vehículo*\n\n" +
                      $"Patente: *{vehiculo.Patente}*\n" +
@@ -246,12 +259,23 @@ public partial class WhatsAppFlowService
                 return;
             }
 
-            // Contar cuántos dueños tiene
-            var cantidadDuenos = 1;
-            if (vehiculo.ClientesIds != null && vehiculo.ClientesIds.Any())
+            // Contar cuántos dueños tiene (evitar duplicados)
+            var todosLosDuenos = new HashSet<string>();
+            
+            if (!string.IsNullOrEmpty(vehiculo.ClienteId))
             {
-                cantidadDuenos = vehiculo.ClientesIds.Distinct().Count();
+                todosLosDuenos.Add(vehiculo.ClienteId);
             }
+            
+            if (vehiculo.ClientesIds != null)
+            {
+                foreach (var clienteId in vehiculo.ClientesIds.Where(id => !string.IsNullOrEmpty(id)))
+                {
+                    todosLosDuenos.Add(clienteId);
+                }
+            }
+            
+            var cantidadDuenos = todosLosDuenos.Count;
 
             var esDuenoPrincipal = vehiculo.ClienteId == session.ClienteId;
 
