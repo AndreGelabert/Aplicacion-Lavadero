@@ -16,6 +16,7 @@ public partial class WhatsAppFlowService
     private readonly TipoDocumentoService _tipoDocumentoService;
     private readonly TipoVehiculoService _tipoVehiculoService;
     private readonly LavaderoInfoService _lavaderoInfoService;
+    private readonly ICarQueryService _carQueryService;
     private readonly ILogger<WhatsAppFlowService> _logger;
 
     public WhatsAppFlowService(
@@ -26,6 +27,7 @@ public partial class WhatsAppFlowService
         TipoDocumentoService tipoDocumentoService,
         TipoVehiculoService tipoVehiculoService,
         LavaderoInfoService lavaderoInfoService,
+        ICarQueryService carQueryService,
         ILogger<WhatsAppFlowService> logger)
     {
         _sessionService = sessionService;
@@ -35,6 +37,7 @@ public partial class WhatsAppFlowService
         _tipoDocumentoService = tipoDocumentoService;
         _tipoVehiculoService = tipoVehiculoService;
         _lavaderoInfoService = lavaderoInfoService;
+        _carQueryService = carQueryService;
         _logger = logger;
     }
 
