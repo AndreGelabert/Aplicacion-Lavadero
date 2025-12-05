@@ -505,11 +505,19 @@ public partial class WhatsAppFlowService
     {
         try
         {
+            // Validar que tenemos un cliente identificado primero
+            if (string.IsNullOrEmpty(session.ClienteId))
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "❌ Error: No se pudo identificar tu usuario. Por favor, reinicia la conversación.");
+                return;
+            }
+
             var vehiculoId = session.TemporaryData.GetValueOrDefault("AsociarVehiculoId", "");
             var vehiculoPatente = session.TemporaryData.GetValueOrDefault("AsociarVehiculoPatente", "");
             var vehiculoInfo = session.TemporaryData.GetValueOrDefault("AsociarVehiculoInfo", "");
 
-            if (string.IsNullOrEmpty(session.ClienteId) || string.IsNullOrEmpty(vehiculoId))
+            if (string.IsNullOrEmpty(vehiculoId))
             {
                 await _whatsAppService.SendTextMessage(phoneNumber,
                     "❌ Error: Datos incompletos para la asociación.");
