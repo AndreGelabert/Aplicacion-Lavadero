@@ -306,6 +306,10 @@ public partial class WhatsAppFlowService
                     await HandleRegistroConfirmacion(phoneNumber, session, messageBody);
                     break;
 
+                case WhatsAppFlowStates.REGISTRO_VEHICULO_OPCION:
+                    await HandleRegistroVehiculoOpcion(phoneNumber, session, messageBody);
+                    break;
+
                 // ========== MENÚ CLIENTE AUTENTICADO ==========
                 case WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO:
                     await HandleMenuClienteAutenticado(phoneNumber, session, messageBody);

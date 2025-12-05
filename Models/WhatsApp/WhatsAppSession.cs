@@ -98,6 +98,9 @@ public static class WhatsAppFlowStates
     public const string ASOCIAR_VEHICULO_CONFIRMACION = "ASOCIAR_VEHICULO_CONFIRMACION";
     public const string MOSTRAR_CLAVE_VEHICULO = "MOSTRAR_CLAVE_VEHICULO";
 
+    // Estado para seleccionar opción de vehículo durante registro inicial
+    public const string REGISTRO_VEHICULO_OPCION = "REGISTRO_VEHICULO_OPCION";
+
     // Estado inicial
     public const string INICIO = "INICIO";
 }

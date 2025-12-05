@@ -26,6 +26,14 @@ public partial class WhatsAppFlowService
     }
 
     /// <summary>
+    /// Verifica si estamos en el flujo de registro inicial (cliente aún no creado)
+    /// </summary>
+    private static bool EsRegistroInicial(WhatsAppSession session)
+    {
+        return session.TemporaryData.GetValueOrDefault("RegistroInicial", "") == "true";
+    }
+
+    /// <summary>
     /// Inicia el proceso de registro de vehículo
     /// </summary>
     private async Task IniciarRegistroVehiculo(string phoneNumber)
@@ -487,22 +495,47 @@ public partial class WhatsAppFlowService
 
         if (respuesta == "SI" || respuesta == "SÍ" || respuesta == "S")
         {
-            // Confirmar registro del vehículo
-            await CrearVehiculoDesdeSession(phoneNumber, session);
+            // Verificar si estamos en el flujo de registro inicial (cliente aún no creado)
+            var esRegistroInicial = EsRegistroInicial(session);
+            
+            if (esRegistroInicial)
+            {
+                // Crear cliente y vehículo juntos
+                await CrearClienteYVehiculoDesdeSession(phoneNumber, session);
+            }
+            else
+            {
+                // Cliente ya existe, solo crear vehículo
+                await CrearVehiculoDesdeSession(phoneNumber, session);
+            }
         }
         else if (respuesta == "NO" || respuesta == "N")
         {
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Registro de vehículo cancelado.");
-
-            await Task.Delay(500);
-
-            // Volver al menú principal
-            var cliente = await _clienteService.ObtenerCliente(session.ClienteId!);
-            if (cliente != null)
+            // Verificar si estamos en el flujo de registro inicial
+            var esRegistroInicial = EsRegistroInicial(session);
+            
+            if (esRegistroInicial)
             {
-                await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO);
-                await ShowClienteMenu(phoneNumber, cliente.Nombre);
+                // Volver a mostrar opciones de vehículo
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "❌ Registro de vehículo cancelado.");
+                await Task.Delay(500);
+                await MostrarOpcionesVehiculoRegistro(phoneNumber, session);
+            }
+            else
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "❌ Registro de vehículo cancelado.");
+
+                await Task.Delay(500);
+
+                // Volver al menú principal
+                var cliente = await _clienteService.ObtenerCliente(session.ClienteId!);
+                if (cliente != null)
+                {
+                    await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO);
+                    await ShowClienteMenu(phoneNumber, cliente.Nombre);
+                }
             }
         }
         else
@@ -665,23 +698,22 @@ public partial class WhatsAppFlowService
             return;
         }
 
-        // Verificar que el cliente no esté ya asociado
-        if (string.IsNullOrEmpty(session.ClienteId))
+        // Verificar si estamos en registro inicial (aún no hay ClienteId)
+        var esRegistroInicial = EsRegistroInicial(session);
+        
+        // Solo verificar si ya está asociado si el cliente ya existe
+        if (!esRegistroInicial && !string.IsNullOrEmpty(session.ClienteId))
         {
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Error: No se pudo identificar tu usuario. Por favor, reinicia la conversación.");
-            return;
-        }
+            var clienteYaAsociado = vehiculo.ClienteId == session.ClienteId ||
+                                     (vehiculo.ClientesIds != null && vehiculo.ClientesIds.Contains(session.ClienteId));
 
-        var clienteYaAsociado = vehiculo.ClienteId == session.ClienteId ||
-                                 (vehiculo.ClientesIds != null && vehiculo.ClientesIds.Contains(session.ClienteId));
-
-        if (clienteYaAsociado)
-        {
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                $"⚠️ Ya estás asociado al vehículo *{patente}*.\n\n" +
-                $"Escribe *MENU* para volver al menú.");
-            return;
+            if (clienteYaAsociado)
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    $"⚠️ Ya estás asociado al vehículo *{patente}*.\n\n" +
+                    $"Escribe *MENU* para volver al menú.");
+                return;
+            }
         }
 
         // Guardar datos temporales
@@ -708,12 +740,21 @@ public partial class WhatsAppFlowService
         var vehiculoId = session.TemporaryData.GetValueOrDefault("AsociarVehiculoId", "");
         var vehiculoPatente = session.TemporaryData.GetValueOrDefault("AsociarVehiculoPatente", "");
         var vehiculoInfo = session.TemporaryData.GetValueOrDefault("AsociarVehiculoInfo", "");
+        var esRegistroInicial = EsRegistroInicial(session);
 
         if (string.IsNullOrEmpty(vehiculoId))
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
                 "❌ Error: No se encontró información del vehículo. Por favor, reinicia el proceso.");
-            await MostrarMenuVehiculos(phoneNumber, session);
+            
+            if (esRegistroInicial)
+            {
+                await MostrarOpcionesVehiculoRegistro(phoneNumber, session);
+            }
+            else
+            {
+                await MostrarMenuVehiculos(phoneNumber, session);
+            }
             return;
         }
 
@@ -722,7 +763,15 @@ public partial class WhatsAppFlowService
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
                 "❌ Error: Vehículo no encontrado.");
-            await MostrarMenuVehiculos(phoneNumber, session);
+            
+            if (esRegistroInicial)
+            {
+                await MostrarOpcionesVehiculoRegistro(phoneNumber, session);
+            }
+            else
+            {
+                await MostrarMenuVehiculos(phoneNumber, session);
+            }
             return;
         }
 
@@ -757,21 +806,47 @@ public partial class WhatsAppFlowService
 
         if (respuesta == "SI" || respuesta == "SÍ" || respuesta == "S")
         {
-            await AsociarVehiculoACliente(phoneNumber, session);
+            // Verificar si estamos en el flujo de registro inicial (cliente aún no creado)
+            var esRegistroInicial = EsRegistroInicial(session);
+            var vehiculoId = session.TemporaryData.GetValueOrDefault("AsociarVehiculoId", "");
+            
+            if (esRegistroInicial)
+            {
+                // Crear cliente y asociar vehículo existente juntos
+                await CrearClienteYAsociarVehiculoDesdeSession(phoneNumber, session, vehiculoId);
+            }
+            else
+            {
+                // Cliente ya existe, solo asociar vehículo
+                await AsociarVehiculoACliente(phoneNumber, session);
+            }
         }
         else if (respuesta == "NO" || respuesta == "N")
         {
-            // Limpiar datos temporales
+            // Limpiar datos temporales de asociación
             session.TemporaryData.Remove("AsociarVehiculoId");
             session.TemporaryData.Remove("AsociarVehiculoPatente");
             session.TemporaryData.Remove("AsociarVehiculoInfo");
 
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Asociación cancelada.\n\n" +
-                "Volviendo al menú de vehículos...");
+            // Verificar si estamos en el flujo de registro inicial
+            var esRegistroInicial = EsRegistroInicial(session);
+            
+            if (esRegistroInicial)
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "❌ Asociación cancelada.");
+                await Task.Delay(500);
+                await MostrarOpcionesVehiculoRegistro(phoneNumber, session);
+            }
+            else
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "❌ Asociación cancelada.\n\n" +
+                    "Volviendo al menú de vehículos...");
 
-            await Task.Delay(500);
-            await MostrarMenuVehiculos(phoneNumber, session);
+                await Task.Delay(500);
+                await MostrarMenuVehiculos(phoneNumber, session);
+            }
         }
         else
         {

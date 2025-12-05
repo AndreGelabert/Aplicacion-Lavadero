@@ -170,8 +170,11 @@ public partial class WhatsAppFlowService
 
         if (respuesta == "SI" || respuesta == "SÍ" || respuesta == "S")
         {
-            // Confirmar registro
-            await CrearClienteDesdeSession(phoneNumber, session);
+            // Marcar datos del cliente como confirmados (NO crear cliente aún)
+            await _sessionService.SaveTemporaryData(phoneNumber, "ClienteDatosConfirmados", "true");
+            
+            // Mostrar opciones de vehículo
+            await MostrarOpcionesVehiculoRegistro(phoneNumber, session);
         }
         else if (respuesta == "NO" || respuesta == "N")
         {
@@ -189,9 +192,85 @@ public partial class WhatsAppFlowService
     }
 
     /// <summary>
-    /// Crea el cliente en la base de datos a partir de la sesión
+    /// Muestra las opciones de vehículo durante el proceso de registro inicial
     /// </summary>
-    private async Task CrearClienteDesdeSession(string phoneNumber, WhatsAppSession session)
+    private async Task MostrarOpcionesVehiculoRegistro(string phoneNumber, WhatsAppSession session)
+    {
+        var nombre = session.TemporaryData.GetValueOrDefault("Nombre", "");
+        
+        await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.REGISTRO_VEHICULO_OPCION);
+        
+        var options = new List<(string, string, string)>
+        {
+            ("crear_vehiculo", "🚗 Registrar nuevo vehículo", "Registra un vehículo propio"),
+            ("asociar_vehiculo", "🔗 Asociar vehículo existente", "Vincula un vehículo compartido")
+        };
+
+        await _whatsAppService.SendListMessage(phoneNumber,
+            $"✅ ¡Perfecto {nombre}!\n\n" +
+            "Ahora necesitamos registrar al menos un vehículo.\n\n" +
+            "¿Qué deseas hacer?",
+            "📋 Ver opciones",
+            "Opciones de vehículo",
+            options);
+    }
+
+    /// <summary>
+    /// Maneja la selección de opción de vehículo durante el registro inicial
+    /// </summary>
+    private async Task HandleRegistroVehiculoOpcion(string phoneNumber, WhatsAppSession session, string input)
+    {
+        var opcion = input.Trim().ToLowerInvariant();
+
+        if (opcion == "crear_vehiculo" || opcion.Contains("nuevo") || opcion.Contains("registrar"))
+        {
+            // Iniciar proceso de registro de vehículo nuevo (flujo de registro inicial)
+            await _sessionService.SaveTemporaryData(phoneNumber, "RegistroInicial", "true");
+            await IniciarRegistroVehiculo(phoneNumber);
+        }
+        else if (opcion == "asociar_vehiculo" || opcion.Contains("asociar") || opcion.Contains("existente"))
+        {
+            // Iniciar proceso de asociación de vehículo existente (flujo de registro inicial)
+            await _sessionService.SaveTemporaryData(phoneNumber, "RegistroInicial", "true");
+            await IniciarAsociacionVehiculoRegistro(phoneNumber);
+        }
+        else
+        {
+            // Volver a mostrar opciones
+            await MostrarOpcionesVehiculoRegistro(phoneNumber, session);
+        }
+    }
+
+    /// <summary>
+    /// Inicia el proceso de asociación de vehículo durante el registro inicial (sin cliente creado aún)
+    /// </summary>
+    private async Task IniciarAsociacionVehiculoRegistro(string phoneNumber)
+    {
+        await _whatsAppService.SendTextMessage(phoneNumber,
+            "🔗 *Asociar vehículo existente*\n\n" +
+            "Este proceso te permite vincularte a un vehículo que ya está registrado " +
+            "en nuestro sistema (ej: vehículo familiar, de pareja, etc.).\n\n" +
+            "Necesitarás:\n" +
+            "• La *patente* del vehículo\n" +
+            "• La *clave de asociación* que te proporcionó el dueño\n\n" +
+            "📝 Por favor, ingresa la *patente* del vehículo:");
+
+        await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.ASOCIAR_VEHICULO_PATENTE);
+    }
+
+    /// <summary>
+    /// Crea el cliente y vehículo juntos al finalizar el proceso de registro inicial.
+    /// Esta operación realiza múltiples pasos en secuencia:
+    /// 1. Crea el cliente en la base de datos
+    /// 2. Asocia el cliente a la sesión de WhatsApp
+    /// 3. Crea el vehículo con clave de asociación
+    /// 4. Actualiza la lista de vehículos del cliente
+    /// 
+    /// Nota: En caso de error en cualquier paso, se limpia la sesión pero no se
+    /// revierten los datos parciales. En un escenario de producción crítico,
+    /// se debería considerar implementar transacciones o compensaciones.
+    /// </summary>
+    private async Task CrearClienteYVehiculoDesdeSession(string phoneNumber, WhatsAppSession session)
     {
         try
         {
@@ -199,10 +278,11 @@ public partial class WhatsAppFlowService
             // Guardamos SIN código de país en la DB (ej: 3751590586)
             var telefonoParaDB = PhoneNumberHelper.RemoveCountryCode(phoneNumber);
             
-            _logger.LogInformation("💾 Creando cliente:");
+            _logger.LogInformation("💾 Creando cliente y vehículo:");
             _logger.LogInformation("   📱 Teléfono WhatsApp: {WhatsAppPhone}", phoneNumber);
             _logger.LogInformation("   📱 Teléfono para DB: {DBPhone}", telefonoParaDB);
             
+            // 1. Crear cliente primero
             var cliente = new Cliente
             {
                 Id = "",
@@ -217,29 +297,195 @@ public partial class WhatsAppFlowService
             };
 
             await _clienteService.CrearCliente(cliente);
-
             _logger.LogInformation("✅ Cliente creado exitosamente: {ClienteId}", cliente.Id);
 
-            // Asociar cliente a la sesión
+            // 2. Asociar cliente a la sesión
             await _sessionService.AssociateClienteToSession(phoneNumber, cliente.Id);
 
+            // 3. Crear vehículo
+            var claveAsociacion = VehiculoService.GenerarClaveAsociacion();
+            var claveHash = VehiculoService.HashClaveAsociacion(claveAsociacion);
+
+            var vehiculo = new Vehiculo
+            {
+                Id = "",
+                Patente = session.TemporaryData.GetValueOrDefault("VehiculoPatente", "").ToUpperInvariant(),
+                TipoVehiculo = session.TemporaryData.GetValueOrDefault("VehiculoTipo", ""),
+                Marca = session.TemporaryData.GetValueOrDefault("VehiculoMarca", ""),
+                Modelo = session.TemporaryData.GetValueOrDefault("VehiculoModelo", ""),
+                Color = session.TemporaryData.GetValueOrDefault("VehiculoColor", ""),
+                ClienteId = cliente.Id,
+                ClienteNombreCompleto = cliente.NombreCompleto,
+                ClientesIds = new List<string> { cliente.Id },
+                ClaveAsociacionHash = claveHash,
+                Estado = "Activo"
+            };
+
+            await _vehiculoService.CrearVehiculo(vehiculo);
+
+            // 4. Actualizar lista de vehículos del cliente
+            cliente.VehiculosIds.Add(vehiculo.Id);
+            await _clienteService.ActualizarCliente(cliente);
+
+            _logger.LogInformation("✅ Vehículo creado exitosamente: {VehiculoId} para cliente {ClienteId}",
+                vehiculo.Id, cliente.Id);
+
+            // 5. Limpiar datos temporales
+            LimpiarDatosTemporalesRegistro(session);
+
+            // 6. Enviar mensajes de éxito
             await _whatsAppService.SendTextMessage(phoneNumber,
                 $"✅ ¡Registro completado con éxito, {cliente.Nombre}!\n\n" +
-                $"Bienvenido al Lavadero AutoClean 🚗✨\n\n" +
-                $"Ahora, para brindarte un mejor servicio, necesitamos registrar tu primer vehículo.");
+                $"Bienvenido al Lavadero AutoClean 🚗✨");
 
             await Task.Delay(1000);
 
-            // Iniciar proceso de registro de vehículo
-            await IniciarRegistroVehiculo(phoneNumber);
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                $"🚗 Vehículo registrado:\n" +
+                $"   {vehiculo.Marca} {vehiculo.Modelo}\n" +
+                $"   Patente: {vehiculo.Patente}\n\n" +
+                $"🔑 *Clave de asociación:* `{claveAsociacion}`\n\n" +
+                $"⚠️ *Importante:* Guarda esta clave en un lugar seguro.\n" +
+                $"Con ella, otras personas podrán vincularse a este vehículo " +
+                $"(ej: familiares, pareja, etc.).\n\n" +
+                $"Esta clave se muestra *solo esta vez*.");
+
+            await Task.Delay(1500);
+
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                $"Ya puedes disfrutar de nuestros servicios 🎉");
+
+            await Task.Delay(1000);
+
+            // 7. Mostrar menú principal
+            await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO);
+            await ShowClienteMenu(phoneNumber, cliente.Nombre);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creando cliente desde sesión");
+            _logger.LogError(ex, "Error creando cliente y vehículo desde sesión");
             await _whatsAppService.SendTextMessage(phoneNumber,
                 "❌ Ocurrió un error al crear tu registro. Por favor, intenta nuevamente más tarde.");
 
             await _sessionService.ClearSession(phoneNumber);
         }
+    }
+
+    /// <summary>
+    /// Asocia un vehículo existente al nuevo cliente durante el registro inicial.
+    /// Esta operación realiza múltiples pasos en secuencia:
+    /// 1. Crea el cliente en la base de datos
+    /// 2. Asocia el cliente a la sesión de WhatsApp
+    /// 3. Asocia el cliente al vehículo existente
+    /// 4. Actualiza la lista de vehículos del cliente
+    /// 
+    /// Nota: En caso de error en cualquier paso, se limpia la sesión pero no se
+    /// revierten los datos parciales. En un escenario de producción crítico,
+    /// se debería considerar implementar transacciones o compensaciones.
+    /// </summary>
+    private async Task CrearClienteYAsociarVehiculoDesdeSession(string phoneNumber, WhatsAppSession session, string vehiculoId)
+    {
+        try
+        {
+            var telefonoParaDB = PhoneNumberHelper.RemoveCountryCode(phoneNumber);
+            
+            _logger.LogInformation("💾 Creando cliente y asociando vehículo:");
+            
+            // 1. Crear cliente primero
+            var cliente = new Cliente
+            {
+                Id = "",
+                TipoDocumento = session.TemporaryData.GetValueOrDefault("TipoDocumento", ""),
+                NumeroDocumento = session.TemporaryData.GetValueOrDefault("NumeroDocumento", ""),
+                Nombre = session.TemporaryData.GetValueOrDefault("Nombre", ""),
+                Apellido = session.TemporaryData.GetValueOrDefault("Apellido", ""),
+                Telefono = telefonoParaDB,
+                Email = session.TemporaryData.GetValueOrDefault("Email", ""),
+                VehiculosIds = new List<string>(),
+                Estado = "Activo"
+            };
+
+            await _clienteService.CrearCliente(cliente);
+            _logger.LogInformation("✅ Cliente creado exitosamente: {ClienteId}", cliente.Id);
+
+            // 2. Asociar cliente a la sesión
+            await _sessionService.AssociateClienteToSession(phoneNumber, cliente.Id);
+
+            // 3. Asociar cliente al vehículo existente
+            var exitoso = await _vehiculoService.AsociarClienteAVehiculo(vehiculoId, cliente.Id);
+
+            if (!exitoso)
+            {
+                throw new Exception("Error al asociar el vehículo al cliente");
+            }
+
+            // 4. Actualizar lista de vehículos del cliente
+            cliente.VehiculosIds.Add(vehiculoId);
+            await _clienteService.ActualizarCliente(cliente);
+
+            var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
+            var vehiculoInfo = vehiculo != null 
+                ? $"{vehiculo.Marca} {vehiculo.Modelo} - {vehiculo.Patente}" 
+                : "Vehículo asociado";
+
+            _logger.LogInformation("🔗 Cliente {ClienteId} asociado al vehículo {VehiculoId}",
+                cliente.Id, vehiculoId);
+
+            // 5. Limpiar datos temporales
+            LimpiarDatosTemporalesRegistro(session);
+
+            // 6. Enviar mensajes de éxito
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                $"✅ ¡Registro completado con éxito, {cliente.Nombre}!\n\n" +
+                $"Bienvenido al Lavadero AutoClean 🚗✨\n\n" +
+                $"🔗 Te has vinculado al vehículo:\n" +
+                $"   {vehiculoInfo}\n\n" +
+                $"Ya puedes disfrutar de nuestros servicios 🎉");
+
+            await Task.Delay(1000);
+
+            // 7. Mostrar menú principal
+            await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO);
+            await ShowClienteMenu(phoneNumber, cliente.Nombre);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creando cliente y asociando vehículo");
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "❌ Ocurrió un error al crear tu registro. Por favor, intenta nuevamente más tarde.");
+
+            await _sessionService.ClearSession(phoneNumber);
+        }
+    }
+
+    /// <summary>
+    /// Limpia los datos temporales del registro
+    /// </summary>
+    private void LimpiarDatosTemporalesRegistro(WhatsAppSession session)
+    {
+        // Datos del cliente
+        session.TemporaryData.Remove("TipoDocumento");
+        session.TemporaryData.Remove("NumeroDocumento");
+        session.TemporaryData.Remove("Nombre");
+        session.TemporaryData.Remove("Apellido");
+        session.TemporaryData.Remove("Email");
+        session.TemporaryData.Remove("ClienteDatosConfirmados");
+        session.TemporaryData.Remove("RegistroInicial");
+
+        // Datos del vehículo
+        session.TemporaryData.Remove("VehiculoPatente");
+        session.TemporaryData.Remove("VehiculoTipo");
+        session.TemporaryData.Remove("VehiculoMarca");
+        session.TemporaryData.Remove("VehiculoMarcaId");
+        session.TemporaryData.Remove("VehiculoModelo");
+        session.TemporaryData.Remove("VehiculoColor");
+        session.TemporaryData.Remove("MarcasDisponibles");
+        session.TemporaryData.Remove("ModelosDisponibles");
+        session.TemporaryData.Remove("ColoresDisponibles");
+
+        // Datos de asociación
+        session.TemporaryData.Remove("AsociarVehiculoId");
+        session.TemporaryData.Remove("AsociarVehiculoPatente");
+        session.TemporaryData.Remove("AsociarVehiculoInfo");
     }
 }
