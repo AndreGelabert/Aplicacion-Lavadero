@@ -175,11 +175,15 @@
     };
 
     // =====================================
-    // BÚSQUEDA DE CLIENTES
+    // BÚSQUEDA DE VEHÍCULOS POR PATENTE
     // =====================================
     function setupClienteSearch() {
-        const searchInput = document.getElementById('clienteSearch');
-        const resultadosDiv = document.getElementById('clienteResultados');
+        setupPatenteSearch();
+    }
+
+    function setupPatenteSearch() {
+        const searchInput = document.getElementById('patenteSearch');
+        const resultadosDiv = document.getElementById('patenteResultados');
 
         if (!searchInput || !resultadosDiv) return;
 
@@ -196,7 +200,7 @@
             }
 
             debounceTimer = setTimeout(() => {
-                buscarClientes(term);
+                buscarVehiculos(term);
             }, 300);
         });
 
@@ -213,33 +217,154 @@
         });
     }
 
-    async function buscarClientes(term) {
-        const resultadosDiv = document.getElementById('clienteResultados');
+    async function buscarVehiculos(term) {
+        const resultadosDiv = document.getElementById('patenteResultados');
 
         try {
-            const response = await fetch(`/Lavados/ObtenerClientes?search=${encodeURIComponent(term)}`);
-            const clientes = await response.json();
+            const response = await fetch(`/Lavados/BuscarVehiculosPorPatente?search=${encodeURIComponent(term)}`);
+            const vehiculos = await response.json();
 
-            if (clientes.length === 0) {
-                resultadosDiv.innerHTML = '<div class="p-3 text-gray-500 dark:text-gray-400">No se encontraron clientes</div>';
+            if (vehiculos.length === 0) {
+                resultadosDiv.innerHTML = '<div class="p-3 text-gray-500 dark:text-gray-400">No se encontraron vehículos</div>';
             } else {
-                resultadosDiv.innerHTML = clientes.map(c => `
+                resultadosDiv.innerHTML = vehiculos.map(v => `
                     <div class="p-3 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border-b dark:border-gray-600 last:border-b-0"
-                         onclick="seleccionarCliente('${c.id}', '${escapeHtml(c.nombre)}')">
-                        <div class="font-medium text-gray-900 dark:text-white">${escapeHtml(c.nombre)}</div>
-                        <div class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(c.documento)}</div>
+                         onclick="seleccionarVehiculo('${v.id}', '${escapeHtml(v.patente)}', '${escapeHtml(v.tipoVehiculo)}', '${escapeHtml(v.marca)}', '${escapeHtml(v.modelo)}', '${escapeHtml(v.color)}', '${escapeHtml(v.clienteNombre || '')}')">
+                        <div class="font-medium text-gray-900 dark:text-white">${escapeHtml(v.patente)}</div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(v.marca)} ${escapeHtml(v.modelo)} - ${escapeHtml(v.color)}</div>
+                        <div class="text-xs text-gray-400 dark:text-gray-500">${escapeHtml(v.tipoVehiculo)} ${v.clienteNombre ? '• ' + escapeHtml(v.clienteNombre) : ''}</div>
                     </div>
                 `).join('');
             }
 
             resultadosDiv.classList.remove('hidden');
         } catch (e) {
-            console.error('Error buscando clientes:', e);
-            resultadosDiv.innerHTML = '<div class="p-3 text-red-500">Error al buscar clientes</div>';
+            console.error('Error buscando vehículos:', e);
+            resultadosDiv.innerHTML = '<div class="p-3 text-red-500">Error al buscar vehículos</div>';
             resultadosDiv.classList.remove('hidden');
         }
     }
 
+    window.seleccionarVehiculo = async function (id, patente, tipoVehiculo, marca, modelo, color, clienteNombre) {
+        // Si ya había un vehículo seleccionado, limpiar datos anteriores
+        if (window.lavadoData.vehiculoId && window.lavadoData.vehiculoId !== id) {
+            window.lavadoData.vehiculosSeleccionados.forEach(vehiculoId => {
+                eliminarServiciosVehiculo(vehiculoId);
+            });
+            window.lavadoData.vehiculosSeleccionados = [];
+            window.lavadoData.serviciosPorVehiculo = {};
+            window.lavadoData.serviciosDisponibles = {};
+            window.lavadoData.paquetesDisponibles = {};
+        }
+
+        document.getElementById('vehiculoId').value = id;
+        document.getElementById('patenteSearch').value = patente;
+        document.getElementById('patenteResultados').classList.add('hidden');
+        document.getElementById('vehiculoSeleccionado').classList.remove('hidden');
+        document.getElementById('vehiculoNombre').textContent = `${patente} - ${marca} ${modelo}`;
+
+        window.lavadoData.vehiculoId = id;
+        window.lavadoData.vehiculoPatente = patente;
+        window.lavadoData.tipoVehiculo = tipoVehiculo;
+
+        // Mostrar información del vehículo
+        const infoSection = document.getElementById('infoVehiculoSection');
+        const infoDiv = document.getElementById('infoVehiculo');
+        if (infoSection && infoDiv) {
+            infoDiv.innerHTML = `
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Patente:</strong> ${escapeHtml(patente)}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Vehículo:</strong> ${escapeHtml(marca)} ${escapeHtml(modelo)} (${escapeHtml(color)})</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Tipo:</strong> ${escapeHtml(tipoVehiculo)}</p>
+            `;
+            infoSection.style.display = 'block';
+        }
+
+        // Cargar clientes asociados al vehículo
+        await cargarClientesVehiculo(id);
+        
+        // Cargar empleados según el tipo de vehículo
+        await cargarEmpleadosPorTipoVehiculo(tipoVehiculo);
+        
+        // Agregar el vehículo a la lista de seleccionados y cargar sus servicios
+        window.lavadoData.vehiculosSeleccionados = [id];
+        await cargarServiciosParaVehiculo(id, tipoVehiculo);
+    };
+
+    async function cargarClientesVehiculo(vehiculoId) {
+        try {
+            const response = await fetch(`/Lavados/ObtenerClientesVehiculo?vehiculoId=${vehiculoId}`);
+            const clientes = await response.json();
+
+            window.lavadoData.clientesAsociados = clientes;
+
+            const clientesSection = document.getElementById('clientesAsociadosSection');
+            const clienteTrajoSelect = document.getElementById('clienteTrajoSelect');
+            const clienteRetiraSelect = document.getElementById('clienteRetiraSelect');
+            const clienteIdInput = document.getElementById('clienteId');
+
+            if (clientes.length > 0) {
+                // Establecer el primer cliente como el principal
+                clienteIdInput.value = clientes[0].id;
+                window.lavadoData.clienteId = clientes[0].id;
+                window.lavadoData.clienteNombre = clientes[0].nombre;
+
+                // Si hay más de un cliente, mostrar los desplegables
+                if (clientes.length > 1) {
+                    const options = clientes.map(c => 
+                        `<option value="${c.id}">${escapeHtml(c.nombre)} (${escapeHtml(c.documento)})</option>`
+                    ).join('');
+
+                    clienteTrajoSelect.innerHTML = options;
+                    clienteRetiraSelect.innerHTML = options;
+                    clientesSection.style.display = 'block';
+                } else {
+                    // Un solo cliente, no se necesitan los desplegables
+                    clientesSection.style.display = 'none';
+                }
+            } else {
+                clientesSection.style.display = 'none';
+                showTableMessage('error', 'El vehículo no tiene clientes asociados activos.');
+            }
+        } catch (e) {
+            console.error('Error cargando clientes del vehículo:', e);
+            showTableMessage('error', 'Error al cargar los clientes del vehículo.');
+        }
+    }
+
+    async function cargarEmpleadosPorTipoVehiculo(tipoVehiculo) {
+        try {
+            // Obtener la cantidad de empleados requeridos para este tipo de vehículo
+            const response = await fetch(`/Lavados/ObtenerEmpleadosPorTipoVehiculo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`);
+            const data = await response.json();
+            
+            window.lavadoData.cantidadEmpleadosPorTipo = data.cantidadEmpleadosRequeridos || 1;
+            
+            // Obtener información general de empleados disponibles
+            const empleadosResponse = await fetch('/Lavados/ObtenerEmpleadosDisponibles');
+            const empleadosData = await empleadosResponse.json();
+
+            window.lavadoData.empleadosInfo = {
+                totalActivos: empleadosData.totalActivos,
+                totalDisponibles: empleadosData.totalDisponibles,
+                empleadosMaximosPorLavado: empleadosData.empleadosMaximosPorLavado
+            };
+
+            // Mostrar información al usuario
+            const infoDiv = document.getElementById('empleadosInfo');
+            if (infoDiv) {
+                infoDiv.innerHTML = `
+                    <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                        <p>Empleados requeridos para ${escapeHtml(tipoVehiculo)}: <span class="font-medium text-blue-600 dark:text-blue-400">${window.lavadoData.cantidadEmpleadosPorTipo}</span></p>
+                        <p>Empleados disponibles: <span class="font-medium">${empleadosData.totalDisponibles}</span> de ${empleadosData.totalActivos} activos</p>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            console.error('Error cargando info de empleados:', e);
+        }
+    }
+
+    // Mantener la función original por si se necesita
     window.seleccionarCliente = function (id, nombre) {
         // Si ya había un cliente seleccionado, limpiar datos anteriores
         if (window.lavadoData.clienteId && window.lavadoData.clienteId !== id) {
@@ -253,17 +378,8 @@
             window.lavadoData.paquetesDisponibles = {};
         }
 
-        document.getElementById('clienteId').value = id;
-        document.getElementById('clienteSearch').value = nombre;
-        document.getElementById('clienteResultados').classList.add('hidden');
-        document.getElementById('clienteSeleccionado').classList.remove('hidden');
-        document.getElementById('clienteNombre').textContent = nombre;
-
         window.lavadoData.clienteId = id;
         window.lavadoData.clienteNombre = nombre;
-
-        cargarVehiculosCliente(id);
-        cargarInfoEmpleados();
     };
 
     async function cargarInfoEmpleados() {
@@ -869,10 +985,11 @@
 
     function actualizarBotonSubmit() {
         const submitBtn = document.getElementById('submit-button');
+        const tieneVehiculo = !!window.lavadoData.vehiculoId;
         const tieneCliente = !!window.lavadoData.clienteId;
         const tieneServicios = Object.values(window.lavadoData.serviciosPorVehiculo).some(s => s.length > 0);
 
-        submitBtn.disabled = !(tieneCliente && tieneServicios);
+        submitBtn.disabled = !(tieneVehiculo && tieneCliente && tieneServicios);
     }
 
     // =====================================
@@ -901,12 +1018,17 @@
                 }
             }
 
+            // Obtener los clientes que trajeron y retiraran el vehículo
+            const clienteTrajoSelect = document.getElementById('clienteTrajoSelect');
+            const clienteRetiraSelect = document.getElementById('clienteRetiraSelect');
+            
             const requestData = {
                 clienteId: window.lavadoData.clienteId,
                 vehiculosServicios: vehiculosServicios,
-                cantidadEmpleados: parseInt(document.getElementById('cantidadEmpleados')?.value || 1),
                 descuento: parseFloat(document.getElementById('descuento')?.value || 0),
-                notas: document.getElementById('notas')?.value || null
+                notas: document.getElementById('notas')?.value || null,
+                clienteTrajoId: clienteTrajoSelect?.value || null,
+                clienteRetiraId: clienteRetiraSelect?.value || null
             };
 
             try {
@@ -944,28 +1066,55 @@
 
     window.limpiarFormularioLavado = function () {
         window.lavadoData = {
+            vehiculoId: null,
+            vehiculoPatente: null,
+            tipoVehiculo: null,
             clienteId: null,
             clienteNombre: null,
-            vehiculos: [],
+            clientesAsociados: [],
             vehiculosSeleccionados: [],
             serviciosPorVehiculo: {},
             serviciosDisponibles: {},
             paquetesDisponibles: {},
-            empleadosInfo: null
+            empleadosInfo: null,
+            cantidadEmpleadosPorTipo: 1
         };
 
-        document.getElementById('clienteSearch').value = '';
-        document.getElementById('clienteId').value = '';
-        document.getElementById('clienteSeleccionado').classList.add('hidden');
-        document.getElementById('vehiculosSection').style.display = 'none';
-        document.getElementById('vehiculosList').innerHTML = '';
-        document.getElementById('serviciosSection').style.display = 'none';
-        document.getElementById('serviciosPorVehiculo').innerHTML = '';
-        document.getElementById('resumenSection').style.display = 'none';
-        document.getElementById('descuento').value = '0';
-        document.getElementById('notas').value = '';
-        document.getElementById('cantidadEmpleados').value = '1';
-        document.getElementById('submit-button').disabled = true;
+        const patenteSearch = document.getElementById('patenteSearch');
+        if (patenteSearch) patenteSearch.value = '';
+        
+        const vehiculoIdInput = document.getElementById('vehiculoId');
+        if (vehiculoIdInput) vehiculoIdInput.value = '';
+        
+        const clienteIdInput = document.getElementById('clienteId');
+        if (clienteIdInput) clienteIdInput.value = '';
+        
+        const vehiculoSeleccionado = document.getElementById('vehiculoSeleccionado');
+        if (vehiculoSeleccionado) vehiculoSeleccionado.classList.add('hidden');
+        
+        const infoVehiculoSection = document.getElementById('infoVehiculoSection');
+        if (infoVehiculoSection) infoVehiculoSection.style.display = 'none';
+        
+        const clientesAsociadosSection = document.getElementById('clientesAsociadosSection');
+        if (clientesAsociadosSection) clientesAsociadosSection.style.display = 'none';
+        
+        const serviciosSection = document.getElementById('serviciosSection');
+        if (serviciosSection) serviciosSection.style.display = 'none';
+        
+        const serviciosPorVehiculo = document.getElementById('serviciosPorVehiculo');
+        if (serviciosPorVehiculo) serviciosPorVehiculo.innerHTML = '';
+        
+        const resumenSection = document.getElementById('resumenSection');
+        if (resumenSection) resumenSection.style.display = 'none';
+        
+        const descuento = document.getElementById('descuento');
+        if (descuento) descuento.value = '0';
+        
+        const notas = document.getElementById('notas');
+        if (notas) notas.value = '';
+        
+        const submitButton = document.getElementById('submit-button');
+        if (submitButton) submitButton.disabled = true;
         
         const infoDiv = document.getElementById('empleadosInfo');
         if (infoDiv) {

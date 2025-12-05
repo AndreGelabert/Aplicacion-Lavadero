@@ -1031,7 +1031,13 @@ namespace Firebase.Services
                 ["MotivoCancelacion"] = lavado.MotivoCancelacion ?? string.Empty,
                 ["Notas"] = lavado.Notas ?? string.Empty,
                 ["NotificacionTiempoEnviada"] = lavado.NotificacionTiempoEnviada,
-                ["PreguntasFinalizacion"] = lavado.PreguntasFinalizacion
+                ["PreguntasFinalizacion"] = lavado.PreguntasFinalizacion,
+                ["EstadoRetiro"] = lavado.EstadoRetiro ?? "Pendiente",
+                ["ClienteTrajoId"] = lavado.ClienteTrajoId ?? string.Empty,
+                ["ClienteTrajoNombre"] = lavado.ClienteTrajoNombre ?? string.Empty,
+                ["ClienteRetiraId"] = lavado.ClienteRetiraId ?? string.Empty,
+                ["ClienteRetiraNombre"] = lavado.ClienteRetiraNombre ?? string.Empty,
+                ["FechaRetiro"] = lavado.FechaRetiro.HasValue ? Timestamp.FromDateTime(lavado.FechaRetiro.Value.ToUniversalTime()) : (object?)null!
             };
         }
 
@@ -1054,7 +1060,12 @@ namespace Firebase.Services
                 MotivoCancelacion = documento.ContainsField("MotivoCancelacion") ? documento.GetValue<string>("MotivoCancelacion") : null,
                 Notas = documento.ContainsField("Notas") ? documento.GetValue<string>("Notas") : null,
                 NotificacionTiempoEnviada = documento.ContainsField("NotificacionTiempoEnviada") && documento.GetValue<bool>("NotificacionTiempoEnviada"),
-                PreguntasFinalizacion = documento.ContainsField("PreguntasFinalizacion") ? documento.GetValue<int>("PreguntasFinalizacion") : 0
+                PreguntasFinalizacion = documento.ContainsField("PreguntasFinalizacion") ? documento.GetValue<int>("PreguntasFinalizacion") : 0,
+                EstadoRetiro = documento.ContainsField("EstadoRetiro") ? documento.GetValue<string>("EstadoRetiro") ?? "Pendiente" : "Pendiente",
+                ClienteTrajoId = documento.ContainsField("ClienteTrajoId") ? documento.GetValue<string>("ClienteTrajoId") : null,
+                ClienteTrajoNombre = documento.ContainsField("ClienteTrajoNombre") ? documento.GetValue<string>("ClienteTrajoNombre") : null,
+                ClienteRetiraId = documento.ContainsField("ClienteRetiraId") ? documento.GetValue<string>("ClienteRetiraId") : null,
+                ClienteRetiraNombre = documento.ContainsField("ClienteRetiraNombre") ? documento.GetValue<string>("ClienteRetiraNombre") : null
             };
 
             // Mapear fechas
@@ -1074,6 +1085,12 @@ namespace Firebase.Services
             {
                 var timestamp = documento.GetValue<Timestamp>("FechaCreacion");
                 lavado.FechaCreacion = timestamp.ToDateTime();
+            }
+
+            if (documento.ContainsField("FechaRetiro"))
+            {
+                var timestamp = documento.GetValue<Timestamp?>("FechaRetiro");
+                lavado.FechaRetiro = timestamp?.ToDateTime();
             }
 
             // Mapear empleados

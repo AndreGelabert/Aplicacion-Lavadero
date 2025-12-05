@@ -64,6 +64,7 @@
                     </div>
                 </div>
             </th>
+            <th class="px-4 py-3 select-none">Retiro</th>
             <th class="px-4 py-3 text-center">Acciones</th>
         </tr>
     </thead>
@@ -163,6 +164,19 @@
                             <span>@lavado.FechaCreacion.ToLocalTime().ToString("dd/MM/yyyy")</span>
                             <span class="text-xs text-gray-500">@lavado.FechaCreacion.ToLocalTime().ToString("HH:mm")</span>
                         </div>
+                    </td>
+                    <td class="px-4 py-3">
+                        @{
+                            var estadoRetiro = lavado.EstadoRetiro ?? "Pendiente";
+                        }
+                        @if (estadoRetiro == "Retirado")
+                        {
+                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-green-900 dark:text-green-300">Retirado</span>
+                        }
+                        else
+                        {
+                            <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-yellow-900 dark:text-yellow-300">Pendiente</span>
+                        }
                     </td>
                     <td class="px-4 py-3 whitespace-nowrap text-center">
                         <div class="flex items-center justify-center gap-1">

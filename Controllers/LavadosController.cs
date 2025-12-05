@@ -27,6 +27,7 @@ namespace FirebaseLoginCustom.Controllers
         private readonly VehiculoService _vehiculoService;
         private readonly PersonalService _personalService;
         private readonly ConfiguracionService _configuracionService;
+        private readonly TipoVehiculoService _tipoVehiculoService;
 
         /// <summary>
         /// Crea una nueva instancia de <see cref="LavadosController"/>.
@@ -40,7 +41,8 @@ namespace FirebaseLoginCustom.Controllers
             ClienteService clienteService,
             VehiculoService vehiculoService,
             PersonalService personalService,
-            ConfiguracionService configuracionService)
+            ConfiguracionService configuracionService,
+            TipoVehiculoService tipoVehiculoService)
         {
             _logger = logger;
             _auditService = auditService;
@@ -51,6 +53,7 @@ namespace FirebaseLoginCustom.Controllers
             _vehiculoService = vehiculoService;
             _personalService = personalService;
             _configuracionService = configuracionService;
+            _tipoVehiculoService = tipoVehiculoService;
         }
         #endregion
 
@@ -399,15 +402,25 @@ namespace FirebaseLoginCustom.Controllers
                     var descuento = request.Descuento;
                     var precioConDescuento = precioTotal - (precioTotal * descuento / 100);
 
-                    // Asignar empleados aleatoriamente
-                // Validar cantidad de empleados solicitados
-                var config = await _configuracionService.ObtenerConfiguracion();
-                if (request.CantidadEmpleados > config.EmpleadosMaximosPorLavado)
-                {
-                    return Json(new { success = false, message = $"La cantidad de empleados solicitados ({request.CantidadEmpleados}) excede el máximo permitido por lavado ({config.EmpleadosMaximosPorLavado})." });
-                }
+                    // Obtener cantidad de empleados según el tipo de vehículo
+                    var tipoVehiculo = await _tipoVehiculoService.ObtenerTipoVehiculoPorNombre(vehiculo.TipoVehiculo);
+                    var cantidadEmpleadosPorTipo = tipoVehiculo?.CantidadEmpleadosRequeridos ?? 1;
 
-                var empleadosAsignados = await _lavadoService.AsignarEmpleadosAleatorios(request.CantidadEmpleados);
+                    // Validar cantidad de empleados
+                    var config = await _configuracionService.ObtenerConfiguracion();
+                    if (cantidadEmpleadosPorTipo > config.EmpleadosMaximosPorLavado)
+                    {
+                        cantidadEmpleadosPorTipo = config.EmpleadosMaximosPorLavado;
+                    }
+
+                    var empleadosAsignados = await _lavadoService.AsignarEmpleadosAleatorios(cantidadEmpleadosPorTipo);
+
+                    // Obtener información del cliente que trae y retira el vehículo
+                    var clienteTrajoId = request.ClienteTrajoId ?? cliente.Id;
+                    var clienteRetiraId = request.ClienteRetiraId ?? cliente.Id;
+
+                    var clienteTrajo = await _clienteService.ObtenerCliente(clienteTrajoId);
+                    var clienteRetira = await _clienteService.ObtenerCliente(clienteRetiraId);
 
                     var lavado = new Lavado
                     {
@@ -422,11 +435,16 @@ namespace FirebaseLoginCustom.Controllers
                         PrecioOriginal = precioTotal,
                         Precio = precioConDescuento,
                         Descuento = descuento,
-                        CantidadEmpleadosRequeridos = request.CantidadEmpleados,
+                        CantidadEmpleadosRequeridos = cantidadEmpleadosPorTipo,
                         EmpleadosAsignadosIds = empleadosAsignados.Select(e => e.Id).ToList(),
                         EmpleadosAsignadosNombres = empleadosAsignados.Select(e => e.NombreCompleto).ToList(),
                         TiempoEstimado = tiempoEstimadoTotal,
-                        Notas = request.Notas
+                        Notas = request.Notas,
+                        EstadoRetiro = "Pendiente",
+                        ClienteTrajoId = clienteTrajoId,
+                        ClienteTrajoNombre = clienteTrajo?.NombreCompleto ?? cliente.NombreCompleto,
+                        ClienteRetiraId = clienteRetiraId,
+                        ClienteRetiraNombre = clienteRetira?.NombreCompleto ?? cliente.NombreCompleto
                     };
 
                     var lavadoCreado = await _lavadoService.CrearLavado(lavado);
@@ -649,6 +667,52 @@ namespace FirebaseLoginCustom.Controllers
             }
         }
 
+        /// <summary>
+        /// Registra el retiro del vehículo del lavadero.
+        /// Solo permite el retiro si el lavado está pagado o fue cancelado.
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RegistrarRetiro(string lavadoId)
+        {
+            try
+            {
+                var lavado = await _lavadoService.ObtenerLavado(lavadoId);
+                if (lavado == null)
+                {
+                    return Json(new { success = false, message = "Lavado no encontrado." });
+                }
+
+                // Verificar si ya fue retirado
+                if (lavado.EstadoRetiro == "Retirado")
+                {
+                    return Json(new { success = false, message = "El vehículo ya fue retirado." });
+                }
+
+                // Verificar si el lavado fue pagado o cancelado
+                var estadoPago = lavado.Pago?.Estado ?? "Pendiente";
+                var estadoLavado = lavado.Estado;
+
+                if (estadoLavado != "Cancelado" && estadoPago != "Pagado")
+                {
+                    return Json(new { success = false, message = "El lavado debe estar pagado antes de permitir el retiro del vehículo." });
+                }
+
+                // Registrar el retiro
+                lavado.EstadoRetiro = "Retirado";
+                lavado.FechaRetiro = DateTime.UtcNow;
+
+                await _lavadoService.ActualizarLavado(lavado);
+                await RegistrarEvento("Retiro de vehículo", lavadoId, "Lavado");
+
+                return Json(new { success = true, message = "Retiro registrado correctamente." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
         #endregion
 
         #region APIs de datos
@@ -673,6 +737,105 @@ namespace FirebaseLoginCustom.Controllers
                 nombre = c.NombreCompleto,
                 documento = $"{c.TipoDocumento}: {c.NumeroDocumento}"
             }));
+        }
+
+        /// <summary>
+        /// Busca vehículos por patente para el selector.
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> BuscarVehiculosPorPatente(string? search)
+        {
+            if (string.IsNullOrWhiteSpace(search) || search.Length < 2)
+            {
+                return Json(new List<object>());
+            }
+
+            var vehiculos = await _vehiculoService.ObtenerVehiculos(
+                searchTerm: search,
+                tiposVehiculo: null,
+                marcas: null,
+                colores: null,
+                pageNumber: 1,
+                pageSize: 20,
+                sortBy: "Patente",
+                sortOrder: "asc",
+                estados: new List<string> { "Activo" });
+
+            return Json(vehiculos.Select(v => new
+            {
+                id = v.Id,
+                patente = v.Patente,
+                tipoVehiculo = v.TipoVehiculo,
+                marca = v.Marca,
+                modelo = v.Modelo,
+                color = v.Color,
+                clienteNombre = v.ClienteNombreCompleto,
+                clientesIds = v.ClientesIds ?? new List<string>(),
+                descripcion = $"{v.Patente} - {v.Marca} {v.Modelo} ({v.Color})"
+            }));
+        }
+
+        /// <summary>
+        /// Obtiene los clientes asociados a un vehículo.
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> ObtenerClientesVehiculo(string vehiculoId)
+        {
+            var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
+            if (vehiculo == null)
+            {
+                return Json(new List<object>());
+            }
+
+            var clientesIds = new List<string>();
+            
+            // Agregar el cliente principal si existe
+            if (!string.IsNullOrEmpty(vehiculo.ClienteId))
+            {
+                clientesIds.Add(vehiculo.ClienteId);
+            }
+
+            // Agregar los clientes asociados
+            if (vehiculo.ClientesIds != null)
+            {
+                foreach (var clienteId in vehiculo.ClientesIds)
+                {
+                    if (!clientesIds.Contains(clienteId))
+                    {
+                        clientesIds.Add(clienteId);
+                    }
+                }
+            }
+
+            var clientes = new List<object>();
+            foreach (var clienteId in clientesIds)
+            {
+                var cliente = await _clienteService.ObtenerCliente(clienteId);
+                if (cliente != null && cliente.Estado == "Activo")
+                {
+                    clientes.Add(new
+                    {
+                        id = cliente.Id,
+                        nombre = cliente.NombreCompleto,
+                        documento = $"{cliente.TipoDocumento}: {cliente.NumeroDocumento}",
+                        telefono = cliente.Telefono
+                    });
+                }
+            }
+
+            return Json(clientes);
+        }
+
+        /// <summary>
+        /// Obtiene la cantidad de empleados requeridos para un tipo de vehículo.
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> ObtenerEmpleadosPorTipoVehiculo(string tipoVehiculo)
+        {
+            var tipo = await _tipoVehiculoService.ObtenerTipoVehiculoPorNombre(tipoVehiculo);
+            var cantidadEmpleados = tipo?.CantidadEmpleadosRequeridos ?? 1;
+            
+            return Json(new { cantidadEmpleadosRequeridos = cantidadEmpleados });
         }
 
         /// <summary>
@@ -982,9 +1145,18 @@ namespace FirebaseLoginCustom.Controllers
     {
         public string ClienteId { get; set; } = string.Empty;
         public List<VehiculoServiciosRequest> VehiculosServicios { get; set; } = new List<VehiculoServiciosRequest>();
-        public int CantidadEmpleados { get; set; } = 1;
         public decimal Descuento { get; set; }
         public string? Notas { get; set; }
+        /// <summary>
+        /// ID del cliente que trajo el vehículo al lavadero.
+        /// Si no se especifica, se usa el ClienteId.
+        /// </summary>
+        public string? ClienteTrajoId { get; set; }
+        /// <summary>
+        /// ID del cliente encargado de retirar el vehículo.
+        /// Si no se especifica, se usa el ClienteId.
+        /// </summary>
+        public string? ClienteRetiraId { get; set; }
     }
 
     /// <summary>

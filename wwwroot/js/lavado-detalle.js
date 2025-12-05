@@ -160,6 +160,35 @@
         }
     };
 
+    window.registrarRetiro = async function (lavadoId) {
+        if (!confirm('¿Confirma que el vehículo ha sido retirado por el cliente autorizado?')) {
+            return;
+        }
+
+        try {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+            const formData = new FormData();
+            formData.append('lavadoId', lavadoId);
+
+            const response = await fetch('/Lavados/RegistrarRetiro', {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': token },
+                body: formData
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showMessage('success', result.message);
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showMessage('error', result.message);
+            }
+        } catch (e) {
+            console.error('Error:', e);
+            showMessage('error', 'Error al registrar el retiro.');
+        }
+    };
+
     // =====================================
     // MANEJO DE FORMULARIOS
     // =====================================

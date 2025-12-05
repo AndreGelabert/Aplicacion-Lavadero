@@ -153,6 +153,42 @@ namespace Firebase.Models
         /// </summary>
         [FirestoreProperty]
         public int PreguntasFinalizacion { get; set; }
+
+        /// <summary>
+        /// Estado del retiro del vehículo: Pendiente, Retirado.
+        /// </summary>
+        [FirestoreProperty]
+        public string EstadoRetiro { get; set; } = "Pendiente";
+
+        /// <summary>
+        /// ID del cliente que trajo el vehículo al lavadero.
+        /// </summary>
+        [FirestoreProperty]
+        public string? ClienteTrajoId { get; set; }
+
+        /// <summary>
+        /// Nombre del cliente que trajo el vehículo (para visualización).
+        /// </summary>
+        [FirestoreProperty]
+        public string? ClienteTrajoNombre { get; set; }
+
+        /// <summary>
+        /// ID del cliente encargado de retirar el vehículo.
+        /// </summary>
+        [FirestoreProperty]
+        public string? ClienteRetiraId { get; set; }
+
+        /// <summary>
+        /// Nombre del cliente encargado de retirar el vehículo (para visualización).
+        /// </summary>
+        [FirestoreProperty]
+        public string? ClienteRetiraNombre { get; set; }
+
+        /// <summary>
+        /// Fecha y hora en que el vehículo fue retirado.
+        /// </summary>
+        [FirestoreProperty]
+        public DateTime? FechaRetiro { get; set; }
     }
 
     /// <summary>
