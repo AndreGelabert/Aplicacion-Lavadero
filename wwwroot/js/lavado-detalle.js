@@ -160,11 +160,12 @@
         }
     };
 
-    window.registrarRetiro = async function (lavadoId) {
-        if (!confirm('¿Confirma que el vehículo ha sido retirado por el cliente autorizado?')) {
-            return;
-        }
+    window.abrirModalRetiro = function (lavadoId) {
+        document.getElementById('retiroLavadoId').value = lavadoId;
+        abrirModal('retiroModal');
+    };
 
+    window.registrarRetiro = async function (lavadoId) {
         try {
             const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
             const formData = new FormData();
@@ -294,6 +295,29 @@
                 } catch (e) {
                     console.error('Error:', e);
                     showMessage('error', 'Error al finalizar: ' + e.message);
+                }
+            });
+        }
+
+        // Formulario de retiro
+        const formRetiro = document.getElementById('formRetiro');
+        if (formRetiro) {
+            formRetiro.addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const lavadoId = document.getElementById('retiroLavadoId').value;
+
+                if (!lavadoId) {
+                    showMessage('error', 'ID de lavado inválido.');
+                    return;
+                }
+
+                try {
+                    cerrarModal('retiroModal');
+                    await registrarRetiro(lavadoId);
+                } catch (e) {
+                    console.error('Error:', e);
+                    showMessage('error', 'Error al registrar el retiro: ' + e.message);
                 }
             });
         }

@@ -72,6 +72,7 @@ namespace FirebaseLoginCustom.Controllers
             decimal? precioDesde,
             decimal? precioHasta,
             List<string>? estadosPago,
+            List<string>? estadosRetiro,
             int pageNumber = 1,
             int pageSize = 10,
             string? sortBy = null,
@@ -83,15 +84,15 @@ namespace FirebaseLoginCustom.Controllers
             sortOrder ??= "desc";
 
             var lavados = await _lavadoService.ObtenerLavados(
-                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, pageNumber, pageSize, sortBy, sortOrder);
+                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, pageNumber, pageSize, sortBy, sortOrder);
 
             var totalPages = await _lavadoService.ObtenerTotalPaginas(
-                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, pageSize);
+                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, pageSize);
 
             var currentPage = Math.Clamp(pageNumber, 1, Math.Max(totalPages, 1));
             var visiblePages = GetVisiblePages(currentPage, totalPages);
 
-            await ConfigurarViewBag(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, pageSize, currentPage, totalPages, visiblePages, sortBy, sortOrder);
+            await ConfigurarViewBag(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, pageSize, currentPage, totalPages, visiblePages, sortBy, sortOrder);
 
             return View(lavados);
         }
@@ -130,6 +131,7 @@ namespace FirebaseLoginCustom.Controllers
             decimal? precioDesde,
             decimal? precioHasta,
             List<string>? estadosPago,
+            List<string>? estadosRetiro,
             int pageNumber = 1,
             int pageSize = 10,
             string? sortBy = null,
@@ -141,10 +143,10 @@ namespace FirebaseLoginCustom.Controllers
             sortOrder ??= "desc";
 
             var lavados = await _lavadoService.BuscarLavados(
-                searchTerm, estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, pageNumber, pageSize, sortBy, sortOrder);
+                searchTerm, estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, pageNumber, pageSize, sortBy, sortOrder);
 
             var totalLavados = await _lavadoService.ObtenerTotalLavadosBusqueda(
-                searchTerm, estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago);
+                searchTerm, estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro);
 
             var totalPages = Math.Max((int)Math.Ceiling(totalLavados / (double)pageSize), 1);
 
@@ -159,6 +161,7 @@ namespace FirebaseLoginCustom.Controllers
             ViewBag.PrecioDesde = precioDesde;
             ViewBag.PrecioHasta = precioHasta;
             ViewBag.EstadosPago = estadosPago;
+            ViewBag.EstadosRetiro = estadosRetiro;
             ViewBag.SortBy = sortBy;
             ViewBag.SortOrder = sortOrder;
             ViewBag.SearchTerm = searchTerm;
@@ -179,6 +182,7 @@ namespace FirebaseLoginCustom.Controllers
             decimal? precioDesde,
             decimal? precioHasta,
             List<string>? estadosPago,
+            List<string>? estadosRetiro,
             int pageNumber = 1,
             int pageSize = 10,
             string? sortBy = null,
@@ -190,10 +194,10 @@ namespace FirebaseLoginCustom.Controllers
             sortOrder ??= "desc";
 
             var lavados = await _lavadoService.ObtenerLavados(
-                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, pageNumber, pageSize, sortBy, sortOrder);
+                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, pageNumber, pageSize, sortBy, sortOrder);
 
             var totalPages = await _lavadoService.ObtenerTotalPaginas(
-                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, pageSize);
+                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, pageSize);
             totalPages = Math.Max(totalPages, 1);
 
             ViewBag.CurrentPage = pageNumber;
@@ -207,6 +211,7 @@ namespace FirebaseLoginCustom.Controllers
             ViewBag.PrecioDesde = precioDesde;
             ViewBag.PrecioHasta = precioHasta;
             ViewBag.EstadosPago = estadosPago;
+            ViewBag.EstadosRetiro = estadosRetiro;
             ViewBag.SortBy = sortBy;
             ViewBag.SortOrder = sortOrder;
 
@@ -1065,6 +1070,7 @@ namespace FirebaseLoginCustom.Controllers
             decimal? precioDesde,
             decimal? precioHasta,
             List<string>? estadosPago,
+            List<string>? estadosRetiro,
             int pageSize,
             int currentPage,
             int totalPages,
@@ -1083,6 +1089,7 @@ namespace FirebaseLoginCustom.Controllers
             ViewBag.PrecioDesde = precioDesde;
             ViewBag.PrecioHasta = precioHasta;
             ViewBag.EstadosPago = estadosPago;
+            ViewBag.EstadosRetiro = estadosRetiro;
             ViewBag.PageSize = pageSize;
             ViewBag.SortBy = sortBy;
             ViewBag.SortOrder = sortOrder;

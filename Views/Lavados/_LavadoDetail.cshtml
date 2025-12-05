@@ -200,12 +200,19 @@
         }
         @{
             var estadoPagoRetiro = Model.Pago?.Estado ?? "Pendiente";
-            var puedeRetirar = (estadoPagoRetiro == "Pagado" || Model.Estado == "Cancelado") && estadoRetiro != "Retirado";
+            var estadoLavado = Model.Estado;
+            // El vehículo puede retirarse si:
+            // 1. El pago está "Pagado" O el pago está "Cancelado" (para servicios cancelados)
+            // 2. Y el lavado está "Realizado", "RealizadoParcialmente" o "Cancelado"
+            // 3. Y el vehículo no ha sido retirado aún
+            var pagoValido = estadoPagoRetiro == "Pagado" || estadoPagoRetiro == "Cancelado";
+            var lavadoFinalizado = estadoLavado == "Realizado" || estadoLavado == "RealizadoParcialmente" || estadoLavado == "Cancelado";
+            var puedeRetirar = pagoValido && lavadoFinalizado && estadoRetiro != "Retirado";
         }
         @if (puedeRetirar)
         {
             <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
-                <button onclick="registrarRetiro('@Model.Id')" 
+                <button onclick="abrirModalRetiro('@Model.Id')" 
                         class="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg focus:ring-4 focus:ring-purple-300 dark:focus:ring-purple-900">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -224,7 +231,14 @@
                     <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
                     </svg>
-                    El lavado debe estar pagado para permitir el retiro del vehículo.
+                    @if (!lavadoFinalizado)
+                    {
+                        <span>El lavado debe estar finalizado o cancelado para permitir el retiro del vehículo.</span>
+                    }
+                    else
+                    {
+                        <span>El lavado debe estar pagado para permitir el retiro del vehículo.</span>
+                    }
                 </p>
             </div>
         }

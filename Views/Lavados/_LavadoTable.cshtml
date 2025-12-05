@@ -64,7 +64,17 @@
                     </div>
                 </div>
             </th>
-            <th class="px-4 py-3 select-none">Retiro</th>
+            <th class="px-4 py-3 select-none">
+                <div class="flex items-center gap-1">
+                    <span>Retiro</span>
+                    <div class="sort-icon-container cursor-pointer" onclick="sortTable('EstadoRetiro')">
+                        <svg class="w-4 h-4 @(ViewBag.SortBy == "EstadoRetiro" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                             fill="currentColor" viewBox="0 0 20 20">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </th>
             <th class="px-4 py-3 text-center">Acciones</th>
         </tr>
     </thead>

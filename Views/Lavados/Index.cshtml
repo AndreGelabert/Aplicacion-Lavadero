@@ -19,7 +19,7 @@
             <h1 class="text-2xl md:block font-semibold text-gray-900 dark:text-white">
                 Lavados
             </h1>
-            <!-- Botón de ayuda -->
+            <!-- Botï¿½n de ayuda -->
             <button data-popover-target="popover-click" data-popover-trigger="click" type="button" class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-2 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"></path>
@@ -30,7 +30,7 @@
                     <h3 class="font-semibold text-gray-900 dark:text-white">Ayuda</h3>
                 </div>
                 <div class="px-3 py-2">
-                    <p>En esta página puedes ver, crear y gestionar los lavados del lavadero. Un lavado representa la realización de servicios sobre un vehículo de un cliente.</p>
+                    <p>En esta pï¿½gina puedes ver, crear y gestionar los lavados del lavadero. Un lavado representa la realizaciï¿½n de servicios sobre un vehï¿½culo de un cliente.</p>
                 </div>
                 <div data-popper-arrow></div>
             </div>
@@ -74,7 +74,7 @@
             </div>
             <div class="w-full md:w-auto flex flex-col md:flex-row space-y-2 md:space-y-0 items-stretch md:items-center justify-end md:space-x-3 flex-shrink-0">
                 <div class="flex items-center space-x-3 w-full md:w-auto gap-2">
-                    <!-- Botón de Filtro -->
+                    <!-- Botï¿½n de Filtro -->
                     <button id="filterDropdownButton" data-dropdown-toggle="filterDropdown" class="w-full md:w-auto flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700" type="button">
                         <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="h-4 w-4 mr-2 text-gray-400" viewbox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
@@ -147,25 +147,25 @@
                                     </h6>
                                     <div class="space-y-2">
                                         <div>
-                                            <label for="precioDesde" class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Precio mínimo:</label>
+                                            <label for="precioDesde" class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Precio mï¿½nimo:</label>
                                             <input type="number" id="precioDesde" name="precioDesde" step="any" min="@(ViewBag.PrecioMinimo ?? 0)" max="@(ViewBag.PrecioMaximo ?? 999999999)"
                                                    value="@(ViewBag.PrecioDesde)"
                                                    placeholder="0.00"
                                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                             @if (ViewBag.PrecioMinimo != null && ViewBag.PrecioMinimo > 0)
                                             {
-                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Mín. permitido: $@string.Format("{0:N2}", ViewBag.PrecioMinimo)</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Mï¿½n. permitido: $@string.Format("{0:N2}", ViewBag.PrecioMinimo)</p>
                                             }
                                         </div>
                                         <div>
-                                            <label for="precioHasta" class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Precio máximo:</label>
+                                            <label for="precioHasta" class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Precio mï¿½ximo:</label>
                                             <input type="number" id="precioHasta" name="precioHasta" step="any" min="0" max="@(ViewBag.PrecioMaximo ?? 999999999)"
                                                    value="@(ViewBag.PrecioHasta)"
                                                    placeholder="0.00"
                                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                             @if (ViewBag.PrecioMaximo != null && ViewBag.PrecioMaximo > 0)
                                             {
-                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Máx. permitido: $@string.Format("{0:N2}", ViewBag.PrecioMaximo)</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Mï¿½x. permitido: $@string.Format("{0:N2}", ViewBag.PrecioMaximo)</p>
                                             }
                                         </div>
                                     </div>
@@ -199,8 +199,36 @@
                                         }
                                     </div>
                                 </div>
+
+                                <!-- Estado de Retiro -->
+                                <div>
+                                    <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                        Estado de Retiro
+                                    </h6>
+                                    <div class="space-y-2 text-sm">
+                                        @{
+                                            var estadosRetiroNombres = new Dictionary<string, string>
+                                            {
+                                                { "Pendiente", "Pendiente" },
+                                                { "Retirado", "Retirado" }
+                                            };
+                                            var todosLosEstadosRetiro = new List<string> { "Pendiente", "Retirado" };
+                                        }
+                                        @foreach (var estadoRetiro in todosLosEstadosRetiro)
+                                        {
+                                            var estadosRetiroSeleccionados = ViewBag.EstadosRetiro as List<string> ?? new List<string>();
+                                            var nombreAmigable = estadosRetiroNombres.ContainsKey(estadoRetiro) ? estadosRetiroNombres[estadoRetiro] : estadoRetiro;
+                                            <label class="flex items-center">
+                                                <input type="checkbox" name="estadosRetiro" value="@estadoRetiro"
+                                                       @(estadosRetiroSeleccionados.Contains(estadoRetiro) ? "checked" : "")
+                                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                <span class="ml-2 text-gray-900 dark:text-gray-100">@nombreAmigable</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
                             </div>
-                            <!-- Botones de acción -->
+                            <!-- Botones de acciÃ³n -->
                             <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
                                 <button type="button" onclick="clearLavadoFilters()"
                                         class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
@@ -222,7 +250,7 @@
             @await Html.PartialAsync("_LavadoTable", Model)
         </div>
 
-        <!-- Modal de Confirmación para Cancelar -->
+        <!-- Modal de Confirmaciï¿½n para Cancelar -->
         <div id="cancelarModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
             <div class="relative p-4 w-full max-w-md h-full md:h-auto">
                 <div class="relative p-4 text-center bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
@@ -233,7 +261,7 @@
                     </button>
                     <svg class="text-red-400 dark:text-red-500 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                     <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Cancelar Lavado</h3>
-                    <p class="mb-4 text-sm text-gray-500 dark:text-gray-300">Por favor, indique el motivo de la cancelación:</p>
+                    <p class="mb-4 text-sm text-gray-500 dark:text-gray-300">Por favor, indique el motivo de la cancelaciï¿½n:</p>
                     <form id="formCancelar" method="post">
                         @Html.AntiForgeryToken()
                         <input type="hidden" id="cancelarLavadoId" name="id" />
@@ -242,7 +270,7 @@
                         <input type="hidden" id="cancelarTipo" name="tipo" />
                         <textarea id="motivoCancelacion" name="motivo" rows="3" required
                                   class="block w-full p-2.5 mb-4 text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                                  placeholder="Ingrese el motivo de la cancelación..."></textarea>
+                                  placeholder="Ingrese el motivo de la cancelaciï¿½n..."></textarea>
                         <div class="flex justify-center items-center space-x-4">
                             <button type="button"
                                     data-modal-hide="cancelarModal"
@@ -250,7 +278,7 @@
                                 No, cancelar
                             </button>
                             <button type="submit" class="py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600">
-                                Sí, confirmar
+                                Sï¿½, confirmar
                             </button>
                         </div>
                     </form>
@@ -299,8 +327,8 @@
                                 <select id="medioPagoSelect" name="medioPago" required
                                         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                     <option value="Efectivo">Efectivo</option>
-                                    <option value="Tarjeta de Débito">Tarjeta de Débito</option>
-                                    <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+                                    <option value="Tarjeta de Dï¿½bito">Tarjeta de Dï¿½bito</option>
+                                    <option value="Tarjeta de Crï¿½dito">Tarjeta de Crï¿½dito</option>
                                     <option value="Transferencia Bancaria">Transferencia Bancaria</option>
                                     <option value="MercadoPago">MercadoPago</option>
                                     <option value="Otro">Otro</option>
@@ -342,13 +370,13 @@
                         </button>
                     </div>
                     <div id="detalleModalContent" class="p-4">
-                        <!-- Contenido cargado dinámicamente -->
+                        <!-- Contenido cargado dinï¿½micamente -->
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Modal de Confirmación de Finalización -->
+        <!-- Modal de Confirmaciï¿½n de Finalizaciï¿½n -->
         <div id="finalizarModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
             <div class="relative p-4 w-full max-w-md h-full md:h-auto">
                 <div class="relative p-4 text-center bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
@@ -363,7 +391,7 @@
                         </svg>
                     </div>
                     <h3 id="finalizarModalTitle" class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Finalizar</h3>
-                    <p id="finalizarModalMessage" class="mb-4 text-sm text-gray-500 dark:text-gray-300">¿Está seguro?</p>
+                    <p id="finalizarModalMessage" class="mb-4 text-sm text-gray-500 dark:text-gray-300">ï¿½Estï¿½ seguro?</p>
                     <form id="formFinalizar" method="post">
                         @Html.AntiForgeryToken()
                         <input type="hidden" id="finalizarLavadoId" name="id" />
@@ -385,7 +413,7 @@
             </div>
         </div>
 
-        <!-- Modal de Cancelación -->
+        <!-- Modal de Cancelaciï¿½n -->
         <div id="cancelarModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
             <div class="relative p-4 w-full max-w-md h-full md:h-auto">
                 <div class="relative p-4 text-center bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
@@ -397,7 +425,7 @@
                     </button>
                     <svg class="text-red-400 dark:text-red-500 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                     <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Cancelar</h3>
-                    <p class="mb-4 text-sm text-gray-500 dark:text-gray-300">Por favor, indique el motivo de la cancelación:</p>
+                    <p class="mb-4 text-sm text-gray-500 dark:text-gray-300">Por favor, indique el motivo de la cancelaciï¿½n:</p>
                     <form id="formCancelar" method="post">
                         @Html.AntiForgeryToken()
                         <input type="hidden" id="cancelarLavadoId" name="id" />
@@ -406,7 +434,7 @@
                         <input type="hidden" id="cancelarTipo" name="tipo" />
                         <textarea id="motivoCancelacion" name="motivo" rows="3" required
                                   class="block w-full p-2.5 mb-4 text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                                  placeholder="Ingrese el motivo de la cancelación..."></textarea>
+                                  placeholder="Ingrese el motivo de la cancelaciï¿½n..."></textarea>
                         <div class="flex justify-center items-center space-x-4">
                             <button type="button"
                                     data-modal-hide="cancelarModal"
@@ -414,7 +442,7 @@
                                 No, cancelar
                             </button>
                             <button type="submit" class="py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600">
-                                Sí, confirmar
+                                Sï¿½, confirmar
                             </button>
                         </div>
                     </form>
@@ -463,8 +491,8 @@
                                 <select id="medioPagoSelect" name="medioPago" required
                                         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                     <option value="Efectivo">Efectivo</option>
-                                    <option value="Tarjeta de Débito">Tarjeta de Débito</option>
-                                    <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+                                    <option value="Tarjeta de Dï¿½bito">Tarjeta de Dï¿½bito</option>
+                                    <option value="Tarjeta de Crï¿½dito">Tarjeta de Crï¿½dito</option>
                                     <option value="Transferencia Bancaria">Transferencia Bancaria</option>
                                     <option value="MercadoPago">MercadoPago</option>
                                     <option value="Otro">Otro</option>
@@ -502,16 +530,16 @@
                     </div>
                     <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Tiempo Excedido</h3>
                     <p id="tiempoExcedidoMessage" class="mb-4 text-sm text-gray-500 dark:text-gray-300">
-                        El tiempo estimado ha sido excedido. ¿Ya terminó el servicio?
+                        El tiempo estimado ha sido excedido. ï¿½Ya terminï¿½ el servicio?
                     </p>
                     <div class="flex justify-center items-center space-x-4">
                         <button type="button" onclick="cerrarModalTiempoExcedido(false)"
                                 class="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100">
-                            Aún no
+                            Aï¿½n no
                         </button>
                         <button type="button" onclick="cerrarModalTiempoExcedido(true)"
                                 class="py-2 px-3 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700">
-                            Sí, terminé
+                            Sï¿½, terminï¿½
                         </button>
                     </div>
                 </div>

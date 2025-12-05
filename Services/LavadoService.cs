@@ -59,6 +59,7 @@ namespace Firebase.Services
             decimal? precioDesde = null,
             decimal? precioHasta = null,
             List<string>? estadosPago = null,
+            List<string>? estadosRetiro = null,
             int pageNumber = 1,
             int pageSize = 10,
             string? sortBy = null,
@@ -69,7 +70,7 @@ namespace Firebase.Services
             sortBy ??= ORDEN_DEFECTO;
             sortOrder ??= DIRECCION_DEFECTO;
 
-            var lavados = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, sortBy, sortOrder);
+            var lavados = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, sortBy, sortOrder);
 
             return AplicarPaginacion(lavados, pageNumber, pageSize);
         }
@@ -86,12 +87,13 @@ namespace Firebase.Services
             decimal? precioDesde,
             decimal? precioHasta,
             List<string>? estadosPago,
+            List<string>? estadosRetiro,
             int pageSize)
         {
             if (pageSize <= 0)
                 throw new ArgumentException("El tamaño de página debe ser mayor a 0", nameof(pageSize));
 
-            var totalLavados = await ObtenerTotalLavados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago);
+            var totalLavados = await ObtenerTotalLavados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro);
             return Math.Max((int)Math.Ceiling(totalLavados / (double)pageSize), 1);
         }
 
@@ -122,12 +124,13 @@ namespace Firebase.Services
             decimal? precioDesde = null,
             decimal? precioHasta = null,
             List<string>? estadosPago = null,
+            List<string>? estadosRetiro = null,
             int pageNumber = 1,
             int pageSize = 10,
             string? sortBy = null,
             string? sortOrder = null)
         {
-            var baseFiltrada = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, sortBy, sortOrder);
+            var baseFiltrada = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, sortBy, sortOrder);
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
@@ -150,9 +153,10 @@ namespace Firebase.Services
             DateTime? fechaHasta,
             decimal? precioDesde,
             decimal? precioHasta,
-            List<string>? estadosPago)
+            List<string>? estadosPago,
+            List<string>? estadosRetiro)
         {
-            var baseFiltrada = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, ORDEN_DEFECTO, DIRECCION_DEFECTO);
+            var baseFiltrada = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, ORDEN_DEFECTO, DIRECCION_DEFECTO);
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
@@ -812,6 +816,7 @@ namespace Firebase.Services
             decimal? precioDesde,
             decimal? precioHasta,
             List<string>? estadosPago,
+            List<string>? estadosRetiro,
             string? sortBy,
             string? sortOrder)
         {
@@ -870,6 +875,12 @@ namespace Firebase.Services
                 lavados = lavados.Where(l => l.Pago != null && estadosPago.Contains(l.Pago.Estado)).ToList();
             }
 
+            // Filtro de estados de retiro en memoria
+            if (estadosRetiro != null && estadosRetiro.Any())
+            {
+                lavados = lavados.Where(l => estadosRetiro.Contains(l.EstadoRetiro ?? "Pendiente")).ToList();
+            }
+
             return AplicarOrdenamiento(lavados, sortBy, sortOrder);
         }
 
@@ -881,9 +892,10 @@ namespace Firebase.Services
             DateTime? fechaHasta,
             decimal? precioDesde,
             decimal? precioHasta,
-            List<string>? estadosPago)
+            List<string>? estadosPago,
+            List<string>? estadosRetiro)
         {
-            var lavados = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, null, null);
+            var lavados = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, null, null);
             return lavados.Count;
         }
 
@@ -924,6 +936,7 @@ namespace Firebase.Services
                 "Precio" => l => l.Precio,
                 "TiempoEstimado" => l => l.TiempoEstimado,
                 "TiempoInicio" => l => l.TiempoInicio ?? DateTime.MinValue,
+                "EstadoRetiro" => l => l.EstadoRetiro ?? string.Empty,
                 _ => l => l.FechaCreacion
             };
 
@@ -1252,7 +1265,7 @@ namespace Firebase.Services
             List<string>? estadosPago = null)
         {
             var lavados = await ObtenerLavadosFiltrados(
-                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, null, null, estadosPago, null, null);
+                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, null, null, estadosPago, null, null, null);
 
             return lavados.Any() ? lavados.Min(l => l.Precio) : 0m;
         }
@@ -1276,7 +1289,7 @@ namespace Firebase.Services
             List<string>? estadosPago = null)
         {
             var lavados = await ObtenerLavadosFiltrados(
-                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, null, null, estadosPago, null, null);
+                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, null, null, estadosPago, null, null, null);
 
             return lavados.Any() ? lavados.Max(l => l.Precio) : 0m;
         }
