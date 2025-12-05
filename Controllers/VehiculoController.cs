@@ -581,4 +581,94 @@ public class VehiculoController : Controller
             return StatusCode(500, new { error = "Error al obtener años", details = ex.Message });
         }
     }
+
+    /// <summary>
+    /// GET: /Vehiculo/GetVehiculosParaAsociacion
+    /// Retorna vehículos activos que pueden ser asociados a otros clientes (tienen clave de asociación).
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetVehiculosParaAsociacion()
+    {
+        try
+        {
+            var vehiculos = await _vehiculoService.ObtenerVehiculosParaAsociacion();
+            
+            return Json(vehiculos.Select(v => new
+            {
+                id = v.Id,
+                patente = v.Patente,
+                marca = v.Marca,
+                modelo = v.Modelo,
+                color = v.Color,
+                tipoVehiculo = v.TipoVehiculo,
+                estado = v.Estado
+            }));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener vehículos para asociación");
+            return StatusCode(500, new { error = "Error al obtener vehículos", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// POST: /Vehiculo/ValidarClaveAsociacion
+    /// Valida que la clave de asociación sea correcta para un vehículo específico.
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> ValidarClaveAsociacion([FromBody] ValidarClaveRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request?.Patente) || string.IsNullOrWhiteSpace(request?.ClaveAsociacion))
+            {
+                return Json(new { 
+                    valida = false, 
+                    error = "La patente y la clave de asociación son obligatorias." 
+                });
+            }
+
+            var vehiculo = await _vehiculoService.ValidarClaveYObtenerVehiculo(
+                request.Patente.ToUpper(), 
+                request.ClaveAsociacion
+            );
+
+            if (vehiculo == null)
+            {
+                return Json(new { 
+                    valida = false, 
+                    error = "La clave de asociación no es válida para este vehículo." 
+                });
+            }
+
+            return Json(new
+            {
+                valida = true,
+                vehiculo = new
+                {
+                    id = vehiculo.Id,
+                    patente = vehiculo.Patente,
+                    marca = vehiculo.Marca,
+                    modelo = vehiculo.Modelo,
+                    color = vehiculo.Color,
+                    tipoVehiculo = vehiculo.TipoVehiculo,
+                    clienteNombreCompleto = vehiculo.ClienteNombreCompleto
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al validar clave de asociación");
+            return Json(new { valida = false, error = "Error al validar la clave de asociación." });
+        }
+    }
+
+    /// <summary>
+    /// Clase para recibir la solicitud de validación de clave.
+    /// </summary>
+    public class ValidarClaveRequest
+    {
+        public string Patente { get; set; } = "";
+        public string ClaveAsociacion { get; set; } = "";
+    }
 }
