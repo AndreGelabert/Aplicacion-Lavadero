@@ -764,6 +764,30 @@
         return false;
     };
 
+    /**
+     * Cancela la edición del vehículo y oculta el acordeón de edición.
+     */
+    window.cancelarEdicionVehiculo = function() {
+        // Cerrar el acordeón de edición
+        const accordionBody = document.getElementById('accordion-flush-body-1');
+        const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
+        const accordion = document.getElementById('accordion-flush');
+        
+        // Cerrar el body del acordeón si está abierto
+        if (accordionBody && accordionBtn && !accordionBody.classList.contains('hidden')) {
+            accordionBtn.click();
+        }
+        
+        // Ocultar todo el acordeón después de la animación
+        setTimeout(() => {
+            if (accordion) {
+                accordion.classList.add('hidden');
+            }
+        }, 300);
+        
+        showTableMessage('info', 'Edición cancelada.');
+    };
+
     // ===================== Modales =====================
 
     function setupModals() {
