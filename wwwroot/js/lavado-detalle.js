@@ -368,8 +368,25 @@
         if (!container) {
             container = document.createElement('div');
             container.id = 'messages-container';
-            container.className = 'fixed top-4 right-4 z-50';
-            document.body.appendChild(container);
+            container.className = 'mb-4';
+
+            // Buscar el contenedor principal (max-w-7xl mx-auto) que envuelve todo el contenido
+            const mainContainer = document.querySelector('.max-w-7xl.mx-auto') ||
+                document.querySelector('section') ||
+                document.body;
+
+            // Buscar el header (mb-6 flex items-center)
+            const header = mainContainer.querySelector('.mb-6.flex.items-center');
+
+            if (header && header.nextSibling) {
+                // Insertar después del header
+                mainContainer.insertBefore(container, header.nextSibling);
+            } else if (mainContainer.firstChild) {
+                // Si no hay header, insertar al principio
+                mainContainer.insertBefore(container, mainContainer.firstChild);
+            } else {
+                mainContainer.appendChild(container);
+            }
         }
 
         const color = type === 'success'
@@ -379,10 +396,21 @@
                 : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300' };
 
         const alert = document.createElement('div');
-        alert.className = `opacity-100 transition-opacity duration-700 p-4 mb-4 text-sm rounded-lg border bg-${color.bg} text-${color.text} border-${color.border} dark:bg-gray-800 dark:text-${color.darkText} min-w-[300px]`;
+        alert.className = `opacity-100 transition-opacity duration-700 p-4 mb-4 text-sm rounded-lg border bg-${color.bg} text-${color.text} border-${color.border} dark:bg-gray-800 dark:text-${color.darkText}`;
         alert.textContent = msg;
 
         container.appendChild(alert);
+
+        // Hacer scroll suave hacia el título de la página
+        const pageTitle = document.querySelector('h1') ||
+            document.querySelector('.mb-6.flex.items-center') ||
+            document.querySelector('section > div > div:first-child');
+
+        if (pageTitle) {
+            pageTitle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
 
         setTimeout(() => {
             alert.classList.add('opacity-0');

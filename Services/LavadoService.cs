@@ -486,6 +486,36 @@ namespace Firebase.Services
                 etapa.TiempoFinalizacion = DateTime.UtcNow;
             }
 
+            // Verificar si todos los servicios han sido cancelados
+            var todosServiciosCancelados = lavado.Servicios.All(s => s.Estado == "Cancelado");
+            
+            if (todosServiciosCancelados)
+            {
+                // Si todos los servicios fueron cancelados, marcar el lavado como cancelado
+                lavado.Estado = ESTADO_CANCELADO;
+                lavado.MotivoCancelacion = "Todos los servicios fueron cancelados";
+                lavado.TiempoFinalizacion = DateTime.UtcNow;
+                
+                // Cancelar el pago si existe y no está completamente pagado
+                if (lavado.Pago != null)
+                {
+                    if (lavado.Pago.Estado != "Pagado")
+                    {
+                        lavado.Pago.Estado = "Cancelado";
+                    }
+                }
+                else
+                {
+                    // Inicializar pago como cancelado si no existía
+                    lavado.Pago = new PagoLavado
+                    {
+                        Estado = "Cancelado",
+                        MontoPagado = 0,
+                        Pagos = new List<DetallePago>()
+                    };
+                }
+            }
+
             await ActualizarLavado(lavado);
         }
 

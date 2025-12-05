@@ -147,25 +147,25 @@
                                     </h6>
                                     <div class="space-y-2">
                                         <div>
-                                            <label for="precioDesde" class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Precio m�nimo:</label>
+                                            <label for="precioDesde" class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Precio mínimo:</label>
                                             <input type="number" id="precioDesde" name="precioDesde" step="any" min="@(ViewBag.PrecioMinimo ?? 0)" max="@(ViewBag.PrecioMaximo ?? 999999999)"
                                                    value="@(ViewBag.PrecioDesde)"
                                                    placeholder="0.00"
                                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                             @if (ViewBag.PrecioMinimo != null && ViewBag.PrecioMinimo > 0)
                                             {
-                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">M�n. permitido: $@string.Format("{0:N2}", ViewBag.PrecioMinimo)</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Mín. permitido: $@string.Format("{0:N2}", ViewBag.PrecioMinimo)</p>
                                             }
                                         </div>
                                         <div>
-                                            <label for="precioHasta" class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Precio m�ximo:</label>
+                                            <label for="precioHasta" class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Precio máximo:</label>
                                             <input type="number" id="precioHasta" name="precioHasta" step="any" min="0" max="@(ViewBag.PrecioMaximo ?? 999999999)"
                                                    value="@(ViewBag.PrecioHasta)"
                                                    placeholder="0.00"
                                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                             @if (ViewBag.PrecioMaximo != null && ViewBag.PrecioMaximo > 0)
                                             {
-                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">M�x. permitido: $@string.Format("{0:N2}", ViewBag.PrecioMaximo)</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Máx. permitido: $@string.Format("{0:N2}", ViewBag.PrecioMaximo)</p>
                                             }
                                         </div>
                                     </div>

@@ -291,10 +291,10 @@
 
         // Cargar clientes asociados al vehículo
         await cargarClientesVehiculo(id);
-        
+
         // Cargar empleados según el tipo de vehículo
         await cargarEmpleadosPorTipoVehiculo(tipoVehiculo);
-        
+
         // Agregar el vehículo a la lista de seleccionados y cargar sus servicios
         window.lavadoData.vehiculosSeleccionados = [id];
         await cargarServiciosParaVehiculo(id, tipoVehiculo);
@@ -320,7 +320,7 @@
 
                 // Si hay más de un cliente, mostrar los desplegables
                 if (clientes.length > 1) {
-                    const options = clientes.map(c => 
+                    const options = clientes.map(c =>
                         `<option value="${c.id}">${escapeHtml(c.nombre)} (${escapeHtml(c.documento)})</option>`
                     ).join('');
 
@@ -346,9 +346,9 @@
             // Obtener la cantidad de empleados requeridos para este tipo de vehículo
             const response = await fetch(`/Lavados/ObtenerEmpleadosPorTipoVehiculo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`);
             const data = await response.json();
-            
+
             window.lavadoData.cantidadEmpleadosPorTipo = data.cantidadEmpleadosRequeridos || 1;
-            
+
             // Obtener información general de empleados disponibles
             const empleadosResponse = await fetch('/Lavados/ObtenerEmpleadosDisponibles');
             const empleadosData = await empleadosResponse.json();
@@ -410,10 +410,10 @@
                     data.totalDisponibles,
                     data.empleadosMaximosPorLavado
                 );
-                
+
                 cantidadEmpleadosInput.max = maxEmpleados;
                 cantidadEmpleadosInput.min = 1;
-                
+
                 if (parseInt(cantidadEmpleadosInput.value) > maxEmpleados) {
                     cantidadEmpleadosInput.value = maxEmpleados;
                 }
@@ -563,10 +563,10 @@
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                         <option value="">Seleccionar paquete...</option>
                         ${paquetes.map(p => {
-                            const precioOriginal = p.precioOriginal || 0;
-                            const precioConDescuento = precioOriginal - (precioOriginal * p.descuento / 100);
-                            return `<option value="${p.id}" data-precio="${precioOriginal}">${escapeHtml(p.nombre)} - ${formatCurrency(precioOriginal)} (${p.descuento}% desc.) = ${formatCurrency(precioConDescuento)}</option>`;
-                        }).join('')}
+                const precioOriginal = p.precioOriginal || 0;
+                const precioConDescuento = precioOriginal - (precioOriginal * p.descuento / 100);
+                return `<option value="${p.id}" data-precio="${precioOriginal}">${escapeHtml(p.nombre)} - ${formatCurrency(precioOriginal)} (${p.descuento}% desc.) = ${formatCurrency(precioConDescuento)}</option>`;
+            }).join('')}
                     </select>
                 </div>
                 ` : ''}
@@ -1031,7 +1031,7 @@
             // Obtener los clientes que trajeron y retiraran el vehículo
             const clienteTrajoSelect = document.getElementById('clienteTrajoSelect');
             const clienteRetiraSelect = document.getElementById('clienteRetiraSelect');
-            
+
             const requestData = {
                 clienteId: window.lavadoData.clienteId,
                 vehiculosServicios: vehiculosServicios,
@@ -1093,40 +1093,40 @@
 
         const patenteSearch = document.getElementById('patenteSearch');
         if (patenteSearch) patenteSearch.value = '';
-        
+
         const vehiculoIdInput = document.getElementById('vehiculoId');
         if (vehiculoIdInput) vehiculoIdInput.value = '';
-        
+
         const clienteIdInput = document.getElementById('clienteId');
         if (clienteIdInput) clienteIdInput.value = '';
-        
+
         const vehiculoSeleccionado = document.getElementById('vehiculoSeleccionado');
         if (vehiculoSeleccionado) vehiculoSeleccionado.classList.add('hidden');
-        
+
         const infoVehiculoSection = document.getElementById('infoVehiculoSection');
         if (infoVehiculoSection) infoVehiculoSection.style.display = 'none';
-        
+
         const clientesAsociadosSection = document.getElementById('clientesAsociadosSection');
         if (clientesAsociadosSection) clientesAsociadosSection.style.display = 'none';
-        
+
         const serviciosSection = document.getElementById('serviciosSection');
         if (serviciosSection) serviciosSection.style.display = 'none';
-        
+
         const serviciosPorVehiculo = document.getElementById('serviciosPorVehiculo');
         if (serviciosPorVehiculo) serviciosPorVehiculo.innerHTML = '';
-        
+
         const resumenSection = document.getElementById('resumenSection');
         if (resumenSection) resumenSection.style.display = 'none';
-        
+
         const descuento = document.getElementById('descuento');
         if (descuento) descuento.value = '0';
-        
+
         const notas = document.getElementById('notas');
         if (notas) notas.value = '';
-        
+
         const submitButton = document.getElementById('submit-button');
         if (submitButton) submitButton.disabled = true;
-        
+
         const infoDiv = document.getElementById('empleadosInfo');
         if (infoDiv) {
             infoDiv.innerHTML = '';
@@ -1325,13 +1325,13 @@
 
                 let url;
                 const formData = new FormData();
-                
+
                 // Obtener token antiforgery
                 const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
                 if (token) {
                     formData.append('__RequestVerificationToken', token);
                 }
-                
+
                 formData.append('motivo', motivo);
 
                 if (tipo === 'lavado') {
@@ -1432,19 +1432,19 @@
 
         form.addEventListener('submit', function (e) {
             e.preventDefault();
-            
+
             // Validar campos de precio antes de enviar
             const precioDesde = document.getElementById('precioDesde');
             const precioHasta = document.getElementById('precioHasta');
-            
+
             let isValid = true;
-            
+
             // Validar precioDesde
             if (precioDesde && precioDesde.value.trim() !== '') {
                 const value = parseFloat(precioDesde.value);
                 const min = precioDesde.hasAttribute('min') ? parseFloat(precioDesde.getAttribute('min')) : 0;
                 const max = precioDesde.hasAttribute('max') ? parseFloat(precioDesde.getAttribute('max')) : null;
-                
+
                 if (isNaN(value) || value < 0) {
                     precioDesde.setCustomValidity('Ingrese un precio válido');
                     isValid = false;
@@ -1460,13 +1460,13 @@
             } else if (precioDesde) {
                 precioDesde.setCustomValidity('');
             }
-            
+
             // Validar precioHasta
             if (precioHasta && precioHasta.value.trim() !== '') {
                 const value = parseFloat(precioHasta.value);
                 const min = precioHasta.hasAttribute('min') ? parseFloat(precioHasta.getAttribute('min')) : 0;
                 const max = precioHasta.hasAttribute('max') ? parseFloat(precioHasta.getAttribute('max')) : null;
-                
+
                 if (isNaN(value) || value < 0) {
                     precioHasta.setCustomValidity('Ingrese un precio válido');
                     isValid = false;
@@ -1482,25 +1482,25 @@
             } else if (precioHasta) {
                 precioHasta.setCustomValidity('');
             }
-            
+
             // Validar que precioDesde <= precioHasta
-            if (precioDesde && precioHasta && 
+            if (precioDesde && precioHasta &&
                 precioDesde.value.trim() !== '' && precioHasta.value.trim() !== '') {
                 const desde = parseFloat(precioDesde.value);
                 const hasta = parseFloat(precioHasta.value);
-                
+
                 if (!isNaN(desde) && !isNaN(hasta) && desde > hasta) {
                     precioDesde.setCustomValidity('El precio mínimo no puede ser mayor que el precio máximo');
                     isValid = false;
                 }
             }
-            
+
             // Usar checkValidity() para validar el formulario completo
             if (!form.checkValidity() || !isValid) {
                 form.reportValidity();
                 return false;
             }
-            
+
             // Si todo está bien, aplicar filtros
             reloadLavadoTable(1);
 
@@ -1705,10 +1705,10 @@
     // =====================================
     // SETUP DE BOTONES DE CIERRE DE MODALES
     // =====================================
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         // Manejar botones con data-modal-hide
         document.querySelectorAll('[data-modal-hide]').forEach(button => {
-            button.addEventListener('click', function() {
+            button.addEventListener('click', function () {
                 const modalId = this.getAttribute('data-modal-hide');
                 cerrarModal(modalId);
             });
@@ -1796,7 +1796,7 @@
 
         if (precioDesde) {
             // Prevenir entrada de caracteres no numéricos (excepto punto decimal)
-            precioDesde.addEventListener('keypress', function(e) {
+            precioDesde.addEventListener('keypress', function (e) {
                 const char = String.fromCharCode(e.which);
                 if (!/[\d.]/.test(char)) {
                     e.preventDefault();
@@ -1810,7 +1810,7 @@
 
         if (precioHasta) {
             // Prevenir entrada de caracteres no numéricos (excepto punto decimal)
-            precioHasta.addEventListener('keypress', function(e) {
+            precioHasta.addEventListener('keypress', function (e) {
                 const char = String.fromCharCode(e.which);
                 if (!/[\d.]/.test(char)) {
                     e.preventDefault();
