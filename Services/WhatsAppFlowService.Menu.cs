@@ -97,18 +97,21 @@ public partial class WhatsAppFlowService
 
             await Task.Delay(500);
 
-            // Mostrar opciones del submenú
-            var buttons = new List<(string id, string title)>
+            // Mostrar opciones del submenú (usando lista para más opciones)
+            var options = new List<(string id, string title, string description)>
             {
-                ("agregar_vehiculo", "➕ Agregar vehículo"),
-                ("modificar_vehiculo", "✏️ Editar vehículo"),
-                ("menu_principal", "⬅️ Menú principal")
+                ("agregar_vehiculo", "➕ Agregar nuevo", "Registrar un vehículo nuevo"),
+                ("asociar_vehiculo", "🔗 Asociar existente", "Vincular vehículo con clave"),
+                ("modificar_vehiculo", "✏️ Editar vehículo", "Modificar o eliminar"),
+                ("menu_principal", "⬅️ Menú principal", "Volver al inicio")
             };
 
             await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MENU_VEHICULOS);
-            await _whatsAppService.SendButtonMessage(phoneNumber,
+            await _whatsAppService.SendListMessage(phoneNumber,
                 "¿Qué deseas hacer?",
-                buttons);
+                "📋 Ver opciones",
+                "Gestión de vehículos",
+                options);
         }
         catch (Exception ex)
         {
@@ -127,10 +130,15 @@ public partial class WhatsAppFlowService
 
         if (opcion.Contains("agregar") || opcion == "agregar_vehiculo")
         {
-            // Iniciar proceso de agregar vehículo
+            // Iniciar proceso de agregar vehículo nuevo
             await IniciarRegistroVehiculo(phoneNumber);
         }
-        else if (opcion.Contains("modificar") || opcion == "modificar_vehiculo")
+        else if (opcion.Contains("asociar") || opcion == "asociar_vehiculo")
+        {
+            // Iniciar proceso de asociar vehículo existente
+            await IniciarAsociacionVehiculo(phoneNumber);
+        }
+        else if (opcion.Contains("modificar") || opcion.Contains("editar") || opcion == "modificar_vehiculo")
         {
             // Mostrar lista de vehículos para modificar
             await MostrarVehiculosParaModificar(phoneNumber, session);
