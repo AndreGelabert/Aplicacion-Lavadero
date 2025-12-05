@@ -1,11 +1,771 @@
 **LavaFacil**  
-**Sistema de Gestión de Servicios y Turnos para Lavaderos de vehículos**
+**Sistema de Gestión Integral para Lavaderos de Vehículos**
 
-**Documento de Requisitos del Sistema**
+**Documento de Especificación de Requisitos del Sistema (ERS)**
 
-***Versión  1.0***
+---
 
-***Fecha: 08/09/2025***
+## Tabla de Contenidos
+
+1. [Introducción](#1-introducción)
+2. [Descripción General del Sistema](#2-descripción-general-del-sistema)
+3. [Requisitos Funcionales](#3-requisitos-funcionales)
+4. [Requisitos No Funcionales](#4-requisitos-no-funcionales)
+5. [Diagramas de Casos de Uso](#5-diagramas-de-casos-de-uso)
+6. [Especificación de Casos de Uso](#6-especificación-de-casos-de-uso)
+7. [Modelo de Dominio](#7-modelo-de-dominio)
+8. [Glosario](#8-glosario)
+
+---
+
+## 1. Introducción
+
+### 1.1 Propósito
+Este documento describe los requisitos funcionales y no funcionales del sistema LavaFacil, una aplicación web integral para la gestión de lavaderos de vehículos. El sistema permite administrar clientes, vehículos, servicios, lavados, empleados y configuraciones del negocio.
+
+### 1.2 Alcance
+LavaFacil es un sistema de gestión completo que incluye:
+- Gestión de clientes y sus vehículos
+- Catálogo de servicios con etapas configurables
+- Gestión de lavados con seguimiento de estados
+- Administración de empleados y roles
+- Sistema de pagos con múltiples medios
+- Integración con WhatsApp Business para atención automatizada
+- Sistema de auditoría y trazabilidad
+- Configuración personalizable del negocio
+
+### 1.3 Definiciones y Acrónimos
+- **Lavado**: Proceso de ejecución de uno o más servicios sobre un vehículo
+- **Servicio**: Tipo de trabajo que se puede realizar (ej: Lavado exterior, Encerado)
+- **Etapa**: Paso específico dentro de un servicio
+- **Paquete de Servicio**: Conjunto de servicios agrupados con precio especial
+- **Cliente**: Persona que solicita servicios para sus vehículos
+- **Empleado**: Personal del lavadero que ejecuta los servicios
+
+### 1.4 Referencias
+- Metodología UP (Proceso Unificado)
+- Firebase/Firestore como base de datos
+- ASP.NET Core MVC como framework de desarrollo
+
+---
+
+## 2. Descripción General del Sistema
+
+### 2.1 Perspectiva del Producto
+LavaFacil es una aplicación web desarrollada en ASP.NET Core MVC que utiliza Firebase como backend. El sistema está diseñado para ser accedido desde navegadores web y cuenta con integración a WhatsApp Business API para la comunicación con clientes.
+
+### 2.2 Funcionalidades Principales
+
+#### 2.2.1 Gestión de Clientes
+- Registro de clientes con datos personales (nombre, apellido, documento, teléfono, email)
+- Asociación de múltiples vehículos a un cliente
+- Borrado lógico de clientes (estado Activo/Inactivo)
+- Búsqueda y filtrado de clientes
+
+#### 2.2.2 Gestión de Vehículos
+- Registro de vehículos con datos completos (patente, marca, modelo, color, tipo)
+- Soporte para múltiples dueños por vehículo (vehículos compartidos)
+- Sistema de clave de asociación para vincular clientes adicionales
+- Integración con API externa para obtener marcas y modelos
+
+#### 2.2.3 Gestión de Servicios
+- Catálogo de servicios configurables
+- Servicios con múltiples etapas
+- Precios diferenciados por tipo de vehículo
+- Tiempos estimados de ejecución
+- Paquetes de servicios con descuentos
+
+#### 2.2.4 Gestión de Lavados
+- Creación de órdenes de lavado
+- Estados del lavado: Pendiente, EnProceso, Realizado, RealizadoParcialmente, Cancelado
+- Asignación de empleados a lavados
+- Seguimiento de tiempo de ejecución
+- Sistema de pagos con múltiples medios
+- Gestión de retiro de vehículos
+
+#### 2.2.5 Gestión de Personal
+- Registro de empleados con roles (Administrador, Empleado)
+- Autenticación mediante Firebase Authentication
+- Estados de empleado (Activo/Inactivo)
+
+#### 2.2.6 Configuración del Sistema
+- Personalización del nombre del lavadero
+- Configuración de medios de pago aceptados
+- Configuración de tipos de documento
+- Configuración de tipos de vehículo
+- Configuración de tipos de servicio
+
+#### 2.2.7 Integración WhatsApp
+- Bot conversacional para atención al cliente
+- Registro de clientes vía WhatsApp
+- Gestión de vehículos vía WhatsApp
+- Consulta de estado de lavados
+- Notificaciones automáticas
+
+#### 2.2.8 Auditoría
+- Registro de todas las operaciones del sistema
+- Trazabilidad de cambios por usuario
+- Historial de acciones
+
+### 2.3 Usuarios del Sistema
+
+#### 2.3.1 Administrador
+- Acceso completo a todas las funcionalidades
+- Gestión de empleados y configuraciones
+- Visualización de reportes y auditoría
+
+#### 2.3.2 Empleado
+- Gestión de clientes y vehículos
+- Creación y ejecución de lavados
+- Procesamiento de pagos
+
+#### 2.3.3 Cliente (vía WhatsApp)
+- Registro y actualización de datos personales
+- Gestión de sus vehículos
+- Consulta de estado de lavados
+
+---
+
+## 3. Requisitos Funcionales
+
+### 3.1 Módulo de Autenticación
+
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-AUTH-01 | El sistema debe permitir el inicio de sesión mediante email y contraseña | Alta |
+| RF-AUTH-02 | El sistema debe validar que el empleado esté activo antes de permitir el acceso | Alta |
+| RF-AUTH-03 | El sistema debe mantener la sesión del usuario activa durante su uso | Alta |
+| RF-AUTH-04 | El sistema debe permitir cerrar sesión de forma segura | Alta |
+| RF-AUTH-05 | El sistema debe restringir funcionalidades según el rol del usuario | Alta |
+
+### 3.2 Módulo de Gestión de Clientes
+
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-CLI-01 | El sistema debe permitir registrar nuevos clientes con validación de datos | Alta |
+| RF-CLI-02 | El sistema debe validar que el número de documento sea único | Alta |
+| RF-CLI-03 | El sistema debe permitir editar datos de clientes existentes | Alta |
+| RF-CLI-04 | El sistema debe implementar borrado lógico de clientes | Media |
+| RF-CLI-05 | El sistema debe permitir buscar clientes por nombre, documento o teléfono | Alta |
+| RF-CLI-06 | El sistema debe mostrar los vehículos asociados a cada cliente | Alta |
+| RF-CLI-07 | El sistema debe validar formato de email, teléfono y documento | Alta |
+
+### 3.3 Módulo de Gestión de Vehículos
+
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-VEH-01 | El sistema debe permitir registrar vehículos con datos completos | Alta |
+| RF-VEH-02 | El sistema debe validar que la patente sea única | Alta |
+| RF-VEH-03 | El sistema debe permitir asociar múltiples clientes a un vehículo | Media |
+| RF-VEH-04 | El sistema debe generar una clave de asociación para vehículos compartidos | Media |
+| RF-VEH-05 | El sistema debe obtener marcas y modelos desde API externa | Media |
+| RF-VEH-06 | El sistema debe permitir editar datos de vehículos | Alta |
+| RF-VEH-07 | El sistema debe implementar borrado lógico de vehículos | Media |
+
+### 3.4 Módulo de Gestión de Servicios
+
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-SRV-01 | El sistema debe permitir crear servicios con nombre, descripción, precio y tiempo estimado | Alta |
+| RF-SRV-02 | El sistema debe asociar servicios a tipos de vehículo específicos | Alta |
+| RF-SRV-03 | El sistema debe permitir definir etapas dentro de un servicio | Media |
+| RF-SRV-04 | El sistema debe permitir activar/desactivar servicios | Alta |
+| RF-SRV-05 | El sistema debe permitir crear paquetes de servicios con descuento | Media |
+| RF-SRV-06 | El sistema debe validar precios y tiempos positivos | Alta |
+
+### 3.5 Módulo de Gestión de Lavados
+
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-LAV-01 | El sistema debe permitir crear órdenes de lavado seleccionando cliente, vehículo y servicios | Alta |
+| RF-LAV-02 | El sistema debe calcular precio total considerando descuentos | Alta |
+| RF-LAV-03 | El sistema debe permitir asignar empleados al lavado | Alta |
+| RF-LAV-04 | El sistema debe gestionar estados del lavado (Pendiente, EnProceso, Realizado, Cancelado) | Alta |
+| RF-LAV-05 | El sistema debe registrar tiempos de inicio y finalización | Alta |
+| RF-LAV-06 | El sistema debe permitir cancelar lavados con motivo obligatorio | Media |
+| RF-LAV-07 | El sistema debe gestionar el estado de retiro del vehículo | Media |
+| RF-LAV-08 | El sistema debe permitir registrar quién trae y quién retira el vehículo | Media |
+| RF-LAV-09 | El sistema debe calcular tiempo estimado total del lavado | Alta |
+
+### 3.6 Módulo de Pagos
+
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-PAG-01 | El sistema debe soportar múltiples medios de pago | Alta |
+| RF-PAG-02 | El sistema debe permitir pagos parciales | Media |
+| RF-PAG-03 | El sistema debe registrar cada pago con fecha, monto y medio | Alta |
+| RF-PAG-04 | El sistema debe calcular saldo pendiente | Alta |
+| RF-PAG-05 | El sistema debe gestionar estados de pago (Pendiente, Parcial, Pagado) | Alta |
+
+### 3.7 Módulo de Personal
+
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-PER-01 | El sistema debe permitir registrar empleados con email y contraseña | Alta |
+| RF-PER-02 | El sistema debe asignar roles a empleados (Administrador, Empleado) | Alta |
+| RF-PER-03 | El sistema debe permitir activar/desactivar empleados | Alta |
+| RF-PER-04 | El sistema debe mostrar lista de empleados con filtros | Media |
+
+### 3.8 Módulo de Configuración
+
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-CFG-01 | El sistema debe permitir configurar nombre del lavadero | Media |
+| RF-CFG-02 | El sistema debe permitir gestionar tipos de documento | Media |
+| RF-CFG-03 | El sistema debe permitir gestionar tipos de vehículo | Media |
+| RF-CFG-04 | El sistema debe permitir gestionar tipos de servicio | Media |
+| RF-CFG-05 | El sistema debe permitir configurar medios de pago aceptados | Media |
+
+### 3.9 Módulo de Auditoría
+
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-AUD-01 | El sistema debe registrar todas las operaciones CRUD | Alta |
+| RF-AUD-02 | El sistema debe registrar usuario, fecha y hora de cada operación | Alta |
+| RF-AUD-03 | El sistema debe permitir consultar historial de auditoría | Media |
+| RF-AUD-04 | El sistema debe registrar valores anteriores y nuevos en modificaciones | Media |
+
+### 3.10 Módulo de WhatsApp
+
+| ID | Requisito | Prioridad |
+|----|-----------|-----------|
+| RF-WA-01 | El sistema debe recibir mensajes de WhatsApp mediante webhook | Alta |
+| RF-WA-02 | El sistema debe permitir registro de clientes vía WhatsApp | Alta |
+| RF-WA-03 | El sistema debe permitir gestión de vehículos vía WhatsApp | Media |
+| RF-WA-04 | El sistema debe mantener sesiones de conversación | Alta |
+| RF-WA-05 | El sistema debe enviar notificaciones de estado de lavado | Media |
+| RF-WA-06 | El sistema debe soportar menú interactivo de opciones | Media |
+
+---
+
+## 4. Requisitos No Funcionales
+
+### 4.1 Rendimiento
+
+| ID | Requisito | Métrica |
+|----|-----------|---------|
+| RNF-REN-01 | Tiempo de respuesta del sistema | < 3 segundos para operaciones normales |
+| RNF-REN-02 | Tiempo de carga de listados | < 5 segundos para listas paginadas |
+| RNF-REN-03 | Tiempo de respuesta WhatsApp | < 10 segundos para mensajes |
+
+### 4.2 Seguridad
+
+| ID | Requisito |
+|----|-----------|
+| RNF-SEG-01 | El sistema debe usar autenticación segura mediante Firebase Authentication |
+| RNF-SEG-02 | Las contraseñas deben cumplir requisitos mínimos de seguridad |
+| RNF-SEG-03 | El sistema debe usar HTTPS para todas las comunicaciones |
+| RNF-SEG-04 | Las claves de asociación de vehículos deben almacenarse hasheadas (SHA256) |
+| RNF-SEG-05 | El sistema debe validar permisos en cada operación según rol |
+
+### 4.3 Usabilidad
+
+| ID | Requisito |
+|----|-----------|
+| RNF-USA-01 | La interfaz debe ser responsiva y funcionar en dispositivos móviles |
+| RNF-USA-02 | Los mensajes de error deben ser claros y orientados al usuario |
+| RNF-USA-03 | Los formularios deben tener validación en tiempo real |
+| RNF-USA-04 | La navegación debe ser intuitiva con menú lateral |
+
+### 4.4 Disponibilidad
+
+| ID | Requisito |
+|----|-----------|
+| RNF-DIS-01 | El sistema debe estar disponible 99% del tiempo |
+| RNF-DIS-02 | El sistema debe funcionar con conexión intermitente (Firebase offline) |
+
+### 4.5 Mantenibilidad
+
+| ID | Requisito |
+|----|-----------|
+| RNF-MAN-01 | El código debe seguir patrones de diseño MVC |
+| RNF-MAN-02 | La arquitectura debe separar capas (Controllers, Services, Models) |
+| RNF-MAN-03 | El sistema debe usar inyección de dependencias |
+
+---
+
+## 5. Diagramas de Casos de Uso
+
+### 5.1 Diagrama General del Sistema
+
+```plantuml
+@startuml DiagramaCasosUsoGeneral
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Administrador" as Admin
+actor "Empleado" as Emp
+actor "Cliente WhatsApp" as ClienteWA
+
+rectangle "Sistema LavaFacil" {
+    package "Gestión de Clientes" {
+        usecase "Registrar Cliente" as UC_RegCli
+        usecase "Editar Cliente" as UC_EditCli
+        usecase "Buscar Cliente" as UC_BusCli
+        usecase "Desactivar Cliente" as UC_DesCli
+    }
+    
+    package "Gestión de Vehículos" {
+        usecase "Registrar Vehículo" as UC_RegVeh
+        usecase "Editar Vehículo" as UC_EditVeh
+        usecase "Asociar Cliente a Vehículo" as UC_AsocVeh
+        usecase "Buscar Vehículo" as UC_BusVeh
+    }
+    
+    package "Gestión de Servicios" {
+        usecase "Crear Servicio" as UC_CreSrv
+        usecase "Editar Servicio" as UC_EditSrv
+        usecase "Configurar Etapas" as UC_ConfEtapas
+        usecase "Crear Paquete" as UC_CrePaq
+    }
+    
+    package "Gestión de Lavados" {
+        usecase "Crear Lavado" as UC_CreLav
+        usecase "Asignar Empleados" as UC_AsigEmp
+        usecase "Iniciar Lavado" as UC_IniLav
+        usecase "Finalizar Lavado" as UC_FinLav
+        usecase "Cancelar Lavado" as UC_CanLav
+        usecase "Registrar Pago" as UC_RegPago
+        usecase "Registrar Retiro" as UC_RegRet
+    }
+    
+    package "Gestión de Personal" {
+        usecase "Registrar Empleado" as UC_RegEmp
+        usecase "Editar Empleado" as UC_EditEmp
+        usecase "Desactivar Empleado" as UC_DesEmp
+    }
+    
+    package "Configuración" {
+        usecase "Configurar Sistema" as UC_ConfSis
+        usecase "Gestionar Tipos Documento" as UC_TipoDoc
+        usecase "Gestionar Tipos Vehículo" as UC_TipoVeh
+        usecase "Gestionar Tipos Servicio" as UC_TipoSrv
+    }
+    
+    package "WhatsApp" {
+        usecase "Registrarse" as UC_WA_Reg
+        usecase "Gestionar Vehículos" as UC_WA_Veh
+        usecase "Consultar Estado Lavado" as UC_WA_Est
+        usecase "Editar Perfil" as UC_WA_Perf
+    }
+    
+    package "Auditoría" {
+        usecase "Consultar Auditoría" as UC_ConAud
+    }
+    
+    package "Autenticación" {
+        usecase "Iniciar Sesión" as UC_Login
+        usecase "Cerrar Sesión" as UC_Logout
+    }
+}
+
+' Relaciones Administrador
+Admin --> UC_RegCli
+Admin --> UC_EditCli
+Admin --> UC_BusCli
+Admin --> UC_DesCli
+Admin --> UC_RegVeh
+Admin --> UC_EditVeh
+Admin --> UC_AsocVeh
+Admin --> UC_BusVeh
+Admin --> UC_CreSrv
+Admin --> UC_EditSrv
+Admin --> UC_ConfEtapas
+Admin --> UC_CrePaq
+Admin --> UC_CreLav
+Admin --> UC_AsigEmp
+Admin --> UC_IniLav
+Admin --> UC_FinLav
+Admin --> UC_CanLav
+Admin --> UC_RegPago
+Admin --> UC_RegRet
+Admin --> UC_RegEmp
+Admin --> UC_EditEmp
+Admin --> UC_DesEmp
+Admin --> UC_ConfSis
+Admin --> UC_TipoDoc
+Admin --> UC_TipoVeh
+Admin --> UC_TipoSrv
+Admin --> UC_ConAud
+Admin --> UC_Login
+Admin --> UC_Logout
+
+' Relaciones Empleado
+Emp --> UC_RegCli
+Emp --> UC_EditCli
+Emp --> UC_BusCli
+Emp --> UC_RegVeh
+Emp --> UC_EditVeh
+Emp --> UC_AsocVeh
+Emp --> UC_BusVeh
+Emp --> UC_CreLav
+Emp --> UC_AsigEmp
+Emp --> UC_IniLav
+Emp --> UC_FinLav
+Emp --> UC_CanLav
+Emp --> UC_RegPago
+Emp --> UC_RegRet
+Emp --> UC_Login
+Emp --> UC_Logout
+
+' Relaciones Cliente WhatsApp
+ClienteWA --> UC_WA_Reg
+ClienteWA --> UC_WA_Veh
+ClienteWA --> UC_WA_Est
+ClienteWA --> UC_WA_Perf
+
+@enduml
+```
+
+### 5.2 Diagrama de Casos de Uso - Gestión de Lavados
+
+```plantuml
+@startuml DiagramaCasosUsoLavados
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Empleado" as Emp
+actor "Administrador" as Admin
+
+rectangle "Gestión de Lavados" {
+    usecase "Crear Lavado" as UC_CreLav
+    usecase "Seleccionar Cliente" as UC_SelCli
+    usecase "Seleccionar Vehículo" as UC_SelVeh
+    usecase "Seleccionar Servicios" as UC_SelSrv
+    usecase "Aplicar Descuento" as UC_Desc
+    usecase "Asignar Empleados" as UC_AsigEmp
+    usecase "Iniciar Lavado" as UC_IniLav
+    usecase "Avanzar Etapa" as UC_AvEtapa
+    usecase "Finalizar Servicio" as UC_FinSrv
+    usecase "Finalizar Lavado" as UC_FinLav
+    usecase "Cancelar Lavado" as UC_CanLav
+    usecase "Cancelar Servicio" as UC_CanSrv
+    usecase "Registrar Pago" as UC_RegPago
+    usecase "Registrar Retiro" as UC_RegRet
+    usecase "Consultar Lavados" as UC_ConLav
+    usecase "Ver Detalle Lavado" as UC_DetLav
+}
+
+' Relaciones include
+UC_CreLav ..> UC_SelCli : <<include>>
+UC_CreLav ..> UC_SelVeh : <<include>>
+UC_CreLav ..> UC_SelSrv : <<include>>
+
+' Relaciones extend
+UC_CreLav <.. UC_Desc : <<extend>>
+UC_CreLav <.. UC_AsigEmp : <<extend>>
+UC_IniLav <.. UC_AvEtapa : <<extend>>
+UC_FinLav <.. UC_FinSrv : <<extend>>
+
+' Actores
+Emp --> UC_CreLav
+Emp --> UC_IniLav
+Emp --> UC_FinLav
+Emp --> UC_CanLav
+Emp --> UC_CanSrv
+Emp --> UC_RegPago
+Emp --> UC_RegRet
+Emp --> UC_ConLav
+Emp --> UC_DetLav
+
+Admin --> UC_CreLav
+Admin --> UC_IniLav
+Admin --> UC_FinLav
+Admin --> UC_CanLav
+Admin --> UC_CanSrv
+Admin --> UC_RegPago
+Admin --> UC_RegRet
+Admin --> UC_ConLav
+Admin --> UC_DetLav
+
+@enduml
+```
+
+### 5.3 Diagrama de Casos de Uso - WhatsApp
+
+```plantuml
+@startuml DiagramaCasosUsoWhatsApp
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Cliente WhatsApp" as ClienteWA
+actor "Sistema WhatsApp" as SisWA
+
+rectangle "Módulo WhatsApp" {
+    usecase "Iniciar Conversación" as UC_IniConv
+    usecase "Mostrar Menú Principal" as UC_Menu
+    usecase "Registrarse como Cliente" as UC_Registro
+    usecase "Ingresar Datos Personales" as UC_DatPer
+    usecase "Validar Documento" as UC_ValDoc
+    usecase "Editar Perfil" as UC_EditPerf
+    usecase "Gestionar Vehículos" as UC_GestVeh
+    usecase "Registrar Vehículo" as UC_RegVeh
+    usecase "Asociar Vehículo Existente" as UC_AsocVeh
+    usecase "Consultar Mis Vehículos" as UC_ConVeh
+    usecase "Consultar Estado Lavado" as UC_EstLav
+    usecase "Recibir Notificación" as UC_Notif
+}
+
+' Relaciones include
+UC_Registro ..> UC_DatPer : <<include>>
+UC_Registro ..> UC_ValDoc : <<include>>
+UC_GestVeh ..> UC_RegVeh : <<extend>>
+UC_GestVeh ..> UC_AsocVeh : <<extend>>
+UC_GestVeh ..> UC_ConVeh : <<extend>>
+
+' Actores
+ClienteWA --> UC_IniConv
+ClienteWA --> UC_Menu
+ClienteWA --> UC_Registro
+ClienteWA --> UC_EditPerf
+ClienteWA --> UC_GestVeh
+ClienteWA --> UC_EstLav
+
+SisWA --> UC_Notif
+
+@enduml
+```
+
+---
+
+## 6. Especificación de Casos de Uso
+
+### CU-01: Crear Lavado
+
+| Campo | Descripción |
+|-------|-------------|
+| **ID** | CU-01 |
+| **Nombre** | Crear Lavado |
+| **Actor Principal** | Empleado/Administrador |
+| **Precondiciones** | - Usuario autenticado<br>- Existen clientes registrados<br>- Existen servicios activos |
+| **Postcondiciones** | - Se crea un nuevo lavado en estado "Pendiente"<br>- Se registra en auditoría |
+| **Flujo Principal** | 1. El usuario accede a "Nuevo Lavado"<br>2. Busca y selecciona un cliente<br>3. Selecciona un vehículo del cliente<br>4. Selecciona uno o más servicios compatibles<br>5. Opcionalmente aplica descuento<br>6. Asigna empleados al lavado<br>7. Indica cliente que trae el vehículo<br>8. Confirma la creación |
+| **Flujos Alternativos** | 4a. Si no hay servicios compatibles, mostrar mensaje<br>5a. Si descuento > 100%, mostrar error |
+| **Excepciones** | E1. Vehículo en lavado activo<br>E2. Error de conexión |
+
+### CU-02: Registrar Cliente vía WhatsApp
+
+| Campo | Descripción |
+|-------|-------------|
+| **ID** | CU-02 |
+| **Nombre** | Registrar Cliente vía WhatsApp |
+| **Actor Principal** | Cliente WhatsApp |
+| **Precondiciones** | - El cliente no está registrado en el sistema |
+| **Postcondiciones** | - Se crea un nuevo cliente<br>- El teléfono de WhatsApp queda asociado |
+| **Flujo Principal** | 1. Cliente envía mensaje al número de WhatsApp<br>2. Sistema detecta cliente nuevo<br>3. Sistema solicita tipo de documento<br>4. Cliente selecciona tipo<br>5. Sistema solicita número de documento<br>6. Sistema valida documento único<br>7. Sistema solicita nombre y apellido<br>8. Sistema solicita email<br>9. Sistema confirma registro |
+| **Flujos Alternativos** | 6a. Si documento existe, ofrecer vincular cuenta |
+| **Excepciones** | E1. Datos inválidos, solicitar nuevamente |
+
+### CU-03: Registrar Pago
+
+| Campo | Descripción |
+|-------|-------------|
+| **ID** | CU-03 |
+| **Nombre** | Registrar Pago |
+| **Actor Principal** | Empleado/Administrador |
+| **Precondiciones** | - Lavado existe<br>- Lavado tiene saldo pendiente |
+| **Postcondiciones** | - Se registra el pago<br>- Se actualiza estado de pago del lavado |
+| **Flujo Principal** | 1. Usuario accede al detalle del lavado<br>2. Selecciona "Registrar Pago"<br>3. Ingresa monto a pagar<br>4. Selecciona medio de pago<br>5. Opcionalmente agrega notas<br>6. Confirma el pago |
+| **Flujos Alternativos** | 3a. Si monto > saldo, ajustar al saldo |
+| **Excepciones** | E1. Lavado cancelado no permite pagos |
+
+---
+
+## 7. Modelo de Dominio
+
+### 7.1 Diagrama de Clases del Dominio
+
+```plantuml
+@startuml ModeloDominio
+skinparam classAttributeIconSize 0
+
+class Cliente {
+    +Id: String
+    +TipoDocumento: String
+    +NumeroDocumento: String
+    +Nombre: String
+    +Apellido: String
+    +Telefono: String
+    +Email: String
+    +VehiculosIds: List<String>
+    +Estado: String
+}
+
+class Vehiculo {
+    +Id: String
+    +Patente: String
+    +TipoVehiculo: String
+    +Marca: String
+    +Modelo: String
+    +Color: String
+    +ClienteId: String
+    +ClientesIds: List<String>
+    +ClaveAsociacionHash: String
+    +Estado: String
+}
+
+class Servicio {
+    +Id: String
+    +Nombre: String
+    +Precio: Decimal
+    +Tipo: String
+    +TipoVehiculo: String
+    +TiempoEstimado: Int
+    +Descripcion: String
+    +Estado: String
+    +Etapas: List<Etapa>
+}
+
+class Etapa {
+    +Id: String
+    +Nombre: String
+    +Orden: Int
+}
+
+class Lavado {
+    +Id: String
+    +Estado: String
+    +ClienteId: String
+    +VehiculoId: String
+    +Servicios: List<ServicioEnLavado>
+    +Precio: Decimal
+    +PrecioOriginal: Decimal
+    +Descuento: Decimal
+    +Pago: PagoLavado
+    +EmpleadosAsignadosIds: List<String>
+    +TiempoEstimado: Int
+    +TiempoInicio: DateTime
+    +TiempoFinalizacion: DateTime
+    +FechaCreacion: DateTime
+    +EstadoRetiro: String
+    +ClienteTrajoId: String
+    +ClienteRetiraId: String
+}
+
+class ServicioEnLavado {
+    +ServicioId: String
+    +ServicioNombre: String
+    +Precio: Decimal
+    +TiempoEstimado: Int
+    +Estado: String
+    +Orden: Int
+    +Etapas: List<EtapaEnLavado>
+    +PaqueteId: String
+}
+
+class EtapaEnLavado {
+    +EtapaId: String
+    +Nombre: String
+    +Estado: String
+    +TiempoInicio: DateTime
+    +TiempoFinalizacion: DateTime
+}
+
+class PagoLavado {
+    +Estado: String
+    +MontoPagado: Decimal
+    +Pagos: List<DetallePago>
+}
+
+class DetallePago {
+    +Id: String
+    +Monto: Decimal
+    +MedioPago: String
+    +Fecha: DateTime
+    +Notas: String
+}
+
+class Empleado {
+    +Id: String
+    +NombreCompleto: String
+    +Email: String
+    +Rol: String
+    +Estado: String
+}
+
+class PaqueteServicio {
+    +Id: String
+    +Nombre: String
+    +Descripcion: String
+    +ServiciosIds: List<String>
+    +Descuento: Decimal
+    +TipoVehiculo: String
+    +Estado: String
+}
+
+class TipoVehiculo {
+    +Id: String
+    +Nombre: String
+    +Orden: Int
+}
+
+class TipoServicio {
+    +Id: String
+    +Nombre: String
+}
+
+class TipoDocumento {
+    +Id: String
+    +Nombre: String
+    +Abreviatura: String
+}
+
+class AuditLog {
+    +Id: String
+    +Entidad: String
+    +EntidadId: String
+    +Accion: String
+    +UsuarioId: String
+    +Fecha: DateTime
+    +Cambios: String
+}
+
+' Relaciones
+Cliente "1" -- "*" Vehiculo : posee >
+Vehiculo "*" -- "*" Cliente : compartido con >
+Lavado "*" -- "1" Cliente : solicitado por >
+Lavado "*" -- "1" Vehiculo : para >
+Lavado "1" -- "*" ServicioEnLavado : contiene >
+Lavado "1" -- "1" PagoLavado : tiene >
+PagoLavado "1" -- "*" DetallePago : compuesto por >
+Lavado "*" -- "*" Empleado : asignado a >
+Servicio "1" -- "*" Etapa : tiene >
+ServicioEnLavado "1" -- "*" EtapaEnLavado : tiene >
+PaqueteServicio "*" -- "*" Servicio : incluye >
+Vehiculo "*" -- "1" TipoVehiculo : es de tipo >
+Servicio "*" -- "1" TipoServicio : es de tipo >
+Servicio "*" -- "1" TipoVehiculo : aplica a >
+Cliente "*" -- "1" TipoDocumento : usa >
+
+@enduml
+```
+
+---
+
+## 8. Glosario
+
+| Término | Definición |
+|---------|------------|
+| **Lavado** | Orden de trabajo que representa la ejecución de uno o más servicios sobre un vehículo |
+| **Servicio** | Tipo de trabajo que se puede realizar en el lavadero (ej: Lavado exterior, Encerado) |
+| **Etapa** | Paso o fase específica dentro de un servicio que puede completarse de forma independiente |
+| **Paquete de Servicio** | Conjunto de servicios agrupados que se ofrecen con un descuento especial |
+| **Cliente** | Persona que solicita servicios para sus vehículos |
+| **Vehículo Compartido** | Vehículo que puede tener múltiples clientes asociados como dueños |
+| **Clave de Asociación** | Código secreto que permite a un cliente asociarse a un vehículo existente |
+| **Borrado Lógico** | Técnica de "eliminar" registros cambiando su estado a Inactivo sin eliminar físicamente |
+| **Estado de Retiro** | Estado que indica si el vehículo ya fue retirado del lavadero tras completar el servicio |
+| **Webhook** | Endpoint que recibe notificaciones automáticas de sistemas externos (ej: WhatsApp) |
+| **Sesión de WhatsApp** | Contexto de conversación mantenido para cada cliente en WhatsApp |
+
+---
+
+*Documento generado siguiendo la metodología UP (Proceso Unificado)*
+*Versión 2.0 - Sistema LavaFacil*
+
+**Versión 2.0**
+
+***Fecha: 05/12/2025***
 
 Realizado por: Gelabert André
 
@@ -13,8 +773,8 @@ Realizado por: Gelabert André
 
 | *Nro* | *Fecha* | *Descripción* | *Autor* |
 | :---- | :---- | :---- | :---- |
-| 0 | 08/09/2025 | Versión 1,0 | Gelabert André |
-| 1 | Dd/mm/aaaa | Descripción Cambio | Autor |
+| 0 | 08/09/2025 | Versión 1.0 - Documento inicial | Gelabert André |
+| 1 | 05/12/2025 | Versión 2.0 - Actualización completa con nuevos requisitos, casos de uso WhatsApp, gestión de vehículos compartidos y configuración del sistema | Gelabert André |
 
 # ***Índice***
 
@@ -255,18 +1015,6 @@ Lista de casos de usos y su importancia dentro del sistema para determinar cuál
 | **Roles y Permisos** | Gestiona la asignación de roles a empleados, determinando los permisos y accesos de cada usuario. Garantiza que la información sensible esté restringida y que cada persona acceda solo a lo necesario para su función. |
 | **Seguridad** | Incluye mecanismos de inicio de sesión, cierre automático por inactividad y recuperación de credenciales. Refuerza la privacidad de la información y la seguridad de los datos, minimizando riesgos de accesos indebidos. |
 
-**PyPSoft**  
-**Sistema de Gestión de Personal y Proyectos para Arquitectura e Ingeniería**
-
-**Documento de Requisitos del Sistema**
-
-***Versión  1.1***
-
-***Fecha: 24/05/2023***
-
-Realizado por: Gelabert André  
-Realizado para: Agrimensura del Norte SRL: Área de Modelado 3D BIM
-
 6. # ***Objetivos de la Iteración*** {#objetivos-de-la-iteración}
 
 | OBJ–01  | Gestión de Empleados |
@@ -335,20 +1083,20 @@ Debe tener una lista de requisitos de almacenamientos y de restricciones de info
 | IRQ–02 | Información sobre Clientes y Vehículos |
 | :---: | ----- |
 | **Objetivos asociados** | OBJ–02 Gestión de Clientes y Vehículos |
-| **Requisitos asociados** | CU-011 – Crear cliente CU-012 – Modificar cliente CU-013 – Eliminar cliente CU-014 – Consultar clientes CU-015 – Crear vehículo de cliente CU-016 – Modificar vehículo de cliente CU-017 – Eliminar vehículo de cliente CU-018 – Consultar vehículos de cliente CU-019 – Registrarse como cliente por WhatsApp CU-020 – Registrar vehículo por WhatsApp CU-021 – Identificar si el número de teléfono está registrado |
-| **Descripción** | El sistema deberá almacenar la información completa de los clientes y de los vehículos asociados a cada uno, permitiendo mantener una trazabilidad completa de los servicios prestados. |
-| **Datos específicos** | Cliente: Nombre y Apellido Teléfono Correo electrónico Estado del cliente (Activo / Inactivo) Vehículo: Marca Modelo Año Color Patente Tipo de vehículo (Auto, Camioneta, Moto, etc.) |
+| **Requisitos asociados** | CU-011 – Crear cliente CU-012 – Modificar cliente CU-013 – Eliminar cliente CU-014 – Consultar clientes CU-015 – Crear vehículo de cliente CU-016 – Modificar vehículo de cliente CU-017 – Eliminar vehículo de cliente CU-018 – Consultar vehículos de cliente CU-019 – Registrarse como cliente por WhatsApp CU-020 – Registrar vehículo por WhatsApp CU-021 – Identificar si el número de teléfono está registrado CU-060 – Asociar vehículo existente mediante clave CU-061 – Generar clave de asociación de vehículo |
+| **Descripción** | El sistema deberá almacenar la información completa de los clientes y de los vehículos asociados a cada uno, permitiendo mantener una trazabilidad completa de los servicios prestados. Un vehículo puede tener múltiples clientes asociados (dueños compartidos) mediante un sistema de claves de asociación. |
+| **Datos específicos** | Cliente: Tipo de Documento Número de Documento Nombre y Apellido Teléfono (10 dígitos) Correo electrónico Estado del cliente (Activo / Inactivo) Lista de vehículos asociados. Vehículo: Patente Marca Modelo Color Tipo de vehículo (Automóvil, SUV, Camioneta, Motocicleta, etc.) Cliente principal (dueño original) Lista de clientes asociados Clave de asociación encriptada (hash SHA256) Estado del vehículo (Activo / Inactivo). |
 | **Estabilidad** | Alta |
-| **Comentarios** | Los datos se relacionan con los servicios y los turnos agendados para cada cliente. |
+| **Comentarios** | Los datos se relacionan con los servicios y los turnos agendados para cada cliente. El sistema permite que varios clientes compartan un mismo vehículo mediante clave de asociación. |
 
 | IRQ–03 | Información sobre Servicios y Paquetes |
 | :---: | :---- |
 | **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes |
-| **Requisitos asociados** | CU-022 – Crear servicio CU-023 – Modificar servicio CU-024 – Eliminar servicio CU-025 – Consultar servicios CU-026 – Crear paquete de servicios CU-027 – Modificar paquete de servicios CU-028 – Eliminar paquete de servicios CU-029 – Consultar paquete de servicios |
-| **Descripción** | El sistema deberá registrar y administrar la información de los servicios individuales y de los paquetes que los agrupan. Estos datos serán utilizados para calcular los precios y tiempos estimados de lavado. |
-| **Datos específicos** | Nombre del servicio Descripción Duración estimada Precio Tipo de vehículo asociado Categoría del servicio Estado Servicios incluidos en el paquete Descuento aplicado al paquete (si corresponde) |
+| **Requisitos asociados** | CU-022 – Crear servicio CU-023 – Modificar servicio CU-024 – Eliminar servicio CU-025 – Consultar servicios CU-026 – Crear paquete de servicios CU-027 – Modificar paquete de servicios CU-028 – Eliminar paquete de servicios CU-029 – Consultar paquete de servicios CU-062 – Gestionar tipos de servicio CU-063 – Gestionar tipos de vehículo CU-064 – Gestionar tipos de documento |
+| **Descripción** | El sistema deberá registrar y administrar la información de los servicios individuales y de los paquetes que los agrupan. Cada servicio puede contener múltiples etapas que se ejecutan secuencialmente. Los paquetes agrupan servicios con descuentos aplicados. |
+| **Datos específicos** | Servicio: Nombre Descripción Precio Tipo de servicio Tipo de vehículo asociado Tiempo estimado (minutos) Estado (Activo / Inactivo) Lista de etapas (nombre de cada etapa). Paquete de Servicios: Nombre Estado (Activo / Inactivo) Precio total (calculado) Porcentaje de descuento Tiempo estimado total (suma de servicios) Tipo de vehículo Lista de IDs de servicios incluidos. Catálogos: Tipos de Servicio Tipos de Vehículo Tipos de Documento. |
 | **Estabilidad** | Alta |
-| **Comentarios** | Información crítica para el cálculo de tiempos estimados y la planificación de turnos. |
+| **Comentarios** | Los servicios definen etapas que permiten seguimiento granular del progreso del lavado. Los paquetes solo pueden incluir servicios del mismo tipo de vehículo. |
 
 | IRQ–04 | Información sobre Turnos |
 | :---: | :---- |
@@ -362,25 +1110,25 @@ Debe tener una lista de requisitos de almacenamientos y de restricciones de info
 | IRQ–05 | Información sobre Lavados y Pagos |
 | :---: | :---- |
 | **Objetivos asociados** | OBJ–01 Gestión de Empleados OBJ–02 Gestión de Clientes y Vehículos OBJ–03 Gestión de Servicios y Paquetes OBJ–04 Planificación y Gestión de Turnos OBJ–05 Registro de Lavados y Pagos |
-| **Requisitos asociados** | CU-030 – Registrar realización de un Servicio CU-031 – Modificar realización de un Servicio CU-032 – Cancelar realización de un Servicio CU-033 – Consultar lavados realizados CU-034 – Registrar lavado realizado CU-035 – Marcar etapa del servicio finalizada CU-036 – Marcar servicio finalizado CU-037 – Registrar pago recibido CU-038 – Consultar historial de pagos CU-039 – Configurar horarios del lavadero CU-040 – Calcular duración estimada de lavado CU-058 – Recibir confirmación CU-059 – Solicitar hablar con el personal |
-| **Descripción** | El sistema deberá registrar cada lavado realizado, los servicios incluidos, las etapas completadas y los pagos asociados. |
-| **Datos específicos** | Fecha y hora del servicio a realizar Servicios aplicados Tiempo estimado del servicio a realizar Empleado responsable Cliente y vehículo Monto total Estado de la realización del servicio (Pendiente, En curso, Finalizado, Cancelado) Forma de pago (efectivo, anticipado, descuento) Estado del pago (Pendiente / Pagado) |
+| **Requisitos asociados** | CU-030 – Registrar realización de un Servicio CU-031 – Modificar realización de un Servicio CU-032 – Cancelar realización de un Servicio CU-033 – Consultar lavados realizados CU-034 – Registrar lavado realizado CU-035 – Marcar etapa del servicio finalizada CU-036 – Marcar servicio finalizado CU-037 – Registrar pago recibido CU-038 – Consultar historial de pagos CU-039 – Configurar horarios del lavadero CU-040 – Calcular duración estimada de lavado CU-058 – Recibir confirmación CU-059 – Solicitar hablar con el personal CU-065 – Registrar retiro de vehículo |
+| **Descripción** | El sistema deberá registrar cada lavado realizado, los servicios incluidos con sus etapas, los empleados asignados, y los pagos asociados. Se gestiona el ciclo completo desde la recepción del vehículo hasta su retiro. |
+| **Datos específicos** | Lavado: Estado (Pendiente, EnProceso, Realizado, RealizadoParcialmente, Cancelado) Cliente asociado Vehículo asociado (patente, tipo) Lista de servicios a realizar con su estado y orden Lista de etapas por servicio Precio total y precio original Descuento aplicado (porcentaje) Cantidad de empleados requeridos Lista de empleados asignados (IDs y nombres) Tiempo estimado total Fecha/hora de inicio y finalización Motivo de cancelación (si aplica) Notas adicionales Estado de retiro (Pendiente, Retirado) Cliente que trajo el vehículo Cliente que retira el vehículo Fecha de retiro. Pago: Estado (Pendiente, Parcial, Pagado) Monto total pagado Lista de pagos realizados (monto, medio de pago, fecha, notas). Medios de pago: Efectivo, Tarjeta Débito, Tarjeta Crédito, Transferencia, MercadoPago. |
 | **Estabilidad** | Alta |
-| **Comentarios** | Se integra con el módulo de auditoría y estadísticas para el control financiero. |
+| **Comentarios** | Se integra con el módulo de auditoría y estadísticas para el control financiero. Permite pagos parciales y múltiples medios de pago. |
 
 | IRQ–06 | Información de Auditoría |
 | :---: | :---- |
 | **Objetivos asociados** | Todos los objetivos |
-| **Requisitos asociados** | CU-064 – Consultar historial de auditoría CU-065 – Registrar todas las acciones para auditoría |
+| **Requisitos asociados** | CU-066 – Consultar historial de auditoría CU-067 – Registrar todas las acciones para auditoría |
 | **Descripción** | El sistema deberá mantener un registro de todas las acciones realizadas por los usuarios en el sistema, con detalle de fecha, hora y usuario responsable. |
-| **Datos específicos** | Usuario Correo electrónico del usuario Fecha y hora Acción Tipo de acción (alta, baja, modificación, consulta) Entidad afectada Descripción de la acción Action |
+| **Datos específicos** | ID del Usuario (UID Firebase) Correo electrónico del usuario Descripción de la acción ID del objeto afectado (si aplica) Tipo del objeto afectado (Servicio, Empleado, Cliente, etc.) Fecha y hora (Timestamp) |
 | **Estabilidad** | Alta |
 | **Comentarios** | Datos críticos para control interno, auditorías y trazabilidad. |
 
 | IRQ–07 | Información de Estadísticas y Reportes |
 | :---: | :---- |
 | **Objetivos asociados** | OBJ–07 Módulo de Estadísticas y Reportes |
-| **Requisitos asociados** | CU-060 – Consultar estadísticas básicas CU-061 – Consultar historial de pagos CU-062 – Generar reportes CU-063 – Programar generación automática de reportes periódicos |
+| **Requisitos asociados** | CU-068 – Consultar estadísticas básicas CU-069 – Consultar historial de pagos CU-070 – Generar reportes CU-071 – Programar generación automática de reportes periódicos |
 | **Descripción** | El sistema deberá almacenar y generar información estadística basada en los registros de lavados, pagos, servicios y clientes. |
 | **Datos específicos** | Total de lavados realizados Total de ingresos Servicios más solicitados Historial de turnos Clientes más frecuentes Horarios de mayor ocupación Tiempo promedio por lavado |
 | **Estabilidad** | Media |
@@ -390,10 +1138,28 @@ Debe tener una lista de requisitos de almacenamientos y de restricciones de info
 | :---: | :---- |
 | **Objetivos asociados** | OBJ–08 Módulo de Seguridad |
 | **Requisitos asociados** | CU-001 – Iniciar sesión CU-002 – Cerrar sesión CU-003 – Recuperar contraseña CU-004 – Cierre de sesión automático por inactividad |
-| **Descripción** | El sistema deberá gestionar las sesiones de los usuarios, controlando su autenticación, cierre de sesión y recuperación de acceso. |
-| **Datos específicos** | Usuario Fecha y hora de inicio de sesión Fecha y hora de cierre de sesión Estado de sesión Intentos fallidos de inicio Token de recuperación |
+| **Descripción** | El sistema deberá gestionar las sesiones de los usuarios, controlando su autenticación, cierre de sesión y recuperación de acceso. Se utiliza autenticación mediante cookies con duración configurable. |
+| **Datos específicos** | Usuario Fecha y hora de inicio de sesión Fecha y hora de cierre de sesión Estado de sesión Duración máxima de sesión (configurable en horas) Tiempo de inactividad permitido (configurable en minutos) |
 | **Estabilidad** | Alta |
-| **Comentarios** | Vinculado con los módulos de empleados y auditoría para control de accesos. |
+| **Comentarios** | Vinculado con los módulos de empleados y auditoría para control de accesos. Integración con Google Authentication. |
+
+| IRQ–09 | Información de Configuración del Sistema |
+| :---: | :---- |
+| **Objetivos asociados** | OBJ–04 Planificación y Gestión de Turnos OBJ–05 Registro de Lavados y Pagos OBJ–08 Módulo de Seguridad |
+| **Requisitos asociados** | CU-072 – Configurar parámetros del sistema CU-073 – Configurar horarios de operación CU-074 – Configurar capacidad del lavadero |
+| **Descripción** | El sistema deberá almacenar una configuración centralizada que define los parámetros operativos del lavadero. Solo debe existir un documento de configuración. |
+| **Datos específicos** | Información del Lavadero: Nombre del lavadero Ubicación/Dirección. Configuración de Descuentos por Cancelación: Porcentaje de descuento por cancelación anticipada Horas mínimas de anticipación para aplicar descuento Días de validez del descuento. Configuración de Paquetes: Paso/incremento para descuentos de paquetes. Horarios de Operación: Horario por día de la semana (formato "HH:MM-HH:MM" o "CERRADO"). Configuración de Capacidad: Capacidad máxima concurrente Considerar empleados activos para capacidad Máximo de empleados por lavado. Configuración de Tiempos: Minutos de anticipación para notificar tiempo límite Minutos de tolerancia después del tiempo estimado Intervalo de preguntas de finalización. Configuración de Sesiones: Duración máxima de sesión (horas) Tiempo de inactividad (minutos). Metadata: Fecha de última actualización Usuario que actualizó. |
+| **Estabilidad** | Alta |
+| **Comentarios** | Configuración centralizada accesible solo por administradores. |
+
+| IRQ–10 | Información de Sesiones WhatsApp |
+| :---: | :---- |
+| **Objetivos asociados** | OBJ–02 Gestión de Clientes y Vehículos OBJ–04 Planificación y Gestión de Turnos |
+| **Requisitos asociados** | CU-019 – Registrarse como cliente por WhatsApp CU-020 – Registrar vehículo por WhatsApp CU-021 – Identificar si el número de teléfono está registrado CU-075 – Gestionar flujo conversacional WhatsApp CU-076 – Editar datos de cliente por WhatsApp CU-077 – Gestionar vehículos por WhatsApp CU-078 – Asociar vehículo existente por WhatsApp |
+| **Descripción** | El sistema deberá gestionar las sesiones de conversación de los clientes a través de WhatsApp Business API, manteniendo el estado del flujo conversacional y los datos temporales capturados. |
+| **Datos específicos** | ID de sesión (número de teléfono del usuario) ID del cliente asociado (si está registrado) Estado actual del flujo conversacional Datos temporales capturados durante el flujo Fecha/hora de última interacción Fecha de creación de la sesión. Estados del flujo: INICIO, Registro (tipo documento, número, nombre, apellido, email, confirmación), Menú Cliente Autenticado, Gestión de Vehículos (registro, modificación, eliminación), Edición de Datos Cliente, Asociación de Vehículos (patente, clave, confirmación). |
+| **Estabilidad** | Alta |
+| **Comentarios** | Las sesiones inactivas se limpian automáticamente mediante un servicio en segundo plano. |
 
 2. ## **Requisitos de Funcionales** {#requisitos-de-funcionales}
 
@@ -466,13 +1232,28 @@ Debe tener una lista de los requisitos funcionales, expresado en forma tradicion
 * CU-058.1 \- Recibir confirmación de etapa finalizada  
 * CU-058.2 \- Recibir confirmación de lavado finalizado  
 * CU-059 \- Solicitar hablar con el personal  
-* CU-060 \- Consultar estadísticas básicas  
-* CU-061 \- Consultar historial de pagos  
-* CU-062 \- Generar reportes  
-* CU-062.1 \- Exportar reportes a PDF o Excel  
-* CU-063 \- Programar generación automática de reportes periódicos  
-* CU-064 \- Consultar historial de auditoría  
-* CU-065 \- Registrar todas las acciones para auditoría
+* CU-060 \- Asociar vehículo existente mediante clave
+* CU-061 \- Generar clave de asociación de vehículo
+* CU-062 \- Gestionar tipos de servicio
+* CU-063 \- Gestionar tipos de vehículo
+* CU-064 \- Gestionar tipos de documento
+* CU-065 \- Registrar retiro de vehículo
+* CU-066 \- Consultar historial de auditoría  
+* CU-067 \- Registrar todas las acciones para auditoría
+* CU-068 \- Consultar estadísticas básicas  
+* CU-069 \- Consultar historial de pagos  
+* CU-070 \- Generar reportes  
+* CU-070.1 \- Exportar reportes a PDF o Excel  
+* CU-071 \- Programar generación automática de reportes periódicos  
+* CU-072 \- Configurar parámetros del sistema
+* CU-073 \- Configurar horarios de operación
+* CU-074 \- Configurar capacidad del lavadero
+* CU-075 \- Gestionar flujo conversacional WhatsApp
+* CU-076 \- Editar datos de cliente por WhatsApp
+* CU-077 \- Gestionar vehículos por WhatsApp
+* CU-078 \- Asociar vehículo existente por WhatsApp
+* CU-079 \- Consultar marcas de vehículos (API externa)
+* CU-080 \- Consultar modelos de vehículos (API externa)
 
   1. ## **Diagrama de Casos de Usos**
 
@@ -482,20 +1263,20 @@ Debe tener una lista de los requisitos funcionales, expresado en forma tradicion
 | **Comentarios**  | Ninguno. |
 |   |  |
 | **ACT–02** | **Administrador** |
-| **Descripción**  | El administrador representa al dueño del lavadero o un trabajador de rango superior. Tiene las mismas capacidades que un usuario aunque sumándole la capacidad de gestionar los servicios que ofrece el lavadero, gestionar al resto de usuarios del sistema y además pueden generar reportes y consultar las estadísticas del lavadero. |
+| **Descripción**  | El administrador representa al dueño del lavadero o un trabajador de rango superior. Tiene las mismas capacidades que un usuario aunque sumándole la capacidad de gestionar los servicios que ofrece el lavadero, gestionar al resto de usuarios del sistema, configurar los parámetros del sistema y además pueden generar reportes y consultar las estadísticas del lavadero. |
 | **Comentarios**  | Ninguno. |
 |  |  |
 
 | ACT–03  | Cliente |
 | :---- | :---- |
-| **Descripción**  | Este actor hace referencia al cliente del lavadero, es el que utiliza los servicios del mismo. Puede registrarse como cliente, registrar sus vehículos y solicitar turnos, todo esto mediante whatsapp. |
+| **Descripción**  | Este actor hace referencia al cliente del lavadero, es el que utiliza los servicios del mismo. Puede registrarse como cliente, registrar sus vehículos, asociarse a vehículos existentes mediante clave, editar sus datos personales y gestionar sus vehículos, todo esto mediante WhatsApp. |
 | **Comentarios**  | Ninguno. |
 
      2. 
 
 | ACT–04  | Sistema |
 | :---- | :---- |
-| **Descripción**  | Este actor representa el sistema encargado de realizar todas las acciones requeridas por el usuario. |
+| **Descripción**  | Este actor representa el sistema encargado de realizar todas las acciones requeridas por el usuario, incluyendo la gestión automática de sesiones de WhatsApp, limpieza de sesiones inactivas, y consulta a APIs externas para obtener información de vehículos. |
 | **Comentarios**  | Ninguno. |
 
 ## **Caso de Usos del Sistema**
@@ -568,54 +1349,526 @@ Debe tener una lista de los requisitos funcionales, expresado en forma tradicion
 
 | NFR–01  | Copias de seguridad  |
 | :---- | :---- |
-| **Objetivos asociados**  | –  |
-| **Requisitos asociados**  | –  |
-| **Descripción**  | El sistema deberá incorporar algún mecanismo que permita realizar copias de seguridad de los datos almacenados. |
+| **Objetivos asociados**  | Todos |
+| **Requisitos asociados**  | – |
+| **Descripción**  | El sistema utiliza Firebase/Firestore como base de datos, el cual proporciona copias de seguridad automáticas y recuperación ante desastres como parte del servicio en la nube. |
 | **Comentarios**  | Ninguno  |
 
 | NFR–02  | Seguridad de datos  |
 | :---- | :---- |
-| **Objetivos asociados**  | –  |
-| **Requisitos asociados**  | –  |
-| **Descripción**  | El sistema debe garantizar la protección y confidencialidad de los datos de los Proyectos y el Personal, cumpliendo con las normativas de privacidad y seguridad de la información. |
+| **Objetivos asociados**  | OBJ-08 Gestión de Seguridad |
+| **Requisitos asociados**  | IRQ-08 Información de Seguridad y Sesiones |
+| **Descripción**  | El sistema debe garantizar la protección y confidencialidad de los datos de los clientes, empleados y operaciones del lavadero. Se utiliza autenticación mediante Firebase Authentication con soporte para Google Auth. Las contraseñas se almacenan de forma encriptada. Las claves de asociación de vehículos se almacenan como hash SHA256. Las sesiones utilizan cookies seguras (HttpOnly, Secure, SameSite). |
 | **Comentarios**  | Ninguno  |
 
 | NFR–03 | Usabilidad |
 | :---- | :---- |
-| **Objetivos asociados**  | –  |
-| **Requisitos asociados**  | –  |
-| **Descripción**  | El sistema debe ser intuitivo y fácil de usar para los diferentes usuarios (administrador, Nutricionista y Paciente), con una interfaz amigable y funcionalidades claras. |
+| **Objetivos asociados**  | Todos |
+| **Requisitos asociados**  | – |
+| **Descripción**  | El sistema debe ser intuitivo y fácil de usar para los diferentes usuarios (Administrador, Trabajador y Cliente). La interfaz web utiliza diseño responsivo con TailwindCSS. La interfaz de WhatsApp utiliza flujos conversacionales guiados con menús de opciones numeradas. |
 | **Comentarios**  | Ninguno  |
 
 | NFR–04 | Registro de actividad |
 | :---- | :---- |
-| **Objetivos asociados**  | –  |
-| **Requisitos asociados**  | –  |
-| **Descripción**  | El sistema debe contar con un sistema de registro y seguimiento de las actividades realizadas por los usuarios, permitiendo la auditoría de acciones y la detección de posibles anomalías o problemas de seguridad. |
+| **Objetivos asociados**  | OBJ-06 Registro de Auditoría |
+| **Requisitos asociados**  | IRQ-06 Información de Auditoría |
+| **Descripción**  | El sistema cuenta con un sistema de registro y seguimiento de las actividades realizadas por los usuarios, permitiendo la auditoría de acciones y la detección de posibles anomalías o problemas de seguridad. Cada acción importante se registra con usuario, fecha/hora, tipo de entidad y descripción. |
+| **Comentarios**  | Ninguno  |
+
+| NFR–05 | Integración con servicios externos |
+| :---- | :---- |
+| **Objetivos asociados**  | OBJ-02 Gestión de Clientes y Vehículos, OBJ-04 Planificación y Gestión de Turnos |
+| **Requisitos asociados**  | IRQ-02, IRQ-10 |
+| **Descripción**  | El sistema debe integrarse con: 1) Meta WhatsApp Business API para comunicación con clientes mediante webhook y envío de mensajes. 2) NHTSA Vehicle API para consulta de marcas y modelos de vehículos. 3) Firebase Authentication para gestión de identidades. 4) Google Cloud Firestore para almacenamiento de datos. |
+| **Comentarios**  | Ninguno  |
+
+| NFR–06 | Configurabilidad |
+| :---- | :---- |
+| **Objetivos asociados**  | Todos |
+| **Requisitos asociados**  | IRQ-09 Información de Configuración del Sistema |
+| **Descripción**  | El sistema debe permitir configurar múltiples parámetros operativos sin necesidad de modificar código, incluyendo: horarios de operación por día, capacidad máxima, tiempos de tolerancia, duración de sesiones, parámetros de descuentos, y información del negocio (nombre, ubicación). |
+| **Comentarios**  | Ninguno  |
+
+| NFR–07 | Disponibilidad |
+| :---- | :---- |
+| **Objetivos asociados**  | Todos |
+| **Requisitos asociados**  | – |
+| **Descripción**  | El sistema debe estar disponible durante el horario de operación del lavadero. Al utilizar Firebase App Hosting y servicios de Google Cloud, se garantiza alta disponibilidad. El webhook de WhatsApp debe responder en menos de 30 segundos para mantener la sesión activa. |
+| **Comentarios**  | Ninguno  |
+
+| NFR–08 | Mantenimiento de sesiones WhatsApp |
+| :---- | :---- |
+| **Objetivos asociados**  | OBJ-02 Gestión de Clientes y Vehículos |
+| **Requisitos asociados**  | IRQ-10 Información de Sesiones WhatsApp |
+| **Descripción**  | El sistema debe implementar un servicio en segundo plano (Background Service) que limpie automáticamente las sesiones de WhatsApp inactivas para optimizar el uso de recursos y mantener la coherencia del sistema. |
 | **Comentarios**  | Ninguno  |
 
 3. ## **Matriz de Rastreabilidad Objetivo/Requisitos** {#matriz-de-rastreabilidad-objetivo/requisitos}
 
 |  | OBJ-01 | OBJ-02 | OBJ-03 | OBJ-04 | OBJ-05 | OBJ-06 | OBJ-07 | OBJ-08 |
 | :---- | :---- | :---- | :---- | :---- | :---- | :---- | :---- | :---- |
-| RI-01 |  |  |  |  |  |  |  |  |
-| RI-02 |  |  |  |  |  |  |  |  |
-| RI-03 |  |  |  |  |  |  |  |  |
-| RI-04 |  |  |  |  |  |  |  |  |
-| RI-05 |  |  |  |  |  |  |  |  |
-| RI-06 |  |  |  |  |  |  |  |  |
-| RI-07 |  |  |  |  |  |  |  |  |
-| RI-08 |  |  |  |  |  |  |  |  |
-| RF-01 |  |  |  |  |  |  |  |  |
-| RF-02 |  |  |  |  |  |  |  |  |
-| RF-03 |  |  |  |  |  |  |  |  |
-| RF-04 |  |  |  |  |  |  |  |  |
-| RF-05 |  |  |  |  |  |  |  |  |
-| RF-06 |  |  |  |  |  |  |  |  |
-| RF-07 |  |  |  |  |  |  |  |  |
-| RF-08 |  |  |  |  |  |  |  |  |
+| IRQ-01 | X |  |  |  |  |  |  |  |
+| IRQ-02 |  | X |  |  |  |  |  |  |
+| IRQ-03 |  |  | X |  |  |  |  |  |
+| IRQ-04 |  |  |  | X | X |  |  |  |
+| IRQ-05 | X | X | X | X | X |  |  |  |
+| IRQ-06 | X | X | X | X | X | X |  |  |
+| IRQ-07 |  |  |  |  |  |  | X |  |
+| IRQ-08 |  |  |  |  |  |  |  | X |
+| IRQ-09 |  |  |  | X | X |  |  | X |
+| IRQ-10 |  | X |  | X |  |  |  |  |
 
-   4. 
+4. ## **Glosario de Términos** {#glosario-de-terminos}
+
+| Término | Definición |
+| :---- | :---- |
+| **API** | Application Programming Interface. Interfaz de programación que permite la comunicación entre sistemas. |
+| **Catálogo** | Conjunto de opciones predefinidas en el sistema (tipos de servicio, tipos de vehículo, tipos de documento). |
+| **Cliente** | Persona que utiliza los servicios del lavadero. Puede interactuar mediante la aplicación web (si es atendido por empleados) o directamente por WhatsApp. |
+| **Clave de Asociación** | Código generado por el sistema que permite a múltiples clientes asociarse a un mismo vehículo. Se almacena como hash SHA256. |
+| **Empleado** | Persona que trabaja en el lavadero y utiliza el sistema para gestionar clientes, servicios y turnos. |
+| **Etapa** | Fase específica de un servicio de lavado (ej: enjuague, enjabonado, secado). |
+| **Firebase** | Plataforma de Google para desarrollo de aplicaciones que incluye autenticación, base de datos y hosting. |
+| **Firestore** | Base de datos NoSQL en tiempo real proporcionada por Firebase. |
+| **Hash SHA256** | Algoritmo criptográfico de un solo sentido utilizado para almacenar claves de forma segura. |
+| **Lavado** | Registro de un servicio prestado a un cliente, incluyendo servicios realizados, empleados asignados, pagos y estado. |
+| **Medio de Pago** | Forma de pago aceptada por el sistema: Efectivo, Tarjeta Débito, Tarjeta Crédito, Transferencia, MercadoPago. |
+| **Paquete de Servicios** | Agrupación de servicios que se ofrecen juntos con un descuento aplicado. |
+| **Patente** | Identificador único del vehículo (placa o matrícula). |
+| **PlantUML** | Lenguaje de texto para generar diagramas UML de forma automática. |
+| **Sesión WhatsApp** | Estado de la conversación de un cliente en el flujo de WhatsApp, incluyendo el paso actual y datos temporales. |
+| **Servicio** | Trabajo de lavado ofrecido por el lavadero, con precio, tiempo estimado y etapas definidas. |
+| **Tipo de Documento** | Clasificación de documentos de identidad (DNI, CUIT, Pasaporte, etc.). |
+| **Tipo de Servicio** | Categorización de servicios (Lavado, Pulido, Detailing, etc.). |
+| **Tipo de Vehículo** | Clasificación de vehículos (Automóvil, SUV, Camioneta, Motocicleta, etc.). |
+| **Turno** | Cita programada para un cliente, con fecha, hora, servicios y empleado asignado. |
+| **UP (Proceso Unificado)** | Metodología de desarrollo de software iterativa e incremental. |
+| **Vehículo Compartido** | Vehículo que tiene más de un cliente asociado como dueño. |
+| **Webhook** | Endpoint HTTP que recibe notificaciones automáticas de eventos externos (ej: mensajes de WhatsApp). |
+| **WhatsApp Business API** | Servicio de Meta que permite integrar WhatsApp en aplicaciones empresariales. |
+
+5. ## **Diagramas de Casos de Uso en PlantUML** {#diagramas-plantuml}
+
+### **5.1 Diagrama General del Sistema**
+
+```plantuml
+@startuml DiagramaGeneral
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Trabajador" as Trabajador
+actor "Administrador" as Administrador
+actor "Cliente" as Cliente
+actor "Sistema" as Sistema
+
+rectangle "Sistema de Gestión de Lavadero" {
+    package "Gestión de Seguridad" {
+        usecase "Iniciar Sesión" as UC001
+        usecase "Cerrar Sesión" as UC002
+        usecase "Recuperar Contraseña" as UC003
+        usecase "Registrarse en el Sistema" as UC005
+    }
+    
+    package "Gestión de Empleados" {
+        usecase "Modificar Empleado" as UC006
+        usecase "Eliminar Empleado" as UC007
+        usecase "Consultar Empleados" as UC008
+        usecase "Asignar Roles" as UC009
+    }
+    
+    package "Gestión de Clientes" {
+        usecase "Crear Cliente" as UC011
+        usecase "Modificar Cliente" as UC012
+        usecase "Eliminar Cliente" as UC013
+        usecase "Consultar Clientes" as UC014
+    }
+    
+    package "Gestión de Vehículos" {
+        usecase "Crear Vehículo" as UC015
+        usecase "Modificar Vehículo" as UC016
+        usecase "Eliminar Vehículo" as UC017
+        usecase "Consultar Vehículos" as UC018
+        usecase "Asociar Vehículo con Clave" as UC060
+        usecase "Generar Clave Asociación" as UC061
+    }
+    
+    package "Gestión de Servicios" {
+        usecase "Crear Servicio" as UC022
+        usecase "Modificar Servicio" as UC023
+        usecase "Eliminar Servicio" as UC024
+        usecase "Consultar Servicios" as UC025
+        usecase "Gestionar Paquetes" as UC026
+    }
+    
+    package "Gestión de Lavados" {
+        usecase "Registrar Lavado" as UC034
+        usecase "Marcar Etapa Finalizada" as UC035
+        usecase "Marcar Servicio Finalizado" as UC036
+        usecase "Registrar Pago" as UC037
+        usecase "Registrar Retiro Vehículo" as UC065
+    }
+    
+    package "Gestión de Turnos" {
+        usecase "Registrar Turno" as UC041
+        usecase "Modificar Turno" as UC042
+        usecase "Consultar Turnos" as UC043
+        usecase "Cancelar Turno" as UC044
+    }
+    
+    package "Configuración del Sistema" {
+        usecase "Configurar Parámetros" as UC072
+        usecase "Configurar Horarios" as UC073
+        usecase "Configurar Capacidad" as UC074
+        usecase "Gestionar Catálogos" as UC062
+    }
+    
+    package "Interacción WhatsApp" {
+        usecase "Registrarse por WhatsApp" as UC019
+        usecase "Registrar Vehículo WhatsApp" as UC020
+        usecase "Editar Datos WhatsApp" as UC076
+        usecase "Gestionar Vehículos WhatsApp" as UC077
+        usecase "Asociar Vehículo WhatsApp" as UC078
+    }
+    
+    package "Auditoría y Reportes" {
+        usecase "Consultar Auditoría" as UC066
+        usecase "Generar Reportes" as UC070
+    }
+}
+
+' Relaciones Trabajador
+Trabajador --> UC001
+Trabajador --> UC002
+Trabajador --> UC011
+Trabajador --> UC012
+Trabajador --> UC014
+Trabajador --> UC015
+Trabajador --> UC016
+Trabajador --> UC018
+Trabajador --> UC025
+Trabajador --> UC034
+Trabajador --> UC035
+Trabajador --> UC036
+Trabajador --> UC037
+Trabajador --> UC065
+Trabajador --> UC041
+Trabajador --> UC042
+Trabajador --> UC043
+Trabajador --> UC060
+Trabajador --> UC061
+
+' Relaciones Administrador (hereda de Trabajador)
+Administrador --> UC001
+Administrador --> UC002
+Administrador --> UC006
+Administrador --> UC007
+Administrador --> UC008
+Administrador --> UC009
+Administrador --> UC022
+Administrador --> UC023
+Administrador --> UC024
+Administrador --> UC026
+Administrador --> UC072
+Administrador --> UC073
+Administrador --> UC074
+Administrador --> UC062
+Administrador --> UC066
+Administrador --> UC070
+
+' Relaciones Cliente (WhatsApp)
+Cliente --> UC019
+Cliente --> UC020
+Cliente --> UC076
+Cliente --> UC077
+Cliente --> UC078
+
+' Relaciones Sistema
+Sistema --> UC066
+Sistema ..> UC019 : <<procesa>>
+Sistema ..> UC020 : <<procesa>>
+
+@enduml
+```
+
+### **5.2 Diagrama de Gestión de Clientes y Vehículos**
+
+```plantuml
+@startuml GestionClientesVehiculos
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Trabajador" as Trabajador
+actor "Administrador" as Admin
+actor "Cliente" as Cliente
+
+rectangle "Gestión de Clientes y Vehículos" {
+    usecase "Crear Cliente" as UC011
+    usecase "Modificar Cliente" as UC012
+    usecase "Eliminar Cliente" as UC013
+    usecase "Consultar Clientes" as UC014
+    
+    usecase "Crear Vehículo" as UC015
+    usecase "Modificar Vehículo" as UC016
+    usecase "Eliminar Vehículo" as UC017
+    usecase "Consultar Vehículos" as UC018
+    
+    usecase "Asociar Vehículo Existente" as UC060
+    usecase "Generar Clave de Asociación" as UC061
+    
+    usecase "Consultar Marcas (API)" as UC079
+    usecase "Consultar Modelos (API)" as UC080
+    
+    usecase "Registrarse por WhatsApp" as UC019
+    usecase "Registrar Vehículo WhatsApp" as UC020
+    usecase "Editar Datos WhatsApp" as UC076
+    usecase "Gestionar Vehículos WhatsApp" as UC077
+    usecase "Asociar Vehículo WhatsApp" as UC078
+}
+
+' Relaciones de inclusión
+UC011 ..> UC079 : <<include>>
+UC015 ..> UC079 : <<include>>
+UC015 ..> UC080 : <<include>>
+UC020 ..> UC079 : <<include>>
+UC020 ..> UC080 : <<include>>
+
+' Extensiones
+UC015 ..> UC060 : <<extend>>
+UC077 ..> UC078 : <<extend>>
+
+' Actores
+Trabajador --> UC011
+Trabajador --> UC012
+Trabajador --> UC013
+Trabajador --> UC014
+Trabajador --> UC015
+Trabajador --> UC016
+Trabajador --> UC017
+Trabajador --> UC018
+Trabajador --> UC060
+Trabajador --> UC061
+
+Admin --> UC011
+Admin --> UC012
+Admin --> UC013
+Admin --> UC014
+
+Cliente --> UC019
+Cliente --> UC020
+Cliente --> UC076
+Cliente --> UC077
+Cliente --> UC078
+
+@enduml
+```
+
+### **5.3 Diagrama de Gestión de Servicios y Lavados**
+
+```plantuml
+@startuml GestionServiciosLavados
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Trabajador" as Trabajador
+actor "Administrador" as Admin
+
+rectangle "Gestión de Servicios y Lavados" {
+    package "Servicios" {
+        usecase "Crear Servicio" as UC022
+        usecase "Modificar Servicio" as UC023
+        usecase "Eliminar Servicio" as UC024
+        usecase "Consultar Servicios" as UC025
+        usecase "Gestionar Etapas" as UC022A
+    }
+    
+    package "Paquetes" {
+        usecase "Crear Paquete" as UC026
+        usecase "Modificar Paquete" as UC027
+        usecase "Eliminar Paquete" as UC028
+        usecase "Consultar Paquetes" as UC029
+    }
+    
+    package "Catálogos" {
+        usecase "Gestionar Tipos Servicio" as UC062A
+        usecase "Gestionar Tipos Vehículo" as UC063
+        usecase "Gestionar Tipos Documento" as UC064
+    }
+    
+    package "Lavados" {
+        usecase "Registrar Lavado" as UC034
+        usecase "Marcar Etapa Finalizada" as UC035
+        usecase "Marcar Servicio Finalizado" as UC036
+        usecase "Cancelar Lavado" as UC032
+        usecase "Consultar Lavados" as UC033
+    }
+    
+    package "Pagos" {
+        usecase "Registrar Pago" as UC037
+        usecase "Consultar Historial Pagos" as UC038
+    }
+    
+    package "Retiro" {
+        usecase "Registrar Retiro Vehículo" as UC065
+    }
+}
+
+' Relaciones de inclusión
+UC022 ..> UC022A : <<include>>
+UC034 ..> UC035 : <<include>>
+UC034 ..> UC036 : <<include>>
+UC034 ..> UC037 : <<include>>
+
+' Actores Administrador
+Admin --> UC022
+Admin --> UC023
+Admin --> UC024
+Admin --> UC025
+Admin --> UC026
+Admin --> UC027
+Admin --> UC028
+Admin --> UC029
+Admin --> UC062A
+Admin --> UC063
+Admin --> UC064
+
+' Actores Trabajador
+Trabajador --> UC025
+Trabajador --> UC029
+Trabajador --> UC034
+Trabajador --> UC035
+Trabajador --> UC036
+Trabajador --> UC032
+Trabajador --> UC033
+Trabajador --> UC037
+Trabajador --> UC038
+Trabajador --> UC065
+
+@enduml
+```
+
+### **5.4 Diagrama de Interacción WhatsApp**
+
+```plantuml
+@startuml InteraccionWhatsApp
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Cliente" as Cliente
+actor "Sistema" as Sistema
+
+rectangle "Interacción WhatsApp" {
+    package "Registro" {
+        usecase "Identificar Número Teléfono" as UC021
+        usecase "Registrarse como Cliente" as UC019
+        usecase "Confirmar Registro" as UC019A
+    }
+    
+    package "Gestión de Datos" {
+        usecase "Editar Datos Personales" as UC076
+        usecase "Confirmar Cambios" as UC076A
+    }
+    
+    package "Gestión de Vehículos" {
+        usecase "Registrar Vehículo" as UC020
+        usecase "Modificar Vehículo" as UC020A
+        usecase "Eliminar Vehículo" as UC020B
+        usecase "Asociar Vehículo Existente" as UC078
+        usecase "Ingresar Clave Asociación" as UC078A
+    }
+    
+    package "Gestión de Sesiones" {
+        usecase "Gestionar Flujo Conversacional" as UC075
+        usecase "Limpiar Sesiones Inactivas" as UC075A
+    }
+    
+    package "Comunicación" {
+        usecase "Solicitar Hablar con Personal" as UC059
+    }
+}
+
+' Flujos
+UC019 ..> UC021 : <<include>>
+UC019 ..> UC019A : <<include>>
+UC076 ..> UC076A : <<include>>
+UC078 ..> UC078A : <<include>>
+UC075 ..> UC075A : <<include>>
+
+' Actores
+Cliente --> UC019
+Cliente --> UC076
+Cliente --> UC020
+Cliente --> UC020A
+Cliente --> UC020B
+Cliente --> UC078
+Cliente --> UC059
+
+Sistema --> UC021
+Sistema --> UC075
+Sistema --> UC075A
+
+@enduml
+```
+
+### **5.5 Diagrama de Configuración del Sistema**
+
+```plantuml
+@startuml ConfiguracionSistema
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Administrador" as Admin
+
+rectangle "Configuración del Sistema" {
+    package "Parámetros Generales" {
+        usecase "Configurar Información Lavadero" as UC072A
+        usecase "Configurar Descuentos Cancelación" as UC072B
+        usecase "Configurar Parámetros Paquetes" as UC072C
+    }
+    
+    package "Horarios" {
+        usecase "Configurar Horario Operación" as UC073
+        usecase "Definir Horario por Día" as UC073A
+    }
+    
+    package "Capacidad" {
+        usecase "Configurar Capacidad Máxima" as UC074
+        usecase "Considerar Empleados Activos" as UC074A
+        usecase "Máximo Empleados por Lavado" as UC074B
+    }
+    
+    package "Tiempos" {
+        usecase "Configurar Tiempo Notificación" as UC072D
+        usecase "Configurar Tolerancia" as UC072E
+    }
+    
+    package "Sesiones" {
+        usecase "Configurar Duración Sesión" as UC072F
+        usecase "Configurar Tiempo Inactividad" as UC072G
+    }
+}
+
+' Relaciones
+UC073 ..> UC073A : <<include>>
+UC074 ..> UC074A : <<include>>
+UC074 ..> UC074B : <<include>>
+
+' Actor
+Admin --> UC072A
+Admin --> UC072B
+Admin --> UC072C
+Admin --> UC073
+Admin --> UC074
+Admin --> UC072D
+Admin --> UC072E
+Admin --> UC072F
+Admin --> UC072G
+
+@enduml
+```
+
+6. ## **Anexos**
+
+
 
       1. # ***Glosario de Términos*** {#glosario-de-términos}
 
