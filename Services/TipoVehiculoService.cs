@@ -66,7 +66,8 @@ public class TipoVehiculoService
                 {
                     Id = doc.Id,
                     Nombre = doc.GetValue<string>("Nombre") ?? "",
-                    FormatoPatente = doc.ContainsField("FormatoPatente") ? doc.GetValue<string>("FormatoPatente") : null
+                    FormatoPatente = doc.ContainsField("FormatoPatente") ? doc.GetValue<string>("FormatoPatente") : null,
+                    CantidadEmpleadosRequeridos = doc.ContainsField("CantidadEmpleadosRequeridos") ? doc.GetValue<int>("CantidadEmpleadosRequeridos") : 1
                 });
             }
             
@@ -99,7 +100,8 @@ public class TipoVehiculoService
             {
                 Id = doc.Id,
                 Nombre = doc.GetValue<string>("Nombre") ?? "",
-                FormatoPatente = doc.ContainsField("FormatoPatente") ? doc.GetValue<string>("FormatoPatente") : null
+                FormatoPatente = doc.ContainsField("FormatoPatente") ? doc.GetValue<string>("FormatoPatente") : null,
+                CantidadEmpleadosRequeridos = doc.ContainsField("CantidadEmpleadosRequeridos") ? doc.GetValue<int>("CantidadEmpleadosRequeridos") : 1
             };
         }
         catch (Exception ex)
@@ -145,13 +147,15 @@ public class TipoVehiculoService
     /// </summary>
     /// <param name="nombre">Nombre del tipo de vehículo a crear.</param>
     /// <param name="formatoPatente">Formato de patente opcional (ej: "llnnnll|lllnnn").</param>
+    /// <param name="cantidadEmpleadosRequeridos">Cantidad de empleados requeridos para lavar este tipo de vehículo.</param>
     /// <returns>ID del documento creado en Firestore.</returns>
-    public async Task<string> CrearTipoVehiculo(string nombre, string? formatoPatente = null)
+    public async Task<string> CrearTipoVehiculo(string nombre, string? formatoPatente = null, int cantidadEmpleadosRequeridos = 1)
     {
         var tipoRef = _firestore.Collection("tiposVehiculos").Document();
         var tipo = new Dictionary<string, object>
         {
-            { "Nombre", nombre }
+            { "Nombre", nombre },
+            { "CantidadEmpleadosRequeridos", cantidadEmpleadosRequeridos }
         };
         
         if (!string.IsNullOrWhiteSpace(formatoPatente))

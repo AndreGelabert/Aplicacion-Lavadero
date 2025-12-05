@@ -55,6 +55,15 @@ namespace Firebase.Models
         public required string FormatoPatente { get; set; }
 
         /// <summary>
+        /// Cantidad de empleados requeridos para lavar este tipo de vehículo.
+        /// Define cuántos empleados se asignarán automáticamente al registrar un lavado.
+        /// Ejemplo: 1 para automóviles/motos, 2 para camionetas, 3 para camiones.
+        /// </summary>
+        [FirestoreProperty]
+        [Range(1, 10, ErrorMessage = "La cantidad de empleados debe estar entre 1 y 10")]
+        public int CantidadEmpleadosRequeridos { get; set; } = 1;
+
+        /// <summary>
         /// Convierte el formato simplificado a una expresión regular válida.
         /// 'l' se convierte a [A-Za-z] para letras.
         /// 'n' se convierte a [0-9] para dígitos.

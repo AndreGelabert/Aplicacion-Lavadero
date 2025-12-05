@@ -59,6 +59,7 @@ namespace Firebase.Services
             decimal? precioDesde = null,
             decimal? precioHasta = null,
             List<string>? estadosPago = null,
+            List<string>? estadosRetiro = null,
             int pageNumber = 1,
             int pageSize = 10,
             string? sortBy = null,
@@ -69,7 +70,7 @@ namespace Firebase.Services
             sortBy ??= ORDEN_DEFECTO;
             sortOrder ??= DIRECCION_DEFECTO;
 
-            var lavados = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, sortBy, sortOrder);
+            var lavados = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, sortBy, sortOrder);
 
             return AplicarPaginacion(lavados, pageNumber, pageSize);
         }
@@ -86,12 +87,13 @@ namespace Firebase.Services
             decimal? precioDesde,
             decimal? precioHasta,
             List<string>? estadosPago,
+            List<string>? estadosRetiro,
             int pageSize)
         {
             if (pageSize <= 0)
                 throw new ArgumentException("El tamaño de página debe ser mayor a 0", nameof(pageSize));
 
-            var totalLavados = await ObtenerTotalLavados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago);
+            var totalLavados = await ObtenerTotalLavados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro);
             return Math.Max((int)Math.Ceiling(totalLavados / (double)pageSize), 1);
         }
 
@@ -122,12 +124,13 @@ namespace Firebase.Services
             decimal? precioDesde = null,
             decimal? precioHasta = null,
             List<string>? estadosPago = null,
+            List<string>? estadosRetiro = null,
             int pageNumber = 1,
             int pageSize = 10,
             string? sortBy = null,
             string? sortOrder = null)
         {
-            var baseFiltrada = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, sortBy, sortOrder);
+            var baseFiltrada = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, sortBy, sortOrder);
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
@@ -150,9 +153,10 @@ namespace Firebase.Services
             DateTime? fechaHasta,
             decimal? precioDesde,
             decimal? precioHasta,
-            List<string>? estadosPago)
+            List<string>? estadosPago,
+            List<string>? estadosRetiro)
         {
-            var baseFiltrada = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, ORDEN_DEFECTO, DIRECCION_DEFECTO);
+            var baseFiltrada = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, ORDEN_DEFECTO, DIRECCION_DEFECTO);
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
@@ -480,6 +484,36 @@ namespace Firebase.Services
                 etapa.Estado = "Cancelado";
                 etapa.MotivoCancelacion = motivo;
                 etapa.TiempoFinalizacion = DateTime.UtcNow;
+            }
+
+            // Verificar si todos los servicios han sido cancelados
+            var todosServiciosCancelados = lavado.Servicios.All(s => s.Estado == "Cancelado");
+            
+            if (todosServiciosCancelados)
+            {
+                // Si todos los servicios fueron cancelados, marcar el lavado como cancelado
+                lavado.Estado = ESTADO_CANCELADO;
+                lavado.MotivoCancelacion = "Todos los servicios fueron cancelados";
+                lavado.TiempoFinalizacion = DateTime.UtcNow;
+                
+                // Cancelar el pago si existe y no está completamente pagado
+                if (lavado.Pago != null)
+                {
+                    if (lavado.Pago.Estado != "Pagado")
+                    {
+                        lavado.Pago.Estado = "Cancelado";
+                    }
+                }
+                else
+                {
+                    // Inicializar pago como cancelado si no existía
+                    lavado.Pago = new PagoLavado
+                    {
+                        Estado = "Cancelado",
+                        MontoPagado = 0,
+                        Pagos = new List<DetallePago>()
+                    };
+                }
             }
 
             await ActualizarLavado(lavado);
@@ -812,6 +846,7 @@ namespace Firebase.Services
             decimal? precioDesde,
             decimal? precioHasta,
             List<string>? estadosPago,
+            List<string>? estadosRetiro,
             string? sortBy,
             string? sortOrder)
         {
@@ -870,6 +905,12 @@ namespace Firebase.Services
                 lavados = lavados.Where(l => l.Pago != null && estadosPago.Contains(l.Pago.Estado)).ToList();
             }
 
+            // Filtro de estados de retiro en memoria
+            if (estadosRetiro != null && estadosRetiro.Any())
+            {
+                lavados = lavados.Where(l => estadosRetiro.Contains(l.EstadoRetiro ?? "Pendiente")).ToList();
+            }
+
             return AplicarOrdenamiento(lavados, sortBy, sortOrder);
         }
 
@@ -881,9 +922,10 @@ namespace Firebase.Services
             DateTime? fechaHasta,
             decimal? precioDesde,
             decimal? precioHasta,
-            List<string>? estadosPago)
+            List<string>? estadosPago,
+            List<string>? estadosRetiro)
         {
-            var lavados = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, null, null);
+            var lavados = await ObtenerLavadosFiltrados(estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, null, null);
             return lavados.Count;
         }
 
@@ -924,6 +966,7 @@ namespace Firebase.Services
                 "Precio" => l => l.Precio,
                 "TiempoEstimado" => l => l.TiempoEstimado,
                 "TiempoInicio" => l => l.TiempoInicio ?? DateTime.MinValue,
+                "EstadoRetiro" => l => l.EstadoRetiro ?? string.Empty,
                 _ => l => l.FechaCreacion
             };
 
@@ -1031,7 +1074,13 @@ namespace Firebase.Services
                 ["MotivoCancelacion"] = lavado.MotivoCancelacion ?? string.Empty,
                 ["Notas"] = lavado.Notas ?? string.Empty,
                 ["NotificacionTiempoEnviada"] = lavado.NotificacionTiempoEnviada,
-                ["PreguntasFinalizacion"] = lavado.PreguntasFinalizacion
+                ["PreguntasFinalizacion"] = lavado.PreguntasFinalizacion,
+                ["EstadoRetiro"] = lavado.EstadoRetiro ?? Lavado.EstadosRetiro.Pendiente,
+                ["ClienteTrajoId"] = lavado.ClienteTrajoId ?? string.Empty,
+                ["ClienteTrajoNombre"] = lavado.ClienteTrajoNombre ?? string.Empty,
+                ["ClienteRetiraId"] = lavado.ClienteRetiraId ?? string.Empty,
+                ["ClienteRetiraNombre"] = lavado.ClienteRetiraNombre ?? string.Empty,
+                ["FechaRetiro"] = lavado.FechaRetiro.HasValue ? Timestamp.FromDateTime(lavado.FechaRetiro.Value.ToUniversalTime()) : (object?)null!
             };
         }
 
@@ -1054,7 +1103,12 @@ namespace Firebase.Services
                 MotivoCancelacion = documento.ContainsField("MotivoCancelacion") ? documento.GetValue<string>("MotivoCancelacion") : null,
                 Notas = documento.ContainsField("Notas") ? documento.GetValue<string>("Notas") : null,
                 NotificacionTiempoEnviada = documento.ContainsField("NotificacionTiempoEnviada") && documento.GetValue<bool>("NotificacionTiempoEnviada"),
-                PreguntasFinalizacion = documento.ContainsField("PreguntasFinalizacion") ? documento.GetValue<int>("PreguntasFinalizacion") : 0
+                PreguntasFinalizacion = documento.ContainsField("PreguntasFinalizacion") ? documento.GetValue<int>("PreguntasFinalizacion") : 0,
+                EstadoRetiro = documento.ContainsField("EstadoRetiro") ? documento.GetValue<string>("EstadoRetiro") ?? Lavado.EstadosRetiro.Pendiente : Lavado.EstadosRetiro.Pendiente,
+                ClienteTrajoId = documento.ContainsField("ClienteTrajoId") ? documento.GetValue<string>("ClienteTrajoId") : null,
+                ClienteTrajoNombre = documento.ContainsField("ClienteTrajoNombre") ? documento.GetValue<string>("ClienteTrajoNombre") : null,
+                ClienteRetiraId = documento.ContainsField("ClienteRetiraId") ? documento.GetValue<string>("ClienteRetiraId") : null,
+                ClienteRetiraNombre = documento.ContainsField("ClienteRetiraNombre") ? documento.GetValue<string>("ClienteRetiraNombre") : null
             };
 
             // Mapear fechas
@@ -1074,6 +1128,12 @@ namespace Firebase.Services
             {
                 var timestamp = documento.GetValue<Timestamp>("FechaCreacion");
                 lavado.FechaCreacion = timestamp.ToDateTime();
+            }
+
+            if (documento.ContainsField("FechaRetiro"))
+            {
+                var timestamp = documento.GetValue<Timestamp?>("FechaRetiro");
+                lavado.FechaRetiro = timestamp?.ToDateTime();
             }
 
             // Mapear empleados
@@ -1235,7 +1295,7 @@ namespace Firebase.Services
             List<string>? estadosPago = null)
         {
             var lavados = await ObtenerLavadosFiltrados(
-                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, null, null, estadosPago, null, null);
+                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, null, null, estadosPago, null, null, null);
 
             return lavados.Any() ? lavados.Min(l => l.Precio) : 0m;
         }
@@ -1259,7 +1319,7 @@ namespace Firebase.Services
             List<string>? estadosPago = null)
         {
             var lavados = await ObtenerLavadosFiltrados(
-                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, null, null, estadosPago, null, null);
+                estados, clienteId, vehiculoId, fechaDesde, fechaHasta, null, null, estadosPago, null, null, null);
 
             return lavados.Any() ? lavados.Max(l => l.Precio) : 0m;
         }
