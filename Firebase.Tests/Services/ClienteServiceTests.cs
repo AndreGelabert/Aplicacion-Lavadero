@@ -271,14 +271,14 @@ namespace Firebase.Tests.Services
         /// Verifica que la búsqueda sea insensible a mayúsculas/minúsculas.
         /// </summary>
         [Theory]
-        [InlineData("juan", "Juan Pérez", true)]
-        [InlineData("PÉREZ", "Juan Pérez", true)]
-        [InlineData("JUAN", "Juan Pérez", true)]
-        [InlineData("ana", "Juan Pérez", false)]
-        public void Search_ShouldBeCaseInsensitive(string searchTerm, string nombreCompleto, bool shouldMatch)
+        [InlineData("juan", "Juan", "Pérez", true)]
+        [InlineData("PÉREZ", "Juan", "Pérez", true)]
+        [InlineData("JUAN", "Juan", "Pérez", true)]
+        [InlineData("ana", "Juan", "Pérez", false)]
+        public void Search_ShouldBeCaseInsensitive(string searchTerm, string nombre, string apellido, bool shouldMatch)
         {
             // Arrange
-            var cliente = TestFactory.CreateCliente(nombre: nombreCompleto.Split(' ')[0], apellido: nombreCompleto.Split(' ')[1]);
+            var cliente = TestFactory.CreateCliente(nombre: nombre, apellido: apellido);
 
             // Act
             var matches = cliente.NombreCompleto.ToLowerInvariant().Contains(searchTerm.ToLowerInvariant());

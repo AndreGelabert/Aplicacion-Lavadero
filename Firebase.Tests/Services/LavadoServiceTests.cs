@@ -190,9 +190,11 @@ namespace Firebase.Tests.Services
         [InlineData("Retirado")]
         public void EstadoRetiro_ShouldBeValid(string estadoRetiro)
         {
+            // Arrange
+            var validEstadosRetiro = new[] { Lavado.EstadosRetiro.Pendiente, Lavado.EstadosRetiro.Retirado };
+
             // Assert
-            Assert.True(estadoRetiro == Lavado.EstadosRetiro.Pendiente || 
-                       estadoRetiro == Lavado.EstadosRetiro.Retirado);
+            Assert.Contains(estadoRetiro, validEstadosRetiro);
         }
 
         /// <summary>

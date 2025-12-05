@@ -7,8 +7,9 @@ namespace Firebase.Tests.Services
     /// Tests unitarios para PhoneNumberHelper.
     /// 
     /// Metodología de Testing: Pruebas Unitarias con patrón AAA (Arrange-Act-Assert)
-    /// Tipo de Testing: Caja Negra (Black Box Testing)
-    /// - Se prueban las entradas y salidas sin conocer la implementación interna
+    /// Tipo de Testing: Pruebas de Unidad Funcionales
+    /// - Se prueban las entradas y salidas verificando el comportamiento esperado
+    /// - Se validan casos específicos del dominio (formato argentino, WhatsApp)
     /// 
     /// Categorías de Tests:
     /// 1. Normalización: Verificar normalización de números con diferentes formatos

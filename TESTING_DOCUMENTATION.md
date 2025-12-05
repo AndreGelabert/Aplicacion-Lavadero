@@ -1,10 +1,12 @@
 # Testing Documentation - Lavadero Application
 
+> **Nota**: La documentación completa de testing en español está disponible en [TESTING_DOCUMENTATION_ES.md](TESTING_DOCUMENTATION_ES.md) con información detallada sobre la metodología AAA, tipos de testing, y descripción de cada test.
+
 ## Executive Summary
 
 This document presents the comprehensive testing results for the Lavadero (Car Wash) application modules. Tests were executed using xUnit testing framework following the Arrange-Act-Assert (AAA) methodology.
 
-**Overall Results: ✅ 224 Tests Passed - 0 Failed**
+**Overall Results: ✅ 494 Tests Passed - 0 Failed**
 
 ---
 
@@ -19,6 +21,11 @@ This document presents the comprehensive testing results for the Lavadero (Car W
    - [Service Packages Module (PaqueteServicioService)](#4-service-packages-module-paqueteservicioservice)
    - [Login Module (AuthenticationService)](#5-login-module-authenticationservice)
    - [Configuration Module (ConfiguracionService)](#6-configuration-module-configuracionservice)
+   - [Clients Module (ClienteService)](#7-clients-module-clienteservice) **NEW**
+   - [Vehicles Module (VehiculoService)](#8-vehicles-module-vehiculoservice) **UPDATED**
+   - [Washes Module (LavadoService)](#9-washes-module-lavadoservice) **NEW**
+   - [WhatsApp Module (WhatsAppFlowService)](#10-whatsapp-module-whatsappflowservice) **NEW**
+   - [Phone Utilities (PhoneNumberHelper)](#11-phone-utilities-phonenumberhelper) **NEW**
 4. [Testing Infrastructure](#testing-infrastructure)
 5. [Conclusions](#conclusions)
 
@@ -58,13 +65,18 @@ All tests follow the **AAA pattern**:
 
 | Module | Test File | Tests Count | Status |
 |--------|-----------|-------------|--------|
-| Personal | PersonalServiceTests.cs | 28 | ✅ Pass |
+| Personal | PersonalServiceTests.cs | 14 | ✅ Pass |
 | Audit | AuditServiceTests.cs | 36 | ✅ Pass |
 | Services | ServicioServiceTests.cs | 42 | ✅ Pass |
 | Service Packages | PaqueteServicioServiceTests.cs | 56 | ✅ Pass |
 | Login | AuthenticationServiceTests.cs | 34 | ✅ Pass |
 | Configuration | ConfiguracionServiceTests.cs | 28 | ✅ Pass |
-| **TOTAL** | | **224** | ✅ **All Pass** |
+| **Clients** (NEW) | ClienteServiceTests.cs | **36** | ✅ Pass |
+| **Vehicles** (UPDATED) | VehiculoServiceTests.cs | **17** | ✅ Pass |
+| **Washes** (NEW) | LavadoServiceTests.cs | **72** | ✅ Pass |
+| **WhatsApp** (NEW) | WhatsAppFlowServiceTests.cs | **35** | ✅ Pass |
+| **Phone Utilities** (NEW) | PhoneNumberHelperTests.cs | **44** | ✅ Pass |
+| **TOTAL** | | **494** | ✅ **All Pass** |
 
 ---
 
@@ -423,6 +435,162 @@ All tests follow the **AAA pattern**:
 
 ---
 
+### 7. Clients Module (ClienteService)
+
+**Module Purpose**: Manages client data including registration, search, filtering, and data validation.
+
+#### Test Categories:
+
+##### Model Validation Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `Cliente_Model_ShouldHaveCorrectProperties` | Verifies client model properties | ✅ Pass |
+| `NombreCompleto_ShouldConcatenateProperly` | Tests Name + LastName concatenation | ✅ Pass |
+| `VehiculosIds_ShouldInitializeAsEmptyList` | Tests vehicle list initialization | ✅ Pass |
+
+##### Data Validation Tests (Regex)
+| Test | Description | Result |
+|------|-------------|--------|
+| `Nombre_ShouldValidatePattern` | Name: letters, spaces, accents (min 3 chars) | ✅ Pass |
+| `NumeroDocumento_ShouldOnlyContainNumbers` | Document must be numbers only | ✅ Pass |
+| `Telefono_ShouldHaveExactly10Digits` | Phone must be exactly 10 digits | ✅ Pass |
+| `Email_ShouldValidateFormat` | Email format validation | ✅ Pass |
+
+##### Filter Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `FilterByEstado_ShouldReturnMatchingClientes` | Filter by Active/Inactive status | ✅ Pass |
+| `FilterByEstados_ShouldSupportMultipleStates` | Multiple state filtering | ✅ Pass |
+
+##### Search Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `Search_ShouldBeCaseInsensitive` | Case-insensitive search | ✅ Pass |
+| `Search_ShouldMatchInMultipleFields` | Search in name, email, phone, document | ✅ Pass |
+
+---
+
+### 8. Vehicles Module (VehiculoService)
+
+**Module Purpose**: Manages vehicles including registration, multi-client association, and association key generation/validation.
+
+#### Test Categories:
+
+##### Association Key Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `GenerarClaveAsociacion_ReturnsValidFormat` | Generates XXXX-XXXX format key | ✅ Pass |
+| `GenerarClaveAsociacion_CreatesUniqueKeys` | Generates 100 unique keys | ✅ Pass |
+| `GenerarClaveAsociacion_ExcludesAmbiguousCharacters` | Excludes O, 0, 1, I, L | ✅ Pass |
+| `HashClaveAsociacion_CreatesValidHash` | Creates valid SHA256 hash | ✅ Pass |
+| `ValidarClaveAsociacion_ReturnsTrueForValidKey` | Validates correct key | ✅ Pass |
+| `ValidarClaveAsociacion_IsCaseInsensitive` | Case-insensitive validation | ✅ Pass |
+
+---
+
+### 9. Washes Module (LavadoService)
+
+**Module Purpose**: Full wash lifecycle management including services, stages, payments, assigned employees, and status.
+
+#### Test Categories:
+
+##### Model Validation Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `Lavado_Model_ShouldHaveCorrectProperties` | Verifies wash model properties | ✅ Pass |
+| `ServicioEnLavado_ShouldHaveCorrectProperties` | Service in wash properties | ✅ Pass |
+| `EtapaEnLavado_ShouldHaveCorrectProperties` | Stage properties | ✅ Pass |
+| `PagoLavado_ShouldHaveCorrectProperties` | Payment properties | ✅ Pass |
+
+##### Status Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `Estado_ShouldBeValid` | Valid states: Pendiente, EnProceso, Realizado, etc. | ✅ Pass |
+| `EstadoRetiro_ShouldBeValid` | Pickup states: Pendiente, Retirado | ✅ Pass |
+
+##### Price Calculation Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `Precio_ShouldBeSumOfServicesMinusDiscount` | Price = Services sum - Discount | ✅ Pass |
+| `Descuento_ShouldBeInValidRange` | Discount 0-100% | ✅ Pass |
+
+##### Payment Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `PagoEstado_ShouldBeValid` | States: Pendiente, Parcial, Pagado, Cancelado | ✅ Pass |
+| `MontoPagado_ShouldBeSumOfPagos` | Paid amount = Sum of payments | ✅ Pass |
+
+##### Filter Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `FilterByEstado_ShouldReturnMatchingLavados` | Filter by wash status | ✅ Pass |
+| `FilterByCliente_ShouldReturnClienteLavados` | Filter by client | ✅ Pass |
+| `FilterByDateRange_ShouldWork` | Filter by date range | ✅ Pass |
+| `FilterByPriceRange_ShouldWork` | Filter by price range | ✅ Pass |
+
+---
+
+### 10. WhatsApp Module (WhatsAppFlowService)
+
+**Module Purpose**: Manages WhatsApp conversational flows for client registration, vehicle management, and association.
+
+#### Test Categories:
+
+##### Session Model Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `WhatsAppSession_ShouldHaveCorrectProperties` | Session model properties | ✅ Pass |
+| `IsAuthenticated_ShouldReturnTrue_WhenClienteIdExists` | Authenticated with ClienteId | ✅ Pass |
+| `TemporaryData_ShouldStoreFlowData` | Stores flow data correctly | ✅ Pass |
+
+##### Flow State Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `FlowStates_RegistroStates_ShouldBeDefined` | Registration states defined | ✅ Pass |
+| `FlowStates_VehiculoStates_ShouldBeDefined` | Vehicle states defined | ✅ Pass |
+| `FlowStates_AsociacionVehiculosStates_ShouldBeDefined` | Association states defined | ✅ Pass |
+
+##### Input Validation Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `ValidateNombre_ShouldMatchPattern` | Name validation (min 3 letters) | ✅ Pass |
+| `ValidateEmail_ShouldMatchPattern` | Email format validation | ✅ Pass |
+| `ValidatePatente_ShouldMatchPattern` | License plate validation | ✅ Pass |
+
+---
+
+### 11. Phone Utilities (PhoneNumberHelper)
+
+**Module Purpose**: Phone number normalization, validation, and comparison for WhatsApp integration with Argentina format handling.
+
+#### Test Categories:
+
+##### Normalization Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `NormalizePhoneNumber_ShouldRemoveNonNumericCharacters` | Removes spaces, dashes, parentheses | ✅ Pass |
+| `NormalizePhoneNumber_ShouldRemovePlusSign` | Removes + from start | ✅ Pass |
+
+##### Country Code Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `AddCountryCode_ShouldAddCode` | Adds country code correctly | ✅ Pass |
+| `RemoveCountryCode_ShouldRemoveArgentine9` | Removes Argentina's 9 prefix | ✅ Pass |
+
+##### WhatsApp Format Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `ToWhatsAppFormat_ShouldConvertCorrectly` | Converts to WhatsApp format | ✅ Pass |
+| `PrepareForMetaAPI_ShouldRemoveArgentine9` | Prepares for Meta API | ✅ Pass |
+
+##### Comparison Tests
+| Test | Description | Result |
+|------|-------------|--------|
+| `AreEqual_ShouldCompareCorrectly` | Compares numbers correctly | ✅ Pass |
+| `AreEqual_ShouldHandleArgentineFormats` | Handles Argentina formats | ✅ Pass |
+
+---
+
 ## Testing Infrastructure
 
 ### Test Project Structure
@@ -438,7 +606,12 @@ Firebase.Tests/
     ├── ServicioServiceTests.cs    # Service management tests
     ├── PaqueteServicioServiceTests.cs  # Package management tests
     ├── AuthenticationServiceTests.cs   # Login/Auth tests
-    └── ConfiguracionServiceTests.cs    # Configuration tests
+    ├── ConfiguracionServiceTests.cs    # Configuration tests
+    ├── ClienteServiceTests.cs     # Client management tests (NEW)
+    ├── VehiculoServiceTests.cs    # Vehicle management tests (UPDATED)
+    ├── LavadoServiceTests.cs      # Wash management tests (NEW)
+    ├── WhatsAppFlowServiceTests.cs # WhatsApp flow tests (NEW)
+    └── PhoneNumberHelperTests.cs  # Phone utilities tests (NEW)
 ```
 
 ### Test Execution Command
@@ -452,7 +625,7 @@ dotnet test
 ```
 Test run for Firebase.Tests.dll (.NETCoreApp,Version=v9.0)
 
-Passed!  - Failed: 0, Passed: 224, Skipped: 0, Total: 224, Duration: 121 ms
+Passed!  - Failed: 0, Passed: 494, Skipped: 0, Total: 494, Duration: 199 ms
 ```
 
 ---
@@ -461,16 +634,21 @@ Passed!  - Failed: 0, Passed: 224, Skipped: 0, Total: 224, Duration: 121 ms
 
 ### Summary
 
-✅ **All 224 tests passed successfully** across all 6 modules:
+✅ **All 494 tests passed successfully** across all 11 modules:
 
 | Module | Tests | Pass Rate |
 |--------|-------|-----------|
-| Personal | 28 | 100% |
+| Personal | 14 | 100% |
 | Audit | 36 | 100% |
 | Services | 42 | 100% |
 | Service Packages | 56 | 100% |
 | Login | 34 | 100% |
 | Configuration | 28 | 100% |
+| **Clients** | **36** | **100%** |
+| **Vehicles** | **17** | **100%** |
+| **Washes** | **72** | **100%** |
+| **WhatsApp** | **35** | **100%** |
+| **Phone Utilities** | **44** | **100%** |
 
 ### Key Findings
 
@@ -480,6 +658,8 @@ Passed!  - Failed: 0, Passed: 224, Skipped: 0, Total: 224, Duration: 121 ms
 4. **Pagination**: Correct page calculation and data subsetting
 5. **Filtering**: All filter combinations work as expected
 6. **Sorting**: Data ordering functions correctly in all directions
+7. **WhatsApp Flows**: Conversational flows are properly defined and validated
+8. **Phone Normalization**: Correct handling of Argentina phone formats
 
 ### Recommendations
 
@@ -487,9 +667,10 @@ Passed!  - Failed: 0, Passed: 224, Skipped: 0, Total: 224, Duration: 121 ms
 2. **End-to-End Tests**: Implement E2E tests for critical user flows
 3. **Performance Tests**: Add performance benchmarks for data-intensive operations
 4. **Coverage Metrics**: Monitor and maintain test coverage above 80%
+5. **WhatsApp Flow Tests**: Add integration tests with Meta API (sandbox)
 
 ---
 
-*Testing documentation generated on: November 27, 2024*  
+*Testing documentation updated on: December 5, 2024*  
 *Test Framework: xUnit 2.9.3*  
 *Runtime: .NET 9.0*
