@@ -684,7 +684,7 @@ namespace FirebaseLoginCustom.Controllers
                 }
 
                 // Verificar si ya fue retirado
-                if (lavado.EstadoRetiro == "Retirado")
+                if (lavado.EstadoRetiro == Lavado.EstadosRetiro.Retirado)
                 {
                     return Json(new { success = false, message = "El vehículo ya fue retirado." });
                 }
@@ -699,7 +699,7 @@ namespace FirebaseLoginCustom.Controllers
                 }
 
                 // Registrar el retiro
-                lavado.EstadoRetiro = "Retirado";
+                lavado.EstadoRetiro = Lavado.EstadosRetiro.Retirado;
                 lavado.FechaRetiro = DateTime.UtcNow;
 
                 await _lavadoService.ActualizarLavado(lavado);

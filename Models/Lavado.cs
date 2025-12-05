@@ -11,6 +11,15 @@ namespace Firebase.Models
     public class Lavado
     {
         /// <summary>
+        /// Estados posibles para el retiro del vehículo.
+        /// </summary>
+        public static class EstadosRetiro
+        {
+            public const string Pendiente = "Pendiente";
+            public const string Retirado = "Retirado";
+        }
+
+        /// <summary>
         /// Identificador único del lavado.
         /// </summary>
         [FirestoreProperty]
@@ -158,7 +167,7 @@ namespace Firebase.Models
         /// Estado del retiro del vehículo: Pendiente, Retirado.
         /// </summary>
         [FirestoreProperty]
-        public string EstadoRetiro { get; set; } = "Pendiente";
+        public string EstadoRetiro { get; set; } = EstadosRetiro.Pendiente;
 
         /// <summary>
         /// ID del cliente que trajo el vehículo al lavadero.
@@ -168,6 +177,7 @@ namespace Firebase.Models
 
         /// <summary>
         /// Nombre del cliente que trajo el vehículo (para visualización).
+        /// </summary>
         /// </summary>
         [FirestoreProperty]
         public string? ClienteTrajoNombre { get; set; }
