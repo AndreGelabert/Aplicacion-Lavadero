@@ -58,7 +58,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
     options.SupportedUICultures = new[] { new CultureInfo("es-MX"), new CultureInfo("es-ES") };
 });
 
-// NUEVO: Configuraci�n mejorada para FirestoreDb que funciona en local y producci�n
+// NUEVO: Configuración mejorada para FirestoreDb que funciona en local y producción
 builder.Services.AddSingleton(provider =>
 {
     GoogleCredential credential;
@@ -68,7 +68,7 @@ builder.Services.AddSingleton(provider =>
 
     if (!string.IsNullOrEmpty(firebaseCredentialsJson))
     {
-        // Producci�n: usar credenciales desde variable de entorno
+        // Producción: usar credenciales desde variable de entorno
         credential = GoogleCredential.FromJson(firebaseCredentialsJson);
     }
     else if (builder.Environment.IsDevelopment())
@@ -88,7 +88,7 @@ builder.Services.AddSingleton(provider =>
     else
     {
         // Firebase App Hosting: usar Application Default Credentials
-        // Google Cloud autom�ticamente proporciona las credenciales
+        // Google Cloud automaticamente proporciona las credenciales
         credential = GoogleCredential.GetApplicationDefault();
     }
 
@@ -97,6 +97,13 @@ builder.Services.AddSingleton(provider =>
         ProjectId = "aplicacion-lavadero",
         Credential = credential
     }.Build();
+});
+
+// NUEVO: Servicio NHTSA API con HttpClient
+builder.Services.AddHttpClient<Firebase.Services.ICarQueryService, Firebase.Services.CarQueryService>(client =>
+{
+    client.BaseAddress = new Uri("https://vpic.nhtsa.dot.gov/api/vehicles/");
+    client.Timeout = TimeSpan.FromSeconds(30);
 });
 
 builder.Services.AddScoped<AuditService>();
@@ -152,7 +159,7 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Lavados}/{action=Index}/{id?}");
 
-// NUEVO: Configuraci�n mejorada de FirebaseApp
+// NUEVO: Configuracion mejorada de FirebaseApp
 try
 {
     GoogleCredential credential;
@@ -181,7 +188,7 @@ try
 }
 catch (Exception ex)
 {
-    // Log del error (considera agregar un logger aqu�)
+    // Log del error (considera agregar un logger aqui)
     Console.WriteLine($"Error al inicializar FirebaseApp: {ex.Message}");
     throw;
 }

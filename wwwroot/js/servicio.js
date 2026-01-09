@@ -31,10 +31,11 @@
         setupFormMessageHandler();
         setupSearchWithDebounce();
         setupFilterFormSubmit(); // nuevo: manejar submit de filtros
+        setupFormatoPatenteValidation(); // Validación de formato de patente
+        initFilterTooltips(); // ✅ NUEVO: Inicializar validación de filtros
         window.CommonUtils?.setupDefaultFilterForm();
         protegerTipoVehiculoEnEdicion();
         protegerTipoServicioEnEdicion();
-        checkEditMode(); // Verificar si estamos en modo edición
     }
 
     // IMPORTANTE: asegurar que init se ejecute siempre
@@ -329,18 +330,63 @@
      * Configura validación del campo Nombre
      */
     function setupNombreValidation() {
-        const nombreInput = document.getElementById('Nombre');
-        if (!nombreInput) return;
+        const input = document.getElementById('nuevaEtapaNombre');
+        if (!input || input.hasAttribute('data-validation-setup')) return;
 
-        nombreInput.addEventListener('input', function () {
-            const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
-            if (!regex.test(this.value)) {
+        const allowedRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]*$/;
+        const stripRegex = /[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g;
+        const minLength = 3;
+
+        // Filtra mientras se escribe
+        input.addEventListener('input', function () {
+            if (!allowedRegex.test(this.value)) {
                 this.classList.add('border-red-500');
-                this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+                this.value = this.value.replace(stripRegex, '');
             } else {
                 this.classList.remove('border-red-500');
             }
+
+            // ✅ NUEVO: Validar longitud mínima
+            if (this.value.trim().length > 0 && this.value.trim().length < minLength) {
+                this.setCustomValidity(`El nombre debe tener al menos ${minLength} letras`);
+                this.classList.add('border-red-500');
+            } else {
+                this.setCustomValidity('');
+                if (allowedRegex.test(this.value)) {
+                    this.classList.remove('border-red-500');
+                }
+            }
         });
+
+        // Normaliza lo pegado
+        input.addEventListener('paste', (e) => {
+            setTimeout(() => {
+                if (!allowedRegex.test(input.value)) {
+                    input.classList.add('border-red-500');
+                    input.value = input.value.replace(stripRegex, '');
+                } else {
+                    input.classList.remove('border-red-500');
+                }
+
+                // Validar longitud después del paste
+                if (input.value.trim().length > 0 && input.value.trim().length < minLength) {
+                    input.setCustomValidity(`El nombre debe tener al menos ${minLength} letras`);
+                    input.classList.add('border-red-500');
+                } else {
+                    input.setCustomValidity('');
+                }
+            }, 0);
+        });
+
+        // Validar en blur
+        input.addEventListener('blur', function () {
+            if (this.value.trim().length > 0 && this.value.trim().length < minLength) {
+                this.setCustomValidity(`El nombre debe tener al menos ${minLength} letras`);
+                this.classList.add('border-red-500');
+            }
+        });
+
+        input.setAttribute('data-validation-setup', 'true');
     }
 
     /**
@@ -706,12 +752,44 @@
     }
 
     /**
-     * Maneja la creación de tipo de vehículo vía AJAX
-     */
+ * Maneja la creación de tipo de vehículo vía AJAX
+ */
     async function handleCrearTipoVehiculo(form) {
         const nombreTipo = document.getElementById('nombreTipoVehiculo')?.value?.trim();
+        const formatoPatente = document.getElementById('formatoPatenteServicio')?.value?.trim();
+        const cantidadEmpleados = parseInt(document.getElementById('cantidadEmpleadosRequeridos')?.value) || 1;
+
+        // Validaciones con notificación dentro del modal
         if (!nombreTipo) {
-            showTableMessage('error', 'El nombre del tipo de vehículo es obligatorio.');
+            showTipoVehiculoModalMessage('error', 'El nombre del tipo de vehículo es obligatorio.');
+            return;
+        }
+
+        if (nombreTipo.length < 3) {
+            showTipoVehiculoModalMessage('error', 'El nombre debe tener al menos 3 caracteres.');
+            return;
+        }
+
+        if (!formatoPatente) {
+            showTipoVehiculoModalMessage('error', 'El formato de patente es obligatorio.');
+            return;
+        }
+
+        if (formatoPatente.length < 3) {
+            showTipoVehiculoModalMessage('error', 'El formato debe tener al menos 3 caracteres.');
+            return;
+        }
+
+        // ✅ NUEVA VALIDACIÓN: Verificar que el formato contenga al menos 'n' o 'l'
+        const tieneCaracteresValidos = /[nl]/.test(formatoPatente.toLowerCase());
+        if (!tieneCaracteresValidos) {
+            showTipoVehiculoModalMessage('error', 'El formato debe contener al menos una "n" (número) o "l" (letra).');
+            return;
+        }
+
+        // Validar cantidad de empleados
+        if (cantidadEmpleados < 1 || cantidadEmpleados > 10) {
+            showTipoVehiculoModalMessage('error', 'La cantidad de empleados debe estar entre 1 y 10.');
             return;
         }
 
@@ -731,13 +809,16 @@
                 if (data?.tipos) actualizarDropdownTipos('TipoVehiculo', data.tipos, nombreTipo);
                 cerrarModal('tipoVehiculoModal');
                 form.reset();
+                // Resetear el valor del campo de empleados a 1
+                const empleadosInput = document.getElementById('cantidadEmpleadosRequeridos');
+                if (empleadosInput) empleadosInput.value = '1';
                 showTableMessage('success', message);
             } else {
-                showTableMessage('error', message);
+                showTipoVehiculoModalMessage('error', message);
             }
         } catch (error) {
             console.error('Error:', error);
-            showTableMessage('error', 'Error al crear el tipo de vehículo.');
+            showTipoVehiculoModalMessage('error', 'Error al crear el tipo de vehículo.');
         }
     }
 
@@ -839,11 +920,12 @@
         });
     }
 
-    // Helper: obtiene o crea la instancia Flowbite del modal
+    // Helper: obtiene la instancia Flowbite del modal
     function getFlowbiteModal(modalEl) {
         if (!modalEl || typeof window !== 'object' || typeof window.Modal === 'undefined') return null;
 
-        const opts = { backdrop: 'dynamic', closable: true };
+        // 🔒 NUEVO: backdrop 'static' y closable false para que NO se cierre clickeando fuera
+        const opts = { backdrop: 'static', closable: false };
 
         // Flowbite 2.x expone getInstance y getOrCreateInstance
         if (typeof Modal.getInstance === 'function') {
@@ -938,7 +1020,44 @@
             return { ok: response.ok, data: null };
         }
     }
+    /**
+    * Muestra un mensaje dentro del modal de tipo vehículo
+    */
+    function showTipoVehiculoModalMessage(type, message, disappearMs = 5000) {
+        const container = document.getElementById('tipo-vehiculo-modal-messages');
+        if (!container) {
+            showTableMessage(type, message, disappearMs);
+            return;
+        }
 
+        const color = type === 'success'
+            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z' }
+            : type === 'info'
+                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z' }
+                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z' };
+
+        container.innerHTML = `
+        <div class="flex items-center p-4 mb-4 text-sm rounded-lg border bg-${color.bg} text-${color.text} border-${color.border} dark:bg-gray-800 dark:text-${color.darkText}" role="alert">
+            <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                <path d="${color.icon}"/>
+            </svg>
+            <span class="sr-only">${type === 'error' ? 'Error' : type === 'success' ? 'Success' : 'Info'}</span>
+            <div class="flex-1">${escapeHtml(message)}</div>
+        </div>
+    `;
+
+        if (disappearMs > 0) {
+            setTimeout(() => {
+                const alertEl = container.firstElementChild;
+                if (alertEl) {
+                    alertEl.classList.add('opacity-0', 'transition-opacity', 'duration-700');
+                    setTimeout(() => {
+                        try { container.innerHTML = ''; } catch { }
+                    }, 700);
+                }
+            }, disappearMs);
+        }
+    }
     // =====================================
     // AJAX Y MENSAJES
     // =====================================
@@ -1078,8 +1197,16 @@
      * Limpia modal de tipo de vehículo
      */
     function limpiarModalTipoVehiculo() {
-        const nombreTipoVehiculo = document.getElementById('nombreTipoVehiculo');
-        if (nombreTipoVehiculo) nombreTipoVehiculo.value = '';
+        const nombreInput = document.getElementById('nombreTipoVehiculo');
+        const formatoInput = document.getElementById('formatoPatenteServicio');
+        const empleadosInput = document.getElementById('cantidadEmpleadosRequeridos');
+        if (nombreInput) nombreInput.value = '';
+        if (formatoInput) formatoInput.value = '';
+        if (empleadosInput) empleadosInput.value = '1';
+
+        // Limpiar mensajes
+        const messagesContainer = document.getElementById('tipo-vehiculo-modal-messages');
+        if (messagesContainer) messagesContainer.innerHTML = '';
     }
 
     // =====================================
@@ -1105,15 +1232,14 @@
             if (field) item.action(field);
         });
     };
-
     /**
- * Limpia filtros propios de la vista de Servicios y recarga la tabla
- * - Delegamos la restauración del estado "Activo" al clearAllFilters global
- * - Limpiamos otros campos del formulario sin tocar los checkboxes de estados
- * - Reseteamos búsqueda y estado interno
- * - Cerramos dropdown si está abierto
- * - Removemos parámetros de la URL (history.replaceState)
- */
+     * Limpia filtros propios de la vista de Servicios y recarga la tabla
+     * - Delegamos la restauración del estado "Activo" al clearAllFilters global
+     * - Limpiamos otros campos del formulario sin tocar los checkboxes de estados
+     * - Reseteamos búsqueda y estado interno
+     * - Cerramos dropdown si está abierto
+     * - Removemos parámetros de la URL (history.replaceState)
+     */
     window.clearServicioFilters = function () {
         const filterForm = document.getElementById('filterForm');
 
@@ -1584,18 +1710,22 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
     window.agregarEtapa = function () {
         const inputNombre = document.getElementById('nuevaEtapaNombre');
         if (!inputNombre) return;
-
         const nombre = inputNombre.value.trim();
-        const nombreRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
-
         if (!nombre) {
-            alert('Por favor, ingrese el nombre de la etapa');
+            showTableMessage('error', 'Debe ingresar un nombre para la etapa.');
             inputNombre.classList.add('border-red-500');
             inputNombre.focus();
             return;
         }
-        if (!nombreRegex.test(nombre)) {
-            alert('Solo se permiten letras, espacios y acentos en el nombre de la etapa.');
+        if (nombre.length < 3) {
+            showTableMessage('error', 'El nombre de la etapa debe tener al menos 3 caracteres.');
+            inputNombre.classList.add('border-red-500');
+            inputNombre.focus();
+            return;
+        }
+        const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
+        if (!regex.test(nombre)) {
+            showTableMessage('error', 'El nombre solo puede contener letras, espacios y acentos.');
             inputNombre.classList.add('border-red-500');
             inputNombre.focus();
             return;
@@ -1735,6 +1865,74 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             e.stopPropagation();
+            
+            // Validar campos de precio antes de enviar
+            const precioDesde = document.getElementById('precioDesde');
+            const precioHasta = document.getElementById('precioHasta');
+            
+            let isValid = true;
+            
+            // Validar precioDesde
+            if (precioDesde && precioDesde.value.trim() !== '') {
+                const value = parseFloat(precioDesde.value);
+                const min = precioDesde.hasAttribute('min') ? parseFloat(precioDesde.getAttribute('min')) : 0;
+                const max = precioDesde.hasAttribute('max') ? parseFloat(precioDesde.getAttribute('max')) : null;
+                
+                if (isNaN(value) || value < 0) {
+                    precioDesde.setCustomValidity('Ingrese un precio válido');
+                    isValid = false;
+                } else if (value < min) {
+                    precioDesde.setCustomValidity(`El valor debe ser mayor de o igual a ${min.toFixed(2)}`);
+                    isValid = false;
+                } else if (max !== null && value > max) {
+                    precioDesde.setCustomValidity(`El valor debe ser menor de o igual a ${max.toFixed(2)}`);
+                    isValid = false;
+                } else {
+                    precioDesde.setCustomValidity('');
+                }
+            } else if (precioDesde) {
+                precioDesde.setCustomValidity('');
+            }
+            
+            // Validar precioHasta
+            if (precioHasta && precioHasta.value.trim() !== '') {
+                const value = parseFloat(precioHasta.value);
+                const min = precioHasta.hasAttribute('min') ? parseFloat(precioHasta.getAttribute('min')) : 0;
+                const max = precioHasta.hasAttribute('max') ? parseFloat(precioHasta.getAttribute('max')) : null;
+                
+                if (isNaN(value) || value < 0) {
+                    precioHasta.setCustomValidity('Ingrese un precio válido');
+                    isValid = false;
+                } else if (value < min) {
+                    precioHasta.setCustomValidity(`El valor debe ser mayor de o igual a ${min.toFixed(2)}`);
+                    isValid = false;
+                } else if (max !== null && value > max) {
+                    precioHasta.setCustomValidity(`El valor debe ser menor de o igual a ${max.toFixed(2)}`);
+                    isValid = false;
+                } else {
+                    precioHasta.setCustomValidity('');
+                }
+            } else if (precioHasta) {
+                precioHasta.setCustomValidity('');
+            }
+            
+            // Validar que precioDesde <= precioHasta
+            if (precioDesde && precioHasta && 
+                precioDesde.value.trim() !== '' && precioHasta.value.trim() !== '') {
+                const desde = parseFloat(precioDesde.value);
+                const hasta = parseFloat(precioHasta.value);
+                
+                if (!isNaN(desde) && !isNaN(hasta) && desde > hasta) {
+                    precioDesde.setCustomValidity('El precio mínimo no puede ser mayor que el precio máximo');
+                    isValid = false;
+                }
+            }
+            
+            // Usar checkValidity() para validar el formulario completo
+            if (!form.checkValidity() || !isValid) {
+                form.reportValidity();
+                return false;
+            }
 
             // Reiniciar paginación
             const pg = form.querySelector('input[name="pageNumber"]');
@@ -1756,10 +1954,103 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
 
             // Mensaje informativo
             showTableMessage('info', 'Filtros aplicados.');
-            schedulePriceHintsRefresh();
+            if (typeof schedulePriceHintsRefresh === 'function') {
+                schedulePriceHintsRefresh();
+            }
         });
 
         form.dataset.submitSetup = 'true';
     }
+
+    /**
+ * Configura la validación del campo de formato de patente en tiempo real
+ */
+    function setupFormatoPatenteValidation() {
+        const formatoInput = document.getElementById('formatoPatenteServicio');
+
+        if (!formatoInput) return;
+
+        formatoInput.addEventListener('input', function (e) {
+            const valor = this.value;
+            const cursorPos = this.selectionStart;
+
+            // Filtrar solo caracteres válidos: n, l, ., -, |
+            const valorFiltrado = valor
+                .split('')
+                .filter(char => /[nNlL.\-|]/.test(char))
+                .join('')
+                .toLowerCase(); // Convertir a minúsculas
+
+            if (valor !== valorFiltrado) {
+                this.value = valorFiltrado;
+                // Ajustar posición del cursor
+                const diff = valor.length - valorFiltrado.length;
+                this.setSelectionRange(cursorPos - diff, cursorPos - diff);
+            }
+
+            // ✅ NUEVA: Validación adicional en tiempo real
+            const tieneCaracteresValidos = /[nl]/.test(this.value);
+            if (this.value.length > 0 && !tieneCaracteresValidos) {
+                this.setCustomValidity('Debe contener al menos una "n" o "l"');
+            } else if (this.value.length > 0 && this.value.length < 3) {
+                this.setCustomValidity('El formato debe tener al menos 3 caracteres');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+
+        formatoInput.addEventListener('blur', function () {
+            const valor = this.value.trim();
+
+            if (valor.length > 0 && valor.length < 3) {
+                this.setCustomValidity('El formato debe tener al menos 3 caracteres');
+                this.reportValidity();
+            } else if (valor.length > 0 && !/[nl]/.test(valor)) {
+                this.setCustomValidity('Debe contener al menos una "n" o "l"');
+                this.reportValidity();
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+
+    // =====================================
+    // TOOLTIPS Y VALIDACIÓN DINÁMICA PARA FILTROS
+    // =====================================
+    function initFilterTooltips() {
+        // Tooltips y validación para campos de precio
+        const precioDesde = document.getElementById('precioDesde');
+        const precioHasta = document.getElementById('precioHasta');
+
+        if (precioDesde) {
+            // Prevenir entrada de caracteres no numéricos (excepto punto decimal)
+            precioDesde.addEventListener('keypress', function(e) {
+                const char = String.fromCharCode(e.which);
+                if (!/[\d.]/.test(char)) {
+                    e.preventDefault();
+                }
+                // Solo permitir un punto decimal
+                if (char === '.' && this.value.includes('.')) {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        if (precioHasta) {
+            // Prevenir entrada de caracteres no numéricos (excepto punto decimal)
+            precioHasta.addEventListener('keypress', function(e) {
+                const char = String.fromCharCode(e.which);
+                if (!/[\d.]/.test(char)) {
+                    e.preventDefault();
+                }
+                // Solo permitir un punto decimal
+                if (char === '.' && this.value.includes('.')) {
+                    e.preventDefault();
+                }
+            });
+        }
+    }
+
+    // Nota: initFilterTooltips() se llama desde initializeServiciosPage()
 
 })();

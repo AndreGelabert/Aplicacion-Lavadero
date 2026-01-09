@@ -16,6 +16,7 @@ public partial class WhatsAppFlowService
     private readonly TipoDocumentoService _tipoDocumentoService;
     private readonly TipoVehiculoService _tipoVehiculoService;
     private readonly LavaderoInfoService _lavaderoInfoService;
+    private readonly ICarQueryService _carQueryService;
     private readonly ILogger<WhatsAppFlowService> _logger;
 
     public WhatsAppFlowService(
@@ -26,6 +27,7 @@ public partial class WhatsAppFlowService
         TipoDocumentoService tipoDocumentoService,
         TipoVehiculoService tipoVehiculoService,
         LavaderoInfoService lavaderoInfoService,
+        ICarQueryService carQueryService,
         ILogger<WhatsAppFlowService> logger)
     {
         _sessionService = sessionService;
@@ -35,6 +37,7 @@ public partial class WhatsAppFlowService
         _tipoDocumentoService = tipoDocumentoService;
         _tipoVehiculoService = tipoVehiculoService;
         _lavaderoInfoService = lavaderoInfoService;
+        _carQueryService = carQueryService;
         _logger = logger;
     }
 
@@ -303,6 +306,10 @@ public partial class WhatsAppFlowService
                     await HandleRegistroConfirmacion(phoneNumber, session, messageBody);
                     break;
 
+                case WhatsAppFlowStates.REGISTRO_VEHICULO_OPCION:
+                    await HandleRegistroVehiculoOpcion(phoneNumber, session, messageBody);
+                    break;
+
                 // ========== MENÚ CLIENTE AUTENTICADO ==========
                 case WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO:
                     await HandleMenuClienteAutenticado(phoneNumber, session, messageBody);
@@ -384,6 +391,23 @@ public partial class WhatsAppFlowService
                     await HandleConfirmarEliminarVehiculo(phoneNumber, session, messageBody);
                     break;
 
+                // ========== ASOCIACIÓN DE VEHÍCULOS (MÚLTIPLES DUEÑOS) ==========
+                case WhatsAppFlowStates.ASOCIAR_VEHICULO_PATENTE:
+                    await HandleAsociarVehiculoPatente(phoneNumber, session, messageBody);
+                    break;
+
+                case WhatsAppFlowStates.ASOCIAR_VEHICULO_CLAVE:
+                    await HandleAsociarVehiculoClave(phoneNumber, session, messageBody);
+                    break;
+
+                case WhatsAppFlowStates.ASOCIAR_VEHICULO_CONFIRMACION:
+                    await HandleAsociarVehiculoConfirmacion(phoneNumber, session, messageBody);
+                    break;
+
+                case WhatsAppFlowStates.MOSTRAR_CLAVE_VEHICULO:
+                    await HandleMostrarClaveVehiculo(phoneNumber, session, messageBody);
+                    break;
+
                 default:
                     _logger.LogWarning("⚠️ Estado desconocido: {State}", state);
                     await _whatsAppService.SendTextMessage(phoneNumber,
@@ -405,27 +429,22 @@ public partial class WhatsAppFlowService
     // ========================================================================
 
     /// <summary>
-    /// Valida que un texto solo contenga letras y espacios
+    /// Valida que un texto solo contenga letras y espacios, con mínimo 3 caracteres
+    /// Coincide con la validación del modelo: ^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]{3,}$
     /// </summary>
     private bool EsTextoValido(string texto)
     {
-        return Regex.IsMatch(texto, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$");
+        return Regex.IsMatch(texto, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]{3,}$");
     }
 
     /// <summary>
-    /// Valida formato de email
+    /// Valida formato de email según el modelo:
+    /// ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]{3,}\.[a-zA-Z]{2,}$
     /// </summary>
     private bool EsEmailValido(string email)
     {
-        try
-        {
-            var addr = new System.Net.Mail.MailAddress(email);
-            return addr.Address == email;
-        }
-        catch
-        {
-            return false;
-        }
+        // Usar solo regex para validar, coincide con la validación del modelo
+        return Regex.IsMatch(email, @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]{3,}\.[a-zA-Z]{2,}$");
     }
 
     /// <summary>
@@ -437,10 +456,25 @@ public partial class WhatsAppFlowService
     }
 
     /// <summary>
-    /// Valida formato de patente (alfanumérico con guiones/espacios permitidos)
+    /// Valida formato de patente según el modelo.
+    /// Debe contener letras y/o números, puede tener espacios y guiones.
+    /// Mínimo 5 caracteres (ej: "ABC12" o "AB 123 CD")
     /// </summary>
     private bool EsPatenteValida(string patente)
     {
-        return Regex.IsMatch(patente, @"^[a-zA-Z0-9\s-]+$");
+        // Debe cumplir el formato básico
+        if (!Regex.IsMatch(patente, @"^[a-zA-Z0-9\s-]+$"))
+            return false;
+        
+        // Remover espacios y guiones para contar caracteres alfanuméricos
+        var soloAlfanumerico = Regex.Replace(patente, @"[\s-]", "");
+        
+        // Mínimo 5 caracteres alfanuméricos (patentes argentinas: viejas=6, nuevas=7)
+        if (soloAlfanumerico.Length < 5)
+            return false;
+        
+        // Debe contener al menos una letra Y al menos un número
+        return Regex.IsMatch(soloAlfanumerico, @"[a-zA-Z]") && 
+               Regex.IsMatch(soloAlfanumerico, @"\d");
     }
 }

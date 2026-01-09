@@ -1,4 +1,4 @@
-﻿@model List<Firebase.Models.Servicio>
+@model List<Firebase.Models.Servicio>
 @{
     ViewData["Title"] = "Servicios";
     var user = User as ClaimsPrincipal;
@@ -79,8 +79,13 @@
                         @Html.AntiForgeryToken()
                         <div class="grid gap-4 mb-4 sm:grid-cols-1">
                             <div>
-                                <label for="nombreTipo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre</label>
-                                <input type="text" name="nombreTipo" id="nombreTipo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Ingrese el nombre del tipo de servicio" required="">
+                                <label for="nombreTipo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre <span class="text-red-600">*</span></label>
+                                <input type="text" name="nombreTipo" id="nombreTipo" 
+                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
+                                       placeholder="Ingrese el nombre del tipo de servicio" 
+                                       minlength="3"
+                                       required>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 caracteres</p>
                             </div>
                         </div>
                         <div class="flex justify-end gap-2">
@@ -105,7 +110,7 @@
             </div>
         </div>
 
-        <!-- Modal de Confirmación para Eliminar Tipo de Servicio -->
+        <!-- Modal de Confirmacion para Eliminar Tipo de Servicio -->
         <div id="eliminarTipoModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
             <div class="relative p-4 w-full max-w-md h-full md:h-auto">
                 <div class="relative p-4 text-center bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
@@ -135,7 +140,7 @@
             </div>
         </div>
 
-        <!-- Modal de Tipo de Vehículo -->
+        <!-- Modal de Tipo de Vehiculo -->
         <div id="tipoVehiculoModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
             <div class="relative p-4 w-full max-w-2xl h-full md:h-auto">
                 <div class="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
@@ -150,12 +155,51 @@
                             <span class="sr-only">Close modal</span>
                         </button>
                     </div>
+                    <div id="tipo-vehiculo-modal-messages" class="mb-4"></div>
                     <form asp-action="CrearTipoVehiculo" id="formCrearTipoVehiculo">
                         @Html.AntiForgeryToken()
                         <div class="grid gap-4 mb-4 sm:grid-cols-1">
                             <div>
-                                <label for="nombreTipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre</label>
-                                <input type="text" name="nombreTipo" id="nombreTipoVehiculo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Ingrese el nombre del tipo de vehículo" required="">
+                                <label for="nombreTipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre <span class="text-red-600">*</span></label>
+                                <input type="text" name="nombreTipo" id="nombreTipoVehiculo" 
+                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
+                                       placeholder="Ingrese el nombre del tipo de vehículo" 
+                                       minlength="3"
+                                       required>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 caracteres</p>
+                            </div>
+                            <div>
+                                <label for="formatoPatenteServicio" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                                    Formato de Patente <span class="text-red-600">*</span>
+                                </label>
+                                <input type="text" name="formatoPatente" id="formatoPatenteServicio" 
+                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
+                                       placeholder="Ej: llnnnll|lllnnn"
+                                       minlength="3"
+                                       pattern="^[nNlL.\-|]+$"
+                                       title="Solo se permiten: n (número), l (letra), punto (.), guión (-) y barra vertical (|)"
+                                       required>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Usa <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded font-semibold">n</code> para números y 
+                                    <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded font-semibold">l</code> para letras. 
+                                    Puedes usar <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">.</code> y <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">-</code> como separadores.
+                                    Para múltiples formatos usa <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">|</code>. Mínimo 3 caracteres.
+                                </p>
+                            </div>
+                            <div>
+                                <label for="cantidadEmpleadosRequeridos" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                                    Empleados Requeridos <span class="text-red-600">*</span>
+                                </label>
+                                <input type="number" name="cantidadEmpleadosRequeridos" id="cantidadEmpleadosRequeridos" 
+                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
+                                       placeholder="1"
+                                       min="1"
+                                       max="10"
+                                       value="1"
+                                       required>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Cantidad de empleados que se asignarán automáticamente al registrar un lavado de este tipo de vehículo.
+                                </p>
                             </div>
                         </div>
                         <div class="flex justify-end gap-2">
@@ -180,7 +224,7 @@
             </div>
         </div>
 
-        <!-- Modal de Confirmación para Eliminar Tipo de Vehículo -->
+        <!-- Modal de Confirmacion para Eliminar Tipo de Vehiculo -->
         <div id="eliminarTipoVehiculoModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
             <div class="relative p-4 w-full max-w-md h-full md:h-auto">
                 <div class="relative p-4 text-center bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
@@ -210,7 +254,7 @@
             </div>
         </div>
 
-        <!-- Modal de Gestión de Etapas -->
+        <!-- Modal de Gestion de Etapas -->
         <div id="etapasModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
             <div class="relative p-4 w-full max-w-2xl h-full md:h-auto">
                 <div class="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
@@ -228,8 +272,9 @@
                     <div class="mb-4">
                         <div class="flex gap-2 mb-4">
                             <input type="text" id="nuevaEtapaNombre" placeholder="Nombre de la etapa"
-                                   pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+"
-                                   title="Solo se permiten letras, espacios y acentos"
+                                   pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]{3,}"
+                                   minlength="3"
+                                   title="El nombre debe tener al menos 3 letras. Solo se permiten letras, espacios y acentos"
                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
                             <button type="button" onclick="agregarEtapa()" 
                                     class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-500 dark:hover:bg-blue-600">
@@ -238,6 +283,85 @@
                         </div>
                         <div id="etapas-list" class="space-y-2 max-h-96 overflow-y-auto">
                             <!-- Las etapas se agregarán aquí dinámicamente -->
+                        </div>
+                    </div>
+                    <div class="flex justify-end m-2 gap-2">
+                        <button type="button" onclick="saveEtapasModal()" class="text-white inline-flex items-center bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
+                                <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                            </svg>
+                            Registrar etapas
+                        </button>
+                        <button type="button" onclick="cancelEtapasModal()" class="text-white inline-flex items-center bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
+                                <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
+                            </svg>
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmacion para Eliminar Tipo de Vehiculo -->
+        <div id="eliminarTipoVehiculoModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
+            <div class="relative p-4 w-full max-w-md h-full md:h-auto">
+                <div class="relative p-4 text-center bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
+                    <button type="button"
+                            data-modal-hide="eliminarTipoVehiculoModal"
+                            class="text-gray-400 absolute top-2.5 right-2.5 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white">
+                        <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                        <span class="sr-only">Cerrar modal</span>
+                    </button>
+                    <svg class="text-gray-400 dark:text-gray-500 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                    <p class="mb-4 text-gray-500 dark:text-gray-300">¿Está seguro que desea eliminar este tipo de vehículo?</p>
+                    <form method="post" asp-action="EliminarTipoVehiculo" id="formEliminarTipoVehiculo">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" id="nombreTipoVehiculoEliminar" name="nombreTipo" />
+                        <div class="flex justify-center items-center space-x-4">
+                            <button type="button"
+                                    data-modal-hide="eliminarTipoVehiculoModal"
+                                    class="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-primary-300 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">
+                                No, cancelar
+                            </button>
+                            <button type="submit" class="py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900">
+                                Sí, eliminar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Gestion de Etapas -->
+        <div id="etapasModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
+            <div class="relative p-4 w-full max-w-2xl h-full md:h-auto">
+                <div class="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
+                    <div class="flex justify-between items-center pb-4 mb-4 rounded-t border-b sm:mb-5 dark:border-gray-600">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            Gestionar Etapas del Servicio
+                        </h3>
+                        <button type="button"
+                                onclick="closeEtapasModal()"
+                                class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white">
+                            <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                            <span class="sr-only">Cerrar modal</span>
+                        </button>
+                    </div>
+                    <div class="mb-4">
+                        <div class="flex gap-2 mb-4">
+                            <input type="text" id="nuevaEtapaNombre" placeholder="Nombre de la etapa"
+                                   pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]{3,}"
+                                   minlength="3"
+                                   title="El nombre debe tener al menos 3 letras. Solo se permiten letras, espacios y acentos"
+                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
+                            <button type="button" onclick="agregarEtapa()" 
+                                    class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-500 dark:hover:bg-blue-600">
+                                Agregar
+                            </button>
+                        </div>
+                        <div id="etapas-list" class="space-y-2 max-h-96 overflow-y-auto">
+                            <!-- Las etapas se agregaran aqui dinamicamente -->
                         </div>
                     </div>
                     <div class="flex justify-end m-2 gap-2">
@@ -298,7 +422,7 @@
                             <input type="hidden" name="pageNumber" value="1" />
 
                             <!-- Layout horizontal con grid -->
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 min-w-[600px]">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 min-w-[800px]">
 
                                 <!-- Columna 1: Estado -->
                                 <div>
@@ -362,9 +486,40 @@
                                         }
                                     </div>
                                 </div>
+
+                                <!-- Columna 4: Rango de Precios -->
+                                <div>
+                                    <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                        Rango de Precios
+                                    </h6>
+                                    <div class="space-y-2">
+                                        <div>
+                                            <label for="precioDesde" class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Precio mínimo:</label>
+                                            <input type="number" id="precioDesde" name="precioDesde" step="any" min="@(ViewBag.PrecioMinimo ?? 0)" max="@(ViewBag.PrecioMaximo ?? 999999999)"
+                                                   value="@(ViewBag.PrecioDesde)"
+                                                   placeholder="0.00"
+                                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                            @if (ViewBag.PrecioMinimo != null && ViewBag.PrecioMinimo > 0)
+                                            {
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Mín. permitido: $@string.Format("{0:N2}", ViewBag.PrecioMinimo)</p>
+                                            }
+                                        </div>
+                                        <div>
+                                            <label for="precioHasta" class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Precio máximo:</label>
+                                            <input type="number" id="precioHasta" name="precioHasta" step="any" min="0" max="@(ViewBag.PrecioMaximo ?? 999999999)"
+                                                   value="@(ViewBag.PrecioHasta)"
+                                                   placeholder="0.00"
+                                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                            @if (ViewBag.PrecioMaximo != null && ViewBag.PrecioMaximo > 0)
+                                            {
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Máx. permitido: $@string.Format("{0:N2}", ViewBag.PrecioMaximo)</p>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <!-- Botones de acción -->
+                            <!-- Botones de accion -->
                             <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
                                 <button type="button" onclick="clearServicioFilters()"
                                         class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
@@ -384,22 +539,21 @@
         <div id="servicio-table-container" data-current-page="@ViewBag.CurrentPage">
             @await Html.PartialAsync("_ServicioTable", Model)
         </div>
-        <!-- Modal reutilizable de confirmación para servicios -->
+        <!-- Modal reutilizable de confirmacion para servicios -->
         <div id="servicioConfirmModal" tabindex="-1" aria-hidden="true"
              class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
             <div class="relative p-4 w-full max-w-md h-full md:h-auto">
                 <div class="relative p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg sm:p-5 text-center">
-                    <!-- Botón de cierre -->
+                    <!-- Boton de cierre -->
                     <button type="button"
                             data-modal-hide="servicioConfirmModal"
                             class="absolute top-2.5 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 dark:hover:bg-gray-600 dark:hover:text-white">
                         <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
                         </svg>
-                        <span class="sr-only">Cerrar</span>
                     </button>
 
-                    <!-- Ícono dinámico -->
+                    <!-- Icono dinámico -->
                     <div id="servicioConfirmIconWrapper" class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 p-2 flex items-center justify-center mx-auto mb-3.5">
                         <svg id="servicioConfirmIcon" xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-8 h-8 text-yellow-500 dark:text-yellow-400" viewBox="0 0 24 24">
                             <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-.75 4.5a.75.75 0 0 1 1.5 0v6a.75.75 0 0 1-1.5 0v-6Zm0 9a.75.75 0 0 1 1.5 0v1.5a.75.75 0 0 1-1.5 0V15.75Z" clip-rule="evenodd" />
@@ -445,4 +599,5 @@
         </div>
     </div>
 </section>
-<script src="~/js/servicio.js" asp-append-version="true"></script>
+<script src="~/js/form-validation.js" asp-append-version="true"></script>
+<script src="~/js/servicio.js" asp-append-version="true"></script><script src="~/js/servicio.js" asp-append-version="true"></script>

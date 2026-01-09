@@ -30,7 +30,7 @@
         <!-- Formulario de Edición (Oculto por defecto) -->
         <div id="accordion-flush" data-accordion="collapse" data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white" data-inactive-classes="text-gray-500 dark:text-gray-400" class="@(ViewBag.EditVehiculo == null ? "hidden" : "")">
             <h2 id="accordion-flush-heading-1">
-                <button type="button" class="flex items-center justify-between w-full p-2 py-5 font-medium rtl:text-right text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400 gap-3" data-accordion-target="#accordion-flush-body-1" aria-expanded="false" aria-controls="accordion-flush-body-1">
+                <button type="button" class="flex items-center justify-between w-full p-2 py-5 font-medium rtl:text-right text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400 gap-3" data-accordion-target="#accordion-flush-body-1" aria-expanded="false" aria-controls="accordFlush-body-1">
                     <div class="flex items-center gap-2">
                         <span id="form-title">@ViewBag.FormTitle</span>
                         <svg data-accordion-icon class="w-3 h-3 rotate-180 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
@@ -61,12 +61,31 @@
                             <span class="sr-only">Close modal</span>
                         </button>
                     </div>
-                    <form asp-controller="TipoVehiculo" asp-action="CrearTipoVehiculo" id="formCrearTipoVehiculo">
+                    <form asp-controller="Servicio" asp-action="CrearTipoVehiculo" id="formCrearTipoVehiculo">
                         @Html.AntiForgeryToken()
                         <div class="grid gap-4 mb-4 sm:grid-cols-1">
                             <div>
-                                <label for="nombreTipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre</label>
-                                <input type="text" name="nombreTipo" id="nombreTipoVehiculo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Ej: Auto, Camioneta, Moto" required="">
+                                <label for="nombreTipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre <span class="text-red-600">*</span></label>
+                                <input type="text" name="nombreTipo" id="nombreTipoVehiculo" 
+                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
+                                       placeholder="Ej: Auto, Camioneta, Moto" 
+                                       minlength="3"
+                                       required>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 caracteres</p>
+                            </div>
+                            <div>
+                                <label for="formatoPatenteVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Formato de Patente (opcional)</label>
+                                <input type="text" name="formatoPatente" id="formatoPatenteVehiculo" 
+                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
+                                       placeholder="Ej: llnnnll|lllnnn">
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Usa <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">l</code> para letras y 
+                                    <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">n</code> para números. 
+                                    Separa formatos múltiples con <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">|</code>
+                                </p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Ejemplo: <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">llnnnll|lllnnn</code> para autos argentinos (AB123CD o ABC123)
+                                </p>
                             </div>
                         </div>
                         <div class="flex justify-end gap-2">
@@ -167,10 +186,17 @@
                                 <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
                                     Marca
                                 </h6>
-                                <input type="text" id="marca-filter-search" placeholder="Buscar marca..." 
-                                       class="mb-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white">
-                                <div id="marca-filter-list" class="space-y-2 max-h-40 overflow-y-auto text-sm">
-                                    <!-- Se llenará dinámicamente con JavaScript -->
+                                
+                                <!-- Contenedor de marcas seleccionadas -->
+                                <div id="marcas-seleccionadas-container" class="hidden mb-2"></div>
+                                
+                                <div class="relative">
+                                    <input type="text" id="marca-filter-search" placeholder="Escriba para buscar marca..." 
+                                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white"
+                                           autocomplete="off">
+                                    <div id="marca-filter-list" class="hidden absolute z-50 w-full max-h-60 overflow-y-auto bg-white border border-gray-300 rounded-lg shadow-lg dark:bg-gray-700 dark:border-gray-600 mt-1">
+                                        <!-- Se llenará dinámicamente con JavaScript -->
+                                    </div>
                                 </div>
                             </div>
 
@@ -179,10 +205,17 @@
                                 <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
                                     Color
                                 </h6>
-                                <input type="text" id="color-filter-search" placeholder="Buscar color..." 
-                                       class="mb-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white">
-                                <div id="color-filter-list" class="space-y-2 max-h-40 overflow-y-auto text-sm">
-                                    <!-- Se llenará dinámicamente con JavaScript -->
+                                
+                                <!-- Contenedor de colores seleccionados -->
+                                <div id="colores-seleccionados-container" class="hidden mb-2"></div>
+                                
+                                <div class="relative">
+                                    <input type="text" id="color-filter-search" placeholder="Escriba para buscar color..." 
+                                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white"
+                                           autocomplete="off">
+                                    <div id="color-filter-list" class="hidden absolute z-50 w-full max-h-60 overflow-y-auto bg-white border border-gray-300 rounded-lg shadow-lg dark:bg-gray-700 dark:border-gray-600 mt-1">
+                                        <!-- Se llenará dinámicamente con JavaScript -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -244,4 +277,5 @@
 
     </div>
 </section>
+<script src="~/js/form-validation.js" asp-append-version="true"></script>
 <script src="~/js/vehiculo.js" asp-append-version="true"></script>

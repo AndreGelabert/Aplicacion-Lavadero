@@ -14,4 +14,7 @@
     <Content Remove="Firebase.Tests/**" />
     <None Remove="Firebase.Tests/**" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Documentacion\" />
+  </ItemGroup>
 </Project>

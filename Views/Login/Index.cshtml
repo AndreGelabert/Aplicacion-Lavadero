@@ -27,7 +27,7 @@
         </div>
         <form method="post" id="loginForm" action="/Login/Login" class="mx-auto mb-0 mt-8 max-w-md space-y-4">
             <div>
-                <label for="email" class="sr-only">Email</label>
+                <label for="email" class="block mb-2 text-sm font-medium text-gray-900">Correo Electrónico <span class="text-red-600">*</span></label>
                 <div class="relative">
                     <input type="email" id="email" name="email"
                            class="w-full rounded-lg border-gray-200 p-4 pe-12 text-sm shadow-sm"
@@ -45,10 +45,11 @@
                         </svg>
                     </span>
                 </div>
+                <span id="email-validation-error" class="text-red-600 text-xs hidden"></span>
             </div>
 
             <div>
-                <label for="password" class="sr-only">Password</label>
+                <label for="password" class="block mb-2 text-sm font-medium text-gray-900">Contraseña <span class="text-red-600">*</span></label>
                 <div class="relative">
                     <input type="password" id="password" name="password"
                            class="w-full rounded-lg border-gray-200 p-4 pe-12 text-sm shadow-sm"
@@ -70,6 +71,7 @@
                         </svg>
                     </span>
                 </div>
+                <span id="password-validation-error" class="text-red-600 text-xs hidden"></span>
             </div>
             @if (TempData["Error"] != null || ViewBag.Error != null)
             {
@@ -141,7 +143,7 @@
                 <form class="p-4" id="registerForm" method="post" action="/Login/RegisterUser">
                     <div class="grid gap-4 mb-4">
                         <div class="col-span-2">
-                            <label for="nombreCompleto" class="block mb-2 text-sm font-medium text-gray-900">Nombre Completo</label>
+                            <label for="nombreCompleto" class="block mb-2 text-sm font-medium text-gray-900">Nombre Completo <span class="text-red-600">*</span></label>
                             <input type="text" id="nombreCompleto" name="nombreCompleto" 
                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 shadow-sm" 
                                    required 
@@ -154,9 +156,9 @@
                             }
                         </div>
                         <div class="col-span-2">
-                            <label for="email" class="block mb-2 text-sm font-medium text-gray-900">Correo Electrónico</label>
+                            <label for="registerEmail" class="block mb-2 text-sm font-medium text-gray-900">Correo Electrónico <span class="text-red-600">*</span></label>
                             <div class="relative">
-                                <input type="email" id="email" name="email" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 shadow-sm" required>
+                                <input type="email" id="registerEmail" name="email" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 shadow-sm" required>
                                 <span class="absolute inset-y-0 end-0 grid place-content-center px-4">
                                     <svg xmlns="http://www.w3.org/2000/svg"
                                          class="size-4 text-gray-400"
@@ -176,7 +178,7 @@
                             }
                         </div>
                         <div class="col-span-2">
-                            <label for="password" class="block mb-2 text-sm font-medium text-gray-900">Contraseña</label>
+                            <label for="modalPassword" class="block mb-2 text-sm font-medium text-gray-900">Contraseña <span class="text-red-600">*</span></label>
                             <div class="relative">
                                 <input type="password" id="modalPassword" name="password" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 shadow-sm" required oninput="validatePasswordStrength(this)">
                                 <span class="absolute inset-y-0 end-0 grid place-content-center px-4 cursor-pointer" onclick="togglePasswordVisibility('modalPassword', 'toggleModalPasswordIcon')">
@@ -203,7 +205,7 @@
                             }
                         </div>
                         <div class="col-span-2">
-                            <label for="confirmPassword" class="block mb-2 text-sm font-medium text-gray-900">Repetir Contraseña</label>
+                            <label for="confirmPassword" class="block mb-2 text-sm font-medium text-gray-900">Repetir Contraseña <span class="text-red-600">*</span></label>
                             <div class="relative">
                                 <input type="password" id="confirmPassword" name="confirmPassword" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 shadow-sm" required oninput="validatePasswordMatch()">
                                 <span class="absolute inset-y-0 end-0 grid place-content-center px-4 cursor-pointer" onclick="togglePasswordVisibility('confirmPassword', 'toggleConfirmPasswordIcon')">
@@ -406,9 +408,5 @@
     }
 </script>
 <!-- Todas las funciones de validación y manejo de modales están ahora en login.js -->
-<script src="~/js/login.js" asp-append-version="true"></script>
-        const m = document.getElementById('verificationModal');
-        if (m) m.classList.add('hidden');
-    }
-</script>
+<script src="~/js/form-validation.js" asp-append-version="true"></script>
 <script src="~/js/login.js" asp-append-version="true"></script>

@@ -2,25 +2,32 @@ using Firebase.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Firebase.Services;
 
 [Authorize(Roles = "Administrador,Empleado")]
 public class VehiculoController : Controller
 {
     private readonly VehiculoService _vehiculoService;
     private readonly TipoVehiculoService _tipoVehiculoService;
-    private readonly ClienteService _clienteService; // Para obtener info del dueño
+    private readonly ClienteService _clienteService;
     private readonly AuditService _auditService;
+    private readonly ICarQueryService _carQueryService;
+    private readonly ILogger<VehiculoController> _logger; // Agregado el logger
 
     public VehiculoController(
         VehiculoService vehiculoService,
         TipoVehiculoService tipoVehiculoService,
         ClienteService clienteService,
-        AuditService auditService)
+        AuditService auditService,
+        ICarQueryService carQueryService,
+        ILogger<VehiculoController> logger) // Inyectado el logger
     {
         _vehiculoService = vehiculoService;
         _tipoVehiculoService = tipoVehiculoService;
         _clienteService = clienteService;
         _auditService = auditService;
+        _carQueryService = carQueryService;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -451,5 +458,217 @@ public class VehiculoController : Controller
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var userEmail = User.FindFirstValue(ClaimTypes.Email);
         await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad);
+    }
+
+    /// <summary>
+    /// GET: /Vehiculo/GetMarcas
+    /// Retorna lista de marcas de vehículos desde CarQuery API
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetMarcas()
+    {
+        try
+        {
+            _logger.LogInformation("🎯 Endpoint GetMarcas llamado");
+            
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var marcas = await _carQueryService.GetMarcasAsync();
+            stopwatch.Stop();
+            
+            _logger.LogInformation($"✅ GetMarcas completado en {stopwatch.ElapsedMilliseconds}ms - Retornando {marcas.Count} marcas");
+            
+            return Json(marcas);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"💥 ERROR en endpoint GetMarcas: {ex.Message}");
+            return StatusCode(500, new { error = "Error al obtener marcas", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// GET: /Vehiculo/GetMarcasPorTipo?tipoVehiculo=Automóvil
+    /// Retorna marcas filtradas por tipo de vehículo
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetMarcasPorTipo(string tipoVehiculo)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(tipoVehiculo))
+            {
+                return BadRequest(new { error = "El parámetro tipoVehiculo es requerido" });
+            }
+
+            _logger.LogInformation("🎯 Endpoint GetMarcasPorTipo llamado - Tipo: {Tipo}", tipoVehiculo);
+            
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var marcas = await _carQueryService.GetMarcasPorTipoAsync(tipoVehiculo);
+            stopwatch.Stop();
+            
+            _logger.LogInformation("✅ GetMarcasPorTipo completado en {Elapsed}ms - Retornando {Count} marcas para tipo '{Tipo}'", 
+                stopwatch.ElapsedMilliseconds, marcas.Count, tipoVehiculo);
+            
+            return Json(marcas);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 ERROR en endpoint GetMarcasPorTipo: {Message}", ex.Message);
+            return StatusCode(500, new { error = "Error al obtener marcas", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// GET: /Vehiculo/GetModelos?marcaId=toyota&year=2020
+    /// Retorna modelos de una marca (opcionalmente filtrado por año)
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetModelos(string marcaId, int? year = null)
+    {
+        if (string.IsNullOrWhiteSpace(marcaId))
+        {
+            return BadRequest(new { error = "marcaId es requerido" });
+        }
+
+        try
+        {
+            var modelos = await _carQueryService.GetModelosAsync(marcaId, year);
+            return Json(modelos);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Error al obtener modelos", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// GET: /Vehiculo/GetColores
+    /// Retorna lista de colores comunes
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetColores()
+    {
+        try
+        {
+            var colores = await _carQueryService.GetColoresComunes();
+            return Json(colores);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Error al obtener colores", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// GET: /Vehiculo/GetYears?marcaId=toyota
+    /// Retorna rango de años disponibles para una marca
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetYears(string marcaId)
+    {
+        if (string.IsNullOrWhiteSpace(marcaId))
+        {
+            return BadRequest(new { error = "marcaId es requerido" });
+        }
+
+        try
+        {
+            var (minYear, maxYear) = await _carQueryService.GetYearsAsync(marcaId);
+            return Json(new { minYear, maxYear });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Error al obtener años", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// GET: /Vehiculo/GetVehiculosParaAsociacion
+    /// Retorna vehículos activos que pueden ser asociados a otros clientes (tienen clave de asociación).
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetVehiculosParaAsociacion()
+    {
+        try
+        {
+            var vehiculos = await _vehiculoService.ObtenerVehiculosParaAsociacion();
+            
+            return Json(vehiculos.Select(v => new
+            {
+                id = v.Id,
+                patente = v.Patente,
+                marca = v.Marca,
+                modelo = v.Modelo,
+                color = v.Color,
+                tipoVehiculo = v.TipoVehiculo,
+                estado = v.Estado
+            }));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener vehículos para asociación");
+            return StatusCode(500, new { error = "Error al obtener vehículos", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// POST: /Vehiculo/ValidarClaveAsociacion
+    /// Valida que la clave de asociación sea correcta para un vehículo específico.
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> ValidarClaveAsociacion([FromBody] ValidarClaveRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request?.Patente) || string.IsNullOrWhiteSpace(request?.ClaveAsociacion))
+            {
+                return Json(new { 
+                    valida = false, 
+                    error = "La patente y la clave de asociación son obligatorias." 
+                });
+            }
+
+            var vehiculo = await _vehiculoService.ValidarClaveYObtenerVehiculo(
+                request.Patente.ToUpper(), 
+                request.ClaveAsociacion
+            );
+
+            if (vehiculo == null)
+            {
+                return Json(new { 
+                    valida = false, 
+                    error = "La clave de asociación no es válida para este vehículo." 
+                });
+            }
+
+            return Json(new
+            {
+                valida = true,
+                vehiculo = new
+                {
+                    id = vehiculo.Id,
+                    patente = vehiculo.Patente,
+                    marca = vehiculo.Marca,
+                    modelo = vehiculo.Modelo,
+                    color = vehiculo.Color,
+                    tipoVehiculo = vehiculo.TipoVehiculo,
+                    clienteNombreCompleto = vehiculo.ClienteNombreCompleto
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al validar clave de asociación");
+            return Json(new { valida = false, error = "Error al validar la clave de asociación." });
+        }
+    }
+
+    /// <summary>
+    /// Clase para recibir la solicitud de validación de clave.
+    /// </summary>
+    public class ValidarClaveRequest
+    {
+        public string Patente { get; set; } = "";
+        public string ClaveAsociacion { get; set; } = "";
     }
 }

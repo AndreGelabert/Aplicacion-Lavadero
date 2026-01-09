@@ -16,7 +16,8 @@ public class ServicioController : Controller
     private readonly AuditService _auditService;
     private readonly TipoServicioService _tipoServicioService;
     private readonly TipoVehiculoService _tipoVehiculoService;
-    private readonly PaqueteServicioService _paqueteServicioService; // ✅ NUEVO
+    private readonly PaqueteServicioService _paqueteServicioService;
+    private readonly VehiculoService _vehiculoService; // ✅ NUEVO
 
     /// <summary>
     /// Crea una nueva instancia del controlador de servicios.
@@ -26,13 +27,15 @@ public class ServicioController : Controller
         AuditService auditService,
         TipoServicioService tipoServicioService,
         TipoVehiculoService tipoVehiculoService,
-        PaqueteServicioService paqueteServicioService) // ✅ NUEVO
+        PaqueteServicioService paqueteServicioService,
+        VehiculoService vehiculoService) // ✅ NUEVO
     {
         _servicioService = servicioService;
         _auditService = auditService;
         _tipoServicioService = tipoServicioService;
         _tipoVehiculoService = tipoVehiculoService;
-        _paqueteServicioService = paqueteServicioService; // ✅ NUEVO
+        _paqueteServicioService = paqueteServicioService;
+        _vehiculoService = vehiculoService; // ✅ NUEVO
     }
     #endregion
 
@@ -46,6 +49,8 @@ public class ServicioController : Controller
         List<string> estados,
         List<string> tipos,
         List<string> tiposVehiculo,
+        decimal? precioDesde = null,
+        decimal? precioHasta = null,
         int pageNumber = 1,
         int pageSize = 10,
         string editId = null,
@@ -58,11 +63,11 @@ public class ServicioController : Controller
         sortOrder ??= "asc";
 
         var (servicios, currentPage, totalPages, visiblePages) = await ObtenerDatosServicios(
-            estados, tipos, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
+            estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
 
         var (tiposServicio, tiposVehiculoList) = await CargarListasDropdown();
 
-        ConfigurarViewBag(estados, tipos, tiposVehiculo, tiposServicio, tiposVehiculoList,
+        await ConfigurarViewBag(estados, tipos, tiposVehiculo, precioDesde, precioHasta, tiposServicio, tiposVehiculoList,
             pageSize, currentPage, totalPages, visiblePages, sortBy, sortOrder);
 
         await ConfigurarFormulario(editId);
@@ -131,6 +136,8 @@ public class ServicioController : Controller
         List<string> estados,
         List<string> tipos,
         List<string> tiposVehiculo,
+        decimal? precioDesde = null,
+        decimal? precioHasta = null,
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
@@ -142,10 +149,10 @@ public class ServicioController : Controller
         sortOrder ??= "asc";
 
         var servicios = await _servicioService.BuscarServicios(
-            searchTerm, estados, tipos, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
+            searchTerm, estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
 
         var totalServicios = await _servicioService.ObtenerTotalServiciosBusqueda(
-            searchTerm, estados, tipos, tiposVehiculo);
+            searchTerm, estados, tipos, tiposVehiculo, precioDesde, precioHasta);
 
         var totalPages = Math.Max((int)Math.Ceiling(totalServicios / (double)pageSize), 1);
 
@@ -170,6 +177,8 @@ public class ServicioController : Controller
         List<string> estados,
         List<string> tipos,
         List<string> tiposVehiculo,
+        decimal? precioDesde = null,
+        decimal? precioHasta = null,
         int pageNumber = 1,
         int pageSize = 10,
         string sortBy = null,
@@ -180,8 +189,8 @@ public class ServicioController : Controller
         sortBy ??= "Nombre";
         sortOrder ??= "asc";
 
-        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
-        var totalPages = await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, pageSize);
+        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
+        var totalPages = await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageSize);
         totalPages = Math.Max(totalPages, 1);
 
         ViewBag.CurrentPage = pageNumber;
@@ -230,6 +239,11 @@ public class ServicioController : Controller
                 if (string.IsNullOrWhiteSpace(nombreTipo))
                 {
                     return Json(new { success = false, message = "El nombre del tipo de servicio es obligatorio." });
+                }
+
+                if (nombreTipo.Length < 3)
+                {
+                    return Json(new { success = false, message = "El nombre debe tener al menos 3 caracteres." });
                 }
 
                 if (await _tipoServicioService.ExisteTipoServicio(nombreTipo))
@@ -327,15 +341,42 @@ public class ServicioController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CrearTipoVehiculo(string nombreTipo)
+    public async Task<IActionResult> CrearTipoVehiculo(string nombreTipo, string? formatoPatente = null, int cantidadEmpleadosRequeridos = 1)
     {
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
-            try
-            {
+            try {
                 if (string.IsNullOrWhiteSpace(nombreTipo))
                 {
                     return Json(new { success = false, message = "El nombre del tipo de vehículo es obligatorio." });
+                }
+
+                if (nombreTipo.Length < 3)
+                {
+                    return Json(new { success = false, message = "El nombre debe tener al menos 3 caracteres." });
+                }
+
+                // ✅ Validar que el formato sea obligatorio
+                if (string.IsNullOrWhiteSpace(formatoPatente))
+                {
+                    return Json(new { success = false, message = "El formato de patente es obligatorio." });
+                }
+
+                if (formatoPatente.Length < 3)
+                {
+                    return Json(new { success = false, message = "El formato debe tener al menos 3 caracteres." });
+                }
+
+                // ✅ Validar que el formato solo contenga caracteres permitidos
+                if (!System.Text.RegularExpressions.Regex.IsMatch(formatoPatente, @"^[nl.\-|]{3,}$"))
+                {
+                    return Json(new { success = false, message = "El formato solo puede contener 'n' (números), 'l' (letras), '.' '-' y '|'. Mínimo 3 caracteres." });
+                }
+
+                // Validar cantidad de empleados
+                if (cantidadEmpleadosRequeridos < 1 || cantidadEmpleadosRequeridos > 10)
+                {
+                    return Json(new { success = false, message = "La cantidad de empleados debe estar entre 1 y 10." });
                 }
 
                 if (await _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo))
@@ -343,16 +384,23 @@ public class ServicioController : Controller
                     return Json(new { success = false, message = "Ya existe un tipo de vehículo con el mismo nombre." });
                 }
 
-                var vehDocId = await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo);
+                var vehDocId = await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos);
                 await RegistrarEvento("Creacion de tipo de vehiculo", vehDocId, "TipoVehiculo");
 
-                var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculos();
+                var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculosCompletos();
 
                 return Json(new
                 {
                     success = true,
                     message = "Tipo de vehículo creado correctamente.",
-                    tipos = tiposActualizados
+                    tipos = tiposActualizados.Select(t => t.Nombre).ToList(),
+                    tiposCompletos = tiposActualizados.Select(t => new 
+                    { 
+                        nombre = t.Nombre, 
+                        formatoPatente = t.FormatoPatente,
+                        cantidadEmpleadosRequeridos = t.CantidadEmpleadosRequeridos,
+                        regex = !string.IsNullOrWhiteSpace(t.FormatoPatente) ? t.ObtenerRegexPattern() : null
+                    })
                 });
             }
             catch (Exception ex)
@@ -365,10 +413,50 @@ public class ServicioController : Controller
         return await GestionarTipoConId(
             nombreTipo,
             () => _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo),
-            () => _tipoVehiculoService.CrearTipoVehiculo(nombreTipo),
+            () => _tipoVehiculoService.CrearTipoVehiculo(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos),
             "TipoVehiculo",
             "Creacion de tipo de vehiculo"
         );
+    }
+
+    /// <summary>
+    /// Obtiene el formato de patente para un tipo de vehículo específico.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> ObtenerFormatoPatente(string nombreTipo)
+    {
+        if (string.IsNullOrWhiteSpace(nombreTipo))
+        {
+            return Json(new { success = false, formatoPatente = (string?)null, regex = (string?)null });
+        }
+
+        var tipo = await _tipoVehiculoService.ObtenerTipoVehiculoPorNombre(nombreTipo);
+        if (tipo == null)
+        {
+            return Json(new { success = false, formatoPatente = (string?)null, regex = (string?)null });
+        }
+
+        return Json(new
+        {
+            success = true,
+            formatoPatente = tipo.FormatoPatente,
+            regex = tipo.ObtenerRegexPattern()
+        });
+    }
+
+    /// <summary>
+    /// Obtiene todos los tipos de vehículo con sus formatos de patente.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> ObtenerTiposConFormatos()
+    {
+        var tipos = await _tipoVehiculoService.ObtenerTiposVehiculosCompletos();
+        return Json(tipos.Select(t => new
+        {
+            nombre = t.Nombre,
+            formatoPatente = t.FormatoPatente,
+            regex = t.ObtenerRegexPattern()
+        }));
     }
 
     /// <summary>
@@ -387,13 +475,25 @@ public class ServicioController : Controller
                     return Json(new { success = false, message = "Debe seleccionar un tipo de vehículo." });
                 }
 
+                // ✅ Validar si hay servicios usando este tipo
                 var serviciosUsandoTipo = await _servicioService.ObtenerServiciosPorTipoVehiculo(nombreTipo);
                 if (serviciosUsandoTipo.Any())
                 {
                     return Json(new
                     {
                         success = false,
-                        message = "No se puede eliminar el tipo de vehículo porque hay servicios que lo utilizan."
+                        message = $"No se puede eliminar el tipo '{nombreTipo}' porque hay servicios que lo utilizan."
+                    });
+                }
+
+                // ✅ NUEVO: Validar si hay vehículos usando este tipo
+                var vehiculosUsandoTipo = await _vehiculoService.ExisteTipoVehiculoEnUso(nombreTipo);
+                if (vehiculosUsandoTipo)
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = $"No se puede eliminar el tipo '{nombreTipo}' porque está en uso por uno o más vehículos."
                     });
                 }
 
@@ -467,6 +567,8 @@ public class ServicioController : Controller
     /// <param name="estados">Estados a filtrar.</param>
     /// <param name="tipos">Tipos de servicio a filtrar.</param>
     /// <param name="tiposVehiculo">Tipos de vehículo a filtrar.</param>
+    /// <param name="precioDesde">Precio mínimo.</param>
+    /// <param name="precioHasta">Precio máximo.</param>
     /// <param name="pageNumber">Número de página actual (1-based).</param>
     /// <param name="pageSize">Cantidad de elementos por página.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
@@ -474,10 +576,10 @@ public class ServicioController : Controller
     /// <returns>Tupla con la lista de servicios, página actual, total de páginas y páginas visibles.</returns>
     private async Task<(List<Servicio> servicios, int currentPage, int totalPages, List<int> visiblePages)>
         ObtenerDatosServicios(List<string> estados, List<string> tipos, List<string> tiposVehiculo,
-        int pageNumber, int pageSize, string sortBy, string sortOrder)
+        decimal? precioDesde, decimal? precioHasta, int pageNumber, int pageSize, string sortBy, string sortOrder)
     {
-        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, pageNumber, pageSize, sortBy, sortOrder);
-        var totalPages = Math.Max(await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, pageSize), 1);
+        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
+        var totalPages = Math.Max(await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageSize), 1);
         var currentPage = Math.Clamp(pageNumber, 1, totalPages);
         var visiblePages = GetVisiblePages(currentPage, totalPages);
 
@@ -739,10 +841,10 @@ public class ServicioController : Controller
         ViewBag.FormAction = esCreacion ? "CrearServicioAjax" : "ActualizarServicioAjax";
 
         var servicios = await _servicioService.ObtenerServicios(
-            new List<string> { "Activo" }, null, null, 1, 10, null, null);
+            new List<string> { "Activo" }, null, null, null, null, 1, 10, null, null);
 
         var totalPages = Math.Max(await _servicioService.ObtenerTotalPaginas(
-            new List<string> { "Activo" }, null, null, 10), 1);
+            new List<string> { "Activo" }, null, null, null, null, 10), 1);
 
         ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = GetVisiblePages(1, totalPages);
@@ -757,6 +859,8 @@ public class ServicioController : Controller
     /// <param name="estados">Estados activos en el filtro.</param>
     /// <param name="tipos">Tipos de servicio activos en el filtro.</param>
     /// <param name="tiposVehiculo">Tipos de vehículo activos en el filtro.</param>
+    /// <param name="precioDesde">Precio mínimo.</param>
+    /// <param name="precioHasta">Precio máximo.</param>
     /// <param name="tiposServicio">Lista completa para el dropdown de tipos de servicio.</param>
     /// <param name="tiposVehiculoList">Lista completa para el dropdown de tipos de vehículo.</param>
     /// <param name="pageSize">Tamaño de página actual.</param>
@@ -765,8 +869,9 @@ public class ServicioController : Controller
     /// <param name="visiblePages">Rango de páginas visibles.</param>
     /// <param name="sortBy">Campo de ordenamiento.</param>
     /// <param name="sortOrder">Dirección del ordenamiento.</param>
-    private void ConfigurarViewBag(
+    private async Task ConfigurarViewBag(
         List<string> estados, List<string> tipos, List<string> tiposVehiculo,
+        decimal? precioDesde, decimal? precioHasta,
         List<string> tiposServicio, List<string> tiposVehiculoList,
         int pageSize, int currentPage, int totalPages, List<int> visiblePages,
         string sortBy, string sortOrder)
@@ -777,12 +882,18 @@ public class ServicioController : Controller
         ViewBag.Estados = estados;
         ViewBag.Tipos = tipos;
         ViewBag.TiposVehiculo = tiposVehiculo;
+        ViewBag.PrecioDesde = precioDesde;
+        ViewBag.PrecioHasta = precioHasta;
         ViewBag.TodosLosTiposVehiculo = tiposVehiculoList;
         ViewBag.PageSize = pageSize;
         ViewBag.TiposServicio = tiposServicio;
         ViewBag.TodosLosTipos = tiposServicio;
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
+
+        // Obtener límites de precios para mostrar en el formulario
+        ViewBag.PrecioMinimo = await _servicioService.ObtenerPrecioMinimo(estados, tipos, tiposVehiculo);
+        ViewBag.PrecioMaximo = await _servicioService.ObtenerPrecioMaximo(estados, tipos, tiposVehiculo);
     }
 
     /// <summary>

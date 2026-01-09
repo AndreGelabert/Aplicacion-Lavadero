@@ -45,7 +45,8 @@ public class ClienteService
                 c.Nombre.ToLowerInvariant().Contains(term) ||
                 c.Apellido.ToLowerInvariant().Contains(term) ||
                 c.NumeroDocumento.Contains(term) ||
-                c.Email.ToLowerInvariant().Contains(term)
+                c.Email.ToLowerInvariant().Contains(term) ||
+                (!string.IsNullOrEmpty(c.Telefono) && c.Telefono.Contains(term))
             ).ToList();
         }
 
@@ -87,7 +88,8 @@ public class ClienteService
                 c.Nombre.ToLowerInvariant().Contains(term) ||
                 c.Apellido.ToLowerInvariant().Contains(term) ||
                 c.NumeroDocumento.Contains(term) ||
-                c.Email.ToLowerInvariant().Contains(term)
+                c.Email.ToLowerInvariant().Contains(term) ||
+                (!string.IsNullOrEmpty(c.Telefono) && c.Telefono.Contains(term))
             ).ToList();
         }
 
@@ -138,6 +140,23 @@ public class ClienteService
     public async Task EliminarCliente(string id)
     {
         await _firestore.Collection("clientes").Document(id).DeleteAsync();
+    }
+
+    /// <summary>
+    /// Verifica si un tipo de documento está siendo usado por algún cliente.
+    /// Útil para prevenir la eliminación de tipos en uso.
+    /// </summary>
+    /// <param name="tipoDocumento">Nombre del tipo de documento a verificar</param>
+    /// <returns>True si hay al menos un cliente usando este tipo de documento</returns>
+    public async Task<bool> ExisteTipoDocumentoEnUso(string tipoDocumento)
+    {
+        if (string.IsNullOrWhiteSpace(tipoDocumento))
+            return false;
+
+        var clientesRef = _firestore.Collection("clientes");
+        var query = clientesRef.WhereEqualTo("TipoDocumento", tipoDocumento).Limit(1);
+        var snapshot = await query.GetSnapshotAsync();
+        return snapshot.Count > 0;
     }
 
     private object GetPropValue(object src, string propName)
