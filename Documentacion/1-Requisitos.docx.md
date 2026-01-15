@@ -1,636 +1,8292 @@
-**LavaFacil**  
-**Sistema de Gestión de Servicios y Turnos para Lavaderos de vehículos**
+\*\*LavaFacil\*\*  
 
-**Documento de Requisitos del Sistema**
+\*\*Sistema de Gestión de Servicios y Turnos para Lavaderos de Vehículos\*\*
 
-***Versión  1.0***
 
-***Fecha: 08/09/2025***
 
-Realizado por: Gelabert André
+\*\*Documento de Requisitos del Sistema\*\*
 
-**Lista de Cambios**
 
-| *Nro* | *Fecha* | *Descripción* | *Autor* |
-| :---- | :---- | :---- | :---- |
-| 0 | 08/09/2025 | Versión 1,0 | Gelabert André |
-| 1 | Dd/mm/aaaa | Descripción Cambio | Autor |
 
-# ***Índice***
+\*\*\*Versión 2.0\*\*\*
 
-**[Presentación General	4](#heading=h.1fob9te)**
 
-[**Participantes del Proyecto	5**](#participantes-del-proyecto)
 
-[**Objetivos del sistema	5**](#objetivos-del-sistema)
+\*\*\*Fecha: 10/01/2026\*\*\*
 
-[**Diagrama de Caso de Uso del Sistema	7**](#diagrama-de-caso-de-uso-del-sistema)
 
-[Figura 1 \- Diagrama Caso Usos Sistema	7](#figura-1---diagrama-caso-usos-sistema)
 
-[Figura 2 \- Diagrama Caso Usos de actor Director del Área de Modelado	8](#figura-2---diagrama-caso-usos-del-actor-“administrador”)
+Realizado por:  Gelabert André
 
-[Figura 3 \- Diagrama Caso Usos de actor Contacto Externo	9](#figura-3---diagrama-caso-usos-del-actor-“trabajador”)
 
-[Figura 4 \- Diagrama Caso Usos de actor Personal	10](#figura-4---diagrama-caso-usos-del-actor-“cliente”)
 
-[Figura 5 \- Diagrama Caso Usos de actor Encargado de Área	11](#figura-5---diagrama-caso-usos-del-actor-“sistema”)
+\*\*Lista de Cambios\*\*
 
-[**Subsistemas del Proyecto	12**](#subsistemas-del-proyecto)
 
-[Diagrama de los Subsistemas	12](#diagrama-de-los-subsistemas)
 
-[Descripción de subsistema	12](#descripción-de-subsistema)
+| \*Nro\* | \*Fecha\* | \*Descripción\* | \*Autor\* |
 
-[**Objetivos de la Iteración	14**](#objetivos-de-la-iteración)
+| : ---- | :---- | : ---- | :---- |
 
-[**Requisitos del Sistema	15**](#requisitos-del-sistema)
+| 0 | 08/09/2025 | Versión 1.0 - Documento inicial | Gelabert André |
 
-[Requisitos de Información	15](#requisitos-de-información)
+| 1 | 10/01/2026 | Versión 2.0 - Actualización completa del documento | Gelabert André |
 
-[Requisitos de Funcionales	20](#requisitos-de-funcionales)
 
-[Caso de Usos del Sistema	22](#heading=h.rhv3a4ix9ost)
 
-[Requisitos No funcionales	45](#requisitos-no-funcionales)
+\# \*\*\*Índice\*\*\*
 
-[Matriz de Rastreabilidad Objetivo/Requisitos	46](#matriz-de-rastreabilidad-objetivo/requisitos)
 
-[**Glosario de Términos	47**](#glosario-de-términos)
 
-# ***Presentación General***
+\*\*\[Presentación General](#presentación-general)\*\*
 
-Los lavaderos de autos pequeños y medianos enfrentan problemas operativos recurrentes que afectan su productividad y la calidad del servicio ofrecido. Entre las dificultades detectadas se encuentran:
 
-* Gestión manual e ineficiente de turnos, lo que provoca solapamientos y tiempos de espera prolongados.  
-* Falta de visibilidad en la asignación de recursos humanos (quién está haciendo qué y cuándo).  
-* Carencia de herramientas para estimar correctamente la duración de los lavados según el tipo de vehículo y los servicios solicitados.  
-* Comunicación deficiente con los clientes y ausencia de estrategias automatizadas para reducir huecos en la agenda.  
-* Falta de registro formal de pagos y recibos, así como de trazabilidad de quién realizó cada acción.  
-* Ausencia de reportes e indicadores que permitan medir ocupación, rendimiento y cumplimiento de turnos.
 
-Ante estos problemas, **LavaFacil** ofrece una solución integral que:
+\*\*\[Participantes del Proyecto](#participantes-del-proyecto)\*\*
 
-* Digitaliza y centraliza la gestión de turnos, evitando superposiciones y mejorando la organización de la agenda.  
-* Permite asignar personal de forma clara y con visibilidad en tiempo real.  
-* Calcula automáticamente la duración estimada de un lavado según los servicios y el tipo de vehículo.  
-* Integra canales de comunicación con clientes (WhatsApp y correo) para notificaciones automáticas y confirmaciones.  
-* Registra de manera estructurada pagos y acciones realizadas, garantizando trazabilidad.  
-* Genera reportes e indicadores clave para evaluar el rendimiento del lavadero y apoyar la toma de decisiones.
 
-  1. # ***Participantes del Proyecto*** {#participantes-del-proyecto}
 
-Desarrolladores:
+\*\*\[Objetivos del Sistema](#objetivos-del-sistema)\*\*
 
-* Gelabert André
 
-  2. # ***Objetivos del sistema*** {#objetivos-del-sistema}
 
-| OBJ–01  | Gestión de Empleados |
+\*\*\[Diagrama de Caso de Uso del Sistema](#diagrama-de-caso-de-uso-del-sistema)\*\*
+
+
+
+\*\*\[Subsistemas del Proyecto](#subsistemas-del-proyecto)\*\*
+
+
+
+\*\*\[Objetivos de la Iteración](#objetivos-de-la-iteración)\*\*
+
+
+
+\*\*\[Requisitos del Sistema](#requisitos-del-sistema)\*\*
+
+
+
+\*\*\[Glosario de Términos](#glosario-de-términos)\*\*
+
+
+
+\# \*\*\*Presentación General\*\*\* {#presentación-general}
+
+
+
+Los lavaderos de autos pequeños y medianos enfrentan problemas operativos recurrentes que afectan su productividad y la calidad del servicio ofrecido. Entre las dificultades detectadas se encuentran: 
+
+
+
+\* Gestión manual e ineficiente de turnos, lo que provoca solapamientos y tiempos de espera prolongados. 
+
+\* Falta de visibilidad en la asignación de recursos humanos (quién está haciendo qué y cuándo).
+
+\* Carencia de herramientas para estimar correctamente la duración de los lavados según el tipo de vehículo y los servicios solicitados.
+
+\* Comunicación deficiente con los clientes y ausencia de estrategias automatizadas para reducir huecos en la agenda.
+
+\* Falta de registro formal de pagos y recibos, así como de trazabilidad de quién realizó cada acción. 
+
+\* Ausencia de reportes e indicadores que permitan medir ocupación, rendimiento y cumplimiento de turnos. 
+
+
+
+Ante estos problemas, \*\*LavaFacil\*\* ofrece una solución integral que: 
+
+
+
+\* Digitaliza y centraliza la gestión de turnos, evitando superposiciones y mejorando la organización de la agenda.
+
+\* Permite asignar personal de forma clara y con visibilidad en tiempo real.
+
+\* Calcula automáticamente la duración estimada de un lavado según los servicios y el tipo de vehículo.
+
+\* Integra canales de comunicación con clientes (WhatsApp y correo) para notificaciones automáticas y confirmaciones.
+
+\* Registra de manera estructurada pagos y acciones realizadas, garantizando trazabilidad. 
+
+\* Genera reportes e indicadores clave para evaluar el rendimiento del lavadero y apoyar la toma de decisiones.
+
+
+
+\# \*\*\*Participantes del Proyecto\*\*\* {#participantes-del-proyecto}
+
+
+
+Desarrolladores: 
+
+
+
+\* Gelabert André
+
+
+
+\# \*\*\*Objetivos del Sistema\*\*\* {#objetivos-del-sistema}
+
+
+
+| OBJ–01 | Gestión de Empleados |
+
+| : ---- | :---- |
+
+| \*\*Descripción\*\* | Permitir la creación, modificación, consulta, desactivación y reactivación de empleados.  Incluye la asignación de roles (Administrador/Empleado) y la integración con Google Authentication para inicio de sesión. |
+
+| \*\*Estabilidad\*\* | Alta.  |
+
+| \*\*Comentarios\*\* | Fundamental para el control de accesos y la gestión interna del personal. |
+
+
+
+| OBJ–02 | Gestión de Clientes y Vehículos |
+
+| :---- | : ---- |
+
+| \*\*Descripción\*\* | Centralizar el registro y consulta de clientes y sus vehículos, incluyendo creación, modificación, desactivación y reactivación. Soporta vehículos con múltiples dueños mediante clave de asociación y vinculación/desvinculación de vehículos a clientes. |
+
+| \*\*Estabilidad\*\* | Alta. |
+
+| \*\*Comentarios\*\* | Es la base de datos principal para vincular los servicios y lavados del lavadero. |
+
+
+
+| OBJ–03 | Gestión de Servicios y Paquetes |
+
+| : ---- | :---- |
+
+| \*\*Descripción\*\* | Administrar servicios individuales y paquetes de servicios con descuentos configurables. Incluye la definición de duración estimada según tipo de vehículo, etapas del servicio, tipos de servicio y tipos de vehículo personalizables. |
+
+| \*\*Estabilidad\*\* | Alta. |
+
+| \*\*Comentarios\*\* | Se vincula con la estimación automática de la duración de lavados. |
+
+
+
+| OBJ–04 | Registro y Gestión de Lavados |
+
+| : ---- | :---- |
+
+| \*\*Descripción\*\* | Registrar y gestionar lavados incluyendo inicio, seguimiento de etapas por servicio, finalización parcial o total, cancelación de servicios individuales o del lavado completo, y registro de pagos. |
+
+| \*\*Estabilidad\*\* | Alta. |
+
+| \*\*Comentarios\*\* | Es el núcleo operativo del sistema y crítico para el negocio. |
+
+
+
+| OBJ–05 | Registro de Pagos |
+
 | :---- | :---- |
-| **Descripción**  | Permitir la creación, modificación, consulta y eliminación de empleados. Incluye la asignación de roles  y la integración con Google Authentication. |
-| **Estabilidad**  | Alta.  |
-| **Comentarios**  | Fundamental para el control de accesos y la gestión interna del personal. |
 
-| OBJ–02  | Gestión de Clientes y Vehículos |
+| \*\*Descripción\*\* | Permitir al personal registrar pagos totales y parciales, gestionar estados de pago y mantener historial de pagos por lavado. |
+
+| \*\*Estabilidad\*\* | Alta. |
+
+| \*\*Comentarios\*\* | Se integra con el historial de clientes y la auditoría.  |
+
+
+
+| OBJ–06 | Planificación y Gestión de Turnos |
+
 | :---- | :---- |
-| **Descripción**  | Centralizar el registro y consulta de clientes y sus vehículos, incluyendo creación, modificación y eliminación de datos. |
-| **Estabilidad**  | Alta.  |
-| **Comentarios**  | Es la base de datos principal para vincular los servicios y turnos del lavadero. |
 
-| OBJ–03  | Gestión de Servicios y Paquetes |
+| \*\*Descripción\*\* | Asignar turnos evitando solapamientos, reorganizar automáticamente ante cancelaciones y permitir solicitudes de turno por WhatsApp.  Incluye validación de disponibilidad y notificación de adelantos.  |
+
+| \*\*Estabilidad\*\* | Alta. |
+
+| \*\*Comentarios\*\* | Permite organizar la agenda del lavadero de forma eficiente. |
+
+
+
+| OBJ–07 | Registro de Auditoría |
+
 | :---- | :---- |
-| **Descripción**  | Administrar servicios individuales y paquetes de servicios con posibles descuentos. Incluye la definición de duración estimada según tipo de vehículo y tipo de servicio. |
-| **Estabilidad**  | Alta. |
-| **Comentarios**  | Se vincula con la estimación automática de la duración de turnos. |
 
-| OBJ–04  | Planificación y Gestión de Turnos |
+| \*\*Descripción\*\* | Registrar automáticamente todas las acciones realizadas en el sistema para control y trazabilidad.  Incluye filtros por fecha, tipo de acción, tipo de entidad y usuario. |
+
+| \*\*Estabilidad\*\* | Alta. |
+
+| \*\*Comentarios\*\* | Garantiza transparencia y control administrativo. |
+
+
+
+| OBJ–08 | Módulo de Estadísticas y Reportes |
+
+| : ---- | :---- |
+
+| \*\*Descripción\*\* | Generar reportes e indicadores clave sobre clientes, servicios, lavados y pagos, exportables en PDF o Excel. |
+
+| \*\*Estabilidad\*\* | Media. |
+
+| \*\*Comentarios\*\* | Permite análisis de desempeño y apoyo en la toma de decisiones. |
+
+
+
+| OBJ–09 | Gestión de Seguridad |
+
 | :---- | :---- |
-| **Descripción**  | Asignar turnos evitando solapamientos, reorganizar automáticamente ante cancelaciones y permitir solicitudes de turno por WhatsApp. |
-| **Estabilidad**  | Alta.  |
-| **Comentarios**  | Es el núcleo operativo del sistema y crítico para el negocio. |
 
-| OBJ–05  | Registro de Lavados y Pagos |
+| \*\*Descripción\*\* | Gestionar la autenticación mediante correo/contraseña o Google Authentication. Incluye verificación de email, cierre de sesión manual y automático por inactividad, y recuperación de contraseñas. |
+
+| \*\*Estabilidad\*\* | Alta. |
+
+| \*\*Comentarios\*\* | Indispensable para proteger la información del sistema y la privacidad de los usuarios. |
+
+
+
+| OBJ–10 | Integración con WhatsApp |
+
 | :---- | :---- |
-| **Descripción**  | Permitir al personal registrar los servicios a realizar, los realizados, pagos recibidos y pagos anticipados. Incluye la aplicación de descuentos automáticos por cancelaciones anticipadas. |
-| **Estabilidad**  | Alta.  |
-| **Comentarios**  | Se integra con el historial de clientes y la auditoría. |
 
-| OBJ–06 | Registro de Auditoría |
-| :---- | :---- |
-| **Descripción**  | Registrar todas las acciones realizadas en el sistema para control y trazabilidad. |
-| **Estabilidad**  | Alta.  |
-| **Comentarios**  | Garantiza transparencia y control administrativo. |
+| \*\*Descripción\*\* | Permitir a los clientes interactuar con el sistema a través de WhatsApp para registrarse, registrar vehículos, editar datos personales, gestionar turnos, consultar información del lavadero y comunicarse con el personal.  |
 
-| OBJ–07 | Módulo de Estadísticas y Reportes |
-| :---- | :---- |
-| **Descripción**  | Generar reportes e indicadores clave sobre clientes, servicios, turnos y pagos, exportables en PDF o Excel. |
-| **Estabilidad**  | Media. |
-| **Comentarios**  | Permite análisis de desempeño y apoyo en la toma de decisiones.  |
+| \*\*Estabilidad\*\* | Alta. |
 
-| OBJ–08 | Gestión de Seguridad |
-| :---- | :---- |
-| **Descripción**  | Gestionar la autenticación, el cierre de sesión manual y automático por inactividad, así como la recuperación de contraseñas. |
-| **Estabilidad**  | Alta.  |
-| **Comentarios**  | Indispensable para proteger la información del sistema y la privacidad de los usuarios. |
+| \*\*Comentarios\*\* | Mejora la experiencia del cliente y reduce la carga operativa del personal. |
 
-  3. # ***Diagrama de Caso de Uso del Sistema*** {#diagrama-de-caso-de-uso-del-sistema}
 
-### ![][image1]
 
-### Figura 1 \- Diagrama Caso Usos Sistema {#figura-1---diagrama-caso-usos-sistema}
+| OBJ–11 | Gestión de Configuración del Sistema |
 
-![][image2]
+| : ---- | :---- |
 
-### Figura 2 \- Diagrama Caso Usos del actor “Administrador” {#figura-2---diagrama-caso-usos-del-actor-“administrador”}
+| \*\*Descripción\*\* | Permitir al administrador configurar parámetros del sistema como horarios de operación, información del lavadero, capacidad máxima, tiempos de tolerancia, duración de sesión y configuración de descuentos para paquetes.  |
 
-![][image3]
+| \*\*Estabilidad\*\* | Alta. |
 
-### Figura 3 \- Diagrama Caso Usos del actor “Trabajador” {#figura-3---diagrama-caso-usos-del-actor-“trabajador”}
+| \*\*Comentarios\*\* | Centraliza la configuración operativa del lavadero.  |
 
-![][image4]
 
-### Figura 4 \- Diagrama Caso Usos del actor “Cliente” {#figura-4---diagrama-caso-usos-del-actor-“cliente”}
 
-![][image5]
+| OBJ–12 | Notificación al Cliente |
 
-### Figura 5 \- Diagrama Caso Usos del actor “Sistema” {#figura-5---diagrama-caso-usos-del-actor-“sistema”}
+| : ---- | :---- |
 
-***Casos de Usos*** 
+| \*\*Descripción\*\* | Enviar notificaciones automáticas y manuales a los clientes por WhatsApp y correo electrónico sobre el estado de sus servicios, etapas finalizadas y vehículos listos para retirar. |
 
-Lista de casos de usos y su importancia dentro del sistema para determinar cuáles son los casos de usos de incluir en cada una de las iteraciones
+| \*\*Estabilidad\*\* | Media. |
+
+| \*\*Comentarios\*\* | Mejora la comunicación con el cliente y la experiencia de servicio. |
+
+
+
+\# \*\*\*Diagrama de Caso de Uso del Sistema\*\*\* {#diagrama-de-caso-de-uso-del-sistema}
+
+
+
+\## Figura 1 - Diagrama Caso Usos Sistema General
+
+
+
+```plantuml
+
+@startuml
+
+left to right direction
+
+skinparam packageStyle rectangle
+
+skinparam actorStyle awesome
+
+
+
+actor "Trabajador\\n(Empleado)" as Trabajador
+
+actor "Administrador" as Administrador
+
+actor "Cliente" as Cliente
+
+actor "Sistema" as SistemaActor
+
+
+
+Administrador --|> Trabajador
+
+
+
+rectangle "Sistema LavaFacil" {
+
+&nbsp;   package "Seguridad" {
+
+&nbsp;       usecase "CU-001 Iniciar Sesión" as CU001
+
+&nbsp;       usecase "CU-002 Cerrar Sesión" as CU002
+
+&nbsp;       usecase "CU-003 Recuperar Contraseña" as CU003
+
+&nbsp;       usecase "CU-004 Cierre Automático\\npor Inactividad" as CU004
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Gestión de Empleados" {
+
+&nbsp;       usecase "CU-005 Registrarse en el Sistema" as CU005
+
+&nbsp;       usecase "CU-006 Modificar Empleado" as CU006
+
+&nbsp;       usecase "CU-007 Desactivar Empleado" as CU007
+
+&nbsp;       usecase "CU-008 Reactivar Empleado" as CU008
+
+&nbsp;       usecase "CU-009 Consultar Empleados" as CU009
+
+&nbsp;       usecase "CU-010 Asignar Roles" as CU010
+
+&nbsp;       usecase "CU-011 Autenticar con Google\\ny registrar si es nuevo" as CU011
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Gestión de Clientes y Vehículos" {
+
+&nbsp;       usecase "CU-012 Crear Cliente" as CU012
+
+&nbsp;       usecase "CU-013 Modificar Cliente" as CU013
+
+&nbsp;       usecase "CU-014 Desactivar Cliente" as CU014
+
+&nbsp;       usecase "CU-015 Reactivar Cliente" as CU015
+
+&nbsp;       usecase "CU-016 Consultar Clientes" as CU016
+
+&nbsp;       usecase "CU-017 Buscar Clientes" as CU017
+
+&nbsp;       usecase "CU-018 Crear Vehículo" as CU018
+
+&nbsp;       usecase "CU-019 Modificar Vehículo" as CU019
+
+&nbsp;       usecase "CU-020 Desactivar Vehículo" as CU020
+
+&nbsp;       usecase "CU-021 Consultar Vehículos" as CU021
+
+&nbsp;       usecase "CU-022 Buscar Vehículos" as CU022
+
+&nbsp;       usecase "CU-023 Vincular Vehículo a Cliente" as CU023
+
+&nbsp;       usecase "CU-024 Desvincular Vehículo de Cliente" as CU024
+
+&nbsp;       usecase "CU-025 Registrarse como Cliente (WhatsApp)" as CU025
+
+&nbsp;       usecase "CU-026 Registrar Vehículo (WhatsApp)" as CU026
+
+&nbsp;       usecase "CU-027 Identificar Teléfono Registrado" as CU027
+
+&nbsp;       usecase "CU-028 Editar Datos Personales (WhatsApp)" as CU028
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Gestión de Servicios" {
+
+&nbsp;       usecase "CU-029 Crear Servicio" as CU029
+
+&nbsp;       usecase "CU-030 Modificar Servicio" as CU030
+
+&nbsp;       usecase "CU-031 Desactivar Servicio" as CU031
+
+&nbsp;       usecase "CU-032 Reactivar Servicio" as CU032
+
+&nbsp;       usecase "CU-033 Consultar Servicios" as CU033
+
+&nbsp;       usecase "CU-034 Buscar Servicios" as CU034
+
+&nbsp;       usecase "CU-035 Crear Tipo de Servicio" as CU035
+
+&nbsp;       usecase "CU-036 Eliminar Tipo de Servicio" as CU036
+
+&nbsp;       usecase "CU-037 Crear Tipo de Vehículo" as CU037
+
+&nbsp;       usecase "CU-038 Eliminar Tipo de Vehículo" as CU038
+
+&nbsp;       usecase "CU-039 Gestionar Etapas del Servicio" as CU039
+
+&nbsp;       usecase "CU-040 Crear Paquete de Servicios" as CU040
+
+&nbsp;       usecase "CU-041 Modificar Paquete de Servicios" as CU041
+
+&nbsp;       usecase "CU-042 Desactivar Paquete de Servicios" as CU042
+
+&nbsp;       usecase "CU-043 Reactivar Paquete de Servicios" as CU043
+
+&nbsp;       usecase "CU-044 Consultar Paquetes de Servicios" as CU044
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Registro de Lavados" {
+
+&nbsp;       usecase "CU-045 Registrar Lavado" as CU045
+
+&nbsp;       usecase "CU-046 Consultar Lavados" as CU046
+
+&nbsp;       usecase "CU-047 Buscar Lavados" as CU047
+
+&nbsp;       usecase "CU-048 Ver Detalle de Lavado" as CU048
+
+&nbsp;       usecase "CU-049 Iniciar Servicio en Lavado" as CU049
+
+&nbsp;       usecase "CU-050 Iniciar Etapa de Servicio" as CU050
+
+&nbsp;       usecase "CU-051 Finalizar Etapa de Servicio" as CU051
+
+&nbsp;       usecase "CU-052 Finalizar Servicio en Lavado" as CU052
+
+&nbsp;       usecase "CU-053 Finalizar Lavado Completo" as CU053
+
+&nbsp;       usecase "CU-054 Cancelar Lavado" as CU054
+
+&nbsp;       usecase "CU-055 Cancelar Servicio en Lavado" as CU055
+
+&nbsp;       usecase "CU-056 Registrar Pago Recibido" as CU056
+
+&nbsp;       usecase "CU-057 Registrar Pago Parcial" as CU057
+
+&nbsp;       usecase "CU-058 Marcar Vehículo Retirado" as CU058
+
+&nbsp;       usecase "CU-059 Calcular Duración Estimada" as CU059
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Configuración" {
+
+&nbsp;       usecase "CU-060 Configurar Horarios" as CU060
+
+&nbsp;       usecase "CU-061 Configurar Capacidad" as CU061
+
+&nbsp;       usecase "CU-062 Configurar Tiempos Tolerancia" as CU062
+
+&nbsp;       usecase "CU-063 Configurar Duración Sesión" as CU063
+
+&nbsp;       usecase "CU-064 Configurar Nombre y Ubicación" as CU064
+
+&nbsp;       usecase "CU-065 Configurar Descuento Paquetes" as CU065
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Planificación de Turnos" {
+
+&nbsp;       usecase "CU-066 Registrar Turno" as CU066
+
+&nbsp;       usecase "CU-067 Modificar Turno" as CU067
+
+&nbsp;       usecase "CU-068 Consultar Turnos Asignados" as CU068
+
+&nbsp;       usecase "CU-069 Cancelar Turno" as CU069
+
+&nbsp;       usecase "CU-070 Solicitar Turno (WhatsApp)" as CU070
+
+&nbsp;       usecase "CU-071 Consultar Turnos (WhatsApp)" as CU071
+
+&nbsp;       usecase "CU-072 Cancelar Turno (WhatsApp)" as CU072
+
+&nbsp;       usecase "CU-073 Asignar Turno sin Superposición" as CU073
+
+&nbsp;       usecase "CU-074 Validar Disponibilidad al Mover" as CU074
+
+&nbsp;       usecase "CU-075 Reorganizar Agenda" as CU075
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Notificación al Cliente" {
+
+&nbsp;       usecase "CU-076 Enviar Notificación WhatsApp" as CU076
+
+&nbsp;       usecase "CU-077 Enviar Notificación Email" as CU077
+
+&nbsp;       usecase "CU-078 Notificar Etapa Finalizada" as CU078
+
+&nbsp;       usecase "CU-079 Notificar Lavado Finalizado" as CU079
+
+&nbsp;       usecase "CU-080 Solicitar Hablar con Personal" as CU080
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Estadísticas y Reportes" {
+
+&nbsp;       usecase "CU-081 Consultar Estadísticas" as CU081
+
+&nbsp;       usecase "CU-082 Consultar Historial Pagos" as CU082
+
+&nbsp;       usecase "CU-083 Generar Reportes" as CU083
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Auditoría" {
+
+&nbsp;       usecase "CU-084 Consultar Historial Auditoría" as CU084
+
+&nbsp;       usecase "CU-085 Filtrar Registros Auditoría" as CU085
+
+&nbsp;       usecase "CU-086 Ver Detalle Registro Auditoría" as CU086
+
+&nbsp;       usecase "CU-087 Registrar Acciones para Auditoría" as CU087
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Integración WhatsApp" {
+
+&nbsp;       usecase "CU-088 Procesar Mensaje Entrante" as CU088
+
+&nbsp;       usecase "CU-089 Validar Webhook WhatsApp" as CU089
+
+&nbsp;       usecase "CU-090 Gestionar Sesión Conversación" as CU090
+
+&nbsp;       usecase "CU-091 Mostrar Menú Cliente" as CU091
+
+&nbsp;       usecase "CU-092 Mostrar Info Lavadero" as CU092
+
+&nbsp;   }
+
+}
+
+
+
+' Relaciones Trabajador
+
+Trabajador --> CU001
+
+Trabajador --> CU002
+
+Trabajador --> CU003
+
+Trabajador --> CU012
+
+Trabajador --> CU013
+
+Trabajador --> CU016
+
+Trabajador --> CU017
+
+Trabajador --> CU018
+
+Trabajador --> CU019
+
+Trabajador --> CU021
+
+Trabajador --> CU022
+
+Trabajador --> CU023
+
+Trabajador --> CU024
+
+Trabajador --> CU033
+
+Trabajador --> CU034
+
+Trabajador --> CU044
+
+Trabajador --> CU045
+
+Trabajador --> CU046
+
+Trabajador --> CU047
+
+Trabajador --> CU048
+
+Trabajador --> CU049
+
+Trabajador --> CU050
+
+Trabajador --> CU051
+
+Trabajador --> CU052
+
+Trabajador --> CU053
+
+Trabajador --> CU054
+
+Trabajador --> CU055
+
+Trabajador --> CU056
+
+Trabajador --> CU057
+
+Trabajador --> CU058
+
+Trabajador --> CU076
+
+Trabajador --> CU077
+
+
+
+' Relaciones Administrador (además de heredadas)
+
+Administrador --> CU005
+
+Administrador --> CU006
+
+Administrador --> CU007
+
+Administrador --> CU008
+
+Administrador --> CU009
+
+Administrador --> CU010
+
+Administrador --> CU014
+
+Administrador --> CU015
+
+Administrador --> CU020
+
+Administrador --> CU029
+
+Administrador --> CU030
+
+Administrador --> CU031
+
+Administrador --> CU032
+
+Administrador --> CU035
+
+Administrador --> CU036
+
+Administrador --> CU037
+
+Administrador --> CU038
+
+Administrador --> CU039
+
+Administrador --> CU040
+
+Administrador --> CU041
+
+Administrador --> CU042
+
+Administrador --> CU043
+
+Administrador --> CU060
+
+Administrador --> CU061
+
+Administrador --> CU062
+
+Administrador --> CU063
+
+Administrador --> CU064
+
+Administrador --> CU065
+
+Administrador --> CU066
+
+Administrador --> CU067
+
+Administrador --> CU068
+
+Administrador --> CU069
+
+Administrador --> CU081
+
+Administrador --> CU082
+
+Administrador --> CU083
+
+Administrador --> CU084
+
+Administrador --> CU085
+
+Administrador --> CU086
+
+
+
+' Relaciones Cliente
+
+Cliente --> CU025
+
+Cliente --> CU026
+
+Cliente --> CU028
+
+Cliente --> CU070
+
+Cliente --> CU071
+
+Cliente --> CU072
+
+Cliente --> CU080
+
+Cliente --> CU092
+
+
+
+' Relaciones Sistema
+
+SistemaActor --> CU004
+
+SistemaActor --> CU011
+
+SistemaActor --> CU027
+
+SistemaActor --> CU059
+
+SistemaActor --> CU073
+
+SistemaActor --> CU074
+
+SistemaActor --> CU075
+
+SistemaActor --> CU078
+
+SistemaActor --> CU079
+
+SistemaActor --> CU087
+
+SistemaActor --> CU088
+
+SistemaActor --> CU089
+
+SistemaActor --> CU090
+
+SistemaActor --> CU091
+
+
+
+' Includes para Modificar/Desactivar/Reactivar
+
+CU006 .. > CU009 : <<include>>
+
+CU007 ..> CU009 : <<include>>
+
+CU008 ..> CU009 : <<include>>
+
+CU013 ..> CU016 : <<include>>
+
+CU014 ..> CU016 : <<include>>
+
+CU015 ..> CU016 : <<include>>
+
+CU019 ..> CU021 : <<include>>
+
+CU020 ..> CU021 : <<include>>
+
+CU023 ..> CU021 : <<include>>
+
+CU024 ..> CU021 : <<include>>
+
+CU030 ..> CU033 : <<include>>
+
+CU031 ..> CU033 : <<include>>
+
+CU032 ..> CU033 : <<include>>
+
+CU041 ..> CU044 : <<include>>
+
+CU042 ..> CU044 : <<include>>
+
+CU043 ..> CU044 : <<include>>
+
+CU048 ..> CU046 : <<include>>
+
+CU049 ..> CU046 : <<include>>
+
+CU050 ..> CU046 : <<include>>
+
+CU051 ..> CU046 : <<include>>
+
+CU052 ..> CU046 : <<include>>
+
+CU053 ..> CU046 : <<include>>
+
+CU054 ..> CU046 : <<include>>
+
+CU055 ..> CU046 : <<include>>
+
+CU056 ..> CU046 : <<include>>
+
+CU057 ..> CU046 : <<include>>
+
+CU058 ..> CU046 : <<include>>
+
+CU067 ..> CU068 : <<include>>
+
+CU069 ..> CU068 : <<include>>
+
+CU085 ..> CU084 : <<include>>
+
+CU086 ..> CU084 : <<include>>
+
+
+
+@enduml
+
+```
+
+
+
+\## Lista Completa de Casos de Uso (92 CU)
+
+
 
 | Caso de Uso | Importancia |
+
 | :---- | :---- |
-| CU-001 \- Iniciar Sesión (Login) | Alta |
-| CU-001.1 \- Iniciar sesión con correo y contraseña | Alta |
-| CU-001.2 \- Iniciar sesión con Google | Alta |
-| CU-002 \- Cerrar sesión | Media |
-| CU-003 \- Recuperar contraseña | Alta |
-| CU-004 \- Cierre de sesión automático por inactividad | Media |
-| CU-005 \- Registrarse en el sistema | Alta |
-| CU-005.1 \- Registrarse por correo | Alta |
-| CU-005.2 \- Registrarse por Google | Alta |
-| CU-006 \- Modificar empleado | Media |
-| CU-007 \- Eliminar empleado existente | Media |
-| CU-008 \- Consultar empleados | Media |
-| CU-009 \- Asignar roles a empleados | Alta |
-| CU-010 \- Autenticar usuario con Google y registrar perfil si es nuevo | Alta |
-| CU-011 \- Crear cliente | Alta |
-| CU-012 \- Modificar cliente | Media |
-| CU-013 \- Eliminar cliente | Media |
-| CU-014 \- Consultar clientes | Alta |
-| CU-015 \- Crear vehículo de cliente | Alta |
-| CU-016 \- Modificar vehículo de cliente | Media |
-| CU-017 \- Eliminar vehículo de cliente | Media |
-| CU-018 \- Consultar vehículos de cliente | Alta |
-| CU-019 \- Registrarse como cliente por WhatsApp | Alta |
-| CU-020 \- Registrar vehículo por WhatsApp | Alta |
-| CU-021 \- Identificar si el número de teléfono está registrado | Alta |
-| CU-022 \- Crear servicio | Alta |
-| CU-023 \- Modificar servicio | Media |
-| CU-024 \- Eliminar servicio | Media |
-| CU-025 \- Consultar servicio | Media |
-| CU-026 \- Crear paquete de servicios | Baja |
-| CU-027 \- Modificar paquete de servicios | Baja |
-| CU-028 \- Eliminar paquete de servicios | Baja |
-| CU-029 \- Consultar paquetes de servicios | Baja |
-| CU-030 \- Consultar lavados realizados | Alta |
-| CU-031 – Iniciar realización del servicio | Alta |
-| CU-032 – Marcar etapa del servicio finalizada | Alta |
-| CU-033 – Marcar servicio finalizado | Alta |
-| CU-034 – Registrar un pago recibido | Alta |
-| CU-035 – Registrar pago anticipado | Alta |
-| CU-036 – Calcular duración estimada de lavado | Alta |
-| CU-037 – Registrar turnos | Alta |
-| CU-038 – Modificar turnos | Alta |
-| CU-039 – Consultar turnos asignados | Alta |
-| CU-040 – Cancelar turnos | Alta |
-| CU-041 – Solicitar turno (WhatsApp) | Alta |
-| CU-042 – Consultar turnos próximos (WhatsApp) | Alta |
-| CU-043 – Cancelar turno (WhatsApp) | Alta |
-| CU-044 – Recibir oferta de adelanto de turno | Media |
-| CU-044.1 – Aceptar adelanto de turno | Media |
-| CU-044.2 – Rechazar adelanto de turno | Media |
-| CU-045 – Asignar turno automáticamente sin superposición | Alta |
-| CU-046 – Asignar automáticamente un empleado disponible al turno | Alta |
-| CU-047 – Validar disponibilidad posterior al mover un turno | Alta |
-| CU-048 – Reorganizar agenda ante cancelaciones | Alta |
-| CU-049 – Aplicar descuento por cancelación anticipada | Media |
-| CU-050 – Enviar notificación por WhatsApp | Media |
-| CU-051 – Enviar notificación por correo electrónico | Media |
-| CU-052 – Recibir confirmación | Media |
-| CU-052.1 – Recibir confirmación de etapa finalizada | Media |
-| CU-052.2 – Recibir confirmación de lavado finalizado | Media |
-| CU-053 – Solicitar hablar con el personal | Baja |
-| CU-054 – Consultar estadísticas básicas | Alta |
-| CU-055 – Consultar historial de pagos | Media |
-| CU-056 – Generar reportes | Alta |
-| CU-056.1 – Exportar reportes a PDF o Excel | Alta |
-| CU-057 – Programar generación automática de reportes periódicos | Media |
-| CU-058 – Consultar historial de auditoría | Alta |
-| CU-059 – Registrar todas las acciones para auditoría | Alta |
 
-4. # 
+| \*\*Módulo Seguridad\*\* | |
 
-   5. # ***Subsistemas del Proyecto*** {#subsistemas-del-proyecto}
+| CU-001 - Iniciar Sesión | Alta |
 
-## **Diagrama de los Subsistemas** {#diagrama-de-los-subsistemas}
+| CU-001. 1 - Iniciar sesión con correo y contraseña | Alta |
 
-![][image6]
+| CU-001.2 - Iniciar sesión con Google | Alta |
 
-**Figura 5- Diagrama de Subsistemas**
+| CU-002 - Cerrar sesión | Media |
 
-## **Descripción de subsistema** {#descripción-de-subsistema}
+| CU-003 - Recuperar contraseña | Alta |
+
+| CU-004 - Cierre de sesión automático por inactividad | Media |
+
+| \*\*Módulo Gestión de Empleados\*\* | |
+
+| CU-005 - Registrarse en el sistema | Alta |
+
+| CU-005.1 - Registrarse por correo | Alta |
+
+| CU-005.2 - Registrarse por Google | Alta |
+
+| CU-006 - Modificar empleado | Media |
+
+| CU-007 - Desactivar empleado | Media |
+
+| CU-008 - Reactivar empleado | Media |
+
+| CU-009 - Consultar empleados | Media |
+
+| CU-010 - Asignar roles a empleados | Alta |
+
+| CU-011 - Autenticar usuario con Google y registrar perfil si es nuevo | Alta |
+
+| \*\*Módulo Gestión de Clientes y Vehículos\*\* | |
+
+| CU-012 - Crear cliente | Alta |
+
+| CU-013 - Modificar cliente | Media |
+
+| CU-014 - Desactivar cliente | Media |
+
+| CU-015 - Reactivar cliente | Media |
+
+| CU-016 - Consultar clientes | Alta |
+
+| CU-017 - Buscar clientes | Alta |
+
+| CU-018 - Crear vehículo | Alta |
+
+| CU-019 - Modificar vehículo | Media |
+
+| CU-020 - Desactivar vehículo | Media |
+
+| CU-021 - Consultar vehículos | Alta |
+
+| CU-022 - Buscar vehículos | Alta |
+
+| CU-023 - Vincular vehículo a cliente | Media |
+
+| CU-024 - Desvincular vehículo de cliente | Media |
+
+| CU-025 - Registrarse como cliente por WhatsApp | Alta |
+
+| CU-026 - Registrar vehículo por WhatsApp | Alta |
+
+| CU-027 - Identificar si el número de teléfono está registrado | Alta |
+
+| CU-028 - Editar datos personales por WhatsApp | Media |
+
+| \*\*Módulo Gestión de Servicios\*\* | |
+
+| CU-029 - Crear servicio | Alta |
+
+| CU-030 - Modificar servicio | Media |
+
+| CU-031 - Desactivar servicio | Media |
+
+| CU-032 - Reactivar servicio | Media |
+
+| CU-033 - Consultar servicios | Alta |
+
+| CU-034 - Buscar servicios | Media |
+
+| CU-035 - Crear tipo de servicio | Media |
+
+| CU-036 - Eliminar tipo de servicio | Baja |
+
+| CU-037 - Crear tipo de vehículo | Media |
+
+| CU-038 - Eliminar tipo de vehículo | Baja |
+
+| CU-039 - Gestionar etapas del servicio | Media |
+
+| CU-040 - Crear paquete de servicios | Media |
+
+| CU-041 - Modificar paquete de servicios | Baja |
+
+| CU-042 - Desactivar paquete de servicios | Baja |
+
+| CU-043 - Reactivar paquete de servicios | Baja |
+
+| CU-044 - Consultar paquetes de servicios | Media |
+
+| \*\*Módulo Registro de Lavados\*\* | |
+
+| CU-045 - Registrar realización de un servicio (lavado) | Alta |
+
+| CU-046 - Consultar lavados | Alta |
+
+| CU-047 - Buscar lavados | Alta |
+
+| CU-048 - Ver detalle de lavado | Alta |
+
+| CU-049 - Iniciar servicio en lavado | Alta |
+
+| CU-050 - Iniciar etapa de servicio | Alta |
+
+| CU-051 - Finalizar etapa de servicio | Alta |
+
+| CU-052 - Finalizar servicio en lavado | Alta |
+
+| CU-053 - Finalizar lavado completo | Alta |
+
+| CU-054 - Cancelar lavado | Alta |
+
+| CU-055 - Cancelar servicio en lavado | Media |
+
+| CU-056 - Registrar pago recibido | Alta |
+
+| CU-057 - Registrar pago parcial | Alta |
+
+| CU-058 - Marcar vehículo como retirado | Media |
+
+| CU-059 - Calcular duración estimada de lavado | Alta |
+
+| \*\*Módulo Configuración\*\* | |
+
+| CU-060 - Configurar horarios del lavadero | Alta |
+
+| CU-061 - Configurar capacidad concurrente | Alta |
+
+| CU-062 - Configurar tiempos de tolerancia y notificación | Media |
+
+| CU-063 - Configurar duración de sesión | Media |
+
+| CU-064 - Configurar nombre y ubicación del lavadero | Media |
+
+| CU-065 - Configurar paso de descuento para paquetes | Baja |
+
+| \*\*Módulo Planificación de Turnos\*\* | |
+
+| CU-066 - Registrar turno | Alta |
+
+| CU-067 - Modificar turno | Media |
+
+| CU-068 - Consultar turnos asignados | Alta |
+
+| CU-069 - Cancelar turno | Media |
+
+| CU-070 - Solicitar turno por WhatsApp | Alta |
+
+| CU-071 - Consultar turnos próximos por WhatsApp | Media |
+
+| CU-072 - Cancelar turno por WhatsApp | Media |
+
+| CU-073 - Asignar turno automáticamente sin superposición | Alta |
+
+| CU-074 - Validar disponibilidad al mover un turno | Alta |
+
+| CU-075 - Reorganizar agenda ante cancelaciones | Media |
+
+| \*\*Módulo Notificación al Cliente\*\* | |
+
+| CU-076 - Enviar notificación por WhatsApp | Media |
+
+| CU-077 - Enviar notificación por correo electrónico | Media |
+
+| CU-078 - Notificar etapa finalizada | Media |
+
+| CU-079 - Notificar lavado finalizado | Alta |
+
+| CU-080 - Solicitar hablar con el personal | Baja |
+
+| \*\*Módulo Estadísticas y Reportes\*\* | |
+
+| CU-081 - Consultar estadísticas básicas | Media |
+
+| CU-082 - Consultar historial de pagos | Media |
+
+| CU-083 - Generar reportes | Media |
+
+| CU-083.1 - Exportar reportes a PDF o Excel | Media |
+
+| \*\*Módulo Auditoría\*\* | |
+
+| CU-084 - Consultar historial de auditoría | Alta |
+
+| CU-085 - Filtrar registros de auditoría | Media |
+
+| CU-086 - Ver detalle de registro de auditoría | Media |
+
+| CU-087 - Registrar todas las acciones para auditoría | Alta |
+
+| \*\*Módulo Integración WhatsApp\*\* | |
+
+| CU-088 - Procesar mensaje entrante de WhatsApp | Alta |
+
+| CU-089 - Validar webhook de WhatsApp | Alta |
+
+| CU-090 - Gestionar sesión de conversación | Alta |
+
+| CU-091 - Mostrar menú de cliente autenticado | Alta |
+
+| CU-092 - Mostrar información del lavadero | Media |
+
+
+
+\# \*\*\*Subsistemas del Proyecto\*\*\* {#subsistemas-del-proyecto}
+
+
+
+\## \*\*Diagrama de los Subsistemas\*\*
+
+
+
+```plantuml
+
+@startuml
+
+skinparam packageStyle rectangle
+
+skinparam linetype ortho
+
+
+
+package "Sistema LavaFacil" {
+
+&nbsp;   package "Seguridad" as SEC {
+
+&nbsp;       \[Autenticación]
+
+&nbsp;       \[Gestión de Sesiones]
+
+&nbsp;       \[Recuperación de Contraseña]
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Gestión de Empleados" as EMP {
+
+&nbsp;       \[CRUD Empleados]
+
+&nbsp;       \[Roles y Permisos]
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Gestión de Clientes y Vehículos" as CLI {
+
+&nbsp;       \[CRUD Clientes]
+
+&nbsp;       \[CRUD Vehículos]
+
+&nbsp;       \[Vinculación/Desvinculación]
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Gestión de Servicios" as SER {
+
+&nbsp;       \[CRUD Servicios]
+
+&nbsp;       \[CRUD Paquetes]
+
+&nbsp;       \[Tipos de Servicio]
+
+&nbsp;       \[Tipos de Vehículo]
+
+&nbsp;       \[Etapas de Servicio]
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Registro de Lavados" as LAV {
+
+&nbsp;       \[Registro de Lavados]
+
+&nbsp;       \[Gestión de Etapas]
+
+&nbsp;       \[Registro de Pagos]
+
+&nbsp;       \[Estado de Retiro]
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Planificación de Turnos" as TUR {
+
+&nbsp;       \[Agenda de Turnos]
+
+&nbsp;       \[Validación Disponibilidad]
+
+&nbsp;       \[Reorganización Automática]
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Integración WhatsApp" as WA {
+
+&nbsp;       \[Flujos Conversacionales]
+
+&nbsp;       \[Gestión de Sesiones WA]
+
+&nbsp;       \[Procesamiento Mensajes]
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Configuración" as CFG {
+
+&nbsp;       \[Configuración del Sistema]
+
+&nbsp;       \[Horarios]
+
+&nbsp;       \[Capacidad]
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Notificación al Cliente" as NOT {
+
+&nbsp;       \[Notificaciones WhatsApp]
+
+&nbsp;       \[Notificaciones Email]
+
+&nbsp;       \[Notificaciones Automáticas]
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Auditoría y Reportes" as AUD {
+
+&nbsp;       \[Registro de Auditoría]
+
+&nbsp;       \[Estadísticas]
+
+&nbsp;       \[Generación de Reportes]
+
+&nbsp;   }
+
+}
+
+
+
+SEC --> EMP :  usa
+
+EMP --> AUD : registra
+
+CLI --> AUD : registra
+
+SER --> AUD : registra
+
+LAV --> AUD : registra
+
+LAV --> CLI : consulta
+
+LAV --> SER : consulta
+
+LAV --> EMP : asigna
+
+LAV --> NOT : notifica
+
+TUR --> CLI : consulta
+
+TUR --> SER :  consulta
+
+TUR --> CFG : valida horarios
+
+WA --> CLI : gestiona
+
+WA --> TUR : gestiona turnos
+
+WA --> CFG : consulta
+
+SER --> CFG : consulta
+
+LAV --> CFG :  consulta
+
+
+
+@enduml
+
+```
+
+
+
+\## \*\*Descripción de Subsistema\*\*
+
+
 
 | Subsistema | Descripción |
+
 | ----- | ----- |
-| **Gestión de Clientes y Vehículos** | Permite registrar, modificar, consultar y eliminar clientes y sus vehículos. Este subsistema garantiza la consistencia de los datos, evita duplicados y mantiene un historial de interacciones y servicios vinculados a cada cliente. Es fundamental para vincular servicios y turnos de manera confiable. |
-| **Gestión de Empleados** | Permite la alta, baja, modificación y consulta del personal del lavadero. Administra roles y niveles de acceso, además de mantener información sobre la participación de cada empleado en lavados y turnos. Proporciona listados detallados para evaluar la carga de trabajo y desempeño. |
-| **Gestión de Servicios y Paquetes** | Permite definir, modificar y eliminar servicios individuales o paquetes de servicios, aplicando descuentos y estimando tiempos de ejecución según tipo de vehículo. Este subsistema contribuye directamente a la planificación precisa de la agenda del lavadero. |
-| **Planificación y Gestión de Turnos** | Centraliza la organización de turnos, evitando solapamientos y optimizando la asignación de horarios. Reorganiza la agenda en caso de cancelaciones y comunica automáticamente cambios a los clientes. Incluye la integración con WhatsApp para facilitar las solicitudes de turno. |
-| **Registro de Lavados y Pagos** | Permite registrar en detalle los lavados realizados, incluyendo las etapas de los servicios. También gestiona pagos en efectivo, anticipados y descuentos aplicados. Se integra con el historial del cliente y con el módulo de auditoría. |
-| **Estadísticas y Reportes** | Proporciona herramientas para analizar la operación del lavadero mediante indicadores clave. Permite la creación de reportes personalizados sobre ocupación, ingresos, productividad y tiempos de servicio. Estos datos pueden exportarse en formatos estándar para análisis externo. |
-| **Auditoría** | Registra de forma automática todas las acciones realizadas en el sistema, identificando usuario, acción, fecha y hora. Proporciona trazabilidad completa para el control interno y es esencial para auditorías y revisiones administrativas. |
-| **Roles y Permisos** | Gestiona la asignación de roles a empleados, determinando los permisos y accesos de cada usuario. Garantiza que la información sensible esté restringida y que cada persona acceda solo a lo necesario para su función. |
-| **Seguridad** | Incluye mecanismos de inicio de sesión, cierre automático por inactividad y recuperación de credenciales. Refuerza la privacidad de la información y la seguridad de los datos, minimizando riesgos de accesos indebidos. |
 
-**PyPSoft**  
-**Sistema de Gestión de Personal y Proyectos para Arquitectura e Ingeniería**
+| \*\*Seguridad\*\* | Gestiona el acceso al sistema mediante autenticación con correo/contraseña o Google Authentication.  Incluye verificación de email, manejo de sesiones, cierre automático por inactividad y recuperación de contraseñas.  Valida que el usuario esté activo y tenga el email verificado antes de permitir el acceso. |
 
-**Documento de Requisitos del Sistema**
+| \*\*Gestión de Empleados\*\* | Permite la alta, desactivación, reactivación, modificación y consulta del personal del lavadero. Administra roles (Administrador/Empleado) y niveles de acceso.  Solo los administradores pueden gestionar empleados.  Incluye registro automático de usuarios que inician sesión con Google por primera vez. |
 
-***Versión  1.1***
+| \*\*Gestión de Clientes y Vehículos\*\* | Permite registrar, modificar, consultar, desactivar y reactivar clientes y sus vehículos.  Soporta vehículos con múltiples dueños mediante clave de asociación SHA256. Incluye vinculación y desvinculación de vehículos a clientes, con desactivación en cascada cuando corresponde. |
 
-***Fecha: 24/05/2023***
+| \*\*Gestión de Servicios\*\* | Permite definir, modificar, desactivar y reactivar servicios individuales o paquetes de servicios. Los servicios tienen duración estimada por tipo de vehículo y pueden incluir etapas secuenciales. Los paquetes agrupan servicios con descuentos configurables.  Incluye gestión de tipos de servicio y tipos de vehículo. |
 
-Realizado por: Gelabert André  
-Realizado para: Agrimensura del Norte SRL: Área de Modelado 3D BIM
+| \*\*Registro de Lavados\*\* | Centraliza el registro y seguimiento de lavados, incluyendo creación, inicio de servicios y etapas, finalización parcial o total, cancelación de servicios individuales o completos, registro de pagos totales y parciales, y marcado de retiro de vehículo.  Calcula automáticamente el tiempo estimado.  |
 
-6. # ***Objetivos de la Iteración*** {#objetivos-de-la-iteración}
+| \*\*Planificación de Turnos\*\* | Gestiona la agenda de turnos del lavadero, evitando solapamientos mediante validación automática.  Permite reorganización automática ante cancelaciones y notificación a clientes sobre posibles adelantos. Incluye gestión de turnos por WhatsApp.  |
 
-| OBJ–01  | Gestión de Empleados |
-| :---- | :---- |
-| **Descripción**  | Permitir la creación, modificación, consulta y eliminación de empleados. Incluye la asignación de roles  y la integración con Google Authentication. |
-| **Estabilidad**  | Alta.  |
-| **Comentarios**  | Fundamental para el control de accesos y la gestión interna del personal. |
+| \*\*Integración WhatsApp\*\* | Permite a los clientes interactuar con el sistema a través de WhatsApp Cloud API. Incluye flujos conversacionales para registro de clientes, vehículos, gestión de turnos, consulta de información del lavadero y edición de datos personales.  Mantiene sesiones de conversación para contexto.  |
 
-| OBJ–02  | Gestión de Clientes y Vehículos |
-| :---- | :---- |
-| **Descripción**  | Centralizar el registro y consulta de clientes y sus vehículos, incluyendo creación, modificación y eliminación de datos. |
-| **Estabilidad**  | Alta.  |
-| **Comentarios**  | Es la base de datos principal para vincular los servicios y turnos del lavadero. |
+| \*\*Configuración\*\* | Permite al administrador configurar parámetros del sistema como nombre del lavadero, horarios de operación, ubicación, teléfono, capacidad máxima, tiempos de tolerancia, duración de sesión y porcentajes de descuento para paquetes. |
 
-| OBJ–03  | Gestión de Servicios y Paquetes |
-| :---- | :---- |
-| **Descripción**  | Administrar servicios individuales y paquetes de servicios con posibles descuentos. Incluye la definición de duración estimada según tipo de vehículo y tipo de servicio. |
-| **Estabilidad**  | Alta. |
-| **Comentarios**  | Se vincula con la estimación automática de la duración de turnos. |
+| \*\*Notificación al Cliente\*\* | Envía notificaciones automáticas y manuales a los clientes por WhatsApp y correo electrónico.  Incluye notificaciones de etapa finalizada, lavado completo y vehículo listo para retirar. |
 
-| OBJ–04  | Planificación y Gestión de Turnos |
-| :---- | :---- |
-| **Descripción**  | Asignar turnos evitando solapamientos, reorganizar automáticamente ante cancelaciones y permitir solicitudes de turno por WhatsApp. |
-| **Estabilidad**  | Alta.  |
-| **Comentarios**  | Es el núcleo operativo del sistema y crítico para el negocio. |
+| \*\*Auditoría y Reportes\*\* | Registra automáticamente todas las acciones realizadas en el sistema.  Permite consultar el historial con filtros por fecha, tipo de acción, entidad afectada y usuario.  Proporciona estadísticas, historial de pagos y generación de reportes exportables. |
 
-| OBJ–05  | Registro de Lavados y Pagos |
-| :---- | :---- |
-| **Descripción**  | Permitir al personal registrar los servicios a realizar, los realizados, pagos recibidos y pagos anticipados. Incluye la aplicación de descuentos automáticos por cancelaciones anticipadas. |
-| **Estabilidad**  | Alta.  |
-| **Comentarios**  | Se integra con el historial de clientes y la auditoría. |
 
-| OBJ–06 | Registro de Auditoría |
-| :---- | :---- |
-| **Descripción**  | Registrar todas las acciones realizadas en el sistema para control y trazabilidad. |
-| **Estabilidad**  | Alta.  |
-| **Comentarios**  | Garantiza transparencia y control administrativo. |
 
-| OBJ–07 | Módulo de Estadísticas y Reportes |
-| :---- | :---- |
-| **Descripción**  | Generar reportes e indicadores clave sobre clientes, servicios, turnos y pagos, exportables en PDF o Excel. |
-| **Estabilidad**  | Media. |
-| **Comentarios**  | Permite análisis de desempeño y apoyo en la toma de decisiones.  |
+\# \*\*\*Requisitos del Sistema\*\*\* {#requisitos-del-sistema}
 
-| OBJ–08 | Gestión de Seguridad |
-| :---- | :---- |
-| **Descripción**  | Gestionar la autenticación, el cierre de sesión manual y automático por inactividad, así como la recuperación de contraseñas. |
-| **Estabilidad**  | Alta.  |
-| **Comentarios**  | Indispensable para proteger la información del sistema y la privacidad de los usuarios. |
 
-# ***Requisitos del Sistema*** {#requisitos-del-sistema}
 
-1. ## **Requisitos de Información** {#requisitos-de-información}
+\## \*\*Requisitos de Información\*\*
 
-Debe tener una lista de requisitos de almacenamientos y de restricciones de información que se haya identificado. 
+
 
 | IRQ–01 | Información sobre Empleados |
+
+| : ---: | ----- |
+
+| \*\*Objetivos asociados\*\* | OBJ–01 Gestión de Empleados, OBJ–09 Gestión de Seguridad |
+
+| \*\*Requisitos asociados\*\* | CU-001, CU-002, CU-003, CU-004, CU-005, CU-006, CU-007, CU-008, CU-009, CU-010, CU-011 |
+
+| \*\*Descripción\*\* | El sistema deberá almacenar la información relacionada con los empleados del lavadero, tanto activos como inactivos.  Se registrarán sus credenciales, datos personales y su rol dentro del sistema. |
+
+| \*\*Datos específicos\*\* | Id (UID de Firebase), Nombre, Apellido, NombreCompleto, Correo electrónico, Rol asignado (Administrador / Empleado), Estado del empleado (Activo / Inactivo), EmailVerificado (booleano), FechaCreacion, FechaActualizacion |
+
+| \*\*Estabilidad\*\* | Alta |
+
+| \*\*Comentarios\*\* | Los roles y estados se vinculan con el módulo de seguridad y auditoría.  La autenticación se gestiona a través de Firebase Authentication con soporte para Google Sign-In. |
+
+
+
+| IRQ–02 | Información sobre Clientes |
+
 | :---: | ----- |
-| **Objetivos asociados** | OBJ–01 Gestión de Empleados |
-| **Requisitos asociados** | CU-005 – Registrarse en el sistema CU-006 – Modificar empleado CU-007 – Eliminar empleado existente CU-008 – Consultar empleados CU-009 – Asignar roles a empleados CU-009 – Autenticar usuario con Google y registrar perfil si es nuevo |
-| **Descripción** | El sistema deberá almacenar la información relacionada con los empleados del lavadero, tanto activos como inactivos. Se registrarán sus credenciales, datos personales y su rol dentro de la organización. |
-| **Datos específicos** | Nombre y Apellido Correo electrónico Contraseña (encriptada) Rol asignado (Administrador / Empleado) Estado del empleado (Activo / Inactivo) Fecha de alta y baja Uid Historial de acciones registradas por auditoría |
-| **Estabilidad** | Alta |
-| **Comentarios** | Los roles y estados se vinculan con el módulo de seguridad y auditoría. |
 
-| IRQ–02 | Información sobre Clientes y Vehículos |
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |
+
+| \*\*Requisitos asociados\*\* | CU-012, CU-013, CU-014, CU-015, CU-016, CU-017, CU-025, CU-028 |
+
+| \*\*Descripción\*\* | El sistema deberá almacenar la información completa de los clientes, permitiendo mantener una trazabilidad completa de los servicios prestados. |
+
+| \*\*Datos específicos\*\* | Id, Nombre, Apellido, NombreCompleto, Teléfono, TipoDocumento, NumeroDocumento, Correo electrónico, Estado del cliente (Activo / Inactivo), VehiculosIds (lista de IDs de vehículos asociados), FechaCreacion |
+
+| \*\*Estabilidad\*\* | Alta |
+
+| \*\*Comentarios\*\* | Los clientes pueden registrarse a través de la aplicación web (por el personal) o a través de WhatsApp (autoservicio). |
+
+
+
+| IRQ–03 | Información sobre Vehículos |
+
 | :---: | ----- |
-| **Objetivos asociados** | OBJ–02 Gestión de Clientes y Vehículos |
-| **Requisitos asociados** | CU-011 – Crear cliente CU-012 – Modificar cliente CU-013 – Eliminar cliente CU-014 – Consultar clientes CU-015 – Crear vehículo de cliente CU-016 – Modificar vehículo de cliente CU-017 – Eliminar vehículo de cliente CU-018 – Consultar vehículos de cliente CU-019 – Registrarse como cliente por WhatsApp CU-020 – Registrar vehículo por WhatsApp CU-021 – Identificar si el número de teléfono está registrado |
-| **Descripción** | El sistema deberá almacenar la información completa de los clientes y de los vehículos asociados a cada uno, permitiendo mantener una trazabilidad completa de los servicios prestados. |
-| **Datos específicos** | Cliente: Nombre y Apellido Teléfono Correo electrónico Estado del cliente (Activo / Inactivo) Vehículo: Marca Modelo Año Color Patente Tipo de vehículo (Auto, Camioneta, Moto, etc.) |
-| **Estabilidad** | Alta |
-| **Comentarios** | Los datos se relacionan con los servicios y los turnos agendados para cada cliente. |
 
-| IRQ–03 | Información sobre Servicios y Paquetes |
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |
+
+| \*\*Requisitos asociados\*\* | CU-018, CU-019, CU-020, CU-021, CU-022, CU-023, CU-024, CU-026 |
+
+| \*\*Descripción\*\* | El sistema deberá almacenar la información de los vehículos, soportando múltiples dueños por vehículo mediante clave de asociación.  |
+
+| \*\*Datos específicos\*\* | Id, Patente, TipoVehiculo, Marca, Modelo, Color, ClienteId (dueño principal), ClienteNombreCompleto, ClientesIds (lista de todos los clientes asociados), ClaveAsociacionHash (hash SHA256 para permitir asociación), Estado (Activo / Inactivo) |
+
+| \*\*Estabilidad\*\* | Alta |
+
+| \*\*Comentarios\*\* | Los vehículos pueden tener múltiples dueños.  La clave de asociación permite que otros clientes se vinculen al vehículo ingresando la clave correcta. |
+
+
+
+| IRQ–04 | Información sobre Servicios |
+
+| :---: | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |
+
+| \*\*Requisitos asociados\*\* | CU-029, CU-030, CU-031, CU-032, CU-033, CU-034, CU-039 |
+
+| \*\*Descripción\*\* | El sistema deberá registrar y administrar la información de los servicios individuales ofrecidos por el lavadero. |
+
+| \*\*Datos específicos\*\* | Id, Nombre, Descripcion, TipoServicio, TipoVehiculo, Precio, TiempoEstimado (en minutos), Estado (Activo / Inactivo), Etapas (lista de etapas con Id, Nombre, Descripcion, Orden) |
+
+| \*\*Estabilidad\*\* | Alta |
+
+| \*\*Comentarios\*\* | Los servicios pueden tener múltiples etapas que se ejecutan secuencialmente durante el lavado. El tiempo estimado y precio varían según el tipo de vehículo. |
+
+
+
+| IRQ–05 | Información sobre Tipos de Servicio |
+
+| :---:  | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |
+
+| \*\*Requisitos asociados\*\* | CU-035, CU-036 |
+
+| \*\*Descripción\*\* | El sistema deberá almacenar las categorías de servicios disponibles.  |
+
+| \*\*Datos específicos\*\* | Id, Nombre, Estado (Activo / Inactivo) |
+
+| \*\*Estabilidad\*\* | Alta |
+
+| \*\*Comentarios\*\* | Los tipos de servicio permiten categorizar y organizar los servicios ofrecidos.  Solo puede haber un servicio de cada tipo en un paquete. |
+
+
+
+| IRQ–06 | Información sobre Tipos de Vehículo |
+
+| : ---: | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |
+
+| \*\*Requisitos asociados\*\* | CU-037, CU-038 |
+
+| \*\*Descripción\*\* | El sistema deberá almacenar los tipos de vehículos disponibles para asociar a servicios y vehículos de clientes. |
+
+| \*\*Datos específicos\*\* | Id, Nombre, FormatoPatente, CantidadEmpleadosRequeridos, Estado (Activo / Inactivo) |
+
+| \*\*Estabilidad\*\* | Alta |
+
+| \*\*Comentarios\*\* | Los tipos de vehículo determinan la cantidad de empleados necesarios y se usan para filtrar servicios compatibles. |
+
+
+
+| IRQ–07 | Información sobre Paquetes de Servicios |
+
 | :---: | :---- |
-| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes |
-| **Requisitos asociados** | CU-022 – Crear servicio CU-023 – Modificar servicio CU-024 – Eliminar servicio CU-025 – Consultar servicios CU-026 – Crear paquete de servicios CU-027 – Modificar paquete de servicios CU-028 – Eliminar paquete de servicios CU-029 – Consultar paquete de servicios |
-| **Descripción** | El sistema deberá registrar y administrar la información de los servicios individuales y de los paquetes que los agrupan. Estos datos serán utilizados para calcular los precios y tiempos estimados de lavado. |
-| **Datos específicos** | Nombre del servicio Descripción Duración estimada Precio Tipo de vehículo asociado Categoría del servicio Estado Servicios incluidos en el paquete Descuento aplicado al paquete (si corresponde) |
-| **Estabilidad** | Alta |
-| **Comentarios** | Información crítica para el cálculo de tiempos estimados y la planificación de turnos. |
 
-| IRQ–04 | Información sobre Turnos |
-| :---: | :---- |
-| **Objetivos asociados** | OBJ–04 Planificación y Gestión de Turnos OBJ–05 Registro de Lavados y Pagos |
-| **Requisitos asociados** | CU-041 – Registrar turno CU-042 – Modificar turno CU-043 – Consultar turnos asignados CU-044 – Cancelar turno CU-045 – Solicitar turno por WhatsApp CU-046 – Consultar turnos próximos por WhatsApp CU-047 – Cancelar turno por WhatsApp CU-048 – Recibir oferta de adelanto de turno CU-049 – Configurar porcentajes de descuento por cancelación CU-050 – Asignar turno automáticamente sin superposición CU-051 – Asignar automáticamente un empleado disponible al turno CU-052 – Validar disponibilidad posterior al mover un turno CU-053 – Reorganizar agenda ante cancelaciones CU-054 – Aplicar descuento por cancelación anticipada CU-056 – Enviar notificación por WhatsApp CU-057 – Enviar notificación por correo electrónico |
-| **Descripción** | El sistema deberá almacenar los turnos asignados a los clientes, empleados y servicios, garantizando que no haya solapamientos. |
-| **Datos específicos** | Fecha y hora del turno Cliente y vehículo asociado Empleado asignado Servicios solicitados Estado del turno (Pendiente, En curso, Finalizado, Cancelado) Posibilidad de adelanto de turno (Sí / No) Motivo de cancelación (Si aplica) Descuento por cancelación anticipada |
-| **Estabilidad** | Alta |
-| **Comentarios** | La información se actualiza automáticamente al reprogramar o cancelar turnos. |
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |
 
-| IRQ–05 | Información sobre Lavados y Pagos |
-| :---: | :---- |
-| **Objetivos asociados** | OBJ–01 Gestión de Empleados OBJ–02 Gestión de Clientes y Vehículos OBJ–03 Gestión de Servicios y Paquetes OBJ–04 Planificación y Gestión de Turnos OBJ–05 Registro de Lavados y Pagos |
-| **Requisitos asociados** | CU-030 – Registrar realización de un Servicio CU-031 – Modificar realización de un Servicio CU-032 – Cancelar realización de un Servicio CU-033 – Consultar lavados realizados CU-034 – Registrar lavado realizado CU-035 – Marcar etapa del servicio finalizada CU-036 – Marcar servicio finalizado CU-037 – Registrar pago recibido CU-038 – Consultar historial de pagos CU-039 – Configurar horarios del lavadero CU-040 – Calcular duración estimada de lavado CU-058 – Recibir confirmación CU-059 – Solicitar hablar con el personal |
-| **Descripción** | El sistema deberá registrar cada lavado realizado, los servicios incluidos, las etapas completadas y los pagos asociados. |
-| **Datos específicos** | Fecha y hora del servicio a realizar Servicios aplicados Tiempo estimado del servicio a realizar Empleado responsable Cliente y vehículo Monto total Estado de la realización del servicio (Pendiente, En curso, Finalizado, Cancelado) Forma de pago (efectivo, anticipado, descuento) Estado del pago (Pendiente / Pagado) |
-| **Estabilidad** | Alta |
-| **Comentarios** | Se integra con el módulo de auditoría y estadísticas para el control financiero. |
+| \*\*Requisitos asociados\*\* | CU-040, CU-041, CU-042, CU-043, CU-044 |
 
-| IRQ–06 | Información de Auditoría |
-| :---: | :---- |
-| **Objetivos asociados** | Todos los objetivos |
-| **Requisitos asociados** | CU-064 – Consultar historial de auditoría CU-065 – Registrar todas las acciones para auditoría |
-| **Descripción** | El sistema deberá mantener un registro de todas las acciones realizadas por los usuarios en el sistema, con detalle de fecha, hora y usuario responsable. |
-| **Datos específicos** | Usuario Correo electrónico del usuario Fecha y hora Acción Tipo de acción (alta, baja, modificación, consulta) Entidad afectada Descripción de la acción Action |
-| **Estabilidad** | Alta |
-| **Comentarios** | Datos críticos para control interno, auditorías y trazabilidad. |
+| \*\*Descripción\*\* | El sistema deberá registrar paquetes que agrupan múltiples servicios con un descuento aplicado. |
 
-| IRQ–07 | Información de Estadísticas y Reportes |
-| :---: | :---- |
-| **Objetivos asociados** | OBJ–07 Módulo de Estadísticas y Reportes |
-| **Requisitos asociados** | CU-060 – Consultar estadísticas básicas CU-061 – Consultar historial de pagos CU-062 – Generar reportes CU-063 – Programar generación automática de reportes periódicos |
-| **Descripción** | El sistema deberá almacenar y generar información estadística basada en los registros de lavados, pagos, servicios y clientes. |
-| **Datos específicos** | Total de lavados realizados Total de ingresos Servicios más solicitados Historial de turnos Clientes más frecuentes Horarios de mayor ocupación Tiempo promedio por lavado |
-| **Estabilidad** | Media |
-| **Comentarios** | Fuente clave para la toma de decisiones estratégicas. |
+| \*\*Datos específicos\*\* | Id, Nombre, Estado (Activo / Inactivo), Precio (calculado), PorcentajeDescuento, TiempoEstimado (suma de servicios), TipoVehiculo, ServiciosIds (lista de IDs de servicios incluidos) |
 
-| IRQ–08 | Información de Seguridad y Sesiones |
-| :---: | :---- |
-| **Objetivos asociados** | OBJ–08 Módulo de Seguridad |
-| **Requisitos asociados** | CU-001 – Iniciar sesión CU-002 – Cerrar sesión CU-003 – Recuperar contraseña CU-004 – Cierre de sesión automático por inactividad |
-| **Descripción** | El sistema deberá gestionar las sesiones de los usuarios, controlando su autenticación, cierre de sesión y recuperación de acceso. |
-| **Datos específicos** | Usuario Fecha y hora de inicio de sesión Fecha y hora de cierre de sesión Estado de sesión Intentos fallidos de inicio Token de recuperación |
-| **Estabilidad** | Alta |
-| **Comentarios** | Vinculado con los módulos de empleados y auditoría para control de accesos. |
+| \*\*Estabilidad\*\* | Alta |
 
-2. ## **Requisitos de Funcionales** {#requisitos-de-funcionales}
+| \*\*Comentarios\*\* | Un paquete debe contener al menos 2 servicios.  Solo puede haber un servicio de cada tipo dentro del paquete.  Todos los servicios deben ser para el mismo tipo de vehículo. |
 
-Debe tener una lista de los requisitos funcionales, expresado en forma tradicional o mediante casos de usos 
 
-* CU-001 \- Iniciar Sesión  
-* CU-001.1 \- Iniciar sesión con correo y contraseña  
-* CU-001.2 \- Iniciar sesión con Google  
-* CU-002 \- Cerrar sesión  
-* CU-003 \- Recuperar contraseña  
-* CU-004 \- Cierre de sesión automático por inactividad  
-* CU-005 \- Registrarse en el sistema  
-* CU-005.1 \- Registrarse por correo  
-* CU-005.2 \- Registrarse por Google  
-* CU-006 \- Modificar empleado  
-* CU-007 \- Eliminar empleado existente  
-* CU-008 \- Consultar empleados  
-* CU-009 \- Asignar roles a empleados  
-* CU-010 \- Autenticar usuario con Google y registrar perfil si es nuevo  
-* CU-011 \- Crear cliente  
-* CU-012 \- Modificar cliente  
-* CU-013 \- Eliminar cliente  
-* CU-014 \- Consultar clientes  
-* CU-015 \- Crear vehículo de cliente  
-* CU-016 \- Modificar vehículo de cliente  
-* CU-017 \- Eliminar vehículo de cliente  
-* CU-018 \- Consultar vehículos de cliente  
-* CU-019 \- Registrarse como cliente por WhatsApp  
-* CU-020 \- Registrar vehículo por WhatsApp  
-* CU-021 \- Identificar si el número de teléfono está registrado  
-* CU-022 \- Crear servicio  
-* CU-023 \- Modificar servicio  
-* CU-024 \- Eliminar servicio  
-* CU-025 \- Consultar servicios  
-* CU-026 \- Crear paquete de servicios  
-* CU-027 \- Modificar paquete de servicios  
-* CU-028 \- Eliminar paquete de servicios  
-* CU-029 \- Consultar paquetes de servicios  
-* CU-030 \- Registrar realización de un Servicio  
-* CU-031 \- Modificar realización de un Servicio  
-* CU-032 \- Cancelar realización de un Servicio  
-* CU-033 \- Consultar servicios realizados  
-* CU-034 \- Iniciar realización del servicio  
-* CU-035 \- Marcar etapa del servicio finalizada  
-* CU-036 \- Marcar servicio finalizado  
-* CU-037 \- Registrar un pago recibido  
-* CU-038 \- Registrar pago anticipado  
-* CU-039 \- Configurar horarios del lavadero  
-* CU-040 \- Calcular duración estimada de lavado  
-* CU-041 \- Registrar turno  
-* CU-042 \- Modificar turno  
-* CU-043 \- Consultar turnos asignados  
-* CU-044 \- Cancelar turno  
-* CU-045 \- Solicitar turno por WhatsApp  
-* CU-046 \- Consultar turnos próximos por WhatsApp  
-* CU-047 \- Cancelar turno por WhatsApp  
-* CU-048 \- Recibir oferta de adelanto de turno  
-* CU-048.1 \- Aceptar adelanto de turno  
-* CU-048.2 \- Rechazar adelanto de turno  
-* CU-049 \- Configurar porcentajes de descuento por cancelación  
-* CU-050 \- Asignar turno automáticamente sin superposición  
-* CU-051 \- Asignar automáticamente un empleado disponible al turno  
-* CU-052 \- Validar disponibilidad posterior al mover un turno  
-* CU-053 \- Reorganizar agenda ante cancelaciones  
-* CU-054 \- Aplicar descuento por cancelación anticipada  
-* CU-055 \- Configurar métodos de notificación  
-* CU-056 \- Enviar notificación por WhatsApp  
-* CU-057 \- Enviar notificación por correo electrónico  
-* CU-058 \- Recibir confirmación  
-* CU-058.1 \- Recibir confirmación de etapa finalizada  
-* CU-058.2 \- Recibir confirmación de lavado finalizado  
-* CU-059 \- Solicitar hablar con el personal  
-* CU-060 \- Consultar estadísticas básicas  
-* CU-061 \- Consultar historial de pagos  
-* CU-062 \- Generar reportes  
-* CU-062.1 \- Exportar reportes a PDF o Excel  
-* CU-063 \- Programar generación automática de reportes periódicos  
-* CU-064 \- Consultar historial de auditoría  
-* CU-065 \- Registrar todas las acciones para auditoría
 
-  1. ## **Diagrama de Casos de Usos**
+| IRQ–08 | Información sobre Lavados |
 
-| ACT–01  | Trabajador |
+| : ---: | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–04 Registro y Gestión de Lavados, OBJ–05 Registro de Pagos |
+
+| \*\*Requisitos asociados\*\* | CU-045 a CU-059 |
+
+| \*\*Descripción\*\* | El sistema deberá almacenar los lavados realizados, incluyendo servicios, empleados asignados, estados, pagos y tiempos. |
+
+| \*\*Datos específicos\*\* | Id, Estado (EnProceso, Realizado, RealizadoParcialmente, Cancelado), ClienteId, ClienteNombre, VehiculoId, VehiculoPatente, VehiculoTipo, ServiciosDetalles (lista con estado de cada servicio y sus etapas), PaquetesIds, EmpleadosAsignadosIds, TiempoEstimado, TiempoInicio, TiempoFinalizacion, FechaCreacion, MotivoCancelacion, Notas, ClienteTrajoId, ClienteRetiraId, EstadoRetiro (Pendiente/Retirado), Precio, Pago (objeto con MontoTotal, MontoPagado, EstadoPago, Pagos lista de pagos individuales) |
+
+| \*\*Estabilidad\*\* | Alta |
+
+| \*\*Comentarios\*\* | La información se actualiza automáticamente al avanzar en las etapas, cancelar servicios o registrar pagos. |
+
+
+
+| IRQ–09 | Información sobre Turnos |
+
+| : ---: | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–06 Planificación y Gestión de Turnos |
+
+| \*\*Requisitos asociados\*\* | CU-066 a CU-075 |
+
+| \*\*Descripción\*\* | El sistema deberá almacenar los turnos asignados a los clientes.  |
+
+| \*\*Datos específicos\*\* | Id, FechaHora, ClienteId, ClienteNombre, VehiculoId, VehiculoPatente, ServiciosIds, DuracionEstimada, Estado (Pendiente, Confirmado, Cancelado, Completado), FechaCreacion |
+
+| \*\*Estabilidad\*\* | Alta |
+
+| \*\*Comentarios\*\* | El sistema valida automáticamente que no haya solapamientos al crear o modificar turnos.  |
+
+
+
+| IRQ–10 | Información de Auditoría |
+
+| :---: | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–07 Registro de Auditoría |
+
+| \*\*Requisitos asociados\*\* | CU-084, CU-085, CU-086, CU-087 |
+
+| \*\*Descripción\*\* | El sistema deberá mantener un registro de todas las acciones realizadas por los usuarios, con detalle de fecha, hora, usuario y entidad afectada.  |
+
+| \*\*Datos específicos\*\* | UserId, UserEmail, Action (descripción de la acción), TargetId (ID del objeto afectado), TargetType (tipo de entidad:  Servicio, Empleado, Cliente, Vehiculo, Lavado, etc.), Timestamp |
+
+| \*\*Estabilidad\*\* | Alta |
+
+| \*\*Comentarios\*\* | Datos críticos para control interno, auditorías y trazabilidad. Se registran automáticamente en cada operación CRUD. |
+
+
+
+| IRQ–11 | Información de Configuración del Sistema |
+
+| : ---: | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–11 Gestión de Configuración del Sistema |
+
+| \*\*Requisitos asociados\*\* | CU-060, CU-061, CU-062, CU-063, CU-064, CU-065 |
+
+| \*\*Descripción\*\* | El sistema deberá almacenar los parámetros de configuración del lavadero. |
+
+| \*\*Datos específicos\*\* | Id, NombreLavadero, Telefono, Email, Ubicacion, HorariosOperacion (diccionario día -> horario), MaxLavadosSimultaneos, ConsiderarEmpleados, TiempoNotificacionAnticipada, TiempoToleranciaMaxima, IntervaloConsultaExceso, DuracionSesionHoras, TiempoInactividadMinutos, PaquetesDescuentoStep, PaquetesDescuentoMin, PaquetesDescuentoMax |
+
+| \*\*Estabilidad\*\* | Alta |
+
+| \*\*Comentarios\*\* | La configuración afecta la operación diaria del lavadero y las validaciones del sistema. |
+
+
+
+| IRQ–12 | Información de Sesiones WhatsApp |
+
+| :---: | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–10 Integración con WhatsApp |
+
+| \*\*Requisitos asociados\*\* | CU-088, CU-089, CU-090, CU-091 |
+
+| \*\*Descripción\*\* | El sistema deberá mantener el estado de las conversaciones con clientes a través de WhatsApp. |
+
+| \*\*Datos específicos\*\* | PhoneNumber, ClienteId (si está autenticado), CurrentState (estado del flujo conversacional), TemporaryData (datos temporales del flujo), LastActivity, CreatedAt |
+
+| \*\*Estabilidad\*\* | Alta |
+
+| \*\*Comentarios\*\* | Las sesiones permiten mantener contexto en las conversaciones y guiar al usuario a través de flujos interactivos. |
+
+
+
+\## \*\*Requisitos Funcionales\*\*
+
+
+
+A continuación se presentan los casos de uso extendidos del sistema. 
+
+
+
+\### \*\*Descripción de Actores\*\*
+
+
+
+| ACT–01 | Trabajador (Empleado) |
+
 | :---- | :---- |
-| **Descripción**  | Se refiere al trabajador del lavadero, siendo así el principal usuario del sistema. El usuario tiene la responsabilidad de gestionar a los clientes y sus vehículos, registrar el uso de uno o más servicios y el registro de turnos, permitiendo así al lavadero llevar un mejor control de los tiempos y registros de lo más solicitado en el lavadero. |
-| **Comentarios**  | Ninguno. |
-|   |  |
-| **ACT–02** | **Administrador** |
-| **Descripción**  | El administrador representa al dueño del lavadero o un trabajador de rango superior. Tiene las mismas capacidades que un usuario aunque sumándole la capacidad de gestionar los servicios que ofrece el lavadero, gestionar al resto de usuarios del sistema y además pueden generar reportes y consultar las estadísticas del lavadero. |
-| **Comentarios**  | Ninguno. |
-|  |  |
 
-| ACT–03  | Cliente |
+| \*\*Descripción\*\* | Usuario operativo del sistema.  Sus funciones principales son la gestión diaria del lavadero:  registro y recepción de clientes, gestión de vehículos, operación del flujo de lavado, registro de pagos y notificación al cliente. |
+
+| \*\*Comentarios\*\* | Ninguno.  |
+
+
+
+| ACT–02 | Administrador |
+
 | :---- | :---- |
-| **Descripción**  | Este actor hace referencia al cliente del lavadero, es el que utiliza los servicios del mismo. Puede registrarse como cliente, registrar sus vehículos y solicitar turnos, todo esto mediante whatsapp. |
-| **Comentarios**  | Ninguno. |
 
-     2. 
+| \*\*Descripción\*\* | Dueño o gerente del lavadero. Hereda todos los permisos del Trabajador, pero posee acceso exclusivo a módulos críticos:  gestión de usuarios (empleados), configuración de servicios y paquetes, auditoría, estadísticas, reportes, planificación de turnos y configuración del sistema. |
 
-| ACT–04  | Sistema |
+| \*\*Comentarios\*\* | Hereda todos los permisos del Trabajador. |
+
+
+
+| ACT–03 | Cliente |
+
 | :---- | :---- |
-| **Descripción**  | Este actor representa el sistema encargado de realizar todas las acciones requeridas por el usuario. |
-| **Comentarios**  | Ninguno. |
 
-## **Caso de Usos del Sistema**
+| \*\*Descripción\*\* | Usuario externo.  Interactúa con el sistema principalmente a través de la integración con WhatsApp (Bot), permitiéndole registrarse, gestionar sus vehículos, solicitar turnos, consultar información del lavadero y comunicarse con el personal. |
 
-| UC–01  | Iniciar Sesión |  |
+| \*\*Comentarios\*\* | Interactúa exclusivamente a través de WhatsApp. |
+
+
+
+| ACT–04 | Sistema |
+
+| :---- | :---- |
+
+| \*\*Descripción\*\* | Actor lógico encargado de ejecutar procesos automáticos en segundo plano, como la validación de webhooks de WhatsApp, el cierre de sesiones inactivas, el cálculo de tiempos estimados, la reorganización de agenda, el registro de auditoría y el envío de notificaciones automáticas. |
+
+| \*\*Comentarios\*\* | Actor lógico sin intervención humana directa. |
+
+
+
+---
+
+
+
+\## \*\*Casos de Uso del Sistema\*\*
+
+
+
+\### \*\*Módulo:  Seguridad\*\*
+
+
+
+---
+
+
+
+\### CU-001 - Iniciar Sesión
+
+
+
+| UC–001 | Iniciar Sesión |  |
+
+| :---- | :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–09 Gestión de Seguridad |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados |  |
+
+| \*\*Descripción\*\* | El usuario accede al sistema mediante sus credenciales registradas. Este caso de uso es la puerta de entrada al sistema y verifica que el usuario tenga estado activo. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener una cuenta registrada en el sistema.  |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la página de inicio de sesión.  |
+
+|  | 2 | El sistema muestra un formulario con opciones de inicio de sesión:  correo/contraseña o Google. |
+
+|  | 3 | El usuario selecciona el método de autenticación. |
+
+|  | 4 | Se ejecuta el caso de uso correspondiente (CU-001.1 o CU-001.2). |
+
+|  | 5 | El sistema verifica que el usuario esté activo en el sistema. |
+
+|  | 6 | El sistema crea una sesión autenticada con cookies seguras. |
+
+|  | 7 | El sistema redirige al usuario al dashboard principal. |
+
+|  | 8 | El sistema registra el evento de inicio de sesión en auditoría. |
+
+| \*\*Postcondición\*\* | El usuario ha iniciado sesión correctamente y tiene acceso al sistema según su rol. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si el usuario está inactivo, el sistema muestra mensaje de cuenta deshabilitada y no permite el acceso. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 4-7 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Diaria (múltiples veces) |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | La autenticación se gestiona a través de Firebase Authentication.  |  |
+
+
+
+---
+
+
+
+\### CU-001.1 - Iniciar sesión con correo y contraseña
+
+
+
+| UC–001.1 | Iniciar sesión con correo y contraseña |  |
+
+| :---- | :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–09 Gestión de Seguridad |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados |  |
+
+| \*\*Descripción\*\* | Extiende de CU-001. El usuario ingresa su correo electrónico y contraseña para validar su identidad mediante Firebase Authentication. Se verifica que el correo esté verificado antes de permitir el acceso. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener una cuenta registrada con correo y contraseña. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario ingresa su correo electrónico en el formulario.  |
+
+|  | 2 | El usuario ingresa su contraseña. |
+
+|  | 3 | El usuario hace clic en el botón "Iniciar Sesión".  |
+
+|  | 4 | El sistema envía las credenciales a Firebase Authentication. |
+
+|  | 5 | Firebase valida las credenciales y retorna el token de autenticación. |
+
+|  | 6 | El sistema verifica que el email esté verificado.  |
+
+|  | 7 | El sistema continúa con el paso 5 del CU-001. |
+
+| \*\*Postcondición\*\* | Las credenciales han sido validadas correctamente. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si las credenciales son inválidas, el sistema muestra "Correo o contraseña incorrectos". |
+
+|  | 6a | Si el email no está verificado, el sistema muestra mensaje indicando que debe verificar su correo y ofrece reenviar el email de verificación. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 4-5 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Diaria |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Ninguno. |  |
+
+
+
+---
+
+
+
+\### CU-001.2 - Iniciar sesión con Google
+
+
+
+| UC–001.2 | Iniciar sesión con Google |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–09 Gestión de Seguridad |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados |  |
+
+| \*\*Descripción\*\* | Extiende de CU-001. El usuario se autentica mediante Google Authentication, evitando la necesidad de contraseña propia. Si es un usuario nuevo, se ejecuta CU-011 para crear automáticamente su perfil.  |  |
+
+| \*\*Precondición\*\* | El usuario debe tener una cuenta de Google válida. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario hace clic en el botón "Continuar con Google". |
+
+|  | 2 | El sistema redirige al flujo de autenticación OAuth de Google. |
+
+|  | 3 | El usuario selecciona su cuenta de Google y autoriza el acceso.  |
+
+|  | 4 | Google retorna el token de autenticación al sistema. |
+
+|  | 5 | El sistema verifica si el usuario existe en la base de datos. |
+
+|  | 6a | Si existe, continúa con el paso 5 del CU-001. |
+
+|  | 6b | Si no existe, se ejecuta CU-011 para registrar el nuevo usuario. |
+
+| \*\*Postcondición\*\* | El usuario ha sido autenticado mediante Google.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 3a | Si el usuario cancela la autenticación de Google, se retorna al formulario de login. |
+
+|  | 4a | Si hay un error en la autenticación de Google, el sistema muestra el mensaje de error correspondiente. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-4 | 3 segundos |
+
+| \*\*Frecuencia\*\* | Diaria |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | El email de Google se considera verificado automáticamente. |  |
+
+
+
+---
+
+
+
+\### CU-002 - Cerrar sesión
+
+
+
+| UC–002 | Cerrar sesión |  |
+
 | :---- | :---- | :---- |
-| **Objetivos**  **asociados**  | OBJ–08 Gestionar Roles y Permisos |  |
-| **Requisitos**  **asociados**  | IRQ–08 Información sobre Roles y Permisos |  |
-| **Descripción**  | Un empleado o directivo desea acceder al sistema ingresando sus credenciales de usuario. |  |
-| **Precondición**  | El usuario debe tener una cuenta registrada en el sistema. |  |
-| **Secuencia**  | **Paso**  | **Acción**  |
-| **normal**  | 1  | El caso de uso comienza cuando el usuario accede a la página de inicio de sesión. |
-|  | 2  | El sistema muestra un formulario solicitando el correo electrónico y la contraseña del usuario. |
-|  | 3  | El usuario ingresa sus credenciales y envía la información. |
-|  | 4  | El sistema verifica que las credenciales sean correctas. |
-|  | 5  | El sistema otorga acceso al usuario y le redirige a la pantalla principal. |
-| **Postcondición**  | El usuario ha iniciado sesión correctamente.  |  |
-| **Excepciones**  | **Paso**  | **Acción**  |
-|  | 4.a  | Si las credenciales no son válidas, el sistema informa el error y vuelve al formulario, solicitando que se ingresen nuevamente los datos. |
-|  | 4.b | Si el usuario ingresa una contraseña incorrecta más de tres veces, el sistema bloquea temporalmente la cuenta y ofrece un enlace para restablecer la contraseña. |
-| **Rendimiento**  | **Paso**  | **Cota de tiempo**  |
-|  | 4  | 1 segundo  |
-| **Frecuencia**  | Diaria |  |
-| **Estabilidad**  | Alta  |  |
-| **Comentarios**  |  |  |
 
-| UC–02  |  Cerrar Sesión |  |
+| \*\*Objetivos asociados\*\* | OBJ–09 Gestión de Seguridad |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados |  |
+
+| \*\*Descripción\*\* | El usuario cierra su sesión de manera manual desde la aplicación. Se invalida la sesión actual y se redirige a la página de login. |  |
+
+| \*\*Precondición\*\* | El usuario debe haber iniciado sesión previamente en el sistema. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario hace clic en el botón o enlace "Cerrar Sesión" del menú. |
+
+|  | 2 | El sistema invalida la sesión actual eliminando las cookies de autenticación. |
+
+|  | 3 | El sistema cierra la sesión en Firebase Authentication. |
+
+|  | 4 | El sistema redirige al usuario a la página de inicio de sesión. |
+
+|  | 5 | El sistema registra el evento de cierre de sesión en auditoría.  |
+
+| \*\*Postcondición\*\* | El usuario ha cerrado sesión exitosamente y no puede acceder a páginas protegidas sin autenticarse nuevamente. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | - | - |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-4 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Diaria |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Ninguno. |  |
+
+
+
+---
+
+
+
+\### CU-003 - Recuperar contraseña
+
+
+
+| UC–003 | Recuperar contraseña |  |
+
 | :---- | :---- | :---- |
-| **Objetivos**  **asociados**  | OBJ–08 Gestionar Roles y Permisos |  |
-| **Requisitos**  **asociados**  | IRQ–08 Información sobre Roles y Permisos |  |
-| **Descripción**  | Un usuario que ha iniciado sesión desea cerrar su sesión en el sistema. |  |
-| **Precondición**  | El usuario debe haber iniciado sesión previamente en el sistema. |  |
-| **Secuencia**  | **Paso**  | **Acción**  |
-| **normal**  | 1  | El caso de uso comienza cuando el usuario accede a la opción de cerrar sesión. |
-|  | 2  | El sistema solicita confirmación para cerrar sesión. |
-|  | 3  | El usuario confirma su intención de cerrar sesión. |
-|  | 4  | El sistema cierra la sesión del usuario y lo redirige a la página de inicio. |
-| **Postcondición**  | El usuario ha cerrado sesión exitosamente. |  |
-| **Excepciones**  | **Paso**  | **Acción**  |
-|  | \- | \- |
-| **Rendimiento**  | **Paso**  | **Cota de tiempo**  |
-|  | 4  | 1 segundo  |
-| **Frecuencia**  | Diaria |  |
-| **Estabilidad**  | Alta  |  |
-| **Comentarios**  |  |  |
 
-| UC–28 | Consultar auditoría |  |
+| \*\*Objetivos asociados\*\* | OBJ–09 Gestión de Seguridad |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados |  |
+
+| \*\*Descripción\*\* | El sistema permite al usuario recuperar su contraseña mediante un enlace enviado a su correo electrónico a través de Firebase Authentication. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener una cuenta registrada con correo y contraseña. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario hace clic en "¿Olvidaste tu contraseña?" en la página de login. |
+
+|  | 2 | El sistema muestra un formulario solicitando el correo electrónico.  |
+
+|  | 3 | El usuario ingresa su correo electrónico y hace clic en "Enviar". |
+
+|  | 4 | El sistema solicita a Firebase Authentication el envío del correo de recuperación. |
+
+|  | 5 | Firebase envía un correo con el enlace para restablecer la contraseña. |
+
+|  | 6 | El sistema muestra un mensaje de confirmación indicando que se envió el correo. |
+
+|  | 7 | El usuario accede al enlace del correo y establece una nueva contraseña. |
+
+| \*\*Postcondición\*\* | El usuario ha restablecido su contraseña y puede iniciar sesión con la nueva.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si el correo no está registrado, Firebase no envía el correo pero el sistema muestra el mensaje de éxito por seguridad (no revelar si el correo existe). |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 4-5 | 5 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | El enlace de recuperación es gestionado completamente por Firebase Authentication. |  |
+
+
+
+---
+
+
+
+\### CU-004 - Cierre de sesión automático por inactividad
+
+
+
+| UC–004 | Cierre de sesión automático por inactividad |  |
+
 | :---- | :---- | :---- |
-| **Objetivos**  **asociados**  | OBJ–07 Consultar auditorías |  |
-| **Requisitos**  **asociados**  | IRQ–07 Información sobre Auditorías |  |
-| **Descripción**  | El Administrador puede consultar los registros de auditoría. |  |
-| **Precondición**  | El sistema debe estar registrando las interacciones de los usuarios de forma continua. |  |
-| **Secuencia**  | **Paso**  | **Acción**  |
-| **normal**  | 1  | El caso de uso comienza cuando el Director del Área de Modelado ingresa a la pestaña de Auditoría. |
-|  | 2  | El sistema muestra en pantalla una tabla con los logs de auditorías realizadas. Ofrece filtros: por eventos, por fecha, por hora. |
-|  | 3  | El Director del Área de Modelado selecciona los filtros necesarios. |
-|  | 4 | El sistema muestra la tabla de logs de auditoría según los filtros seleccionados. |
-|  | 5 | El administrador regresa al paso 2 y termina el caso de uso. |
-| **Postcondición**  | Se consultó los logs de auditoría. |  |
-| **Excepciones**  | **Paso**  | **Acción**  |
-|  | 4.a | Si ocurre un error al consultar los logs de auditoría, el sistema informa esto y su posible solución. Vuelve al paso 2\. |
-|  | 4.b | Si no hay acciones registradas en el periodo seleccionado, el sistema informa que no se encontraron auditorías en ese rango. |
-| **Rendimiento**  | **Paso**  | **Cota de tiempo**  |
-|  | 4  | 1 segundo  |
-| **Frecuencia**  | Variable |  |
-| **Estabilidad**  | Alta  |  |
-| **Comentarios**  |  |  |
 
-## **Requisitos No funcionales** {#requisitos-no-funcionales}
+| \*\*Objetivos asociados\*\* | OBJ–09 Gestión de Seguridad |  |
 
-| NFR–01  | Copias de seguridad  |
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados, IRQ–11 Información de Configuración |  |
+
+| \*\*Descripción\*\* | El sistema cierra automáticamente la sesión de los usuarios tras un periodo prolongado de inactividad configurable desde el módulo de configuración. |  |
+
+| \*\*Precondición\*\* | El usuario tiene una sesión activa y no ha realizado acciones durante el tiempo configurado. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El sistema monitorea la actividad del usuario en la aplicación. |
+
+|  | 2 | El sistema detecta que ha transcurrido el tiempo máximo de inactividad configurado. |
+
+|  | 3 | El sistema invalida la sesión del usuario automáticamente. |
+
+|  | 4 | Cuando el usuario intenta realizar una acción, es redirigido a la página de login.  |
+
+|  | 5 | El sistema muestra un mensaje indicando que la sesión expiró por inactividad. |
+
+| \*\*Postcondición\*\* | La sesión del usuario ha sido cerrada y debe autenticarse nuevamente.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | - | - |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 3 | Inmediato |
+
+| \*\*Frecuencia\*\* | Variable |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | El tiempo de inactividad es configurable por el administrador en CU-063. |  |
+
+
+
+---
+
+
+
+\### \*\*Módulo:  Gestión de Empleados\*\*
+
+
+
+---
+
+
+
+\### CU-005 - Registrarse en el sistema
+
+
+
+| UC–005 | Registrarse en el sistema |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–01 Gestión de Empleados, OBJ–09 Gestión de Seguridad |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados |  |
+
+| \*\*Descripción\*\* | Un nuevo usuario crea su perfil en el sistema, quedando registrado como empleado con rol por defecto de 'Empleado'.  Requiere verificación de correo electrónico.  |  |
+
+| \*\*Precondición\*\* | El correo electrónico no debe estar registrado previamente. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la página de registro.  |
+
+|  | 2 | El sistema muestra opciones de registro:  correo/contraseña o Google. |
+
+|  | 3 | El usuario selecciona el método de registro. |
+
+|  | 4 | Se ejecuta el caso de uso correspondiente (CU-005.1 o CU-005.2). |
+
+|  | 5 | El sistema crea el registro del empleado con rol "Empleado" y estado "Activo".  |
+
+|  | 6 | El sistema registra la acción en auditoría. |
+
+|  | 7 | El sistema muestra mensaje de éxito.  |
+
+| \*\*Postcondición\*\* | El nuevo empleado está registrado y puede acceder al sistema tras verificar su email (si aplica). |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si el correo ya existe, el sistema informa el error.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 4-5 | 3 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Ninguno. |  |
+
+
+
+---
+
+
+
+\### CU-005.1 - Registrarse por correo
+
+
+
+| UC–005.1 | Registrarse por correo |  |
+
+| :---- | :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–01 Gestión de Empleados, OBJ–09 Gestión de Seguridad |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados |  |
+
+| \*\*Descripción\*\* | Extiende de CU-005. El usuario completa un formulario con correo y contraseña para generar su cuenta. Se envía un correo de verificación que debe ser confirmado antes de poder iniciar sesión.  |  |
+
+| \*\*Precondición\*\* | Ninguna adicional. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El sistema muestra formulario con campos:  Nombre, Apellido, Correo, Contraseña, Confirmar Contraseña. |
+
+|  | 2 | El usuario completa todos los campos.  |
+
+|  | 3 | El sistema valida que las contraseñas coincidan y cumplan requisitos de seguridad. |
+
+|  | 4 | El sistema crea la cuenta en Firebase Authentication. |
+
+|  | 5 | Firebase envía un correo de verificación al usuario.  |
+
+|  | 6 | El sistema muestra mensaje indicando que debe verificar su correo para iniciar sesión.  |
+
+|  | 7 | Se continúa con el paso 5 del CU-005. |
+
+| \*\*Postcondición\*\* | La cuenta está creada pero requiere verificación de email.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 3a | Si las contraseñas no coinciden, el sistema muestra el error.  |
+
+|  | 3b | Si la contraseña no cumple requisitos, el sistema indica los requisitos faltantes. |
+
+|  | 4a | Si el correo ya existe en Firebase, el sistema informa el error. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 4-5 | 3 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Ninguno. |  |
+
+
+
+---
+
+
+
+\### CU-005.2 - Registrarse por Google
+
+
+
+| UC–005.2 | Registrarse por Google |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–01 Gestión de Empleados, OBJ–09 Gestión de Seguridad |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados |  |
+
+| \*\*Descripción\*\* | Extiende de CU-005. El registro se realiza mediante autenticación directa con Google, verificando automáticamente el correo electrónico.  |  |
+
+| \*\*Precondición\*\* | El usuario debe tener una cuenta de Google válida. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario hace clic en "Registrarse con Google".  |
+
+|  | 2 | El sistema redirige al flujo de autenticación OAuth de Google. |
+
+|  | 3 | El usuario selecciona su cuenta de Google y autoriza el acceso. |
+
+|  | 4 | Google retorna los datos del usuario (nombre, apellido, correo). |
+
+|  | 5 | El sistema verifica que el correo no esté registrado. |
+
+|  | 6 | Se continúa con el paso 5 del CU-005 usando los datos de Google. |
+
+| \*\*Postcondición\*\* | La cuenta está creada y verificada automáticamente. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 3a | Si el usuario cancela, se retorna al formulario de registro. |
+
+|  | 5a | Si el correo ya existe, el sistema informa que debe iniciar sesión en lugar de registrarse.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-4 | 3 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | El email de Google se considera verificado automáticamente.  |  |
+
+
+
+---
+
+
+
+\### CU-006 - Modificar empleado
+
+
+
+| UC–006 | Modificar empleado |  |
+
+| :---- | :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–01 Gestión de Empleados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados |  |
+
+| \*\*Descripción\*\* | El administrador actualiza la información de un empleado existente, incluyendo nombre completo y rol asignado. |  |
+
+| \*\*Precondición\*\* | El usuario actual debe tener rol de Administrador. El empleado debe existir en el sistema. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-009 Consultar empleados. |
+
+|  | 2 | El administrador selecciona el empleado a modificar haciendo clic en el botón de edición. |
+
+|  | 3 | El sistema muestra el formulario de edición con los datos actuales:  Nombre, Apellido, Rol.  |
+
+|  | 4 | El administrador modifica los campos deseados. |
+
+|  | 5 | El administrador hace clic en "Guardar".  |
+
+|  | 6 | El sistema valida los datos ingresados.  |
+
+|  | 7 | El sistema actualiza el registro del empleado en la base de datos.  |
+
+|  | 8 | El sistema muestra un mensaje de éxito. |
+
+|  | 9 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | Los datos del empleado han sido actualizados.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 6a | Si hay errores de validación, el sistema muestra los errores específicos. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 7 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-009 Consultar empleados. |  |
+
+
+
+---
+
+
+
+\### CU-007 - Desactivar empleado
+
+
+
+| UC–007 | Desactivar empleado |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–01 Gestión de Empleados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados |  |
+
+| \*\*Descripción\*\* | El administrador desactiva a un empleado del sistema. Un empleado desactivado no puede iniciar sesión hasta ser reactivado. |  |
+
+| \*\*Precondición\*\* | El usuario actual debe tener rol de Administrador. El empleado debe existir y estar activo. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-009 Consultar empleados. |
+
+|  | 2 | El administrador selecciona el empleado a desactivar.  |
+
+|  | 3 | El sistema muestra un diálogo de confirmación con mensaje de advertencia. |
+
+|  | 4 | El administrador confirma la desactivación. |
+
+|  | 5 | El sistema cambia el estado del empleado a "Inactivo".  |
+
+|  | 6 | El sistema muestra un mensaje de éxito. |
+
+|  | 7 | El sistema registra la acción en auditoría.  |
+
+| \*\*Postcondición\*\* | El empleado ha sido desactivado y no puede acceder al sistema. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si el administrador cancela, se aborta la operación. |
+
+|  | 5a | Si el empleado es el único administrador activo, el sistema impide la desactivación mostrando mensaje de error. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 5 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-009 Consultar empleados. La desactivación es lógica, no física. |  |
+
+
+
+---
+
+
+
+\### CU-008 - Reactivar empleado
+
+
+
+| UC–008 | Reactivar empleado |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–01 Gestión de Empleados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados |  |
+
+| \*\*Descripción\*\* | El administrador reactiva a un empleado previamente desactivado, permitiéndole nuevamente iniciar sesión en el sistema. |  |
+
+| \*\*Precondición\*\* | El usuario actual debe tener rol de Administrador. El empleado debe existir y estar inactivo. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-009 Consultar empleados (filtrando por inactivos). |
+
+|  | 2 | El administrador selecciona el empleado a reactivar. |
+
+|  | 3 | El sistema muestra un diálogo de confirmación.  |
+
+|  | 4 | El administrador confirma la reactivación. |
+
+|  | 5 | El sistema cambia el estado del empleado a "Activo". |
+
+|  | 6 | El sistema muestra un mensaje de éxito. |
+
+|  | 7 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El empleado ha sido reactivado y puede acceder nuevamente al sistema. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si el administrador cancela, se aborta la operación.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 5 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-009 Consultar empleados. |  |
+
+
+
+---
+
+
+
+\### CU-009 - Consultar empleados
+
+
+
+| UC–009 | Consultar empleados |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–01 Gestión de Empleados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados |  |
+
+| \*\*Descripción\*\* | El administrador visualiza la lista de empleados registrados en el sistema con opciones de filtrado por estado y rol, ordenamiento y paginación. |  |
+
+| \*\*Precondición\*\* | El usuario actual debe tener rol de Administrador. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de gestión de empleados desde el menú.  |
+
+|  | 2 | El sistema obtiene la lista de empleados aplicando filtros por defecto (Activos). |
+
+|  | 3 | El sistema muestra la tabla de empleados con columnas: Nombre, Apellido, Correo, Rol, Estado.  |
+
+|  | 4 | El administrador puede aplicar filtros por estado (Activo/Inactivo) y/o rol (Administrador/Empleado). |
+
+|  | 5 | El administrador puede ordenar por cualquier columna haciendo clic en el encabezado.  |
+
+|  | 6 | El administrador puede navegar entre páginas usando los controles de paginación. |
+
+|  | 7 | El sistema actualiza la vista según los criterios seleccionados. |
+
+| \*\*Postcondición\*\* | El administrador visualiza la lista de empleados según los filtros aplicados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si no hay empleados, el sistema muestra un mensaje indicándolo. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-3 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Por defecto muestra solo empleados activos. |  |
+
+
+
+---
+
+
+
+\### CU-010 - Asignar roles a empleados
+
+
+
+| UC–010 | Asignar roles a empleados |  |
+
+| :---- | :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–01 Gestión de Empleados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados |  |
+
+| \*\*Descripción\*\* | El administrador define los roles de los empleados (Empleado o Administrador) para determinar sus permisos en el sistema. |  |
+
+| \*\*Precondición\*\* | El usuario actual debe tener rol de Administrador. El empleado debe existir en el sistema. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la edición del empleado (incluye CU-006). |
+
+|  | 2 | El sistema muestra el campo de selección de Rol con las opciones disponibles. |
+
+|  | 3 | El administrador selecciona el nuevo rol (Administrador o Empleado). |
+
+|  | 4 | El administrador guarda los cambios.  |
+
+|  | 5 | El sistema valida que quede al menos un administrador activo si se está degradando un administrador. |
+
+|  | 6 | El sistema actualiza el rol del empleado.  |
+
+|  | 7 | El sistema registra la acción en auditoría con detalle del cambio de rol. |
+
+| \*\*Postcondición\*\* | El rol del empleado ha sido actualizado y los permisos se aplican inmediatamente. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si no quedaría ningún administrador activo, el sistema impide el cambio y muestra mensaje de error. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Los roles disponibles son: Administrador y Empleado. Este caso de uso se realiza a través de CU-006. |  |
+
+
+
+---
+
+
+
+\### CU-011 - Autenticar usuario con Google y registrar perfil si es nuevo
+
+
+
+| UC–011 | Autenticar usuario con Google y registrar perfil si es nuevo |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–01 Gestión de Empleados, OBJ–09 Gestión de Seguridad |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–01 Información sobre Empleados |  |
+
+| \*\*Descripción\*\* | El sistema valida un inicio de sesión por Google y, si no existe el usuario, lo registra automáticamente con los datos del perfil de Google y rol por defecto "Empleado". |  |
+
+| \*\*Precondición\*\* | El usuario ha completado la autenticación de Google exitosamente (desde CU-001. 2). |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El sistema recibe los datos del perfil de Google (UID, nombre, apellido, correo). |
+
+|  | 2 | El sistema busca en la base de datos un empleado con el UID de Google.  |
+
+|  | 3 | Si no existe, el sistema crea un nuevo registro de empleado. |
+
+|  | 4 | El sistema asigna los datos del perfil de Google:  Nombre, Apellido, Correo.  |
+
+|  | 5 | El sistema asigna el rol por defecto "Empleado" y estado "Activo".  |
+
+|  | 6 | El sistema establece EmailVerificado como verdadero. |
+
+|  | 7 | El sistema guarda el nuevo empleado en la base de datos. |
+
+|  | 8 | El sistema registra la acción en auditoría como "Registro automático por Google". |
+
+| \*\*Postcondición\*\* | El usuario existe en el sistema y puede continuar con el inicio de sesión. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si el usuario ya existe, el sistema simplemente continúa con el flujo de login. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 3-7 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Este caso de uso es ejecutado automáticamente por el sistema. |  |
+
+
+
+---
+
+
+
+\### \*\*Módulo:  Gestión de Clientes y Vehículos\*\*
+
+
+
+---
+
+
+
+\### CU-012 - Crear cliente
+
+
+
+| UC–012 | Crear cliente |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes |  |
+
+| \*\*Descripción\*\* | El personal del lavadero registra un nuevo cliente en el sistema con sus datos personales:  tipo de documento, número de documento, nombre, apellido, teléfono y correo electrónico.  |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado con rol de Trabajador o Administrador. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la sección de gestión de clientes desde el menú. |
+
+|  | 2 | El usuario hace clic en el botón "Nuevo Cliente".  |
+
+|  | 3 | El sistema muestra un formulario con campos: Tipo Documento, Número Documento, Nombre, Apellido, Teléfono, Email. |
+
+|  | 4 | El sistema carga dinámicamente los tipos de documento disponibles. |
+
+|  | 5 | El usuario selecciona el tipo de documento. |
+
+|  | 6 | El sistema actualiza la validación del número de documento según el formato del tipo seleccionado. |
+
+|  | 7 | El usuario completa todos los campos del formulario. |
+
+|  | 8 | El usuario hace clic en "Guardar". |
+
+|  | 9 | El sistema valida los datos (formato de documento, email válido si se ingresa, teléfono único). |
+
+|  | 10 | El sistema crea el cliente con estado "Activo".  |
+
+|  | 11 | El sistema muestra un mensaje de éxito. |
+
+|  | 12 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El cliente está registrado en el sistema.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 9a | Si el número de documento ya existe para ese tipo, el sistema informa el error. |
+
+|  | 9b | Si el teléfono ya está registrado, el sistema informa el error. |
+
+|  | 9c | Si el formato del documento no es válido, el sistema muestra el error. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 10 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Los vehículos se asocian al cliente mediante casos de uso separados (CU-023). |  |
+
+
+
+---
+
+
+
+\### CU-013 - Modificar cliente
+
+
+
+| UC–013 | Modificar cliente |  |
+
+| :---- | :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes |  |
+
+| \*\*Descripción\*\* | El personal del lavadero actualiza la información de un cliente existente.  |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado.  El cliente debe existir en el sistema. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-016 Consultar clientes. |
+
+|  | 2 | El usuario selecciona el cliente a modificar haciendo clic en el botón de edición. |
+
+|  | 3 | El sistema muestra el formulario de edición con los datos actuales.  |
+
+|  | 4 | El usuario modifica los campos deseados (Nombre, Apellido, Teléfono, Email). |
+
+|  | 5 | El usuario hace clic en "Guardar".  |
+
+|  | 6 | El sistema valida los datos modificados. |
+
+|  | 7 | El sistema actualiza el registro del cliente en la base de datos.  |
+
+|  | 8 | El sistema muestra un mensaje de éxito. |
+
+|  | 9 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | Los datos del cliente han sido actualizados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 6a | Si hay errores de validación, el sistema muestra los errores específicos. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 7 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-016 Consultar clientes. El tipo y número de documento no son editables. |  |
+
+
+
+---
+
+
+
+\### CU-014 - Desactivar cliente
+
+
+
+| UC–014 | Desactivar cliente |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes, IRQ–03 Información sobre Vehículos |  |
+
+| \*\*Descripción\*\* | El administrador desactiva un cliente del sistema. La desactivación es lógica y también desactiva en cascada los vehículos asociados exclusivamente a ese cliente. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. El cliente debe existir y estar activo. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-016 Consultar clientes. |
+
+|  | 2 | El administrador selecciona el cliente a desactivar.  |
+
+|  | 3 | El sistema verifica si el cliente tiene vehículos asociados exclusivamente. |
+
+|  | 4 | El sistema muestra un diálogo de confirmación con advertencia sobre vehículos que serán desactivados. |
+
+|  | 5 | El administrador confirma la desactivación. |
+
+|  | 6 | El sistema cambia el estado del cliente a "Inactivo". |
+
+|  | 7 | El sistema desactiva en cascada los vehículos que solo tenían a este cliente como dueño. |
+
+|  | 8 | El sistema muestra un mensaje de éxito. |
+
+|  | 9 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El cliente y sus vehículos exclusivos han sido desactivados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si el administrador cancela, se aborta la operación. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6-7 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-016 Consultar clientes. Los vehículos compartidos con otros clientes no se desactivan.  |  |
+
+
+
+---
+
+
+
+| UC–015 | Reactivar cliente |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes, IRQ–03 Información sobre Vehículos |  |
+
+| \*\*Descripción\*\* | El administrador reactiva un cliente previamente desactivado. La reactivación también reactiva en cascada los vehículos que fueron desactivados junto con el cliente.  |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. El cliente debe existir y estar inactivo. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-016 Consultar clientes (filtrando por inactivos). |
+
+|  | 2 | El administrador selecciona el cliente a reactivar. |
+
+|  | 3 | El sistema muestra un diálogo de confirmación indicando los vehículos que serán reactivados. |
+
+|  | 4 | El administrador confirma la reactivación.  |
+
+|  | 5 | El sistema cambia el estado del cliente a "Activo". |
+
+|  | 6 | El sistema reactiva en cascada los vehículos que fueron desactivados junto con el cliente. |
+
+|  | 7 | El sistema muestra un mensaje de éxito. |
+
+|  | 8 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El cliente y sus vehículos han sido reactivados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si el administrador cancela, se aborta la operación. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 5-6 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-016 Consultar clientes. |  |
+
+
+
+---
+
+
+
+\### CU-016 - Consultar clientes
+
+
+
+| UC–016 | Consultar clientes |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes |  |
+
+| \*\*Descripción\*\* | El personal consulta la lista de clientes registrados en el sistema con opciones de filtrado por estado, ordenamiento y paginación. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado.  |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la sección de gestión de clientes desde el menú.  |
+
+|  | 2 | El sistema obtiene la lista de clientes aplicando filtros por defecto (Activos). |
+
+|  | 3 | El sistema muestra la tabla de clientes con columnas:  Nombre Completo, Documento, Teléfono, Email, Estado. |
+
+|  | 4 | El usuario puede aplicar filtros por estado (Activo/Inactivo). |
+
+|  | 5 | El usuario puede ordenar por cualquier columna haciendo clic en el encabezado.  |
+
+|  | 6 | El usuario puede navegar entre páginas usando los controles de paginación. |
+
+|  | 7 | El sistema actualiza la vista según los criterios seleccionados. |
+
+| \*\*Postcondición\*\* | El usuario visualiza la lista de clientes según los filtros aplicados.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si no hay clientes, el sistema muestra un mensaje indicándolo. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-3 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Por defecto muestra solo clientes activos. |  |
+
+
+
+---
+
+
+
+\### CU-017 - Buscar clientes
+
+
+
+| UC–017 | Buscar clientes |  |
+
+| :---- | :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes |  |
+
+| \*\*Descripción\*\* | El personal busca clientes por nombre, apellido, documento, teléfono o email. La búsqueda se realiza en tiempo real con resultados paginados. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la sección de gestión de clientes.  |
+
+|  | 2 | El usuario ingresa texto en el campo de búsqueda. |
+
+|  | 3 | El sistema busca coincidencias en:  nombre, apellido, nombre completo, número de documento, teléfono y email. |
+
+|  | 4 | El sistema muestra los resultados filtrados en tiempo real. |
+
+|  | 5 | El usuario puede seleccionar un cliente de los resultados. |
+
+| \*\*Postcondición\*\* | El usuario visualiza los clientes que coinciden con el criterio de búsqueda. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si no hay coincidencias, el sistema muestra mensaje "Sin resultados".  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 3-4 | 500ms |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | La búsqueda es insensible a mayúsculas/minúsculas.  |  |
+
+
+
+---
+
+
+
+\### CU-018 - Crear vehículo
+
+
+
+| UC–018 | Crear vehículo |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–03 Información sobre Vehículos, IRQ–06 Información sobre Tipos de Vehículo |  |
+
+| \*\*Descripción\*\* | El personal registra un nuevo vehículo con patente, tipo de vehículo, marca, modelo y color.  Opcionalmente puede asociarlo a un cliente existente. Se genera una clave de asociación para permitir que otros clientes vinculen el vehículo. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado.  Deben existir tipos de vehículo activos. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la sección de gestión de vehículos o a la edición de un cliente. |
+
+|  | 2 | El usuario hace clic en "Nuevo Vehículo".  |
+
+|  | 3 | El sistema muestra un formulario con campos: Patente, Tipo Vehículo, Marca, Modelo, Color.  |
+
+|  | 4 | El sistema carga los tipos de vehículo activos disponibles. |
+
+|  | 5 | El usuario selecciona el tipo de vehículo. |
+
+|  | 6 | El sistema ofrece autocompletado de marcas desde la API CarQuery. |
+
+|  | 7 | El usuario selecciona o ingresa la marca. |
+
+|  | 8 | El sistema ofrece autocompletado de modelos según la marca seleccionada. |
+
+|  | 9 | El usuario completa todos los campos del formulario. |
+
+|  | 10 | El usuario hace clic en "Guardar". |
+
+|  | 11 | El sistema valida que la patente no esté registrada para otro vehículo activo. |
+
+|  | 12 | El sistema genera una clave de asociación aleatoria y la almacena como hash SHA256. |
+
+|  | 13 | El sistema crea el vehículo con estado "Activo".  |
+
+|  | 14 | El sistema muestra un mensaje de éxito con la clave de asociación generada. |
+
+|  | 15 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El vehículo está registrado en el sistema con su clave de asociación.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 11a | Si la patente ya existe para un vehículo activo, el sistema informa el error y sugiere vincular el vehículo existente. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 12-13 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | La clave de asociación debe mostrarse al usuario para que pueda compartirla con otros dueños del vehículo.  |  |
+
+
+
+---
+
+
+
+\### CU-019 - Modificar vehículo
+
+
+
+| UC–019 | Modificar vehículo |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–03 Información sobre Vehículos |  |
+
+| \*\*Descripción\*\* | El personal actualiza los datos editables de un vehículo (modelo y color). La patente, tipo de vehículo y marca no son editables una vez registrado el vehículo.  |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado.  El vehículo debe existir en el sistema. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-021 Consultar vehículos. |
+
+|  | 2 | El usuario selecciona el vehículo a modificar haciendo clic en el botón de edición. |
+
+|  | 3 | El sistema muestra el formulario de edición con los datos actuales.  |
+
+|  | 4 | El sistema muestra los campos no editables (Patente, Tipo, Marca) como solo lectura. |
+
+|  | 5 | El usuario modifica los campos editables (Modelo, Color). |
+
+|  | 6 | El usuario hace clic en "Guardar".  |
+
+|  | 7 | El sistema valida los datos modificados. |
+
+|  | 8 | El sistema actualiza el registro del vehículo en la base de datos. |
+
+|  | 9 | El sistema muestra un mensaje de éxito. |
+
+|  | 10 | El sistema registra la acción en auditoría.  |
+
+| \*\*Postcondición\*\* | Los datos editables del vehículo han sido actualizados.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 7a | Si hay errores de validación, el sistema muestra los errores específicos. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 8 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-021 Consultar vehículos.  |  |
+
+
+
+---
+
+
+
+\### CU-020 - Desactivar vehículo
+
+
+
+| UC–020 | Desactivar vehículo |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–03 Información sobre Vehículos |  |
+
+| \*\*Descripción\*\* | El administrador desactiva un vehículo del sistema. Solo se puede desactivar si no está asignado a ningún cliente activo. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. El vehículo debe existir y estar activo. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-021 Consultar vehículos. |
+
+|  | 2 | El administrador selecciona el vehículo a desactivar.  |
+
+|  | 3 | El sistema verifica que el vehículo no tenga clientes activos asociados. |
+
+|  | 4 | El sistema muestra un diálogo de confirmación.  |
+
+|  | 5 | El administrador confirma la desactivación. |
+
+|  | 6 | El sistema cambia el estado del vehículo a "Inactivo". |
+
+|  | 7 | El sistema muestra un mensaje de éxito. |
+
+|  | 8 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El vehículo ha sido desactivado.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 3a | Si el vehículo tiene clientes activos asociados, el sistema muestra error indicando que primero debe desvincularse.  |
+
+|  | 5a | Si el administrador cancela, se aborta la operación. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-021 Consultar vehículos.  |  |
+
+
+
+---
+
+
+
+\### CU-021 - Consultar vehículos
+
+
+
+| UC–021 | Consultar vehículos |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–03 Información sobre Vehículos |  |
+
+| \*\*Descripción\*\* | El personal visualiza la lista de vehículos registrados con opciones de filtrado por tipo de vehículo, marca, color y estado. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la sección de gestión de vehículos desde el menú. |
+
+|  | 2 | El sistema obtiene la lista de vehículos aplicando filtros por defecto (Activos). |
+
+|  | 3 | El sistema muestra la tabla de vehículos con columnas:  Patente, Tipo, Marca, Modelo, Color, Dueño Principal, Estado. |
+
+|  | 4 | El usuario puede aplicar filtros por:  estado, tipo de vehículo, marca, color. |
+
+|  | 5 | El usuario puede ordenar por cualquier columna haciendo clic en el encabezado.  |
+
+|  | 6 | El usuario puede navegar entre páginas usando los controles de paginación. |
+
+|  | 7 | El sistema actualiza la vista según los criterios seleccionados.  |
+
+| \*\*Postcondición\*\* | El usuario visualiza la lista de vehículos según los filtros aplicados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si no hay vehículos, el sistema muestra un mensaje indicándolo. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-3 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Por defecto muestra solo vehículos activos. |  |
+
+
+
+---
+
+
+
+\### CU-022 - Buscar vehículos
+
+
+
+| UC–022 | Buscar vehículos |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–03 Información sobre Vehículos |  |
+
+| \*\*Descripción\*\* | El personal busca vehículos por patente, marca o modelo. La búsqueda se realiza en tiempo real.  |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado.  |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la sección de gestión de vehículos.  |
+
+|  | 2 | El usuario ingresa texto en el campo de búsqueda. |
+
+|  | 3 | El sistema busca coincidencias en:  patente, marca, modelo.  |
+
+|  | 4 | El sistema muestra los resultados filtrados en tiempo real. |
+
+|  | 5 | El usuario puede seleccionar un vehículo de los resultados. |
+
+| \*\*Postcondición\*\* | El usuario visualiza los vehículos que coinciden con el criterio de búsqueda. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si no hay coincidencias, el sistema muestra mensaje "Sin resultados". |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 3-4 | 500ms |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | La búsqueda es insensible a mayúsculas/minúsculas. |  |
+
+
+
+---
+
+
+
+\### CU-023 - Vincular vehículo a cliente
+
+
+
+| UC–023 | Vincular vehículo a cliente |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes, IRQ–03 Información sobre Vehículos |  |
+
+| \*\*Descripción\*\* | El personal asocia un vehículo existente a un cliente.  Un vehículo puede estar asociado a múltiples clientes (dueños compartidos). |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado. El cliente y el vehículo deben existir y estar activos. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-021 Consultar vehículos o se accede desde la edición de un cliente.  |
+
+|  | 2 | El usuario selecciona la opción "Vincular a cliente". |
+
+|  | 3 | El sistema solicita la patente del vehículo (si no está preseleccionado). |
+
+|  | 4 | El sistema busca el vehículo por patente.  |
+
+|  | 5 | El sistema solicita la clave de asociación.  |
+
+|  | 6 | El usuario ingresa la clave de asociación. |
+
+|  | 7 | El sistema valida la clave contra el hash SHA256 almacenado. |
+
+|  | 8 | El sistema agrega al cliente a la lista de ClientesIds del vehículo.  |
+
+|  | 9 | El sistema agrega el vehículo a la lista de VehiculosIds del cliente.  |
+
+|  | 10 | El sistema muestra un mensaje de éxito.  |
+
+|  | 11 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El cliente está asociado al vehículo. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si no se encuentra el vehículo, el sistema informa el error.  |
+
+|  | 7a | Si la clave es incorrecta, el sistema informa el error.  |
+
+|  | 7b | Si el cliente ya está asociado al vehículo, el sistema lo informa. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 7-9 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-021 Consultar vehículos.  Permite que múltiples clientes compartan un vehículo.  |  |
+
+
+
+---
+
+
+
+\### CU-024 - Desvincular vehículo de cliente
+
+
+
+| UC–024 | Desvincular vehículo de cliente |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–02 Gestión de Clientes y Vehículos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes, IRQ–03 Información sobre Vehículos |  |
+
+| \*\*Descripción\*\* | El personal desvincula un vehículo de un cliente. Si el vehículo queda sin clientes asociados, se desactiva automáticamente.  |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado.  El cliente debe tener el vehículo asociado. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-021 Consultar vehículos o se accede desde la edición de un cliente. |
+
+|  | 2 | El usuario selecciona la opción "Desvincular" en el vehículo correspondiente. |
+
+|  | 3 | El sistema verifica cuántos clientes tiene asociado el vehículo. |
+
+|  | 4 | El sistema muestra un diálogo de confirmación (indicando si el vehículo será desactivado). |
+
+|  | 5 | El usuario confirma la desvinculación. |
+
+|  | 6 | El sistema remueve al cliente de la lista de ClientesIds del vehículo.  |
+
+|  | 7 | El sistema remueve el vehículo de la lista de VehiculosIds del cliente. |
+
+|  | 8 | Si el vehículo queda sin clientes, el sistema lo desactiva automáticamente.  |
+
+|  | 9 | El sistema muestra un mensaje de éxito. |
+
+|  | 10 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El cliente ya no está asociado al vehículo.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si el usuario cancela, se aborta la operación. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6-8 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-021 Consultar vehículos.  |  |
+
+
+
+---
+
+
+
+\### CU-025 - Registrarse como cliente por WhatsApp
+
+
+
+| UC–025 | Registrarse como cliente por WhatsApp |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–10 Integración con WhatsApp |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes, IRQ–12 Información de Sesiones WhatsApp |  |
+
+| \*\*Descripción\*\* | El cliente se registra en el sistema mediante interacción guiada con el bot de WhatsApp, proporcionando sus datos personales paso a paso. |  |
+
+| \*\*Precondición\*\* | El número de WhatsApp no debe estar registrado previamente como cliente. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El cliente envía un mensaje al número de WhatsApp del lavadero. |
+
+|  | 2 | El sistema ejecuta CU-027 para verificar si el número está registrado. |
+
+|  | 3 | Al no estar registrado, el sistema muestra un menú de bienvenida con opciones.  |
+
+|  | 4 | El cliente selecciona "Registrarme".  |
+
+|  | 5 | El sistema solicita el tipo de documento (muestra opciones numeradas). |
+
+|  | 6 | El cliente selecciona el tipo de documento. |
+
+|  | 7 | El sistema solicita el número de documento.  |
+
+|  | 8 | El cliente ingresa su número de documento. |
+
+|  | 9 | El sistema valida el formato según el tipo de documento seleccionado. |
+
+|  | 10 | El sistema solicita el nombre.  |
+
+|  | 11 | El cliente ingresa su nombre.  |
+
+|  | 12 | El sistema solicita el apellido. |
+
+|  | 13 | El cliente ingresa su apellido. |
+
+|  | 14 | El sistema solicita el correo electrónico (opcional). |
+
+|  | 15 | El cliente ingresa su email o escribe "omitir".  |
+
+|  | 16 | El sistema muestra un resumen de los datos y solicita confirmación. |
+
+|  | 17 | El cliente confirma los datos. |
+
+|  | 18 | El sistema crea el cliente con el número de teléfono de WhatsApp. |
+
+|  | 19 | El sistema envía mensaje de bienvenida y muestra el menú principal. |
+
+|  | 20 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El cliente está registrado y puede acceder a las funcionalidades de WhatsApp. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si el número ya está registrado, el sistema muestra el menú principal directamente. |
+
+|  | 9a | Si el formato del documento es inválido, el sistema solicita ingresarlo nuevamente. |
+
+|  | 17a | Si el cliente no confirma, el sistema permite corregir los datos.  |
+
+|  | \* | En cualquier momento, el cliente puede escribir "cancelar" para abortar el proceso. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 18 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | La conversación se mantiene mediante sesiones temporales en Firestore. |  |
+
+
+
+---
+
+
+
+\### CU-026 - Registrar vehículo por WhatsApp
+
+
+
+| UC–026 | Registrar vehículo por WhatsApp |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–10 Integración con WhatsApp |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–03 Información sobre Vehículos, IRQ–12 Información de Sesiones WhatsApp |  |
+
+| \*\*Descripción\*\* | El cliente asocia un nuevo vehículo a su cuenta mediante el flujo conversacional de WhatsApp, indicando tipo de vehículo, patente, marca, modelo y color. |  |
+
+| \*\*Precondición\*\* | El cliente debe estar registrado en el sistema (número de WhatsApp vinculado). |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El cliente accede al menú principal de WhatsApp. |
+
+|  | 2 | El cliente selecciona "Mis Vehículos".  |
+
+|  | 3 | El sistema muestra el submenú de vehículos.  |
+
+|  | 4 | El cliente selecciona "Agregar vehículo". |
+
+|  | 5 | El sistema solicita el tipo de vehículo (muestra opciones numeradas). |
+
+|  | 6 | El cliente selecciona el tipo de vehículo. |
+
+|  | 7 | El sistema solicita la patente del vehículo.  |
+
+|  | 8 | El cliente ingresa la patente.  |
+
+|  | 9 | El sistema valida que la patente no esté registrada para otro cliente. |
+
+|  | 10 | El sistema solicita la marca del vehículo. |
+
+|  | 11 | El cliente ingresa la marca. |
+
+|  | 12 | El sistema solicita el modelo del vehículo. |
+
+|  | 13 | El cliente ingresa el modelo.  |
+
+|  | 14 | El sistema solicita el color del vehículo. |
+
+|  | 15 | El cliente ingresa el color. |
+
+|  | 16 | El sistema muestra un resumen y solicita confirmación.  |
+
+|  | 17 | El cliente confirma los datos. |
+
+|  | 18 | El sistema crea el vehículo y lo asocia al cliente. |
+
+|  | 19 | El sistema genera la clave de asociación y la envía al cliente. |
+
+|  | 20 | El sistema confirma el registro exitoso. |
+
+|  | 21 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El vehículo está registrado y asociado al cliente. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 9a | Si la patente ya existe, el sistema ofrece asociarse al vehículo existente mediante clave.  |
+
+|  | 17a | Si el cliente no confirma, permite corregir los datos. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 18-19 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | La clave de asociación permite que otros clientes se vinculen al mismo vehículo.  |  |
+
+
+
+---
+
+
+
+\### CU-027 - Identificar si el número de teléfono está registrado
+
+
+
+| UC–027 | Identificar si el número de teléfono está registrado |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–10 Integración con WhatsApp |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes, IRQ–12 Información de Sesiones WhatsApp |  |
+
+| \*\*Descripción\*\* | El sistema valida si el número de WhatsApp que envía un mensaje pertenece a un cliente existente, determinando el flujo de conversación apropiado. |  |
+
+| \*\*Precondición\*\* | Se ha recibido un mensaje de WhatsApp.  |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El sistema recibe un mensaje de WhatsApp con el número del remitente. |
+
+|  | 2 | El sistema busca en la base de datos un cliente con ese número de teléfono. |
+
+|  | 3a | Si existe y está activo, el sistema carga/actualiza la sesión con el ClienteId. |
+
+|  | 3b | Si no existe o está inactivo, el sistema crea una sesión sin ClienteId. |
+
+|  | 4 | El sistema retorna el estado de autenticación al flujo de procesamiento de mensajes. |
+
+| \*\*Postcondición\*\* | El sistema conoce si el número corresponde a un cliente registrado. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | - | - |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-3 | 500ms |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Este caso de uso es ejecutado automáticamente por el sistema en cada mensaje recibido. |  |
+
+
+
+---
+
+
+
+\### CU-028 - Editar datos personales por WhatsApp
+
+
+
+| UC–028 | Editar datos personales por WhatsApp |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–10 Integración con WhatsApp |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes, IRQ–12 Información de Sesiones WhatsApp |  |
+
+| \*\*Descripción\*\* | El cliente modifica sus datos personales (nombre, apellido, email) a través del flujo conversacional de WhatsApp.  |  |
+
+| \*\*Precondición\*\* | El cliente debe estar registrado en el sistema. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El cliente accede al menú principal de WhatsApp. |
+
+|  | 2 | El cliente selecciona "Mis Datos". |
+
+|  | 3 | El sistema muestra los datos actuales del cliente. |
+
+|  | 4 | El sistema muestra opciones de modificación numeradas. |
+
+|  | 5 | El cliente selecciona el dato a modificar (nombre, apellido, email). |
+
+|  | 6 | El sistema solicita el nuevo valor. |
+
+|  | 7 | El cliente ingresa el nuevo valor.  |
+
+|  | 8 | El sistema valida el dato ingresado. |
+
+|  | 9 | El sistema actualiza el registro del cliente. |
+
+|  | 10 | El sistema confirma la modificación exitosa. |
+
+|  | 11 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | Los datos del cliente han sido actualizados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 8a | Si el dato es inválido, el sistema solicita ingresarlo nuevamente.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 9 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | El número de teléfono, tipo y número de documento no se pueden modificar por seguridad. |  |
+
+
+
+---
+
+
+
+\### \*\*Módulo:  Gestión de Servicios\*\*
+
+
+
+---
+
+
+
+\### CU-029 - Crear servicio
+
+
+
+| UC–029 | Crear servicio |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–04 Información sobre Servicios, IRQ–05 Información sobre Tipos de Servicio, IRQ–06 Información sobre Tipos de Vehículo |  |
+
+| \*\*Descripción\*\* | El administrador crea un nuevo servicio para el lavadero con nombre, descripción, precio, tiempo estimado, tipo de servicio, tipo de vehículo y opcionalmente etapas de ejecución. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador.  Deben existir tipos de servicio y tipos de vehículo activos. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de gestión de servicios desde el menú.  |
+
+|  | 2 | El administrador hace clic en "Nuevo Servicio". |
+
+|  | 3 | El sistema muestra un formulario con campos:  Nombre, Descripción, Tipo de Servicio, Tipo de Vehículo, Precio, Tiempo Estimado.  |
+
+|  | 4 | El sistema carga los tipos de servicio y tipos de vehículo activos. |
+
+|  | 5 | El administrador completa todos los campos obligatorios. |
+
+|  | 6 | Opcionalmente, el administrador agrega etapas al servicio haciendo clic en "Agregar Etapa".  |
+
+|  | 7 | Para cada etapa, el administrador ingresa:  Nombre, Descripción, Orden.  |
+
+|  | 8 | El administrador hace clic en "Guardar".  |
+
+|  | 9 | El sistema valida los datos (nombre único por tipo de vehículo, precio >= 0, tiempo > 0). |
+
+|  | 10 | El sistema crea el servicio con estado "Activo".  |
+
+|  | 11 | El sistema muestra un mensaje de éxito. |
+
+|  | 12 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El servicio está registrado y disponible para ser utilizado en lavados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 9a | Si ya existe un servicio con el mismo nombre para ese tipo de vehículo, el sistema informa el error.  |
+
+|  | 9b | Si hay errores de validación, el sistema muestra los errores específicos. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 10 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Las etapas permiten dividir el servicio en pasos que se pueden marcar como completados durante el lavado. |  |
+
+
+
+---
+
+
+
+\### CU-030 - Modificar servicio
+
+
+
+| UC–030 | Modificar servicio |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–04 Información sobre Servicios |  |
+
+| \*\*Descripción\*\* | El administrador actualiza los detalles de un servicio existente, incluyendo nombre, descripción, precio, tiempo estimado y etapas.  |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. El servicio debe existir en el sistema. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-033 Consultar servicios. |
+
+|  | 2 | El administrador selecciona el servicio a modificar. |
+
+|  | 3 | El sistema muestra el formulario de edición con los datos actuales.  |
+
+|  | 4 | El administrador modifica los campos deseados. |
+
+|  | 5 | El administrador puede agregar, modificar o eliminar etapas. |
+
+|  | 6 | El administrador hace clic en "Guardar". |
+
+|  | 7 | El sistema valida los datos.  |
+
+|  | 8 | El sistema actualiza el registro del servicio. |
+
+|  | 9 | El sistema actualiza los paquetes que contienen este servicio (recalcula precios y tiempos). |
+
+|  | 10 | El sistema muestra un mensaje de éxito. |
+
+|  | 11 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | Los datos del servicio han sido actualizados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 7a | Si hay errores de validación, el sistema muestra los errores específicos. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 8-9 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-033 Consultar servicios. La modificación de un servicio afecta a los paquetes que lo contienen. |  |
+
+
+
+---
+
+
+
+\### CU-031 - Desactivar servicio
+
+
+
+| UC–031 | Desactivar servicio |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–04 Información sobre Servicios |  |
+
+| \*\*Descripción\*\* | El administrador desactiva un servicio del sistema. Los servicios desactivados no aparecen disponibles para seleccionar en nuevos lavados. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. El servicio debe existir y estar activo. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-033 Consultar servicios. |
+
+|  | 2 | El administrador selecciona el servicio a desactivar.  |
+
+|  | 3 | El sistema verifica si el servicio está incluido en algún paquete activo. |
+
+|  | 4 | El sistema muestra un diálogo de confirmación (con advertencia si afecta paquetes). |
+
+|  | 5 | El administrador confirma la desactivación. |
+
+|  | 6 | El sistema cambia el estado del servicio a "Inactivo". |
+
+|  | 7 | El sistema muestra un mensaje de éxito. |
+
+|  | 8 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El servicio ha sido desactivado.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 3a | Si el servicio está en un paquete activo, el sistema advierte que afectará al paquete. |
+
+|  | 5a | Si el administrador cancela, se aborta la operación. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-033 Consultar servicios. |  |
+
+
+
+---
+
+
+
+\### CU-032 - Reactivar servicio
+
+
+
+| UC–032 | Reactivar servicio |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–04 Información sobre Servicios |  |
+
+| \*\*Descripción\*\* | El administrador reactiva un servicio previamente desactivado, volviéndolo disponible para selección. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. El servicio debe existir y estar inactivo. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-033 Consultar servicios (filtrando por inactivos). |
+
+|  | 2 | El administrador selecciona el servicio a reactivar. |
+
+|  | 3 | El sistema muestra un diálogo de confirmación. |
+
+|  | 4 | El administrador confirma la reactivación. |
+
+|  | 5 | El sistema cambia el estado del servicio a "Activo". |
+
+|  | 6 | El sistema muestra un mensaje de éxito. |
+
+|  | 7 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El servicio ha sido reactivado y está disponible para su uso. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si el administrador cancela, se aborta la operación. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 5 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-033 Consultar servicios. |  |
+
+
+
+---
+
+
+
+\### CU-033 - Consultar servicios
+
+
+
+| UC–033 | Consultar servicios |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–04 Información sobre Servicios |  |
+
+| \*\*Descripción\*\* | El personal consulta la lista de servicios disponibles con opciones de filtrado por estado, tipo de servicio, tipo de vehículo y rango de precios.  |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado.  |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la sección de gestión de servicios desde el menú. |
+
+|  | 2 | El sistema obtiene la lista de servicios aplicando filtros por defecto (Activos). |
+
+|  | 3 | El sistema muestra la tabla de servicios con columnas: Nombre, Tipo Servicio, Tipo Vehículo, Precio, Tiempo Estimado, Estado. |
+
+|  | 4 | El usuario puede aplicar filtros por:  estado, tipo de servicio, tipo de vehículo, rango de precios. |
+
+|  | 5 | El usuario puede ordenar por cualquier columna. |
+
+|  | 6 | El usuario puede navegar entre páginas usando los controles de paginación. |
+
+|  | 7 | El sistema actualiza la vista según los criterios seleccionados. |
+
+| \*\*Postcondición\*\* | El usuario visualiza la lista de servicios según los filtros aplicados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si no hay servicios, el sistema muestra un mensaje indicándolo. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-3 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Por defecto muestra solo servicios activos. |  |
+
+
+
+---
+
+
+
+\### CU-034 - Buscar servicios
+
+
+
+| UC–034 | Buscar servicios |  |
+
+| :---- | :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–04 Información sobre Servicios |  |
+
+| \*\*Descripción\*\* | El personal busca servicios por nombre.  La búsqueda se realiza en tiempo real con resultados paginados. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la sección de gestión de servicios.  |
+
+|  | 2 | El usuario ingresa texto en el campo de búsqueda. |
+
+|  | 3 | El sistema busca coincidencias en el nombre del servicio.  |
+
+|  | 4 | El sistema muestra los resultados filtrados en tiempo real. |
+
+|  | 5 | El usuario puede seleccionar un servicio de los resultados. |
+
+| \*\*Postcondición\*\* | El usuario visualiza los servicios que coinciden con el criterio de búsqueda. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si no hay coincidencias, el sistema muestra mensaje "Sin resultados". |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 3-4 | 500ms |
+
+| \*\*Frecuencia\*\* | Frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | La búsqueda es insensible a mayúsculas/minúsculas.  |  |
+
+
+
+---
+
+
+
+\### CU-035 - Crear tipo de servicio
+
+
+
+| UC–035 | Crear tipo de servicio |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–05 Información sobre Tipos de Servicio |  |
+
+| \*\*Descripción\*\* | El administrador crea un nuevo tipo de servicio (categoría) para clasificar los servicios del lavadero. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de configuración de tipos de servicio. |
+
+|  | 2 | El administrador hace clic en "Nuevo Tipo de Servicio". |
+
+|  | 3 | El sistema muestra un formulario con campo: Nombre.  |
+
+|  | 4 | El administrador ingresa el nombre del tipo de servicio. |
+
+|  | 5 | El administrador hace clic en "Guardar". |
+
+|  | 6 | El sistema valida que el nombre no exista previamente. |
+
+|  | 7 | El sistema crea el tipo de servicio con estado "Activo". |
+
+|  | 8 | El sistema muestra un mensaje de éxito. |
+
+|  | 9 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El tipo de servicio está disponible para asignar a servicios.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 6a | Si el nombre ya existe, el sistema informa el error.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 7 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Los tipos de servicio permiten limitar a un servicio por tipo en los paquetes. |  |
+
+
+
+---
+
+
+
+\### CU-036 - Eliminar tipo de servicio
+
+
+
+| UC–036 | Eliminar tipo de servicio |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–05 Información sobre Tipos de Servicio |  |
+
+| \*\*Descripción\*\* | El administrador elimina un tipo de servicio.  Solo se permite si no hay servicios activos utilizando ese tipo. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador.  El tipo de servicio debe existir.  |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de configuración de tipos de servicio. |
+
+|  | 2 | El administrador selecciona el tipo de servicio a eliminar. |
+
+|  | 3 | El sistema verifica que no haya servicios activos utilizando ese tipo. |
+
+|  | 4 | El sistema muestra un diálogo de confirmación.  |
+
+|  | 5 | El administrador confirma la eliminación. |
+
+|  | 6 | El sistema elimina el tipo de servicio (eliminación física). |
+
+|  | 7 | El sistema muestra un mensaje de éxito.  |
+
+|  | 8 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El tipo de servicio ha sido eliminado del sistema. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 3a | Si hay servicios utilizando ese tipo, el sistema impide la eliminación y muestra error. |
+
+|  | 5a | Si el administrador cancela, se aborta la operación. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Rara |  |
+
+| \*\*Estabilidad\*\* | Baja |  |
+
+| \*\*Comentarios\*\* | La eliminación es física, no lógica. |  |
+
+
+
+---
+
+
+
+\### CU-037 - Crear tipo de vehículo
+
+
+
+| UC–037 | Crear tipo de vehículo |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–06 Información sobre Tipos de Vehículo |  |
+
+| \*\*Descripción\*\* | El administrador crea un nuevo tipo de vehículo con nombre, formato de patente y cantidad de empleados requeridos por defecto. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador.  |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de configuración de tipos de vehículo. |
+
+|  | 2 | El administrador hace clic en "Nuevo Tipo de Vehículo".  |
+
+|  | 3 | El sistema muestra un formulario con campos: Nombre, Formato Patente, Empleados Requeridos. |
+
+|  | 4 | El administrador completa los campos.  |
+
+|  | 5 | El administrador hace clic en "Guardar". |
+
+|  | 6 | El sistema valida que el nombre no exista previamente y empleados >= 1. |
+
+|  | 7 | El sistema crea el tipo de vehículo con estado "Activo". |
+
+|  | 8 | El sistema muestra un mensaje de éxito. |
+
+|  | 9 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El tipo de vehículo está disponible para asignar a vehículos y servicios. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 6a | Si el nombre ya existe, el sistema informa el error. |
+
+|  | 6b | Si hay errores de validación, el sistema muestra los errores específicos.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 7 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Los tipos de vehículo determinan qué servicios están disponibles. |  |
+
+
+
+---
+
+
+
+\### CU-038 - Eliminar tipo de vehículo
+
+
+
+| UC–038 | Eliminar tipo de vehículo |  |
+
+| :---- | :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–06 Información sobre Tipos de Vehículo |  |
+
+| \*\*Descripción\*\* | El administrador elimina un tipo de vehículo. Solo se permite si no hay servicios ni vehículos activos utilizando ese tipo.  |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. El tipo de vehículo debe existir. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de configuración de tipos de vehículo. |
+
+|  | 2 | El administrador selecciona el tipo de vehículo a eliminar. |
+
+|  | 3 | El sistema verifica que no haya servicios ni vehículos activos utilizando ese tipo. |
+
+|  | 4 | El sistema muestra un diálogo de confirmación. |
+
+|  | 5 | El administrador confirma la eliminación. |
+
+|  | 6 | El sistema elimina el tipo de vehículo (eliminación física). |
+
+|  | 7 | El sistema muestra un mensaje de éxito. |
+
+|  | 8 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El tipo de vehículo ha sido eliminado del sistema. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 3a | Si hay servicios o vehículos utilizando ese tipo, el sistema impide la eliminación.  |
+
+|  | 5a | Si el administrador cancela, se aborta la operación. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Rara |  |
+
+| \*\*Estabilidad\*\* | Baja |  |
+
+| \*\*Comentarios\*\* | La eliminación es física, no lógica. |  |
+
+
+
+---
+
+
+
+\### CU-039 - Gestionar etapas del servicio
+
+
+
+| UC–039 | Gestionar etapas del servicio |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–04 Información sobre Servicios |  |
+
+| \*\*Descripción\*\* | El administrador define las etapas o fases en las que se divide un servicio para su ejecución, permitiendo un seguimiento granular del progreso. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. El servicio debe existir. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la edición del servicio (dentro de CU-029 o CU-030). |
+
+|  | 2 | El sistema muestra la sección de etapas con las etapas actuales (si existen). |
+
+|  | 3 | El administrador puede:  |
+
+|  | 3a | Agregar nueva etapa:  clic en "Agregar Etapa", ingresa Nombre, Descripción, Orden. |
+
+|  | 3b | Modificar etapa existente: edita los campos de la etapa. |
+
+|  | 3c | Eliminar etapa: clic en botón eliminar de la etapa. |
+
+|  | 3d | Reordenar etapas: arrastra y suelta para cambiar el orden. |
+
+|  | 4 | El administrador guarda los cambios del servicio. |
+
+|  | 5 | El sistema valida que los nombres de etapa sean únicos dentro del servicio. |
+
+|  | 6 | El sistema actualiza las etapas del servicio. |
+
+|  | 7 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | Las etapas del servicio han sido actualizadas. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si hay nombres duplicados, el sistema informa el error. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Las etapas se ejecutan secuencialmente durante el lavado. Este caso de uso se realiza dentro de CU-029 o CU-030. |  |
+
+
+
+---
+
+
+
+| UC–040 | Crear paquete de servicios |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–07 Información sobre Paquetes de Servicios |  |
+
+| \*\*Descripción\*\* | El administrador crea un paquete que agrupa 2 o más servicios del mismo tipo de vehículo con un porcentaje de descuento aplicable. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador.  Deben existir al menos 2 servicios activos del mismo tipo de vehículo. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de gestión de paquetes de servicios.  |
+
+|  | 2 | El administrador hace clic en "Nuevo Paquete". |
+
+|  | 3 | El sistema muestra un formulario con campos: Nombre, Tipo de Vehículo, Porcentaje de Descuento.  |
+
+|  | 4 | El administrador selecciona el tipo de vehículo. |
+
+|  | 5 | El sistema carga los servicios activos disponibles para ese tipo de vehículo. |
+
+|  | 6 | El administrador selecciona al menos 2 servicios (máximo uno por tipo de servicio). |
+
+|  | 7 | El administrador define el porcentaje de descuento (según configuración del sistema). |
+
+|  | 8 | El sistema calcula automáticamente el precio final y tiempo estimado. |
+
+|  | 9 | El administrador hace clic en "Guardar". |
+
+|  | 10 | El sistema valida que no haya más de un servicio del mismo tipo de servicio. |
+
+|  | 11 | El sistema crea el paquete con estado "Activo".  |
+
+|  | 12 | El sistema muestra un mensaje de éxito. |
+
+|  | 13 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El paquete está registrado y disponible para ser utilizado en lavados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 6a | Si se seleccionan menos de 2 servicios, el sistema informa el error. |
+
+|  | 10a | Si hay más de un servicio del mismo tipo de servicio, el sistema informa el error. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 11 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | El porcentaje de descuento debe estar dentro del rango configurado en CU-065. El precio se calcula como:  suma de precios de servicios × (1 - descuento/100). |  |
+
+
+
+---
+
+
+
+\### CU-041 - Modificar paquete de servicios
+
+
+
+| UC–041 | Modificar paquete de servicios |  |
+
+| :---- | :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–07 Información sobre Paquetes de Servicios |  |
+
+| \*\*Descripción\*\* | El administrador actualiza la configuración de un paquete de servicios, incluyendo servicios incluidos y porcentaje de descuento.  |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. El paquete debe existir en el sistema. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-044 Consultar paquetes de servicios. |
+
+|  | 2 | El administrador selecciona el paquete a modificar. |
+
+|  | 3 | El sistema muestra el formulario de edición con los datos actuales.  |
+
+|  | 4 | El administrador modifica los campos deseados (Nombre, Servicios, Descuento). |
+
+|  | 5 | El sistema recalcula el precio y tiempo estimado en tiempo real. |
+
+|  | 6 | El administrador hace clic en "Guardar". |
+
+|  | 7 | El sistema valida los datos (mínimo 2 servicios, un servicio por tipo). |
+
+|  | 8 | El sistema actualiza el registro del paquete.  |
+
+|  | 9 | El sistema muestra un mensaje de éxito. |
+
+|  | 10 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | Los datos del paquete han sido actualizados.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 7a | Si hay errores de validación, el sistema muestra los errores específicos. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 8 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Baja |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-044 Consultar paquetes de servicios. |  |
+
+
+
+---
+
+
+
+\### CU-042 - Desactivar paquete de servicios
+
+
+
+| UC–042 | Desactivar paquete de servicios |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–07 Información sobre Paquetes de Servicios |  |
+
+| \*\*Descripción\*\* | El administrador desactiva un paquete de servicios, dejándolo no disponible para selección. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. El paquete debe existir y estar activo. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-044 Consultar paquetes de servicios. |
+
+|  | 2 | El administrador selecciona el paquete a desactivar.  |
+
+|  | 3 | El sistema muestra un diálogo de confirmación. |
+
+|  | 4 | El administrador confirma la desactivación. |
+
+|  | 5 | El sistema cambia el estado del paquete a "Inactivo". |
+
+|  | 6 | El sistema muestra un mensaje de éxito. |
+
+|  | 7 | El sistema registra la acción en auditoría.  |
+
+| \*\*Postcondición\*\* | El paquete ha sido desactivado.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si el administrador cancela, se aborta la operación. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 5 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Baja |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-044 Consultar paquetes de servicios. |  |
+
+
+
+---
+
+
+
+\### CU-043 - Reactivar paquete de servicios
+
+
+
+| UC–043 | Reactivar paquete de servicios |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–07 Información sobre Paquetes de Servicios |  |
+
+| \*\*Descripción\*\* | El administrador reactiva un paquete previamente desactivado.  |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. El paquete debe existir y estar inactivo. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-044 Consultar paquetes de servicios (filtrando por inactivos). |
+
+|  | 2 | El administrador selecciona el paquete a reactivar. |
+
+|  | 3 | El sistema verifica que todos los servicios del paquete estén activos. |
+
+|  | 4 | El sistema muestra un diálogo de confirmación.  |
+
+|  | 5 | El administrador confirma la reactivación. |
+
+|  | 6 | El sistema cambia el estado del paquete a "Activo". |
+
+|  | 7 | El sistema muestra un mensaje de éxito. |
+
+|  | 8 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El paquete ha sido reactivado y está disponible para su uso. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 3a | Si algún servicio del paquete está inactivo, el sistema advierte y sugiere editar el paquete. |
+
+|  | 5a | Si el administrador cancela, se aborta la operación. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Baja |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-044 Consultar paquetes de servicios.  |  |
+
+
+
+---
+
+
+
+\### CU-044 - Consultar paquetes de servicios
+
+
+
+| UC–044 | Consultar paquetes de servicios |  |
+
+| :---- | :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–03 Gestión de Servicios y Paquetes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–07 Información sobre Paquetes de Servicios |  |
+
+| \*\*Descripción\*\* | El personal visualiza los paquetes de servicios disponibles con información de precio final, descuento y tiempo estimado total. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado.  |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la sección de gestión de paquetes de servicios. |
+
+|  | 2 | El sistema obtiene la lista de paquetes aplicando filtros por defecto (Activos). |
+
+|  | 3 | El sistema calcula el precio final y tiempo estimado de cada paquete dinámicamente. |
+
+|  | 4 | El sistema muestra la tabla de paquetes con columnas: Nombre, Tipo Vehículo, Servicios, Precio Original, Descuento, Precio Final, Tiempo Estimado, Estado. |
+
+|  | 5 | El usuario puede aplicar filtros por:  estado, tipo de vehículo, rango de precios, rango de descuento. |
+
+|  | 6 | El usuario puede ordenar por cualquier columna. |
+
+|  | 7 | El usuario puede navegar entre páginas usando los controles de paginación. |
+
+|  | 8 | El sistema actualiza la vista según los criterios seleccionados. |
+
+| \*\*Postcondición\*\* | El usuario visualiza la lista de paquetes según los filtros aplicados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si no hay paquetes, el sistema muestra un mensaje indicándolo. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-4 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Por defecto muestra solo paquetes activos.  El precio y tiempo se calculan dinámicamente basándose en los servicios incluidos. |  |
+
+
+
+---
+
+
+
+\### \*\*Módulo:  Registro de Lavados\*\*
+
+
+
+---
+
+
+
+\### CU-045 - Registrar realización de un servicio (lavado)
+
+
+
+| UC–045 | Registrar realización de un servicio (lavado) |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–04 Registro y Gestión de Lavados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El personal registra un lavado seleccionando un vehículo (por búsqueda de patente), el cliente asociado, los servicios o paquetes a realizar, el descuento aplicable y notas adicionales. El lavado inicia inmediatamente tras su creación. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado.  Deben existir clientes, vehículos, servicios y empleados activos. El lavadero debe estar en horario de operación. No debe excederse la capacidad máxima de lavados simultáneos. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la sección de gestión de lavados. |
+
+|  | 2 | El usuario hace clic en "Nuevo Lavado". |
+
+|  | 3 | El sistema valida que esté en horario de operación. |
+
+|  | 4 | El sistema valida que no se exceda la capacidad máxima de lavados simultáneos. |
+
+|  | 5 | El sistema muestra un formulario de creación.  |
+
+|  | 6 | El usuario busca y selecciona el vehículo por patente. |
+
+|  | 7 | El sistema muestra los clientes asociados al vehículo. |
+
+|  | 8 | El usuario selecciona el cliente que trae el vehículo. |
+
+|  | 9 | El sistema carga los servicios y paquetes disponibles para el tipo de vehículo. |
+
+|  | 10 | El usuario selecciona servicios individuales y/o un paquete. |
+
+|  | 11 | El sistema calcula el tiempo estimado total y precio. |
+
+|  | 12 | El sistema sugiere la cantidad de empleados según el tipo de vehículo. |
+
+|  | 13 | El usuario asigna los empleados al lavado.  |
+
+|  | 14 | El usuario puede agregar un descuento adicional (opcional). |
+
+|  | 15 | El usuario puede agregar notas adicionales (opcional). |
+
+|  | 16 | El usuario hace clic en "Iniciar Lavado".  |
+
+|  | 17 | El sistema valida todos los datos.  |
+
+|  | 18 | El sistema crea el lavado con estado "EnProceso" y registra el tiempo de inicio. |
+
+|  | 19 | El sistema muestra un mensaje de éxito y redirige al detalle del lavado.  |
+
+|  | 20 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El lavado está registrado y en proceso.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 3a | Si está fuera del horario de operación, el sistema informa el error. |
+
+|  | 4a | Si se excede la capacidad máxima, el sistema informa el error. |
+
+|  | 6a | Si no se encuentra el vehículo, el sistema ofrece crearlo (CU-018). |
+
+|  | 10a | Si se intenta agregar más de un paquete, el sistema informa el error.  |
+
+|  | 13a | Si no hay empleados disponibles, el sistema advierte pero permite continuar. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 18 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | El lavado inicia inmediatamente al crearse (no hay estado "Pendiente"). |  |
+
+
+
+---
+
+
+
+\### CU-046 - Consultar lavados
+
+
+
+| UC–046 | Consultar lavados |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–04 Registro y Gestión de Lavados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El personal visualiza el historial de lavados con opciones de filtrado por estado, cliente, vehículo, rango de fechas, rango de precios, estado de pago y estado de retiro. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la sección de gestión de lavados. |
+
+|  | 2 | El sistema obtiene la lista de lavados aplicando filtros por defecto (EnProceso). |
+
+|  | 3 | El sistema muestra la tabla de lavados con columnas: ID, Vehículo, Cliente, Servicios, Estado, Pago, Retiro, Fecha.  |
+
+|  | 4 | El usuario puede aplicar filtros por:  estado del lavado, estado de pago, estado de retiro, cliente, vehículo, rango de fechas, rango de precios. |
+
+|  | 5 | El usuario puede ordenar por cualquier columna. |
+
+|  | 6 | El usuario puede navegar entre páginas usando los controles de paginación. |
+
+|  | 7 | El sistema actualiza la vista según los criterios seleccionados. |
+
+| \*\*Postcondición\*\* | El usuario visualiza la lista de lavados según los filtros aplicados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si no hay lavados, el sistema muestra un mensaje indicándolo. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-3 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Por defecto muestra lavados en proceso. |  |
+
+
+
+---
+
+
+
+\### CU-047 - Buscar lavados
+
+
+
+| UC–047 | Buscar lavados |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–04 Registro y Gestión de Lavados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El personal busca lavados por patente, nombre de cliente o ID. La búsqueda se realiza en tiempo real. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la sección de gestión de lavados. |
+
+|  | 2 | El usuario ingresa texto en el campo de búsqueda.  |
+
+|  | 3 | El sistema busca coincidencias en:  ID del lavado, patente del vehículo, nombre del cliente.  |
+
+|  | 4 | El sistema muestra los resultados filtrados en tiempo real. |
+
+|  | 5 | El usuario puede seleccionar un lavado de los resultados. |
+
+| \*\*Postcondición\*\* | El usuario visualiza los lavados que coinciden con el criterio de búsqueda. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si no hay coincidencias, el sistema muestra mensaje "Sin resultados". |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 3-4 | 500ms |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | La búsqueda es insensible a mayúsculas/minúsculas.  |  |
+
+
+
+---
+
+
+
+\### CU-048 - Ver detalle de lavado
+
+
+
+| UC–048 | Ver detalle de lavado |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–04 Registro y Gestión de Lavados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El personal visualiza el detalle completo de un lavado, incluyendo servicios con su estado y progreso de etapas, información del cliente, vehículo, pago y tiempos.  |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado.  El lavado debe existir. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-046 Consultar lavados. |
+
+|  | 2 | El usuario hace clic en un lavado para ver su detalle. |
+
+|  | 3 | El sistema obtiene toda la información del lavado. |
+
+|  | 4 | El sistema muestra:  |
+
+|  | 4a | Información del vehículo:  patente, tipo, marca, modelo, color.  |
+
+|  | 4b | Información del cliente: nombre, teléfono, email. |
+
+|  | 4c | Lista de servicios con estado de cada uno y progreso de etapas. |
+
+|  | 4d | Empleados asignados.  |
+
+|  | 4e | Tiempos:  inicio, tiempo estimado, tiempo transcurrido. |
+
+|  | 4f | Información de pago: monto total, monto pagado, estado de pago. |
+
+|  | 4g | Estado de retiro y cliente que retira (si aplica). |
+
+|  | 4h | Notas adicionales.  |
+
+|  | 5 | El sistema muestra las acciones disponibles según el estado del lavado. |
+
+| \*\*Postcondición\*\* | El usuario visualiza el detalle completo del lavado.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 3a | Si el lavado no existe, el sistema muestra error y redirige a la lista.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 3-4 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-046 Consultar lavados. |  |
+
+
+
+---
+
+
+
+\### CU-049 - Iniciar servicio en lavado
+
+
+
+| UC–049 | Iniciar servicio en lavado |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–04 Registro y Gestión de Lavados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El personal inicia la ejecución de un servicio específico dentro de un lavado, registrando el tiempo de inicio.  |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado.  El lavado debe estar en estado "EnProceso". El servicio debe estar pendiente de inicio. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-048 Ver detalle de lavado. |
+
+|  | 2 | El usuario hace clic en "Iniciar" en el servicio correspondiente. |
+
+|  | 3 | El sistema registra la fecha y hora de inicio del servicio. |
+
+|  | 4 | El sistema actualiza el estado del servicio a "EnProceso". |
+
+|  | 5 | Si el servicio tiene etapas, la primera etapa queda disponible para iniciar. |
+
+|  | 6 | El sistema actualiza la vista del detalle del lavado. |
+
+|  | 7 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El servicio está en proceso y registra su tiempo de inicio. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | - | - |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 3-5 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-048 Ver detalle de lavado.  |  |
+
+
+
+---
+
+
+
+\### CU-050 - Iniciar etapa de servicio
+
+
+
+| UC–050 | Iniciar etapa de servicio |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–04 Registro y Gestión de Lavados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El personal inicia una etapa específica dentro de un servicio que tiene múltiples etapas definidas. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado. El servicio debe estar en estado "EnProceso". La etapa anterior debe estar completada (si existe). |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-048 Ver detalle de lavado. |
+
+|  | 2 | El sistema muestra las etapas del servicio con sus estados. |
+
+|  | 3 | El usuario hace clic en "Iniciar" en la etapa correspondiente. |
+
+|  | 4 | El sistema valida que las etapas anteriores estén completadas. |
+
+|  | 5 | El sistema registra la fecha y hora de inicio de la etapa. |
+
+|  | 6 | El sistema actualiza el estado de la etapa a "EnProceso".  |
+
+|  | 7 | El sistema actualiza la vista del detalle del lavado. |
+
+|  | 8 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | La etapa está en proceso y registra su tiempo de inicio. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si hay etapas anteriores pendientes, el sistema informa que deben completarse primero. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 5-6 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-048 Ver detalle de lavado.  Las etapas se deben completar en orden secuencial. |  |
+
+
+
+---
+
+
+
+\### CU-051 - Finalizar etapa de servicio
+
+
+
+| UC–051 | Finalizar etapa de servicio |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–04 Registro y Gestión de Lavados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El personal marca como finalizada una etapa de un servicio en ejecución. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado. La etapa debe estar en estado "EnProceso". |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-048 Ver detalle de lavado. |
+
+|  | 2 | El usuario hace clic en "Finalizar" en la etapa en proceso. |
+
+|  | 3 | El sistema registra la fecha y hora de finalización de la etapa. |
+
+|  | 4 | El sistema actualiza el estado de la etapa a "Completada". |
+
+|  | 5 | Si es la última etapa del servicio, el servicio se marca como completado automáticamente. |
+
+|  | 6 | El sistema puede ejecutar CU-078 Notificar etapa finalizada (si está configurado). |
+
+|  | 7 | El sistema actualiza la vista del detalle del lavado.  |
+
+|  | 8 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | La etapa está completada.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | - | - |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 3-5 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-048 Ver detalle de lavado. |  |
+
+
+
+---
+
+
+
+\### CU-052 - Finalizar servicio en lavado
+
+
+
+| UC–052 | Finalizar servicio en lavado |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–04 Registro y Gestión de Lavados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El personal marca como completado un servicio específico dentro del lavado, registrando el tiempo de finalización. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado. El servicio debe estar en estado "EnProceso". |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-048 Ver detalle de lavado. |
+
+|  | 2 | El usuario hace clic en "Finalizar" en el servicio en proceso. |
+
+|  | 3 | El sistema verifica el estado de las etapas del servicio (si tiene). |
+
+|  | 4a | Si todas las etapas están completadas, el sistema marca el servicio como "Completado". |
+
+|  | 4b | Si hay etapas pendientes, el sistema solicita confirmación para marcar como "CompletadoParcialmente". |
+
+|  | 5 | El sistema registra la fecha y hora de finalización.  |
+
+|  | 6 | El sistema actualiza la vista del detalle del lavado. |
+
+|  | 7 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El servicio está completado o completado parcialmente. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4b. 1 | Si el usuario no confirma, se cancela la operación. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 4-5 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-048 Ver detalle de lavado. |  |
+
+
+
+---
+
+
+
+\### CU-053 - Finalizar lavado completo
+
+
+
+| UC–053 | Finalizar lavado completo |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–04 Registro y Gestión de Lavados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El personal marca como completado un lavado cuando todos los servicios han sido finalizados. Se registra el tiempo de finalización total. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado. El lavado debe estar en estado "EnProceso". |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-048 Ver detalle de lavado.  |
+
+|  | 2 | El usuario hace clic en "Finalizar Lavado".  |
+
+|  | 3 | El sistema verifica el estado de todos los servicios.  |
+
+|  | 4a | Si todos los servicios están completados, el sistema marca el lavado como "Realizado". |
+
+|  | 4b | Si hay servicios pendientes/parciales, el sistema marca como "RealizadoParcialmente" y solicita motivo. |
+
+|  | 5 | El sistema registra la fecha y hora de finalización. |
+
+|  | 6 | El sistema ejecuta CU-079 Notificar lavado finalizado (si está configurado). |
+
+|  | 7 | El sistema actualiza la vista y muestra mensaje de éxito.  |
+
+|  | 8 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El lavado está finalizado (Realizado o RealizadoParcialmente). |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4b.1 | Si el usuario no proporciona motivo, el sistema lo solicita. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 4-6 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-048 Ver detalle de lavado.  |  |
+
+
+
+---
+
+
+
+\### CU-054 - Cancelar lavado
+
+
+
+| UC–054 | Cancelar lavado |  |
+
+| :---- | :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–04 Registro y Gestión de Lavados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El personal cancela un lavado completo indicando el motivo de cancelación. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado. El lavado debe estar en estado "EnProceso".  |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-048 Ver detalle de lavado. |
+
+|  | 2 | El usuario hace clic en "Cancelar Lavado". |
+
+|  | 3 | El sistema muestra un formulario solicitando el motivo de cancelación (obligatorio). |
+
+|  | 4 | El usuario ingresa el motivo de cancelación. |
+
+|  | 5 | El sistema solicita confirmación de la acción. |
+
+|  | 6 | El usuario confirma la cancelación. |
+
+|  | 7 | El sistema cambia el estado del lavado a "Cancelado". |
+
+|  | 8 | El sistema registra el motivo y la fecha de cancelación. |
+
+|  | 9 | El sistema muestra un mensaje de éxito. |
+
+|  | 10 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El lavado ha sido cancelado. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si no se ingresa motivo, el sistema informa que es obligatorio. |
+
+|  | 6a | Si el usuario no confirma, se aborta la operación.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 7-8 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-048 Ver detalle de lavado. El motivo de cancelación es obligatorio para trazabilidad. |  |
+
+
+
+---
+
+
+
+\### CU-055 - Cancelar servicio en lavado
+
+
+
+| UC–055 | Cancelar servicio en lavado |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–04 Registro y Gestión de Lavados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El personal cancela un servicio específico dentro de un lavado indicando el motivo, permitiendo que el lavado continúe con los servicios restantes.  |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado.  El lavado debe estar en estado "EnProceso". El servicio debe estar pendiente o en proceso. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-048 Ver detalle de lavado. |
+
+|  | 2 | El usuario hace clic en "Cancelar" en el servicio correspondiente. |
+
+|  | 3 | El sistema muestra un formulario solicitando el motivo de cancelación.  |
+
+|  | 4 | El usuario ingresa el motivo de cancelación.  |
+
+|  | 5 | El sistema solicita confirmación.  |
+
+|  | 6 | El usuario confirma la cancelación. |
+
+|  | 7 | El sistema marca el servicio como "Cancelado". |
+
+|  | 8 | El sistema recalcula el precio total del lavado. |
+
+|  | 9 | El sistema actualiza la vista del detalle del lavado. |
+
+|  | 10 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El servicio ha sido cancelado y el precio del lavado recalculado. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 6a | Si el usuario no confirma, se aborta la operación. |
+
+|  | 7a | Si era el único servicio, el sistema sugiere cancelar el lavado completo. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 7-8 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-048 Ver detalle de lavado.  |  |
+
+
+
+---
+
+
+
+\### CU-056 - Registrar pago recibido
+
+
+
+| UC–056 | Registrar pago recibido |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–05 Registro de Pagos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El personal registra un pago total recibido por un cliente, actualizando el estado de pago del lavado a "Pagado". |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado. El lavado debe existir y tener saldo pendiente. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-048 Ver detalle de lavado. |
+
+|  | 2 | El usuario hace clic en "Registrar Pago".  |
+
+|  | 3 | El sistema muestra el monto total, monto pagado y saldo pendiente. |
+
+|  | 4 | El sistema pre-selecciona el saldo pendiente como monto a pagar. |
+
+|  | 5 | El usuario confirma el monto y selecciona el método de pago. |
+
+|  | 6 | El usuario hace clic en "Confirmar Pago".  |
+
+|  | 7 | El sistema valida que el monto sea válido.  |
+
+|  | 8 | El sistema registra el pago con fecha y hora. |
+
+|  | 9 | El sistema actualiza el monto pagado y cambia el estado a "Pagado". |
+
+|  | 10 | El sistema muestra un mensaje de éxito. |
+
+|  | 11 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El pago está registrado y el lavado está marcado como pagado.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 7a | Si el monto es inválido, el sistema muestra error.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 8-9 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-048 Ver detalle de lavado. |  |
+
+
+
+---
+
+
+
+\### CU-057 - Registrar pago parcial
+
+
+
+| UC–057 | Registrar pago parcial |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–05 Registro de Pagos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El personal registra un pago parcial indicando el monto recibido, el estado de pago se actualiza a "Parcial" y se mantiene registro de cada pago individual. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado. El lavado debe existir y tener saldo pendiente.  |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-048 Ver detalle de lavado. |
+
+|  | 2 | El usuario hace clic en "Registrar Pago". |
+
+|  | 3 | El sistema muestra el monto total, monto pagado y saldo pendiente. |
+
+|  | 4 | El usuario ingresa un monto menor al saldo pendiente. |
+
+|  | 5 | El usuario selecciona el método de pago. |
+
+|  | 6 | El usuario hace clic en "Confirmar Pago". |
+
+|  | 7 | El sistema valida que el monto no exceda el saldo pendiente. |
+
+|  | 8 | El sistema registra el pago con fecha, hora y monto.  |
+
+|  | 9 | El sistema actualiza el monto pagado.  |
+
+|  | 10 | El sistema cambia el estado de pago a "Parcial". |
+
+|  | 11 | El sistema muestra un mensaje de éxito con el saldo restante. |
+
+|  | 12 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El pago parcial está registrado y el saldo pendiente actualizado. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 7a | Si el monto excede el saldo pendiente, el sistema informa el error. |
+
+|  | 7b | Si el monto es menor o igual a cero, el sistema informa el error. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 8-10 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-048 Ver detalle de lavado. Se permite registrar múltiples pagos parciales. |  |
+
+
+
+---
+
+
+
+\### CU-058 - Marcar vehículo como retirado
+
+
+
+| UC–058 | Marcar vehículo como retirado |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–04 Registro y Gestión de Lavados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El personal marca un vehículo como retirado por el cliente, registrando la fecha y hora del retiro. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado. El lavado debe estar finalizado (Realizado o RealizadoParcialmente). |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-048 Ver detalle de lavado. |
+
+|  | 2 | El usuario hace clic en "Marcar como Retirado". |
+
+|  | 3 | El sistema muestra los clientes asociados al vehículo. |
+
+|  | 4 | El usuario selecciona el cliente que retira el vehículo. |
+
+|  | 5 | El usuario hace clic en "Confirmar Retiro". |
+
+|  | 6 | El sistema actualiza el estado de retiro a "Retirado". |
+
+|  | 7 | El sistema registra el cliente que retiró y la fecha/hora. |
+
+|  | 8 | El sistema muestra un mensaje de éxito. |
+
+|  | 9 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El vehículo está marcado como retirado.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si no se selecciona cliente, el sistema puede registrar el retiro sin asignar responsable. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6-7 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Frecuente |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-048 Ver detalle de lavado.  |  |
+
+
+
+---
+
+
+
+\### CU-059 - Calcular duración estimada de lavado
+
+
+
+| UC–059 | Calcular duración estimada de lavado |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–04 Registro y Gestión de Lavados |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados, IRQ–04 Información sobre Servicios |  |
+
+| \*\*Descripción\*\* | El sistema calcula automáticamente la duración estimada de un lavado sumando los tiempos estimados de cada servicio seleccionado. |  |
+
+| \*\*Precondición\*\* | Se están seleccionando servicios para un lavado (dentro de CU-045). |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario selecciona uno o más servicios para el lavado. |
+
+|  | 2 | El sistema obtiene el tiempo estimado de cada servicio seleccionado. |
+
+|  | 3 | El sistema suma todos los tiempos estimados.  |
+
+|  | 4 | El sistema muestra el tiempo total estimado al usuario. |
+
+|  | 5 | El sistema utiliza este tiempo para calcular la hora estimada de finalización. |
+
+| \*\*Postcondición\*\* | El tiempo estimado total está calculado y mostrado.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | - | - |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-4 | Inmediato |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Este cálculo se realiza en tiempo real mientras el usuario selecciona servicios.  |  |
+
+
+
+---
+
+
+
+\### \*\*Módulo:  Configuración\*\*
+
+
+
+---
+
+
+
+\### CU-060 - Configurar horarios del lavadero
+
+
+
+| UC–060 | Configurar horarios del lavadero |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–11 Gestión de Configuración del Sistema |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–11 Información de Configuración del Sistema |  |
+
+| \*\*Descripción\*\* | El administrador configura el horario de funcionamiento del establecimiento para cada día de la semana, incluyendo horarios divididos y días cerrados. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de configuración del sistema. |
+
+|  | 2 | El sistema muestra la configuración actual de horarios por día de la semana. |
+
+|  | 3 | Para cada día, el administrador puede configurar:  |
+
+|  | 3a | Horario continuo:  ej. "09:00-18:00" |
+
+|  | 3b | Horario dividido: ej.  "09:00-13:00,15:00-19:00" |
+
+|  | 3c | Día cerrado: "CERRADO" |
+
+|  | 4 | El administrador hace clic en "Guardar". |
+
+|  | 5 | El sistema valida que los horarios sean coherentes (hora fin > hora inicio). |
+
+|  | 6 | El sistema actualiza la configuración.  |
+
+|  | 7 | El sistema muestra un mensaje de éxito.  |
+
+|  | 8 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | Los horarios de operación han sido actualizados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si hay errores de formato o coherencia, el sistema muestra los errores. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Los horarios afectan la validación al crear lavados y la información mostrada a clientes por WhatsApp. |  |
+
+
+
+---
+
+
+
+\### CU-061 - Configurar capacidad concurrente
+
+
+
+| UC–061 | Configurar capacidad concurrente |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–11 Gestión de Configuración del Sistema |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–11 Información de Configuración del Sistema |  |
+
+| \*\*Descripción\*\* | El administrador configura el número máximo de lavados que se pueden atender simultáneamente y si se debe considerar el número de empleados activos para calcular la capacidad efectiva. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador.  |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de configuración del sistema. |
+
+|  | 2 | El sistema muestra la configuración actual de capacidad.  |
+
+|  | 3 | El administrador configura:  |
+
+|  | 3a | Número máximo de lavados simultáneos.  |
+
+|  | 3b | Si se debe considerar el número de empleados activos. |
+
+|  | 4 | El administrador hace clic en "Guardar". |
+
+|  | 5 | El sistema valida que el número sea mayor a cero. |
+
+|  | 6 | El sistema actualiza la configuración. |
+
+|  | 7 | El sistema muestra un mensaje de éxito. |
+
+|  | 8 | El sistema registra la acción en auditoría.  |
+
+| \*\*Postcondición\*\* | La configuración de capacidad ha sido actualizada. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si el número es inválido, el sistema muestra error.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Esta configuración afecta la validación al crear nuevos lavados.  |  |
+
+
+
+---
+
+
+
+\### CU-062 - Configurar tiempos de tolerancia y notificación
+
+
+
+| UC–062 | Configurar tiempos de tolerancia y notificación |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–11 Gestión de Configuración del Sistema |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–11 Información de Configuración del Sistema |  |
+
+| \*\*Descripción\*\* | El administrador configura los minutos de anticipación para notificar antes del tiempo estimado, los minutos de tolerancia máxima y el intervalo para preguntar si ya terminó cuando se excede el tiempo. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de configuración del sistema. |
+
+|  | 2 | El sistema muestra la configuración actual de tiempos.  |
+
+|  | 3 | El administrador configura:  |
+
+|  | 3a | Minutos de anticipación para notificación. |
+
+|  | 3b | Minutos de tolerancia máxima después del tiempo estimado. |
+
+|  | 3c | Intervalo en minutos para consultar si ya terminó. |
+
+|  | 4 | El administrador hace clic en "Guardar". |
+
+|  | 5 | El sistema valida que los valores sean mayores a cero.  |
+
+|  | 6 | El sistema actualiza la configuración. |
+
+|  | 7 | El sistema muestra un mensaje de éxito. |
+
+|  | 8 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | La configuración de tiempos ha sido actualizada.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si hay valores inválidos, el sistema muestra error.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Estos tiempos afectan el comportamiento de las notificaciones automáticas. |  |
+
+
+
+---
+
+
+
+\### CU-063 - Configurar duración de sesión
+
+
+
+| UC–063 | Configurar duración de sesión |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–11 Gestión de Configuración del Sistema |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–11 Información de Configuración del Sistema |  |
+
+| \*\*Descripción\*\* | El administrador configura la duración máxima de la sesión en horas y el tiempo de inactividad en minutos antes del cierre automático.  |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de configuración del sistema.  |
+
+|  | 2 | El sistema muestra la configuración actual de sesión. |
+
+|  | 3 | El administrador configura: |
+
+|  | 3a | Duración máxima de sesión en horas. |
+
+|  | 3b | Tiempo de inactividad en minutos para cierre automático.  |
+
+|  | 4 | El administrador hace clic en "Guardar". |
+
+|  | 5 | El sistema valida que los valores sean mayores a cero. |
+
+|  | 6 | El sistema actualiza la configuración.  |
+
+|  | 7 | El sistema muestra un mensaje de éxito.  |
+
+|  | 8 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | La configuración de sesión ha sido actualizada. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si hay valores inválidos, el sistema muestra error.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Esta configuración afecta el comportamiento de CU-004.  |  |
+
+
+
+---
+
+
+
+\### CU-064 - Configurar nombre y ubicación del lavadero
+
+
+
+| UC–064 | Configurar nombre y ubicación del lavadero |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–11 Gestión de Configuración del Sistema |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–11 Información de Configuración del Sistema |  |
+
+| \*\*Descripción\*\* | El administrador configura el nombre del lavadero y su ubicación, que se muestran en las notificaciones por WhatsApp y otros lugares del sistema. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de configuración del sistema. |
+
+|  | 2 | El sistema muestra la configuración actual de información del lavadero. |
+
+|  | 3 | El administrador configura: |
+
+|  | 3a | Nombre del lavadero.  |
+
+|  | 3b | Dirección/Ubicación.  |
+
+|  | 3c | Teléfono de contacto. |
+
+|  | 3d | Email de contacto. |
+
+|  | 4 | El administrador hace clic en "Guardar". |
+
+|  | 5 | El sistema valida los datos (campos obligatorios, formato de email). |
+
+|  | 6 | El sistema actualiza la configuración. |
+
+|  | 7 | El sistema muestra un mensaje de éxito. |
+
+|  | 8 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | La información del lavadero ha sido actualizada. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si hay errores de validación, el sistema muestra los errores. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Esta información se muestra a los clientes a través de WhatsApp (CU-092). |  |
+
+
+
+---
+
+
+
+\### CU-065 - Configurar paso de descuento para paquetes
+
+
+
+| UC–065 | Configurar paso de descuento para paquetes |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–11 Gestión de Configuración del Sistema |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–11 Información de Configuración del Sistema |  |
+
+| \*\*Descripción\*\* | El administrador configura el incremento mínimo de porcentaje de descuento al crear paquetes de servicios (mínimo 5%). |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de configuración del sistema.  |
+
+|  | 2 | El sistema muestra la configuración actual de descuentos para paquetes. |
+
+|  | 3 | El administrador configura: |
+
+|  | 3a | Porcentaje mínimo de descuento.  |
+
+|  | 3b | Porcentaje máximo de descuento. |
+
+|  | 3c | Incremento (step) de descuento (mínimo 5%). |
+
+|  | 4 | El administrador hace clic en "Guardar". |
+
+|  | 5 | El sistema valida que mínimo <= máximo y step >= 5. |
+
+|  | 6 | El sistema actualiza la configuración. |
+
+|  | 7 | El sistema muestra un mensaje de éxito. |
+
+|  | 8 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | La configuración de descuentos ha sido actualizada. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si hay errores de validación, el sistema muestra los errores. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Rara |  |
+
+| \*\*Estabilidad\*\* | Baja |
+
+Perfecto, aquí está la \*\*quinta parte\*\* del documento continuando con los Casos de Uso Extendidos (CU-066 a CU-092) y las secciones finales:
+
+
+
+---
+
+
+
+| UC–066 | Registrar turno |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–06 Planificación y Gestión de Turnos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–09 Información sobre Turnos |  |
+
+| \*\*Descripción\*\* | El personal agenda un turno para un cliente en el sistema, especificando fecha, hora y servicios solicitados. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador.  Deben existir clientes, vehículos y servicios activos. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de gestión de turnos.  |
+
+|  | 2 | El administrador hace clic en "Nuevo Turno". |
+
+|  | 3 | El sistema muestra un formulario con campos:  Fecha, Hora, Cliente, Vehículo, Servicios. |
+
+|  | 4 | El administrador selecciona la fecha del turno. |
+
+|  | 5 | El sistema muestra los horarios disponibles según la configuración y turnos existentes. |
+
+|  | 6 | El administrador selecciona la hora del turno.  |
+
+|  | 7 | El administrador busca y selecciona el cliente.  |
+
+|  | 8 | El sistema muestra los vehículos asociados al cliente. |
+
+|  | 9 | El administrador selecciona el vehículo. |
+
+|  | 10 | El sistema carga los servicios disponibles para el tipo de vehículo. |
+
+|  | 11 | El administrador selecciona los servicios deseados. |
+
+|  | 12 | El sistema ejecuta CU-073 para validar disponibilidad. |
+
+|  | 13 | El administrador hace clic en "Guardar".  |
+
+|  | 14 | El sistema crea el turno con estado "Pendiente". |
+
+|  | 15 | El sistema muestra un mensaje de éxito. |
+
+|  | 16 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El turno está registrado en la agenda.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si no hay horarios disponibles en la fecha, el sistema lo informa. |
+
+|  | 12a | Si hay conflicto de horarios, el sistema informa y sugiere alternativas. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 14 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | El sistema valida automáticamente que no haya solapamientos. |  |
+
+
+
+---
+
+
+
+\### CU-067 - Modificar turno
+
+
+
+| UC–067 | Modificar turno |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–06 Planificación y Gestión de Turnos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–09 Información sobre Turnos |  |
+
+| \*\*Descripción\*\* | El personal actualiza la información de un turno ya registrado, validando la disponibilidad en el nuevo horario. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. El turno debe existir y estar en estado "Pendiente". |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-068 Consultar turnos asignados. |
+
+|  | 2 | El administrador selecciona el turno a modificar. |
+
+|  | 3 | El sistema muestra el formulario de edición con los datos actuales.  |
+
+|  | 4 | El administrador modifica los campos deseados (fecha, hora, servicios). |
+
+|  | 5 | El sistema ejecuta CU-074 para validar disponibilidad en el nuevo horario.  |
+
+|  | 6 | El administrador hace clic en "Guardar". |
+
+|  | 7 | El sistema actualiza el turno.  |
+
+|  | 8 | El sistema muestra un mensaje de éxito.  |
+
+|  | 9 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El turno ha sido actualizado. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si no hay disponibilidad, el sistema informa y sugiere alternativas.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 7 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-068 Consultar turnos asignados. |  |
+
+
+
+---
+
+
+
+\### CU-068 - Consultar turnos asignados
+
+
+
+| UC–068 | Consultar turnos asignados |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–06 Planificación y Gestión de Turnos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–09 Información sobre Turnos |  |
+
+| \*\*Descripción\*\* | El personal consulta la agenda de turnos registrados en el sistema con vista de calendario. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de gestión de turnos.  |
+
+|  | 2 | El sistema obtiene los turnos del período actual (semana/mes). |
+
+|  | 3 | El sistema muestra la vista de calendario con los turnos.  |
+
+|  | 4 | El administrador puede cambiar entre vista diaria, semanal o mensual. |
+
+|  | 5 | El administrador puede navegar entre fechas.  |
+
+|  | 6 | El administrador puede filtrar por estado del turno. |
+
+|  | 7 | El sistema actualiza la vista según los criterios seleccionados. |
+
+|  | 8 | El administrador puede hacer clic en un turno para ver detalles. |
+
+| \*\*Postcondición\*\* | El administrador visualiza la agenda de turnos. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si no hay turnos en el período, el sistema muestra calendario vacío. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-3 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | La vista de calendario permite una visualización rápida de la disponibilidad. |  |
+
+
+
+---
+
+
+
+\### CU-069 - Cancelar turno
+
+
+
+| UC–069 | Cancelar turno |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–06 Planificación y Gestión de Turnos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–09 Información sobre Turnos |  |
+
+| \*\*Descripción\*\* | El personal cancela un turno previamente asignado a un cliente. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. El turno debe existir y estar en estado "Pendiente". |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-068 Consultar turnos asignados.  |
+
+|  | 2 | El administrador selecciona el turno a cancelar. |
+
+|  | 3 | El sistema muestra un diálogo de confirmación solicitando motivo. |
+
+|  | 4 | El administrador ingresa el motivo de cancelación. |
+
+|  | 5 | El administrador confirma la cancelación.  |
+
+|  | 6 | El sistema cambia el estado del turno a "Cancelado". |
+
+|  | 7 | El sistema ejecuta CU-075 para reorganizar agenda si corresponde. |
+
+|  | 8 | El sistema puede notificar al cliente por WhatsApp (si está configurado). |
+
+|  | 9 | El sistema muestra un mensaje de éxito. |
+
+|  | 10 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El turno ha sido cancelado y la agenda puede reorganizarse. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si el administrador no confirma, se aborta la operación. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6-7 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-068 Consultar turnos asignados.  |  |
+
+
+
+---
+
+
+
+\### CU-070 - Solicitar turno por WhatsApp
+
+
+
+| UC–070 | Solicitar turno por WhatsApp |  |
+
+| :---- | :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–06 Planificación y Gestión de Turnos, OBJ–10 Integración con WhatsApp |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–09 Información sobre Turnos, IRQ–12 Información de Sesiones WhatsApp |  |
+
+| \*\*Descripción\*\* | El cliente agenda un turno directamente mediante el flujo conversacional de WhatsApp, indicando vehículo y servicios deseados. |  |
+
+| \*\*Precondición\*\* | El cliente debe estar registrado y tener al menos un vehículo asociado. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El cliente accede al menú principal de WhatsApp. |
+
+|  | 2 | El cliente selecciona "Solicitar Turno".  |
+
+|  | 3 | El sistema muestra los vehículos del cliente. |
+
+|  | 4 | El cliente selecciona el vehículo.  |
+
+|  | 5 | El sistema muestra los servicios disponibles para ese tipo de vehículo. |
+
+|  | 6 | El cliente selecciona los servicios deseados. |
+
+|  | 7 | El sistema calcula la duración estimada.  |
+
+|  | 8 | El sistema muestra las fechas disponibles. |
+
+|  | 9 | El cliente selecciona la fecha. |
+
+|  | 10 | El sistema muestra los horarios disponibles.  |
+
+|  | 11 | El cliente selecciona el horario. |
+
+|  | 12 | El sistema ejecuta CU-073 para validar disponibilidad. |
+
+|  | 13 | El sistema muestra resumen y solicita confirmación. |
+
+|  | 14 | El cliente confirma el turno.  |
+
+|  | 15 | El sistema crea el turno con estado "Pendiente". |
+
+|  | 16 | El sistema envía confirmación del turno al cliente.  |
+
+|  | 17 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El turno está registrado y el cliente notificado. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 3a | Si no tiene vehículos, el sistema ofrece registrar uno (CU-026). |
+
+|  | 12a | Si no hay disponibilidad, el sistema ofrece alternativas.  |
+
+|  | 14a | Si el cliente no confirma, puede modificar la selección. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 15 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | El flujo guía al cliente paso a paso de forma conversacional. |  |
+
+
+
+---
+
+
+
+\### CU-071 - Consultar turnos próximos por WhatsApp
+
+
+
+| UC–071 | Consultar turnos próximos por WhatsApp |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–06 Planificación y Gestión de Turnos, OBJ–10 Integración con WhatsApp |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–09 Información sobre Turnos, IRQ–12 Información de Sesiones WhatsApp |  |
+
+| \*\*Descripción\*\* | El cliente visualiza los turnos futuros registrados a su nombre mediante WhatsApp. |  |
+
+| \*\*Precondición\*\* | El cliente debe estar registrado en el sistema. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El cliente accede al menú principal de WhatsApp. |
+
+|  | 2 | El cliente selecciona "Mis Turnos". |
+
+|  | 3 | El sistema busca los turnos pendientes del cliente. |
+
+|  | 4 | El sistema muestra la lista de turnos con:  fecha, hora, vehículo, servicios. |
+
+|  | 5 | El cliente puede seleccionar un turno para ver más detalles. |
+
+|  | 6 | El sistema muestra el detalle del turno seleccionado. |
+
+|  | 7 | El sistema ofrece opciones:  cancelar turno, volver al menú.  |
+
+| \*\*Postcondición\*\* | El cliente ha visualizado sus turnos próximos. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 3a | Si no tiene turnos, el sistema informa y ofrece solicitar uno. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 3-4 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Solo se muestran turnos con estado "Pendiente" o "Confirmado". |  |
+
+
+
+---
+
+
+
+\### CU-072 - Cancelar turno por WhatsApp
+
+
+
+| UC–072 | Cancelar turno por WhatsApp |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–06 Planificación y Gestión de Turnos, OBJ–10 Integración con WhatsApp |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–09 Información sobre Turnos, IRQ–12 Información de Sesiones WhatsApp |  |
+
+| \*\*Descripción\*\* | El cliente cancela un turno previamente asignado mediante el flujo de WhatsApp. |  |
+
+| \*\*Precondición\*\* | El cliente debe estar registrado y tener turnos pendientes. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta CU-071 para mostrar los turnos del cliente. |
+
+|  | 2 | El cliente selecciona el turno a cancelar. |
+
+|  | 3 | El sistema muestra el detalle del turno.  |
+
+|  | 4 | El cliente selecciona "Cancelar Turno". |
+
+|  | 5 | El sistema solicita confirmación. |
+
+|  | 6 | El cliente confirma la cancelación. |
+
+|  | 7 | El sistema cambia el estado del turno a "Cancelado". |
+
+|  | 8 | El sistema ejecuta CU-075 para reorganizar agenda si corresponde. |
+
+|  | 9 | El sistema confirma la cancelación al cliente. |
+
+|  | 10 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El turno ha sido cancelado.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 6a | Si el cliente no confirma, se aborta la operación. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 7-8 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | La cancelación puede activar la reorganización de agenda para otros clientes. |  |
+
+
+
+---
+
+
+
+\### CU-073 - Asignar turno automáticamente sin superposición
+
+
+
+| UC–073 | Asignar turno automáticamente sin superposición |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–06 Planificación y Gestión de Turnos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–09 Información sobre Turnos, IRQ–11 Información de Configuración |  |
+
+| \*\*Descripción\*\* | El sistema asigna turnos asegurando que no existan solapamientos en la agenda, considerando la duración estimada de los servicios. |  |
+
+| \*\*Precondición\*\* | Se está creando o modificando un turno. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El sistema recibe la fecha, hora y duración estimada del turno solicitado. |
+
+|  | 2 | El sistema calcula la hora de finalización estimada. |
+
+|  | 3 | El sistema obtiene los turnos existentes en esa fecha. |
+
+|  | 4 | El sistema verifica que no haya solapamiento con otros turnos. |
+
+|  | 5 | El sistema verifica que esté dentro del horario de operación. |
+
+|  | 6 | El sistema verifica que no se exceda la capacidad máxima de lavados simultáneos. |
+
+|  | 7 | Si todas las validaciones pasan, el sistema confirma la disponibilidad. |
+
+| \*\*Postcondición\*\* | La disponibilidad del horario ha sido validada. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si hay solapamiento, el sistema retorna error con los horarios alternativos disponibles. |
+
+|  | 5a | Si está fuera del horario de operación, el sistema informa el error. |
+
+|  | 6a | Si se excede la capacidad, el sistema informa el error. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 3-7 | 500ms |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Este caso de uso es ejecutado automáticamente por el sistema. |  |
+
+
+
+---
+
+
+
+\### CU-074 - Validar disponibilidad al mover un turno
+
+
+
+| UC–074 | Validar disponibilidad al mover un turno |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–06 Planificación y Gestión de Turnos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–09 Información sobre Turnos |  |
+
+| \*\*Descripción\*\* | El sistema valida si existe disponibilidad en la agenda al modificar la fecha u hora de un turno. |  |
+
+| \*\*Precondición\*\* | Se está modificando un turno existente (dentro de CU-067). |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El sistema recibe la nueva fecha, hora y duración del turno.  |
+
+|  | 2 | El sistema excluye el turno actual de la verificación de solapamientos. |
+
+|  | 3 | El sistema ejecuta las mismas validaciones que CU-073. |
+
+|  | 4 | Si todas las validaciones pasan, el sistema confirma la disponibilidad. |
+
+| \*\*Postcondición\*\* | La disponibilidad del nuevo horario ha sido validada. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 3a | Si no hay disponibilidad, el sistema retorna los horarios alternativos. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-4 | 500ms |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Este caso de uso es ejecutado automáticamente por el sistema.  |  |
+
+
+
+---
+
+
+
+\### CU-075 - Reorganizar agenda ante cancelaciones
+
+
+
+| UC–075 | Reorganizar agenda ante cancelaciones |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–06 Planificación y Gestión de Turnos |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–09 Información sobre Turnos |  |
+
+| \*\*Descripción\*\* | El sistema reordena automáticamente la agenda de turnos cuando ocurre una cancelación, notificando a clientes sobre posibles adelantos. |  |
+
+| \*\*Precondición\*\* | Se ha cancelado un turno (dentro de CU-069 o CU-072). |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El sistema identifica el horario liberado por la cancelación. |
+
+|  | 2 | El sistema busca turnos posteriores que podrían adelantarse. |
+
+|  | 3 | Para cada turno candidato, el sistema verifica si el cliente podría beneficiarse.  |
+
+|  | 4 | El sistema envía notificación por WhatsApp ofreciendo el adelanto. |
+
+|  | 5 | Si el cliente acepta, el sistema actualiza el horario del turno. |
+
+|  | 6 | El sistema registra los cambios en auditoría. |
+
+| \*\*Postcondición\*\* | La agenda ha sido optimizada y los clientes notificados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si no hay turnos que puedan adelantarse, el proceso termina. |
+
+|  | 5a | Si el cliente rechaza o no responde, se consulta al siguiente candidato. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 1-4 | 3 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Este caso de uso es ejecutado automáticamente por el sistema. |  |
+
+
+
+---
+
+
+
+\### \*\*Módulo: Notificación al Cliente\*\*
+
+
+
+---
+
+
+
+\### CU-076 - Enviar notificación por WhatsApp
+
+
+
+| UC–076 | Enviar notificación por WhatsApp |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–12 Notificación al Cliente |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes |  |
+
+| \*\*Descripción\*\* | El personal envía notificaciones personalizadas a los clientes por WhatsApp utilizando la integración con WhatsApp Cloud API. |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado.  El cliente debe tener número de teléfono registrado. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la función de enviar notificación (desde detalle de lavado u otro contexto). |
+
+|  | 2 | El sistema muestra el formulario de notificación con el cliente preseleccionado. |
+
+|  | 3 | El usuario redacta el mensaje personalizado.  |
+
+|  | 4 | El usuario hace clic en "Enviar".  |
+
+|  | 5 | El sistema envía el mensaje a través de WhatsApp Cloud API. |
+
+|  | 6 | El sistema muestra confirmación del envío. |
+
+|  | 7 | El sistema registra la acción en auditoría. |
+
+| \*\*Postcondición\*\* | El mensaje ha sido enviado al cliente. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si hay error en el envío, el sistema muestra el mensaje de error. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 5 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Requiere configuración válida de WhatsApp Cloud API. |  |
+
+
+
+---
+
+
+
+\### CU-077 - Enviar notificación por correo electrónico
+
+
+
+| UC–077 | Enviar notificación por correo electrónico |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–12 Notificación al Cliente |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes |  |
+
+| \*\*Descripción\*\* | El personal envía notificaciones personalizadas a los clientes por correo electrónico.  |  |
+
+| \*\*Precondición\*\* | El usuario debe estar autenticado.  El cliente debe tener email registrado. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario accede a la función de enviar notificación por email. |
+
+|  | 2 | El sistema muestra el formulario de notificación con el cliente preseleccionado.  |
+
+|  | 3 | El usuario redacta el asunto y cuerpo del mensaje.  |
+
+|  | 4 | El usuario hace clic en "Enviar".  |
+
+|  | 5 | El sistema envía el correo electrónico.  |
+
+|  | 6 | El sistema muestra confirmación del envío. |
+
+|  | 7 | El sistema registra la acción en auditoría.  |
+
+| \*\*Postcondición\*\* | El correo ha sido enviado al cliente. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si el cliente no tiene email, el sistema informa el error. |
+
+|  | 5a | Si hay error en el envío, el sistema muestra el mensaje de error.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 5 | 3 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Requiere configuración de servicio de correo electrónico. |  |
+
+
+
+---
+
+
+
+\### CU-078 - Notificar etapa finalizada
+
+
+
+| UC–078 | Notificar etapa finalizada |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–12 Notificación al Cliente |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes, IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El sistema envía automáticamente una notificación por WhatsApp al cliente cuando una etapa de su servicio ha sido finalizada. |  |
+
+| \*\*Precondición\*\* | Una etapa de servicio ha sido completada (dentro de CU-051). La notificación automática está habilitada. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El sistema detecta que una etapa ha sido finalizada. |
+
+|  | 2 | El sistema obtiene los datos del cliente y del lavado. |
+
+|  | 3 | El sistema genera el mensaje de notificación con detalles de la etapa completada. |
+
+|  | 4 | El sistema envía el mensaje por WhatsApp al cliente. |
+
+|  | 5 | El sistema registra la notificación enviada. |
+
+| \*\*Postcondición\*\* | El cliente ha sido notificado del progreso de su servicio. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si hay error en el envío, se registra el error pero no se interrumpe el proceso.  |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-4 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Frecuente |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Este caso de uso es ejecutado automáticamente por el sistema.  |  |
+
+
+
+---
+
+
+
+\### CU-079 - Notificar lavado finalizado
+
+
+
+| UC–079 | Notificar lavado finalizado |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–12 Notificación al Cliente |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–02 Información sobre Clientes, IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El sistema envía automáticamente una notificación por WhatsApp al cliente cuando el lavado de su vehículo está completo y listo para retirar. |  |
+
+| \*\*Precondición\*\* | Un lavado ha sido finalizado (dentro de CU-053). La notificación automática está habilitada. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El sistema detecta que un lavado ha sido finalizado. |
+
+|  | 2 | El sistema obtiene los datos del cliente, vehículo y lavado. |
+
+|  | 3 | El sistema genera el mensaje de notificación indicando que el vehículo está listo.  |
+
+|  | 4 | El sistema incluye información del lavadero (nombre, ubicación). |
+
+|  | 5 | El sistema envía el mensaje por WhatsApp al cliente. |
+
+|  | 6 | El sistema registra la notificación enviada. |
+
+| \*\*Postcondición\*\* | El cliente ha sido notificado que su vehículo está listo. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si hay error en el envío, se registra el error pero no se interrumpe el proceso. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-5 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Este caso de uso es ejecutado automáticamente por el sistema.  |  |
+
+
+
+---
+
+
+
+\### CU-080 - Solicitar hablar con el personal
+
+
+
+| UC–080 | Solicitar hablar con el personal |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–10 Integración con WhatsApp |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–12 Información de Sesiones WhatsApp |  |
+
+| \*\*Descripción\*\* | El cliente envía un mensaje por WhatsApp para comunicarse directamente con el personal del lavadero, saliendo del flujo automatizado. |  |
+
+| \*\*Precondición\*\* | El cliente está en una conversación activa de WhatsApp. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El cliente selecciona "Hablar con personal" del menú o escribe un mensaje libre. |
+
+|  | 2 | El sistema detecta la solicitud de atención humana. |
+
+|  | 3 | El sistema marca la sesión como "requiere atención humana".  |
+
+|  | 4 | El sistema envía mensaje confirmando que un empleado responderá pronto. |
+
+|  | 5 | El sistema notifica al personal del lavadero sobre la solicitud. |
+
+|  | 6 | Los mensajes siguientes se almacenan para revisión del personal. |
+
+| \*\*Postcondición\*\* | La conversación ha sido escalada a atención humana. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | - | - |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 3-4 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Baja |  |
+
+| \*\*Comentarios\*\* | Permite manejar casos que el bot no puede resolver automáticamente. |  |
+
+
+
+---
+
+
+
+\### \*\*Módulo:  Estadísticas y Reportes\*\*
+
+
+
+---
+
+
+
+\### CU-081 - Consultar estadísticas básicas
+
+
+
+| UC–081 | Consultar estadísticas básicas |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–08 Módulo de Estadísticas y Reportes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados, IRQ–02 Información sobre Clientes |  |
+
+| \*\*Descripción\*\* | El administrador consulta estadísticas sobre la actividad general del lavadero:  lavados realizados, clientes activos, servicios más solicitados, cumplimiento de turnos.  |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de estadísticas. |
+
+|  | 2 | El sistema calcula y muestra indicadores clave:  |
+
+|  | 2a | Total de lavados realizados (por período). |
+
+|  | 2b | Lavados activos actualmente. |
+
+|  | 2c | Total de clientes registrados (activos/nuevos). |
+
+|  | 2d | Ingresos totales (por período). |
+
+|  | 2e | Servicios más solicitados.  |
+
+|  | 2f | Promedio de tiempo por lavado. |
+
+|  | 2g | Tasa de cumplimiento de turnos. |
+
+|  | 3 | El administrador puede filtrar por rango de fechas. |
+
+|  | 4 | El sistema actualiza las estadísticas según el filtro.  |
+
+| \*\*Postcondición\*\* | El administrador visualiza las estadísticas del lavadero. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si no hay datos, el sistema muestra valores en cero. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2 | 3 segundos |
+
+| \*\*Frecuencia\*\* | Frecuente |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Las estadísticas se calculan en tiempo real. |  |
+
+
+
+---
+
+
+
+\### CU-082 - Consultar historial de pagos
+
+
+
+| UC–082 | Consultar historial de pagos |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–08 Módulo de Estadísticas y Reportes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | El administrador accede al historial de todos los pagos registrados con opciones de filtrado por fecha, cliente y monto. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador.  |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de historial de pagos. |
+
+|  | 2 | El sistema obtiene los pagos registrados. |
+
+|  | 3 | El sistema muestra la tabla de pagos con:  fecha, lavado, cliente, monto, método de pago.  |
+
+|  | 4 | El administrador puede filtrar por:  rango de fechas, cliente, rango de montos.  |
+
+|  | 5 | El administrador puede ordenar por cualquier columna. |
+
+|  | 6 | El sistema muestra totales:  suma de pagos, cantidad de transacciones. |
+
+| \*\*Postcondición\*\* | El administrador visualiza el historial de pagos. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si no hay pagos, el sistema muestra mensaje indicándolo. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-3 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Ninguno. |  |
+
+
+
+---
+
+
+
+\### CU-083 - Generar reportes
+
+
+
+| UC–083 | Generar reportes |  |
+
+| :---- | :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–08 Módulo de Estadísticas y Reportes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados, IRQ–02 Información sobre Clientes |  |
+
+| \*\*Descripción\*\* | El administrador genera reportes personalizables de los diversos aspectos del sistema para un período de tiempo específico. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador.  |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de reportes.  |
+
+|  | 2 | El sistema muestra los tipos de reportes disponibles:  |
+
+|  | 2a | Reporte de lavados (por período, estado, cliente). |
+
+|  | 2b | Reporte de ingresos (por período, método de pago). |
+
+|  | 2c | Reporte de clientes (nuevos registros, frecuencia). |
+
+|  | 2d | Reporte de servicios (más solicitados, ingresos por servicio). |
+
+|  | 3 | El administrador selecciona el tipo de reporte. |
+
+|  | 4 | El administrador configura los filtros del reporte (fechas, criterios). |
+
+|  | 5 | El administrador hace clic en "Generar Reporte". |
+
+|  | 6 | El sistema genera el reporte con los datos filtrados. |
+
+|  | 7 | El sistema muestra una vista previa del reporte. |
+
+|  | 8 | El administrador puede exportar el reporte (CU-083. 1). |
+
+| \*\*Postcondición\*\* | El reporte ha sido generado. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 6a | Si no hay datos para el reporte, el sistema informa que no hay resultados. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 6-7 | 5 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Los reportes permiten análisis detallado para la toma de decisiones.  |  |
+
+
+
+---
+
+
+
+\### CU-083.1 - Exportar reportes a PDF o Excel
+
+
+
+| UC–083.1 | Exportar reportes a PDF o Excel |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–08 Módulo de Estadísticas y Reportes |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–08 Información sobre Lavados |  |
+
+| \*\*Descripción\*\* | Extiende del CU-083. El sistema permite exportar los reportes generados en formato PDF o Excel. |  |
+
+| \*\*Precondición\*\* | Se ha generado un reporte (dentro de CU-083). |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador visualiza el reporte generado. |
+
+|  | 2 | El administrador selecciona el formato de exportación (PDF o Excel). |
+
+|  | 3 | El administrador hace clic en "Exportar".  |
+
+|  | 4 | El sistema genera el archivo en el formato seleccionado. |
+
+|  | 5 | El sistema inicia la descarga del archivo.  |
+
+|  | 6 | El sistema muestra confirmación de exportación exitosa. |
+
+| \*\*Postcondición\*\* | El reporte ha sido exportado y descargado. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si hay error en la generación, el sistema muestra el error. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 4-5 | 5 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Ninguno. |  |
+
+
+
+---
+
+
+
+\### \*\*Módulo:  Auditoría\*\*
+
+
+
+---
+
+
+
+\### CU-084 - Consultar historial de auditoría
+
+
+
+| UC–084 | Consultar historial de auditoría |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–07 Registro de Auditoría |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–10 Información de Auditoría |  |
+
+| \*\*Descripción\*\* | El administrador accede al registro completo de acciones realizadas en el sistema, con información del usuario, acción, fecha/hora y entidad afectada. |  |
+
+| \*\*Precondición\*\* | El usuario debe tener rol de Administrador. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El administrador accede a la sección de auditoría. |
+
+|  | 2 | El sistema obtiene los registros de auditoría aplicando filtros por defecto. |
+
+|  | 3 | El sistema resuelve los nombres de usuarios y entidades afectadas. |
+
+|  | 4 | El sistema muestra la tabla de registros con: fecha/hora, usuario, acción, entidad afectada.  |
+
+|  | 5 | El administrador puede usar CU-085 para filtrar los registros. |
+
+|  | 6 | El administrador puede ordenar por fecha (ascendente/descendente). |
+
+|  | 7 | El administrador puede paginar los resultados.  |
+
+| \*\*Postcondición\*\* | El administrador visualiza el historial de auditoría. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si no hay registros, el sistema muestra mensaje indicándolo. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-4 | 2 segundos |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Los nombres de usuarios y entidades se resuelven dinámicamente. |  |
+
+
+
+---
+
+
+
+\### CU-085 - Filtrar registros de auditoría
+
+
+
+| UC–085 | Filtrar registros de auditoría |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–07 Registro de Auditoría |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–10 Información de Auditoría |  |
+
+| \*\*Descripción\*\* | El administrador filtra los registros de auditoría por rango de fechas, tipo de acción, tipo de entidad objetivo y usuario. |  |
+
+| \*\*Precondición\*\* | Se está consultando el historial de auditoría (dentro de CU-084). |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-084 Consultar historial de auditoría. |
+
+|  | 2 | El sistema muestra los controles de filtrado.  |
+
+|  | 3 | El administrador puede filtrar por:  |
+
+|  | 3a | Rango de fechas (desde/hasta). |
+
+|  | 3b | Tipo de acción (creación, modificación, eliminación, login, etc.). |
+
+|  | 3c | Tipo de entidad afectada (Servicio, Cliente, Empleado, Lavado, etc.). |
+
+|  | 3d | Usuario que realizó la acción.  |
+
+|  | 4 | El administrador aplica los filtros.  |
+
+|  | 5 | El sistema actualiza la lista de registros según los filtros.  |
+
+| \*\*Postcondición\*\* | Los registros de auditoría están filtrados según los criterios seleccionados. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si no hay registros que coincidan, el sistema lo informa. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 5 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-084 Consultar historial de auditoría. |  |
+
+
+
+---
+
+
+
+\### CU-086 - Ver detalle de registro de auditoría
+
+
+
+| UC–086 | Ver detalle de registro de auditoría |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–07 Registro de Auditoría |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–10 Información de Auditoría |  |
+
+| \*\*Descripción\*\* | El administrador visualiza el detalle completo de un registro de auditoría específico, incluyendo navegación a la entidad afectada.  |  |
+
+| \*\*Precondición\*\* | Se está consultando el historial de auditoría (dentro de CU-084). |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | Se ejecuta el caso de uso CU-084 Consultar historial de auditoría.  |
+
+|  | 2 | El administrador hace clic en un registro para ver su detalle.  |
+
+|  | 3 | El sistema muestra toda la información del registro:  |
+
+|  | 3a | Fecha y hora exacta.  |
+
+|  | 3b | Usuario (ID y email). |
+
+|  | 3c | Acción realizada (descripción completa). |
+
+|  | 3d | Tipo de entidad afectada. |
+
+|  | 3e | ID de la entidad afectada. |
+
+|  | 4 | El sistema ofrece enlace para navegar a la entidad afectada (si existe). |
+
+|  | 5 | El administrador puede hacer clic en el enlace para ver la entidad. |
+
+| \*\*Postcondición\*\* | El administrador visualiza el detalle del registro de auditoría. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 4a | Si la entidad fue eliminada, el sistema informa que no está disponible. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 3 | 500ms |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Incluye el caso de uso CU-084 Consultar historial de auditoría. |  |
+
+
+
+---
+
+
+
+\### CU-087 - Registrar todas las acciones para auditoría
+
+
+
+| UC–087 | Registrar todas las acciones para auditoría |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–07 Registro de Auditoría |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–10 Información de Auditoría |  |
+
+| \*\*Descripción\*\* | El sistema almacena automáticamente todas las acciones relevantes de los usuarios en un historial para fines de auditoría, incluyendo creación, modificación, activación y desactivación de entidades. |  |
+
+| \*\*Precondición\*\* | Un usuario está realizando una acción en el sistema. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El usuario ejecuta una acción (crear, modificar, desactivar, reactivar, login, logout). |
+
+|  | 2 | El sistema captura el ID y email del usuario actual. |
+
+|  | 3 | El sistema determina el tipo de acción y la entidad afectada. |
+
+|  | 4 | El sistema crea un registro de auditoría con:  |
+
+|  | 4a | UserId:  ID del usuario. |
+
+|  | 4b | UserEmail: correo del usuario. |
+
+|  | 4c | Action: descripción de la acción. |
+
+|  | 4d | TargetId: ID de la entidad afectada.  |
+
+|  | 4e | TargetType: tipo de entidad.  |
+
+|  | 4f | Timestamp: fecha y hora actual. |
+
+|  | 5 | El sistema almacena el registro en la colección de auditoría. |
+
+| \*\*Postcondición\*\* | La acción ha sido registrada en el historial de auditoría. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 5a | Si hay un error al guardar, se registra en logs pero no se interrumpe la operación principal. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 5 | < 500ms (asíncrono) |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | El registro de auditoría no debe afectar el rendimiento de las operaciones principales. |  |
+
+
+
+---
+
+
+
+\### \*\*Módulo:  Integración WhatsApp\*\*
+
+
+
+---
+
+
+
+\### CU-088 - Procesar mensaje entrante de WhatsApp
+
+
+
+| UC–088 | Procesar mensaje entrante de WhatsApp |  |
+
+| :---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–10 Integración con WhatsApp |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–12 Información de Sesiones WhatsApp |  |
+
+| \*\*Descripción\*\* | El sistema recibe y procesa los mensajes entrantes de WhatsApp, identificando el estado de la conversación y ejecutando el flujo correspondiente. |  |
+
+| \*\*Precondición\*\* | El webhook de WhatsApp está configurado y activo. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El sistema recibe una notificación de webhook de WhatsApp. |
+
+|  | 2 | El sistema valida la firma del mensaje (seguridad). |
+
+|  | 3 | El sistema extrae el número de teléfono y contenido del mensaje. |
+
+|  | 4 | El sistema ejecuta CU-027 para identificar si el número está registrado. |
+
+|  | 5 | El sistema ejecuta CU-090 para obtener/crear la sesión de conversación. |
+
+|  | 6 | El sistema determina el flujo a ejecutar según el estado de la sesión. |
+
+|  | 7 | El sistema procesa el mensaje y ejecuta el caso de uso correspondiente. |
+
+|  | 8 | El sistema actualiza la sesión con el nuevo estado. |
+
+|  | 9 | El sistema envía la respuesta al cliente por WhatsApp. |
+
+| \*\*Postcondición\*\* | El mensaje ha sido procesado y respondido. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si la firma es inválida, se ignora el mensaje. |
+
+|  | 7a | Si hay error en el procesamiento, se envía mensaje de error genérico. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 3-9 | 3 segundos |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Este caso de uso es el punto de entrada para toda la integración de WhatsApp. |  |
+
+
+
+---
+
+
+
+\### CU-089 - Validar webhook de WhatsApp
+
+
+
+| UC–089 | Validar webhook de WhatsApp |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–10 Integración con WhatsApp |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–12 Información de Sesiones WhatsApp |  |
+
+| \*\*Descripción\*\* | El sistema valida las solicitudes de verificación del webhook de Meta/WhatsApp Cloud API. |  |
+
+| \*\*Precondición\*\* | Se recibe una solicitud GET al endpoint del webhook. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El sistema recibe una solicitud GET con parámetros de verificación. |
+
+|  | 2 | El sistema extrae los parámetros:  hub. mode, hub.verify\_token, hub.challenge.  |
+
+|  | 3 | El sistema verifica que hub.mode sea "subscribe".  |
+
+|  | 4 | El sistema compara hub.verify\_token con el token configurado. |
+
+|  | 5 | Si la verificación es exitosa, el sistema retorna hub.challenge. |
+
+| \*\*Postcondición\*\* | El webhook ha sido verificado y registrado en Meta.  |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 3a | Si hub.mode no es "subscribe", se rechaza la solicitud.  |
+
+|  | 4a | Si el token no coincide, se rechaza la solicitud con error 403. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-5 | Inmediato |
+
+| \*\*Frecuencia\*\* | Rara (solo durante configuración) |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Este proceso se ejecuta una vez durante la configuración inicial del webhook. |  |
+
+
+
+---
+
+
+
+\### CU-090 - Gestionar sesión de conversación
+
+
+
+| UC–090 | Gestionar sesión de conversación |  |
+
+| :---- | : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–10 Integración con WhatsApp |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–12 Información de Sesiones WhatsApp |  |
+
+| \*\*Descripción\*\* | El sistema mantiene el estado de la conversación de cada usuario de WhatsApp, almacenando datos temporales y el paso actual del flujo conversacional. |  |
+
+| \*\*Precondición\*\* | Se está procesando un mensaje de WhatsApp (dentro de CU-088). |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El sistema busca una sesión existente para el número de teléfono. |
+
+|  | 2a | Si existe sesión, el sistema la carga con el estado actual. |
+
+|  | 2b | Si no existe sesión, el sistema crea una nueva con estado inicial. |
+
+|  | 3 | El sistema actualiza el timestamp de última actividad. |
+
+|  | 4 | Durante el procesamiento, el sistema puede actualizar:  |
+
+|  | 4a | Estado actual del flujo conversacional. |
+
+|  | 4b | Datos temporales recolectados (nombre, documento, etc.). |
+
+|  | 4c | ClienteId si el usuario se autentica. |
+
+|  | 5 | El sistema guarda los cambios en la sesión. |
+
+| \*\*Postcondición\*\* | La sesión está actualizada con el estado actual de la conversación. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | - | - |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 1-3 | 500ms |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Las sesiones expiran después de un período de inactividad configurable. |  |
+
+
+
+---
+
+
+
+\### CU-091 - Mostrar menú de cliente autenticado
+
+
+
+| UC–091 | Mostrar menú de cliente autenticado |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–10 Integración con WhatsApp |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–12 Información de Sesiones WhatsApp |  |
+
+| \*\*Descripción\*\* | El sistema presenta al cliente autenticado un menú interactivo con las opciones disponibles:  ver datos, gestionar vehículos, consultar turnos, información del lavadero.  |  |
+
+| \*\*Precondición\*\* | El cliente está registrado y su número está identificado. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El sistema detecta que el cliente está autenticado. |
+
+|  | 2 | El sistema genera el mensaje del menú principal con opciones:  |
+
+|  | 2a | 1. Mis Datos (CU-028) |
+
+|  | 2b | 2. Mis Vehículos (CU-026, CU-040) |
+
+|  | 2c | 3. Mis Turnos (CU-070, CU-071, CU-072) |
+
+|  | 2d | 4. Información del Lavadero (CU-092) |
+
+|  | 2e | 5. Hablar con personal (CU-080) |
+
+|  | 3 | El sistema envía el menú al cliente por WhatsApp. |
+
+|  | 4 | El sistema actualiza la sesión para esperar selección del menú. |
+
+| \*\*Postcondición\*\* | El cliente visualiza el menú principal y puede seleccionar una opción. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | - | - |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-3 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Muy frecuente |  |
+
+| \*\*Estabilidad\*\* | Alta |  |
+
+| \*\*Comentarios\*\* | Este caso de uso es ejecutado automáticamente por el sistema.  |  |
+
+
+
+---
+
+
+
+\### CU-092 - Mostrar información del lavadero
+
+
+
+| UC–092 | Mostrar información del lavadero |  |
+
+| : ---- | :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–10 Integración con WhatsApp, OBJ–11 Gestión de Configuración |  |
+
+| \*\*Requisitos asociados\*\* | IRQ–11 Información de Configuración del Sistema |  |
+
+| \*\*Descripción\*\* | El cliente consulta información del lavadero (nombre, ubicación, horarios, servicios disponibles) a través de WhatsApp. |  |
+
+| \*\*Precondición\*\* | El cliente está en una conversación activa de WhatsApp. |  |
+
+| \*\*Secuencia normal\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 1 | El cliente selecciona "Información del Lavadero" del menú. |
+
+|  | 2 | El sistema obtiene la configuración del lavadero. |
+
+|  | 3 | El sistema genera el mensaje con:  |
+
+|  | 3a | Nombre del lavadero.  |
+
+|  | 3b | Dirección/Ubicación. |
+
+|  | 3c | Teléfono de contacto. |
+
+|  | 3d | Email de contacto. |
+
+|  | 3e | Horarios de atención por día de la semana. |
+
+|  | 4 | El sistema envía la información al cliente. |
+
+|  | 5 | El sistema muestra opción de volver al menú principal. |
+
+| \*\*Postcondición\*\* | El cliente ha visualizado la información del lavadero. |  |
+
+| \*\*Excepciones\*\* | \*\*Paso\*\* | \*\*Acción\*\* |
+
+|  | 2a | Si no hay configuración, el sistema muestra información por defecto. |
+
+| \*\*Rendimiento\*\* | \*\*Paso\*\* | \*\*Cota de tiempo\*\* |
+
+|  | 2-4 | 1 segundo |
+
+| \*\*Frecuencia\*\* | Ocasional |  |
+
+| \*\*Estabilidad\*\* | Media |  |
+
+| \*\*Comentarios\*\* | Esta opción está disponible tanto para clientes registrados como no registrados. |  |
+
+
+
+---
+
+
+
+
+
+\## \*\*Requisitos No Funcionales\*\* {#requisitos-no-funcionales}
+
+
+
+| NFR–01 | Seguridad de Autenticación |
+
+| : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–09 Gestión de Seguridad |
+
+| \*\*Requisitos asociados\*\* | CU-001, CU-002, CU-003, CU-004, CU-005 |
+
+| \*\*Descripción\*\* | El sistema debe implementar autenticación segura mediante Firebase Authentication, soportando inicio de sesión con correo/contraseña y Google OAuth 2.0. Las contraseñas deben almacenarse de forma encriptada y las sesiones deben gestionarse mediante cookies seguras con tokens JWT. |
+
+| \*\*Comentarios\*\* | Se requiere verificación de email para cuentas creadas con correo/contraseña. |
+
+
+
+| NFR–02 | Protección de Datos |
+
 | :---- | :---- |
-| **Objetivos asociados**  | –  |
-| **Requisitos asociados**  | –  |
-| **Descripción**  | El sistema deberá incorporar algún mecanismo que permita realizar copias de seguridad de los datos almacenados. |
-| **Comentarios**  | Ninguno  |
 
-| NFR–02  | Seguridad de datos  |
-| :---- | :---- |
-| **Objetivos asociados**  | –  |
-| **Requisitos asociados**  | –  |
-| **Descripción**  | El sistema debe garantizar la protección y confidencialidad de los datos de los Proyectos y el Personal, cumpliendo con las normativas de privacidad y seguridad de la información. |
-| **Comentarios**  | Ninguno  |
+| \*\*Objetivos asociados\*\* | OBJ–09 Gestión de Seguridad |
+
+| \*\*Requisitos asociados\*\* | Todos los casos de uso |
+
+| \*\*Descripción\*\* | El sistema debe garantizar la protección y confidencialidad de los datos de clientes, empleados y operaciones del lavadero.  Las claves de asociación de vehículos deben almacenarse como hash SHA256.  La comunicación debe realizarse exclusivamente mediante HTTPS. |
+
+| \*\*Comentarios\*\* | Cumplimiento con buenas prácticas de seguridad de la información. |
+
+
 
 | NFR–03 | Usabilidad |
+
 | :---- | :---- |
-| **Objetivos asociados**  | –  |
-| **Requisitos asociados**  | –  |
-| **Descripción**  | El sistema debe ser intuitivo y fácil de usar para los diferentes usuarios (administrador, Nutricionista y Paciente), con una interfaz amigable y funcionalidades claras. |
-| **Comentarios**  | Ninguno  |
 
-| NFR–04 | Registro de actividad |
+| \*\*Objetivos asociados\*\* | Todos los objetivos |
+
+| \*\*Requisitos asociados\*\* | Todos los casos de uso |
+
+| \*\*Descripción\*\* | El sistema debe ser intuitivo y fácil de usar para los diferentes usuarios (Administrador, Trabajador y Cliente). La interfaz web debe ser responsive y funcionar correctamente en dispositivos móviles, tablets y computadoras de escritorio. Los flujos conversacionales de WhatsApp deben ser claros y guiar al usuario paso a paso. |
+
+| \*\*Comentarios\*\* | Se recomienda seguir principios de diseño UX/UI modernos.  |
+
+
+
+| NFR–04 | Registro de Actividad (Auditoría) |
+
+| :---- | : ---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–07 Registro de Auditoría |
+
+| \*\*Requisitos asociados\*\* | CU-084, CU-085, CU-086, CU-087 |
+
+| \*\*Descripción\*\* | El sistema debe contar con un registro automático de todas las acciones realizadas por los usuarios, incluyendo creación, modificación, activación, desactivación, inicio y cierre de sesión.  Cada registro debe incluir identificación del usuario, acción realizada, entidad afectada y marca de tiempo. |
+
+| \*\*Comentarios\*\* | El registro de auditoría es fundamental para control interno y trazabilidad. |
+
+
+
+| NFR–05 | Rendimiento |
+
+| : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | Todos los objetivos |
+
+| \*\*Requisitos asociados\*\* | Todos los casos de uso |
+
+| \*\*Descripción\*\* | El sistema debe responder a las solicitudes de los usuarios en tiempos razonables:  operaciones de lectura en menos de 2 segundos, operaciones de escritura en menos de 3 segundos, y generación de reportes en menos de 10 segundos. La integración con WhatsApp debe responder en menos de 5 segundos. |
+
+| \*\*Comentarios\*\* | Los tiempos pueden variar según la conexión a internet del usuario. |
+
+
+
+| NFR–06 | Disponibilidad |
+
 | :---- | :---- |
-| **Objetivos asociados**  | –  |
-| **Requisitos asociados**  | –  |
-| **Descripción**  | El sistema debe contar con un sistema de registro y seguimiento de las actividades realizadas por los usuarios, permitiendo la auditoría de acciones y la detección de posibles anomalías o problemas de seguridad. |
-| **Comentarios**  | Ninguno  |
 
-3. ## **Matriz de Rastreabilidad Objetivo/Requisitos** {#matriz-de-rastreabilidad-objetivo/requisitos}
+| \*\*Objetivos asociados\*\* | Todos los objetivos |
 
-|  | OBJ-01 | OBJ-02 | OBJ-03 | OBJ-04 | OBJ-05 | OBJ-06 | OBJ-07 | OBJ-08 |
-| :---- | :---- | :---- | :---- | :---- | :---- | :---- | :---- | :---- |
-| RI-01 |  |  |  |  |  |  |  |  |
-| RI-02 |  |  |  |  |  |  |  |  |
-| RI-03 |  |  |  |  |  |  |  |  |
-| RI-04 |  |  |  |  |  |  |  |  |
-| RI-05 |  |  |  |  |  |  |  |  |
-| RI-06 |  |  |  |  |  |  |  |  |
-| RI-07 |  |  |  |  |  |  |  |  |
-| RI-08 |  |  |  |  |  |  |  |  |
-| RF-01 |  |  |  |  |  |  |  |  |
-| RF-02 |  |  |  |  |  |  |  |  |
-| RF-03 |  |  |  |  |  |  |  |  |
-| RF-04 |  |  |  |  |  |  |  |  |
-| RF-05 |  |  |  |  |  |  |  |  |
-| RF-06 |  |  |  |  |  |  |  |  |
-| RF-07 |  |  |  |  |  |  |  |  |
-| RF-08 |  |  |  |  |  |  |  |  |
+| \*\*Requisitos asociados\*\* | Todos los casos de uso |
 
-   4. 
+| \*\*Descripción\*\* | El sistema debe estar disponible el 99% del tiempo durante el horario de operación del lavadero. Se permiten ventanas de mantenimiento programadas fuera del horario de atención. |
 
-      1. # ***Glosario de Términos*** {#glosario-de-términos}
+| \*\*Comentarios\*\* | La disponibilidad depende también de los servicios de terceros (Firebase, WhatsApp Cloud API). |
 
-| *Término* | *Categoría* | *Comentarios* |
-| :---- | :---- | :---- |
-|  |  |  |
 
-[image1]: <data:image/png;base64,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>
 
-[image2]: <data:image/png;base64,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>
+| NFR–07 | Escalabilidad |
 
-[image3]: <data:image/png;base64,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>
+| :---- | :---- |
 
-[image4]: <data:image/png;base64,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>
+| \*\*Objetivos asociados\*\* | Todos los objetivos |
 
-[image5]: <data:image/png;base64,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>
+| \*\*Requisitos asociados\*\* | Todos los casos de uso |
 
-[image6]: <data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAjcAAAB7CAYAAACILaGQAAAoxUlEQVR4Xu2dTZIjRbaFxbCZtVkNegJLaMx6AyyBHdAbYAdsgLeC3gNDlsAYrBfAnGb2zJp51XsnS5/q6KS76yciQx6Z9zMLk+Rxr7uHn7jXryJVcHj37t2/D4fDhwcdxYo8SsvjuMW6PFvnLY7Scl0eFZM6Sst1eaSWh+IuPjyKnEixmFziTdC4OZFiGbnGW6Ghcy7FInKJN0Nj52SKReQSb0ZOpLiOXMfNyIkUi8kl3gSNmxMplpFrvBUaOudSLCKXeDM0dk6mWEQu8WbkRIrryHXcjJxIsZhc4k3QuDmRYhm5xluhoXMuxSJyiTdDY+dkikXkEm9GTqS4jlzHzciJFIvJJd4EjZsTKZaRa7wVGjrnUiziw4f3ucrboLFzMsUicok3IydSXEeu42bkRIrF5BJvgsbNiRTLyDXeCg2dcykWkUu8GRo7J1MsIpd4M3IixXXkOm5GTqRYTC7xJmjcnEixjFzjrdDQOZdiEbnEm6GxczLFInKJNyMnUlxHruNm5ESKxeQSb4LGzYkUy8g13goNnXMpFpFLvBkaOydTLCKXeDNyIsV15DpuRk6kWEwu8SZo3JxIsYxc463Q0DmXYhG5xJuhsXMyxSJyiTcjJ1JcR67jZuREisXkEm+Cxs2JFMvINd4KDZ1zKRaRS7wZGjsnUywil/hlsR+i50SK6/i0ghuTEykWk0u8CRo3J1IsI9d4KzR0zqVYRC7xZmjsnEyxiFzizciJFNeR6zgXD/pnlDMirVK84Mlun0u2z1nfi7RK8Zy0L+YltQvSvJgUaZXiBelSTIq0KsF2BIINSJdiUqRViuek/RS8rfrzalK7IM1P1HLOhbRK8YJ0KSZFWu1esLeUIBBsQLoUkyKtUjwn7Yt5Se2CNC9WY93sL61SvCBdikmRViXYjkCwAelSPIBrUq60SvGctC/mJbUL0ryYFGmV4gXpUlzBNflwbaRVCbYjEGxAuhSTIq1SPCftRzwieRSfSO2CNC8mRVqleEG6PIgHRvwDh74FaTWRYG+BZXcGgg1Il2JSpFWK56R9MS+pXZDmxTSc52NpleIFZ/bFvEirhwn2ww8/PE3g888///DLL7/k6RN//vnnh6+//vrp9RKyG9mq/ffff8/m3YBgA9KlmBRpleI5ab8FxKSOa2JSxyUuxa/av/32273H5Yg034SXyK+XbPeupdYrxQvSpZgUabWqYLqpv/zyy7OAok3jqF389NNPT58d2vSqwKQPBcxXX331dOi893u8gCd74cUNYzJOBrvPS2MKnfv++++f2vSqvvSeYHUfBTE++qx2UP+0rRnox+sZkS6vm2UPwh6KtErxnLRfgsdfxqW3yYb7GjxWiUs2OWKyFVP4+Ibo54lZbOkj/RmTNuLTYyt91I983IY2fNfkMCbN76aVS2mnTdeJZi0tyXVaV/JrailaWqWWOsd5L4zVRyu/ygb9dJBf0amVX1u51LWs/Fq0kFarCeYJiMqeG1MHQSEIvlZbq7jx5IkP3xDcVuc4TzAQxAIfglSH+2t8fdZ55qJ2Ak2vHsgErdr1mX68jfY1QLAB6VJMirRK8Zy0vwffBDzWWrEqaJMtjIob38T0Wfd8xp1viJz3mHMft8WfWOOc3nNdxCWbr16JScH1ePy1YvU6+pX0UbIeaX4XrVza0xfNdLi+o+KG/CotXCu1eS52LT3/CveRHbb4kzvph/yKluRXoblnftWxjpZtjmOMSJfF9O+qYgnSajXBvLIGAqCF37AEHe89+XlAiVZSBA8o9ZXnmQ8BRYDrvcb1IPFvEyRRoc8+b0c+bitIGGuAYAPSpZgUaZXiOWl/D8RIknEBGZNiVNzo8Hb8vf/cEHU+YxJ7NkCh954L0tZjjc8+b+jFXytW78V1a5Dmd9HKpa0c6Oc0tg7XslfckF9pdy0htcyxvY38Ksiv9I0t+XWJlum/hON6jUiXYlKk1aqCcaN5keA3q1fdoJuSm1821xY3gnPyUz8kXGw5z41PQHlx44yKG/fxuapN7z3oZEtbK/HcC4INSJdiUqRViuek/RI8/jIuvc2h/ZbiBjzuMn6Fx6xviF7cwKXixn3YvIlVjz/aNG5ukEs5V+4ZaX43vVyqdtpSS/IrWl5b3IDa1XdLS8+/olfcwKXixn3UJ1rqfU/Lyq9FC2n1IoJ98803z4JMgaB2wY3Me9243LC6uRUwBCTBpRtdN7LO/fHHH6cgS7/WeQKGgPLk7IWUJ4csbjwI5cecdE2euAXz7nPfw0gEG5Aum6BxdXjCbcGaj9fmU9LU0QNNtuY+5Z5zXLMuab8U4i/j0tue3///OcUFmvh7TZO4QC/0Je6wJSZ1eMz6hoitXtkILxU3xCe+bIjkGqDt0r13D6ldkOaLQctWm67TCxpfs9SEPMW6sa6ulc6jVWqJzi190p+xub9axQ2v8tG6oWVq9lJaaswUL0iXTdC6aWyPzxYeP5dwfVqoXVrsFa3XQwRDhBRMi6k23bhe3PgPitnQ9Hq8gJNILpgChfMI6E9cCCo+i+fJ/fzPUtxkX3zxxSngtwTBBqTLIrRurQ2RpCb06uvZCxZxKaBuAX3WopcwW21rIK1SPCftt4CY1OGas1kSl8QaMemxknGHrV79PG3EpA69d39xqbgR2Csu14nJ20rYj4p1SfMXp5dfBW3EdUtL0dIqtdQ5zgvXspVfLxU35FfmuI6W13Mce0S6LMZzqbdRvOqc1oJ1Yv1buD5LIdbWpJVLybtrI61eRLDiZUCwAelyMwST+vJAoY12IKG5rReR/mRMNrz3QGXDwpYg1eEbWqv49IDGnySpV51jLjrHhpgFK1Bg+1i06chEdC/H/rqkfTEvqV2Q5hNyWzH3WpFWKV6QLkduW79WLu3l3VZ+FWrLL+U6z3vlRnzIoZmLOe/513Oe2j0Xu7/G12fO85RN5z/6//PpPPmVufZyKW34L+XYX0+wYjYQbEC63IwXE06rDTQuhxgVNwRUBor3n8UN5x3sPaB47333vu3Th88bWra0Z9u9HMftkvbFvKR2QZoXkyKtUrwgXe6ilUtHT0q8IKBI8Pde3JBfvR1/H9Nzsc7lnJiP51Te80XRCyH5kjdBn3Pefi5zafov4TjuOoIVLw+CDUiXm+EGVl8ZKGqj3cnH0bcWN953flvw8x6AvPexOS4VN/5tA39Buz5nwqBvAnopx/66pH2xLbd8F0/tgjQvJkVapXhButxFK5f28i5gTy7T+2uLm1YOJb/K1udDfiVvXsqv2Hpx4znT94JeLqXA0qF+1+DY3z2C3RL6Y9as1qZkvaU6CTYgXT5x4zwIIL+J0UrtrU1eN7naby1uhN/4XtwAAUC1T5ASuM6l4sZ9mKsnAAJcZFJYC/V5Uq1B2m8Ba6D1K64ntQvSfNesHQcvzeiJSCKtUrwgXe6ml0tpy5wmdC3kNdlcW9wA+VX9eC4W+JJfW09unFFx4z6+Fzzl0s/a//Jt7ftKY14UjA1BMJF8nHQJ32DWJAXqgXDc5H4dS+e21P8WEGxAurw4vapb66I2/3G4NODH4b5mBLQO9ERbTwKuNfYKGtn450vFjeBvwfw4fGuO8+2S9kLX40mGa72F7GMttL7X5gWNjya61JeYz5akdsGZLfemWDsP5WY2O3nN5Ohb1iC/JC1BWqV4Qbq8OP6lLwsK2miXbe8f32QOJb/qvedf8qsXJe6fBRVzkQ12IvPr1jF+vJ6xYKObjQvwRfGNRufdRhfpi+rnGEOLp/9Et2zpw/GFloitDU9tjguVeIC5jQsu6IP/fDjz8mtr3QSMwby8EMsNYbTW4jjWiHQpWtz4FOslkFYpnpP2JKReIe9FJvcmm6faMknpvlOb36f4Ez/ExnfffdfdQOhfPtzLnpAzfgXxkPGY10A/inON849//OPZ3Lgm4gZ/CgjsRK4H0JbLnhtnL0kfxpzZenEjmJ9fD+ujg+tSm3RQG3PyvIa9Dq0R94r3xdr5OnA93odvWqO1Yxx9gcnchS7cE94XeF/JtbnUr9vX0OerQ3A/ab5qa83nMObMvpgXaTUULDffRL4kTb+J9dmD2G86DzyC1BO3+hsFhNrw06v7eQJPnwy+1jmux+ej6/BEInv3uXRt+DHfTI74XlprgWAD0qWYFGmV4jlpz/3Tg7jjfuMe1pFJ3zc0Ng78PX7Upr5k4xsVaAz6bcUtc8kNjH7zMnvXwHVr3ozn8/Fry/hlLhl/rdzD+NDzSVy3Bme21xQ3zEdj+Zp6fuOz+mftmZ/nIV8bned600ev16ydF3xok+uU15Z6Aeda+DUwRiuX+nx8PJ8POZxr03v6cNR3aJec2RfzIq2GgvmNDtxAv/322ylB6fAg8jb3IXB1yN9vdtmTbEmGmQiEBwl98R+V8vl40Pj4iZ/zOXhfmocnkl5AuQ9+rCFtmejlKzv105qfc+xjRLoUkyKtUjwn7dkgHO6tn3/++el+lBuH8PuYONY9S9LnXs9Ez2bQilvPBd6XbGRPXz6X3NRA7Zxv+XF9OgSfM55534ohbFs+zCvHdHR9siXuWxzGnNmqD7VxsKaZR7gW5shnXxPPSTrvRYeOzLGC+4jNH59WfmytHf5qYxzNydcT3LbVP2ODX4+vkY5eLu3lYh+PdfT9DBvn2O+IM/v1eJ8NxUKk1UXB8qbs3UCO34TCfQgI/69cCtmSbCkAesUNfvRFcmjNRXjQJJlUSPaZyLyPXkD5t4WEpJYBJX/+TnoJBBuQLsWkSKsUz0l7T8zZpk0s7ytH59QlRUsWN5nobylu2NDYQHxDuwbiuXUNHuOguenv+N4/c2TeDtfgMYuP98G8M34pumSbfUNqF5zZtnKaYJ5aB9aZNeW8Pt9S3GSOFb08loWGaK2d68s4veKGPpTbWueYB/jcrs2lo1zM9bCO8xY3xdpIq4uCkXx0Q/hN5cVA6+YhYITfdB4Q3IDuR8IVrUTgQazX9GvdtPRPuycsnxvX4/MhYfaSwqVrw9aTkkO/l3QQCDYgXTaB6y+uR1qleE7aC+43YIPRvaX30oD7yTchv3e5J4XHGv4eP717G/Se8+qHueHn4zqeU5gjfn4NrZjR/LNP5uDXRl/MhZjnvG/WjO/rAcyB+bRw3Rqc2bZymvC15lW2uTa+Jr6+Os81uVZ+nbkO+uy5lLVh/Nbaee7zcVxHp3cPCJ+z0HtsW9fQyqW9XOzXQw73vO73OWjsc+mecWZfzIu0KsEejG9Cl0CwAelyCnhBcGvMWyA5rE0v0bcgua+BJ7l7uGXePaRViuekffE4Lumd2gVp/qbw4nF2pFWKF6TL5mgtKeo0n1bR+BLckjMpPEe277NhZbQ2Uwj2ltH6823jEgg24Mx+9K1JUFi5jYJHn3Xo5qQPbLxY4hud+3Nj8y8SWtfFNzb+mbhozcVpFTf4+L9++Ne//vX0nm9tes81kWQ9UHnvPn5dtInWvGmXLX36tehocTzXJe2nopOZOs27pXcfJKldkOZvBuIi43ZWNNcUL0iXTSFXZaHdy5367PnKn3j5l2pyutp//PHHk43s6bf3L5PZu3wOabuUe/LKcX6PFay4HgQbcGbPTdtKLn6j+6Nd9aEA4TGw8Cc39Dl6VM177wMoljxQfS56j78zKm500K/6oAjheihquDYvbrgeLwR1jiRBP615C1/jTBZq6z31Ul+fZHtO2hfzktoFaV5MirRK8YJ02RT/IuZFzCl3/vf8X5Yp9/TybOYr+uzlYnK72rBjD6APbPWK7aPQ9TxcsOJ6EGzAmb0XHaAbk0P2fsheNyWfCaBWceMbuAeKB4baKSwAP8H8enNJv15xo3O9YsuvA1sCuPWvjJifB6peW/P2MVvt9JnzFsdzXdK+mJfULkjzYlKkVYoXpMtDUP7SXHQo5/De2zxfkpdGxQ253G38X9v5F0Lv3/cCbH0PeBTHtZhDsKW0Nr/XBoINOLP3pxHepiM35kTtracP3Mi+kd9a3MhPZDHQm4to6bu0uOFf6OQc3ceLm5y3j+/twDjZv9AY59Kdk/bFvKR2QZq/ce75I8M2SKsUL0iXh0G+Iy9l7iQniiXFDbmcdv8XeFnc0I7/my9u2IAdffYN2UEER5+v+afUjlei23NfgCPYgHQ525QJiHz8mEWGXrNSz+KmV0z4jd0qbtCb/jPo9J6+nCXFDf3qvV+7XrkeLwTpR/3TT2vezIt7slXgyTcTj1BfLlyS9o+ANdV0OHpxuRattZqdkC5J84ei+VzS8Icf/udMc45LfnvneJ0j0mVTvKDxfNfKndKKHKa8lPmKfDYqbrw/cjs5U7bq3/vAVq/YPgrN627B7tue2yCW8A2RxfOFokJUOz5eICEOiy70Pr+J+wYnGMuLJ/nn+I8EwQaky5tHazJjUta8Ujwn7R+BJ1DhcUZseLwQd8So2t2HolOQdHVONv7Z41aH+kqfmYqgk2ht0nxzyG0cxANr2Zsj603ukx++6pNNT5qyoekHqeqPohidWtp5W28OW3Kcx4h0mRbXiuLlLSGtphCMKpP3HJqbXvlGLGj7jxVBmXQVZO7Pq2gVNyRdr1rdzxP8I0GwAeny5tGaoP1MaF4pnpP2j6BX3OiV2NF54pDYYtPqFTceZ7SxUWYeoC9BknafGUjtgjTfFDTM/Jn5r7WWtxQ3bsM1oxf96LPfQ36+N4ct0bzOpXtGukyL9NB8OWbMgS/J8bofL5hubgJNN7w++41PwUIyzeKEgCGIshBxcdOfvyHqEB583BizgGAD0qWYFGmV4jlp/wi8uCFe/BsgT2/06vHIuV5x4/3yXnZe3ODPe3KD+qJ9FkK6JM03JQtBzSfXWu9bm98txQ209Pac6oUtepLnH43mcqbcc9KlmBRpNY1gusF//fXXUzDp5j9O8CwAeG0VN540HZ3rFTf5o1L6yjm0gn9rEGxAuhSTcjh8NtQy7R8B8aTp6CB2FF/6zBcQChEvbmTTK278iwMHm6UXUn5effl8ZtkQxUfFuqT5pvSKm9Qgc6ZYq7jxOXhxk/fXo/U8zmNEuhSTIq2mEUxBpLnwzdCrfS8+RsWNIOF6ocOrbDPI9IqNB54HJG0E+aNAsAHpUkyKtErxnLR/BL0vC/5UVVMlNokX/LwgIbZGcUZxI9hIfYPFpzevR5HaBWm+KawVGmk+WtfMfxQ/ThY36IOvaw2t4oZ+NAfP6+ip/lz7R6F5nUv3jHQpJkVaTSOYP+IG3exqIwDEpeKGdu+LvhVoreKmN5b7tYJ/axBsQLoUkyKtUjwn7R9Br4igXdPU/8SSmCHuFKN6zzdxxZHsL/0XqdWHPtOf3vM5fTxOH43J1iLNNyef0rDerGVvjlncCNmi5bXFjWjp7W06Hq3ncR4j0qWYFGlVgu0IBBuQLvvgfTa8fqRViuek/d7gT1VvgdQuSPNiUqRVihekSzEp0qoE2xEINiBdPvEGC4iZkVYpnpP2xbykdkGaF5MirVK8IF0eTCX1HtJqQsGKHgg2IF2KSZFWKZ6T9sW8pHZBmheTIq1SvCBdikmRViXYjkCwAelyB/VtYAukVYrnpH0xL6ldkObFpEirFC9Il2JSpFUJtiMQbEC6FJMirVI8J+2LeUntgjQvJkVapXhBuhSTIq1KsB2BYAPSZRvqYc/NSKsUz0n7Yl5SuyDNi0mRVilekC5XUMnxEUirOwUrHgGCDUiXYlKkVYrnpH0xL6ldkObFpEirFC9IlwezVuG0Vj/zIK0O7969+/fTmzqmP45adSkt93Nc0vLQ8HnVx2eNtv0cXSom93NcisnScj/HJS2LoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoiiKoij2yLt37/79/y8fHnEcxy5egMW6ftZou/IoXZezWL9lR7Euub6bHBWHxVvnw6PQ2DmZYjVyuTdDY+dkipvJZd2MnEixjFzfrdDQOZeieEtkTKzD+2x4jsbOyRSrkcu9GRo7J1PcTC7rZuREimXk+m6Fhs65FMVbImNiMzR2TqZYjVzuzdDYOZniZnJZNyMnUiwj13crNHTOpSjeEhkTm6GxczLFauRyb4bGzskUN5PLuhk5kWIZub5boaFzLkXxlsiY2AyNnZMpViOXezM0dk6muJlc1s3IiRTLyPXdCg2dcymKt0SExBU/llkJjZ2TKVYjl3szNHZOpriZXNbNyIkUy8j13QoNnXMpirdExsRmaOycTLEaudybobFzMsXN5LJuRk6kWEau71Zo6JxLUbwlMiY2Q2PnZIrVyOXeDI2dkyluJpd1M3IixTJyfbdCQ+dciuItkTGxGRo7J1OsxtMab/dHxk9o7JxMcTO5rLdzp/g5kWIZub5boaFzLkXxZvjrX//6v4ePQVDHmseC/8LvheMqStf9HK3/kmzpt5+jpV/wzKeOOY8rtCx2RBb8xcSkeAPStZgUaZXiHUq/3SCtUjwn7e/jzsdwxU1IrtSv2C+pbzExKd6AdC0247aNSFqleIc19bttOlfyIp3uEmmV4jlpX8yL5Er9iv2S+hYTk+INSNdiUqRVinco/XaDtErxnLQv5kVypX7Ffkl9i4lJ8QakazEp0irFO0yvXz25AWmV4jlpX8yL5Er9iv2S+hYTk+INSNdiUqRVinco/XaDtErxnLQv5kVypX7Ffkl9i4lJ8QakazEp0irFO0yvXz25AWmV4jlpX8yL5Er9iv2S+i7mzz///PDNN98023755Zen4/PPP//w008/ffj9998/fP3110/nW6h9dP4Wvv322w9ffvnl05hroWvJualN15rta5DiDUjXYlKkVYp3KP12g7RK8Zy0L+ZFcqV+xX5JfReh4kF9qngBFRO0aeNXUaPPKjYctesQP/zww6lwUHHz1VdfnfWhPhlLtsILIcb083xWH+7vY37//fcnO95TELkPc9dc3IY2jaH2NQspcbiedC0mRVqleIfSbzdIqxTPSftiXiRX6lfsl9T3LnxDp8BotQmKG9phVNx4QaPP/hSGgseLG53XOfXDefeRHbacl60O+tH8uAb56vBCibmqnevxoo52+l+Dk2qXSddiUqRVinco/XaDtErxnLQv5kVypX7Ffkl976JVyLTaHIocCo5RcYOvFyv0jb/b8kTFz3txwzkOChuKELfVqz5T8DBv5kq7DoobL5CquJmbR/96RFqleIfSbzdIqxTPSft98ejo2BbJlfoV+yX1XcQ1f5ZKaL+luAG1q28VH2nrBQZPXvxpD09h4FJx4z7qU3OliHqZP0s9Tyym2yXStZgUaZXiHUq/3SCtUjwn7Yt5kVypX7FfUt/FqKgY/aCYQoFCgsJAn/3PQl7cqJDwP0tx6DxFB7Z//PHH6RyFhs5f82epUXHDKwUVxQ3FFKjtrf6gWGuosXuFLGQhOsK1aqF26bJXtF4p3mFy/S5pAug8slX7si8Bj0XrleI5ab8VGlqHfxlscUkfcC17KA5fs5bFvkh9i4lJ8Qak691Q4KlP3/D8KZ3a+XNdFhpq44kctiRK/6G48LF4SubJ1/+kyJ8S+ax+3d+fAvoPxdWXXmWXY377z8s/FPe2NTjOK0mzu+H6vGBpaYp+jv8Jlqemskc79PN+9VmHf+FAP8ZknCym3N/vGfTTK/qhgftw7/HkFI1FS9Mmzx+YDjmO3SXtl8C1XqNlxqHr29PS+02tXMtWnKaW7u/3T2rperiP5k/M6bNr1tJ3DY5jF6+E1LeYmBRvQLreBRuCDiUi2kgubFqC5KnDvwXqc6+4YUNTkuIJjN5n8mUcvhlyXuCTGyn+FEGc54mb+5Ogfa5q53pI+Njo8I1gCcf+kjS7C3TSgSYtTQX6tTRtFTe8lx49fVITNjKdZ+3wwVavPpbGRz/monY2b17ZXFM/16mn6RKO/XVJ+3voxZzre62Woqel9Olp5VoSczrv60tbS0v00avO6b3mpHOuIa++dCMt14pDcVzL4pWQ+hYTk+INOPO78cvoCTaebOt9Y/LNg03G35OI/vzzv2eJlwSKv49JQmXz9G96gjY2ABKk3rMp50ZKQQV89rn6OZKvt8k+2+/huF5Jmt1FrpVoaQqp36i4cf1oT32yuFFfOSfmg36C92x+uXmmJmjHXJ2WTum/hOO4XdL+HnJdodUGGppDjIob9Mmisqcl90nmAezlTxx6XLbuE9fH4zCXLm2h1XYvx3GLV0LqW0xMijcgXe/GE45/Q6Kt9c1JycaT5PPi5vw3N16ACJ2Tn/rx5Cvw5RpJlJ5EnVFxkz7MtZXcsR1tKPegcT7JdiLN7oZrdZ16mgL63VrcCNcnixs/z4bUKm6cUXHjPj5Xtem9b74tTddAfZpuz0j7JWje6vJWLdV+a3EjXCvXEihY0ZK1lX8rDum7Vdy4D3NFX713zVr6roH6/KRcsXdS3yd0k+kcR96o15BJLVH70oo7N8kRvomtjQfpSxLajUjXxWiNM3mqrfVDcU9erLtsOY9uSmKsHT8E10FSkx9trR+KC8bKjZSxRsWN60aiprjJe0pt+UP5NdCYKd7hBv3eZ0MHdHJcU/TjvdYldfANUXNEv54+rkmeJxbRxGPZN0LfbLO4QT98mVPrB/0tTddAY4Z2Z6T9UnQN12iZ93xq0tJSa9nTyrXkUJvnVfRpaXmpuEFT11K2LS1bbWugMUO+Ysekvk/4hiA8wawFN/gSPIgu4UG4Nm+huLmEJyW/X7QmtNGOLT9I5T5gHdWGrp5IdV7nOC/8G7v787RoVNxwnj5f8h7pcRw7SbMX55J+2lB8Q/QfFGs9ReqT+qGNDmI29eM8+o2KG4F+X3zxRVu/a6u/OznOt0vab4HWVkPr0JoABWxPS9ZXpFauZStOBfYUSv75UnHj/mi5Ncfxi1dC6vtEFjeyI9n4TQu9BNhKasI3lJ9//vkUYPjq4DzjOvQnn1ZwqS1pJr5jO36ZjDMI87qZp+w9SLk+TxasUWt+7utjJofrSddiUqRVinco/XaDtErxnLQv5kVypX7Ffkl9n/DiQweFjl4pEPRehQffBjjXKm7Ux6cN++NXKTZxLygYm6rdv2GDf2vDl0LECwkKHugVN5orBQ6FlT77N0rhBY7asPNzGtev2/tgLVvFWtq1bMRHya4iXYtJkVYp3qH02w3SKsVz0r6YF8mV+hX7JfV9gic3bOAUDb5J65CdP2noFTf+dMQLkFZxQ7u4trjhb8Q+t3zy0SpuZOOFmV7p06+LAk3Xz9ErbvwpjBcrOT8Hf82h99RGPCl2HelaTIq0SvEOpd9ukFYpnpP2xbxIrtSv2C+p7xP+ZykKGOFPbuCaJzfCiwb8WsXNNU9u6Lf35KZFq7ihUBF5zbJvXfel4savu/UkRv2oLecqX/2Z7WnMzu8EUrwB6VpMirRK8Q6l326QVimek/bFvEiu1K/YL6nvE77RC9mxYfOnGffVhqzP1/zmhmKHjf/HH3882YL8dY6+Etnq/K2/ueG8DgoXPv/9738/FSEUTV6AYKcfu1Ho6Dzj+RMbChifG2vEdSUUSFn0OIfrOfnkdV8a47vvvsumJvmEiutsoT6lIwXtaPy18XXX0fuT3xpk8XwNx3klafZQtIZofS3SOL/ICK3/LeukGG/lgFmQVimek/a3Qi7huLR2vtZrk3NZcxzNe8u80OJ4XcUrIfW9GX868YjN67XQekp1xvv7i5tLCRH8qdklvLgZQZ+P2qAyab7U/dl6qnkN0irFO6wQl2vBfXnrunlxAzztvGedZkVapXhO2t9KftG8FEsvXdyQH/zJ9WtBcqV+xX5JfW+GpxzqS8dLfjPenM6fh9aGpwuXklJoN+Lk09tM/ImG/wlNh96zqekzmxQJTW1e3HgBQb88taJP+vFNkvb8815vzE/X9VEYL5x6G2cWNx/tf316T5/MlflxP3Mv+xzy6Z6eLPzlL3/58Le//e1s3t638GvzOR7tktP5R5P3hbfx2Tdc1knX7fcHBRJ9ida6sqb868kcx/1n4DifLml/K1ncqEvWw2OY+8yLG560cH8L1yBjxftufXnJLz/Elu8B9Jk66sj/r5Tee97o5RDBtbiP8OsfPT2+hmNfxSsh9S0mJsUbcPLxDUFHbr5ejGbyUhJxOy8eWsVNbnrCCxAvbtTeehKQY5IEW8mLpOpH2vgGoKOXTOXr8/Nr8c2b62ZsxvMnN9k3hZP6ywL2OK/kzOZRUJBp7r21EayPr4Hs/P6Qrxegfl/4OKmjj+PFkG/4j0RzOZfunLS/Fd/UdXDdvr7YeYy5XqwrXzZoT9ynZeP5AS1cO97LLnXMGJJt3iN+b/nSZazpnOzyPlzKcdzilZD6FhOT4g04+XhB4ihZyE4HyYHk5d/EcpMfFTfuh0+vuMEHno/52VkC48jiRf2rz951ZtKUf85TR24Ift2e6LHLhMvG3upbvr4xe39Hm+Q0/0fia9B7L+4pbnytfYPU2vm6Mo5sGIeNfAY0vzPlgrS/Fa7Viwnha+12rGveg6w19yBtDjGuV7RzNIb3qTH8vuZo6XhtcZPxg/Y+H9op1tx2Ccd+ildC6ltMTIo34OTT2/SB4kAJxAsR/HwjUxtJplXceJ/ykU2vuMkNqjcmsAHmteDnydPxuek9/jln2lrFTSZm2fWKG/rJvoGEzNrpvQt3JLweQ26QOtSW+rA+aCxy48rixu8LtJVdboqMwyHy3nkkx3Xpkva34teq9631dTvW2u/lE+8/vngB4aCD/mFIq1BAM8e1c1LHjCH55T2SMaP5yfa3335r3hPg+WYJ6uNMvGLXpL7T4cFNcnyrpHgDTj5aL33m8EKDtlxfNh+d8/+sPYlM7b3ihn59w2MOmXB9TqI1pvv7dTnMt0UmTebBex0kTuanf93lydjnQFsWNxQttHnfwtcuE/XhOU/nHo3m4ZsIRY1wnXPjUruu0e8Ptfumqvesq/vrfK4Pc9B7Hf4vGx/NcU5d0v5WspBTl6yPx3CuNb5uL9CH9sQ1TlrFjXBdicPUMe+RUXGTOURwLTroU9Dmtvdy7Kt4JaS+05HBTRD4ZkGA+CaU3ybURjsQRB6EM3Om3Jh0fdXkPXIvbAz5DfIlkVYp3uGN6bdnpFWK56T97IyKm9eOrjv1K/ZL6jsduXFR3OjVnzAoKFWksDmpjeKGPvzbNkFMQdT75j8Tod2IdH2VeDG7BlXczM/xLyvTIK1SPCftZya/LL41dO2pX7FfUt/p8OKGzQwoYnTw2wgCkyc3+ecD//s9fnshtBuRrsWkSKsU71D67QZpleI5aV/Mi+RK/Yr9kvpORz65Ef60xYuUW4ob4MmP/7lqSt5XcfMakVYp3qH02w3SKsVz0r6YF8mV+hX7JfWdjlZxw+9tVLzwQ7Zb/yzFj+No0zE7Kd6AdC0mRVqleIfSbzdIqxTPSftiXiRX6lfsl9R3OlrFDe2af+9f1vR+UOxFDD8oXuOX9ltwptyYdC0mRVqleIfSbzdIqxTPSfvihVjhx1iSK/Ur9kvqu2v4E5UO/1PUayHFG5Cud7BCtiguIq1SvMMq+r0sdXd8RFqleE7aF/MiuVK/Yr+kvsXEpHgD0rWYFGmV4h1Kv90grVI8J+2LeZFcqV+xX1LfYmJSvAHpWkyKtErxDqXfbpBWKZ6T9m+GHT7ak1ypX7FfUt9iYlK8AelaTIq0SvEOpd9ukFYpnpP2xbxIrtSv2C+pbzExKd6AdC0mRVqleIfSbzdIqxTPSftiXiRX6lfsl9S3mJgUb0C6FpMirVK8Q+m3G6RViuekfTEvkiv1K/ZL6lss5CX/1JziDUjXYlKkVYp3KP06vGR03Ye0SvGctC/mRXKlfsVOeffu3b8PHwW96fis0VbHJsdV3KtrHdsfR63OKP32c7T0C5751DHncYWWr4L/A20gqW+T6jjSAAAAAElFTkSuQmCC>
+| \*\*Descripción\*\* | El sistema debe poder manejar el crecimiento gradual de datos y usuarios sin degradación significativa del rendimiento. La arquitectura basada en Firebase Firestore permite escalabilidad automática. |
+
+| \*\*Comentarios\*\* | El diseño actual está orientado a un único lavadero, pero la arquitectura permite expansión futura. |
+
+
+
+| NFR–08 | Compatibilidad de Navegadores |
+
+| : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | Todos los objetivos relacionados con la interfaz web |
+
+| \*\*Requisitos asociados\*\* | Todos los casos de uso de la aplicación web |
+
+| \*\*Descripción\*\* | El sistema web debe ser compatible con las versiones actuales de los principales navegadores:  Google Chrome, Mozilla Firefox, Microsoft Edge y Safari. Se requiere soporte para JavaScript habilitado. |
+
+| \*\*Comentarios\*\* | Se recomienda mantener el navegador actualizado para mejor experiencia. |
+
+
+
+| NFR–09 | Integración con Servicios Externos |
+
+| : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–09, OBJ–10, OBJ–12 |
+
+| \*\*Requisitos asociados\*\* | CU-001, CU-005, CU-025 a CU-028, CU-070 a CU-080, CU-088 a CU-092 |
+
+| \*\*Descripción\*\* | El sistema debe integrarse correctamente con los siguientes servicios externos:  Firebase Authentication (autenticación), Firebase Firestore (base de datos), WhatsApp Cloud API (mensajería), CarQuery API (autocompletado de marcas y modelos de vehículos). |
+
+| \*\*Comentarios\*\* | Se requiere configuración de credenciales y tokens para cada servicio.  |
+
+
+
+| NFR–10 | Mantenibilidad del Código |
+
+| :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | Todos los objetivos |
+
+| \*\*Requisitos asociados\*\* | Todos los casos de uso |
+
+| \*\*Descripción\*\* | El código fuente debe seguir principios de arquitectura limpia con separación de capas (Presentación, Servicios, Repositorios, Modelos). Se debe utilizar inyección de dependencias y patrones de diseño que faciliten el mantenimiento y extensión del sistema. |
+
+| \*\*Comentarios\*\* | Se utiliza el patrón MVC con Blazor Server y servicios inyectables.  |
+
+
+
+| NFR–11 | Internacionalización |
+
+| :---- | :---- |
+
+| \*\*Objetivos asociados\*\* | Todos los objetivos |
+
+| \*\*Requisitos asociados\*\* | Todos los casos de uso |
+
+| \*\*Descripción\*\* | El sistema debe estar preparado para soportar múltiples idiomas en el futuro, aunque la versión inicial estará en español. Los textos deben ser externalizables para facilitar la traducción. |
+
+| \*\*Comentarios\*\* | La versión 1.0 está en español (Argentina). |
+
+
+
+| NFR–12 | Configurabilidad |
+
+| : ---- | :---- |
+
+| \*\*Objetivos asociados\*\* | OBJ–11 Gestión de Configuración del Sistema |
+
+| \*\*Requisitos asociados\*\* | CU-060 a CU-065 |
+
+| \*\*Descripción\*\* | El sistema debe permitir la configuración de parámetros operativos sin necesidad de modificar el código fuente, incluyendo:  horarios de operación, capacidad máxima, tiempos de tolerancia, duración de sesión, información del lavadero y configuración de descuentos. |
+
+| \*\*Comentarios\*\* | La configuración se almacena en Firestore y es editable por el administrador.  |
+
+
+
+---
+
+
+
+\### Matriz de Rastreabilidad:  Objetivos vs Requisitos de Información
+
+
+
+|  | OBJ-01 | OBJ-02 | OBJ-03 | OBJ-04 | OBJ-05 | OBJ-06 | OBJ-07 | OBJ-08 | OBJ-09 | OBJ-10 | OBJ-11 | OBJ-12 |
+
+| : ---- | :----: | :----:  | :----: | :----: | : ----: | :----: | :----:  | :----: | :----: | : ----: | :----: | :----:  |
+
+| IRQ-01 | ✓ |  |  |  |  |  |  |  | ✓ |  |  |  |
+
+| IRQ-02 |  | ✓ |  |  |  |  |  |  |  | ✓ |  | ✓ |
+
+| IRQ-03 |  | ✓ |  |  |  |  |  |  |  | ✓ |  |  |
+
+| IRQ-04 |  |  | ✓ | ✓ |  |  |  |  |  |  |  |  |
+
+| IRQ-05 |  |  | ✓ |  |  |  |  |  |  |  |  |  |
+
+| IRQ-06 |  |  | ✓ |  |  |  |  |  |  |  |  |  |
+
+| IRQ-07 |  |  | ✓ |  |  |  |  |  |  |  |  |  |
+
+| IRQ-08 |  |  |  | ✓ | ✓ |  |  | ✓ |  |  |  |  |
+
+| IRQ-09 |  |  |  |  |  | ✓ |  |  |  | ✓ |  |  |
+
+| IRQ-10 |  |  |  |  |  |  | ✓ |  |  |  |  |  |
+
+| IRQ-11 |  |  |  |  |  | ✓ |  |  |  |  | ✓ |  |
+
+| IRQ-12 |  |  |  |  |  |  |  |  |  | ✓ |  |  |
+
+
+
+\### Matriz de Rastreabilidad:  Objetivos vs Casos de Uso (Resumen por Módulo)
+
+
+
+|  | OBJ-01 | OBJ-02 | OBJ-03 | OBJ-04 | OBJ-05 | OBJ-06 | OBJ-07 | OBJ-08 | OBJ-09 | OBJ-10 | OBJ-11 | OBJ-12 |
+
+| :---- | : ----: | :----: | :----:  | :----: | :----: | : ----: | :----: | :----:  | :----: | :----: | : ----: | :----: |
+
+| Módulo Seguridad (CU-001 a CU-004) |  |  |  |  |  |  |  |  | ✓ |  |  |  |
+
+| Módulo Gestión Empleados (CU-005 a CU-011) | ✓ |  |  |  |  |  |  |  | ✓ |  |  |  |
+
+| Módulo Clientes y Vehículos (CU-012 a CU-028) |  | ✓ |  |  |  |  |  |  |  | ✓ |  |  |
+
+| Módulo Servicios (CU-029 a CU-044) |  |  | ✓ |  |  |  |  |  |  |  |  |  |
+
+| Módulo Lavados (CU-045 a CU-059) |  |  |  | ✓ | ✓ |  |  |  |  |  |  |  |
+
+| Módulo Configuración (CU-060 a CU-065) |  |  |  |  |  |  |  |  |  |  | ✓ |  |
+
+| Módulo Turnos (CU-066 a CU-075) |  |  |  |  |  | ✓ |  |  |  | ✓ |  |  |
+
+| Módulo Notificaciones (CU-076 a CU-080) |  |  |  |  |  |  |  |  |  | ✓ |  | ✓ |
+
+| Módulo Estadísticas (CU-081 a CU-083. 1) |  |  |  |  |  |  |  | ✓ |  |  |  |  |
+
+| Módulo Auditoría (CU-084 a CU-087) |  |  |  |  |  |  | ✓ |  |  |  |  |  |
+
+| Módulo WhatsApp (CU-088 a CU-092) |  |  |  |  |  |  |  |  |  | ✓ |  |  |
+
+
+
+\### Matriz de Rastreabilidad:  Requisitos No Funcionales vs Objetivos
+
+
+
+|  | OBJ-01 | OBJ-02 | OBJ-03 | OBJ-04 | OBJ-05 | OBJ-06 | OBJ-07 | OBJ-08 | OBJ-09 | OBJ-10 | OBJ-11 | OBJ-12 |
+
+| :---- | :----: | :----:  | :----: | :----: | : ----: | :----: | :----:  | :----: | :----: | : ----: | :----: | :----:  |
+
+| NFR-01 |  |  |  |  |  |  |  |  | ✓ |  |  |  |
+
+| NFR-02 |  |  |  |  |  |  |  |  | ✓ |  |  |  |
+
+| NFR-03 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+| NFR-04 |  |  |  |  |  |  | ✓ |  |  |  |  |  |
+
+| NFR-05 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+| NFR-06 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+| NFR-07 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+| NFR-08 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  | ✓ |  |
+
+| NFR-09 |  |  |  |  |  |  |  |  | ✓ | ✓ |  | ✓ |
+
+| NFR-10 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+| NFR-11 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+| NFR-12 |  |  |  |  |  | ✓ |  |  |  |  | ✓ |  |
+
+
+
+---
+
+
+
+\## \*\*Glosario de Términos\*\* {#glosario-de-términos}
+
+
+
+| \*Término\* | \*Categoría\* | \*Descripción\* |
+
+| :---- | : ---- | :---- |
+
+| \*\*Administrador\*\* | Actor | Dueño o gerente del lavadero con acceso completo al sistema.  Puede gestionar empleados, servicios, configuración y acceder a reportes y auditoría. |
+
+| \*\*API\*\* | Tecnología | Application Programming Interface.  Interfaz que permite la comunicación entre diferentes sistemas de software. |
+
+| \*\*Auditoría\*\* | Funcionalidad | Registro automático de todas las acciones realizadas en el sistema para control y trazabilidad. |
+
+| \*\*Blazor Server\*\* | Tecnología | Framework de Microsoft para construir aplicaciones web interactivas usando C# en lugar de JavaScript. |
+
+| \*\*Bot\*\* | Funcionalidad | Programa automatizado que interactúa con los clientes a través de WhatsApp siguiendo flujos conversacionales predefinidos. |
+
+| \*\*Caso de Uso\*\* | Metodología | Descripción de una secuencia de acciones que realiza el sistema para proporcionar un resultado observable de valor a un actor. |
+
+| \*\*Cliente\*\* | Actor/Entidad | Usuario externo del lavadero que solicita servicios de lavado.  Interactúa principalmente a través de WhatsApp. |
+
+| \*\*Clave de Asociación\*\* | Funcionalidad | Código generado por el sistema que permite vincular múltiples clientes a un mismo vehículo.  Se almacena como hash SHA256. |
+
+| \*\*CRUD\*\* | Tecnología | Create, Read, Update, Delete. Operaciones básicas de gestión de datos. |
+
+| \*\*Desactivación\*\* | Funcionalidad | Eliminación lógica de una entidad.  La entidad permanece en la base de datos pero no está disponible para operaciones normales. |
+
+| \*\*Empleado\*\* | Actor | Usuario operativo del sistema con permisos para gestionar clientes, vehículos y lavados. También llamado "Trabajador". |
+
+| \*\*Etapa\*\* | Entidad | Subdivisión de un servicio que permite un seguimiento más granular del progreso del lavado. |
+
+| \*\*Firebase\*\* | Tecnología | Plataforma de desarrollo de Google que proporciona servicios como autenticación (Firebase Authentication) y base de datos (Firestore). |
+
+| \*\*Firestore\*\* | Tecnología | Base de datos NoSQL en la nube de Firebase utilizada para almacenar todos los datos del sistema.  |
+
+| \*\*Flujo Conversacional\*\* | Funcionalidad | Secuencia de mensajes e interacciones guiadas en WhatsApp que permiten al cliente realizar operaciones paso a paso. |
+
+| \*\*Hash SHA256\*\* | Tecnología | Algoritmo criptográfico utilizado para almacenar de forma segura las claves de asociación de vehículos. |
+
+| \*\*Include\*\* | Metodología | Relación entre casos de uso donde un caso de uso incluye obligatoriamente la funcionalidad de otro.  |
+
+| \*\*JWT\*\* | Tecnología | JSON Web Token. Estándar para la creación de tokens de acceso que permiten la autenticación segura.  |
+
+| \*\*Lavado\*\* | Entidad | Registro de un servicio de lavado completo, incluyendo cliente, vehículo, servicios realizados, pagos y tiempos.  |
+
+| \*\*MVC\*\* | Tecnología | Model-View-Controller.  Patrón de arquitectura de software utilizado en el desarrollo del sistema. |
+
+| \*\*OAuth 2.0\*\* | Tecnología | Protocolo de autorización utilizado para la autenticación con Google.  |
+
+| \*\*Paquete\*\* | Entidad | Agrupación de dos o más servicios con un porcentaje de descuento aplicado. |
+
+| \*\*Paginación\*\* | Funcionalidad | División de grandes conjuntos de datos en páginas más pequeñas para mejorar el rendimiento y la usabilidad. |
+
+| \*\*Rol\*\* | Funcionalidad | Nivel de permisos asignado a un usuario. Los roles disponibles son Administrador y Empleado. |
+
+| \*\*Servicio\*\* | Entidad | Tipo de lavado ofrecido por el lavadero, con nombre, descripción, precio y tiempo estimado.  |
+
+| \*\*Sesión\*\* | Funcionalidad | Estado de autenticación de un usuario en el sistema o estado de una conversación de WhatsApp. |
+
+| \*\*Sistema\*\* | Actor | Actor lógico que representa los procesos automáticos del sistema que no requieren intervención humana. |
+
+| \*\*Tipo de Servicio\*\* | Entidad | Categoría para clasificar los servicios (ej: Lavado Exterior, Lavado Interior, Pulido). |
+
+| \*\*Tipo de Vehículo\*\* | Entidad | Clasificación de vehículos (ej: Auto, Camioneta, Moto) que determina servicios disponibles y empleados requeridos. |
+
+| \*\*Trabajador\*\* | Actor | Sinónimo de Empleado. Usuario operativo del sistema.  |
+
+| \*\*Turno\*\* | Entidad | Reserva de un horario específico para realizar un lavado a un cliente. |
+
+| \*\*UP (Unified Process)\*\* | Metodología | Proceso Unificado.  Metodología de desarrollo de software iterativa e incremental utilizada en este proyecto. |
+
+| \*\*Vehículo\*\* | Entidad | Automóvil, camioneta, moto u otro tipo de vehículo registrado en el sistema y asociado a uno o más clientes. |
+
+| \*\*Webhook\*\* | Tecnología | Mecanismo que permite a WhatsApp Cloud API enviar notificaciones al sistema cuando se reciben mensajes. |
+
+| \*\*WhatsApp Cloud API\*\* | Tecnología | API oficial de Meta para integrar WhatsApp en aplicaciones de negocio. |
+
+
+
+---
+
+
+
+\## \*\*Apéndice:  Diagrama de Casos de Uso por Actor\*\*
+
+
+
+\### Figura 2 - Diagrama Caso Usos del actor "Administrador"
+
+
+
+```plantuml
+
+@startuml
+
+left to right direction
+
+skinparam packageStyle rectangle
+
+skinparam actorStyle awesome
+
+
+
+actor "Administrador" as Admin
+
+
+
+rectangle "Casos de Uso del Administrador" {
+
+&nbsp;   package "Gestión de Empleados" {
+
+&nbsp;       usecase "CU-005 Registrarse" as CU005
+
+&nbsp;       usecase "CU-006 Modificar Empleado" as CU006
+
+&nbsp;       usecase "CU-007 Desactivar Empleado" as CU007
+
+&nbsp;       usecase "CU-008 Reactivar Empleado" as CU008
+
+&nbsp;       usecase "CU-009 Consultar Empleados" as CU009
+
+&nbsp;       usecase "CU-010 Asignar Roles" as CU010
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Gestión de Servicios" {
+
+&nbsp;       usecase "CU-029 Crear Servicio" as CU029
+
+&nbsp;       usecase "CU-030 Modificar Servicio" as CU030
+
+&nbsp;       usecase "CU-031 Desactivar Servicio" as CU031
+
+&nbsp;       usecase "CU-032 Reactivar Servicio" as CU032
+
+&nbsp;       usecase "CU-035 Crear Tipo Servicio" as CU035
+
+&nbsp;       usecase "CU-036 Eliminar Tipo Servicio" as CU036
+
+&nbsp;       usecase "CU-037 Crear Tipo Vehículo" as CU037
+
+&nbsp;       usecase "CU-038 Eliminar Tipo Vehículo" as CU038
+
+&nbsp;       usecase "CU-040 Crear Paquete" as CU040
+
+&nbsp;       usecase "CU-041 Modificar Paquete" as CU041
+
+&nbsp;       usecase "CU-042 Desactivar Paquete" as CU042
+
+&nbsp;       usecase "CU-043 Reactivar Paquete" as CU043
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Configuración" {
+
+&nbsp;       usecase "CU-060 Configurar Horarios" as CU060
+
+&nbsp;       usecase "CU-061 Configurar Capacidad" as CU061
+
+&nbsp;       usecase "CU-062 Configurar Tiempos" as CU062
+
+&nbsp;       usecase "CU-063 Configurar Sesión" as CU063
+
+&nbsp;       usecase "CU-064 Configurar Info Lavadero" as CU064
+
+&nbsp;       usecase "CU-065 Configurar Descuentos" as CU065
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Planificación de Turnos" {
+
+&nbsp;       usecase "CU-066 Registrar Turno" as CU066
+
+&nbsp;       usecase "CU-067 Modificar Turno" as CU067
+
+&nbsp;       usecase "CU-068 Consultar Turnos" as CU068
+
+&nbsp;       usecase "CU-069 Cancelar Turno" as CU069
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Estadísticas y Reportes" {
+
+&nbsp;       usecase "CU-081 Consultar Estadísticas" as CU081
+
+&nbsp;       usecase "CU-082 Consultar Historial Pagos" as CU082
+
+&nbsp;       usecase "CU-083 Generar Reportes" as CU083
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Auditoría" {
+
+&nbsp;       usecase "CU-084 Consultar Auditoría" as CU084
+
+&nbsp;       usecase "CU-085 Filtrar Auditoría" as CU085
+
+&nbsp;       usecase "CU-086 Ver Detalle Auditoría" as CU086
+
+&nbsp;   }
+
+}
+
+
+
+Admin --> CU005
+
+Admin --> CU006
+
+Admin --> CU007
+
+Admin --> CU008
+
+Admin --> CU009
+
+Admin --> CU010
+
+Admin --> CU029
+
+Admin --> CU030
+
+Admin --> CU031
+
+Admin --> CU032
+
+Admin --> CU035
+
+Admin --> CU036
+
+Admin --> CU037
+
+Admin --> CU038
+
+Admin --> CU040
+
+Admin --> CU041
+
+Admin --> CU042
+
+Admin --> CU043
+
+Admin --> CU060
+
+Admin --> CU061
+
+Admin --> CU062
+
+Admin --> CU063
+
+Admin --> CU064
+
+Admin --> CU065
+
+Admin --> CU066
+
+Admin --> CU067
+
+Admin --> CU068
+
+Admin --> CU069
+
+Admin --> CU081
+
+Admin --> CU082
+
+Admin --> CU083
+
+Admin --> CU084
+
+Admin --> CU085
+
+Admin --> CU086
+
+
+
+@enduml
+
+```
+
+
+
+\### Figura 3 - Diagrama Caso Usos del actor "Trabajador"
+
+
+
+```plantuml
+
+@startuml
+
+left to right direction
+
+skinparam packageStyle rectangle
+
+skinparam actorStyle awesome
+
+
+
+actor "Trabajador\\n(Empleado)" as Trabajador
+
+
+
+rectangle "Casos de Uso del Trabajador" {
+
+&nbsp;   package "Seguridad" {
+
+&nbsp;       usecase "CU-001 Iniciar Sesión" as CU001
+
+&nbsp;       usecase "CU-002 Cerrar Sesión" as CU002
+
+&nbsp;       usecase "CU-003 Recuperar Contraseña" as CU003
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Gestión de Clientes" {
+
+&nbsp;       usecase "CU-012 Crear Cliente" as CU012
+
+&nbsp;       usecase "CU-013 Modificar Cliente" as CU013
+
+&nbsp;       usecase "CU-016 Consultar Clientes" as CU016
+
+&nbsp;       usecase "CU-017 Buscar Clientes" as CU017
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Gestión de Vehículos" {
+
+&nbsp;       usecase "CU-018 Crear Vehículo" as CU018
+
+&nbsp;       usecase "CU-019 Modificar Vehículo" as CU019
+
+&nbsp;       usecase "CU-021 Consultar Vehículos" as CU021
+
+&nbsp;       usecase "CU-022 Buscar Vehículos" as CU022
+
+&nbsp;       usecase "CU-023 Vincular Vehículo" as CU023
+
+&nbsp;       usecase "CU-024 Desvincular Vehículo" as CU024
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Consulta de Servicios" {
+
+&nbsp;       usecase "CU-033 Consultar Servicios" as CU033
+
+&nbsp;       usecase "CU-034 Buscar Servicios" as CU034
+
+&nbsp;       usecase "CU-044 Consultar Paquetes" as CU044
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Registro de Lavados" {
+
+&nbsp;       usecase "CU-045 Registrar Lavado" as CU045
+
+&nbsp;       usecase "CU-046 Consultar Lavados" as CU046
+
+&nbsp;       usecase "CU-047 Buscar Lavados" as CU047
+
+&nbsp;       usecase "CU-048 Ver Detalle Lavado" as CU048
+
+&nbsp;       usecase "CU-049 Iniciar Servicio" as CU049
+
+&nbsp;       usecase "CU-050 Iniciar Etapa" as CU050
+
+&nbsp;       usecase "CU-051 Finalizar Etapa" as CU051
+
+&nbsp;       usecase "CU-052 Finalizar Servicio" as CU052
+
+&nbsp;       usecase "CU-053 Finalizar Lavado" as CU053
+
+&nbsp;       usecase "CU-054 Cancelar Lavado" as CU054
+
+&nbsp;       usecase "CU-055 Cancelar Servicio" as CU055
+
+&nbsp;       usecase "CU-056 Registrar Pago" as CU056
+
+&nbsp;       usecase "CU-057 Registrar Pago Parcial" as CU057
+
+&nbsp;       usecase "CU-058 Marcar Retirado" as CU058
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Notificaciones" {
+
+&nbsp;       usecase "CU-076 Notificar WhatsApp" as CU076
+
+&nbsp;       usecase "CU-077 Notificar Email" as CU077
+
+&nbsp;   }
+
+}
+
+
+
+Trabajador --> CU001
+
+Trabajador --> CU002
+
+Trabajador --> CU003
+
+Trabajador --> CU012
+
+Trabajador --> CU013
+
+Trabajador --> CU016
+
+Trabajador --> CU017
+
+Trabajador --> CU018
+
+Trabajador --> CU019
+
+Trabajador --> CU021
+
+Trabajador --> CU022
+
+Trabajador --> CU023
+
+Trabajador --> CU024
+
+Trabajador --> CU033
+
+Trabajador --> CU034
+
+Trabajador --> CU044
+
+Trabajador --> CU045
+
+Trabajador --> CU046
+
+Trabajador --> CU047
+
+Trabajador --> CU048
+
+Trabajador --> CU049
+
+Trabajador --> CU050
+
+Trabajador --> CU051
+
+Trabajador --> CU052
+
+Trabajador --> CU053
+
+Trabajador --> CU054
+
+Trabajador --> CU055
+
+Trabajador --> CU056
+
+Trabajador --> CU057
+
+Trabajador --> CU058
+
+Trabajador --> CU076
+
+Trabajador --> CU077
+
+
+
+@enduml
+
+```
+
+
+
+\### Figura 4 - Diagrama Caso Usos del actor "Cliente"
+
+
+
+```plantuml
+
+@startuml
+
+left to right direction
+
+skinparam packageStyle rectangle
+
+skinparam actorStyle awesome
+
+
+
+actor "Cliente" as Cliente
+
+
+
+rectangle "Casos de Uso del Cliente (WhatsApp)" {
+
+&nbsp;   package "Registro y Datos" {
+
+&nbsp;       usecase "CU-025 Registrarse por WhatsApp" as CU025
+
+&nbsp;       usecase "CU-026 Registrar Vehículo" as CU026
+
+&nbsp;       usecase "CU-028 Editar Datos Personales" as CU028
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Gestión de Turnos" {
+
+&nbsp;       usecase "CU-070 Solicitar Turno" as CU070
+
+&nbsp;       usecase "CU-071 Consultar Turnos" as CU071
+
+&nbsp;       usecase "CU-072 Cancelar Turno" as CU072
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Otros" {
+
+&nbsp;       usecase "CU-080 Hablar con Personal" as CU080
+
+&nbsp;       usecase "CU-092 Ver Info Lavadero" as CU092
+
+&nbsp;   }
+
+}
+
+
+
+Cliente --> CU025
+
+Cliente --> CU026
+
+Cliente --> CU028
+
+Cliente --> CU070
+
+Cliente --> CU071
+
+Cliente --> CU072
+
+Cliente --> CU080
+
+Cliente --> CU092
+
+
+
+@enduml
+
+```
+
+
+
+\### Figura 5 - Diagrama Caso Usos del actor "Sistema"
+
+
+
+```plantuml
+
+@startuml
+
+left to right direction
+
+skinparam packageStyle rectangle
+
+skinparam actorStyle awesome
+
+
+
+actor "Sistema" as Sistema
+
+
+
+rectangle "Casos de Uso del Sistema (Automáticos)" {
+
+&nbsp;   package "Seguridad" {
+
+&nbsp;       usecase "CU-004 Cierre Automático" as CU004
+
+&nbsp;       usecase "CU-011 Autenticar Google\\ny Registrar" as CU011
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Identificación" {
+
+&nbsp;       usecase "CU-027 Identificar Teléfono" as CU027
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Cálculos" {
+
+&nbsp;       usecase "CU-059 Calcular Duración" as CU059
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Gestión de Turnos" {
+
+&nbsp;       usecase "CU-073 Asignar sin Superposición" as CU073
+
+&nbsp;       usecase "CU-074 Validar Disponibilidad" as CU074
+
+&nbsp;       usecase "CU-075 Reorganizar Agenda" as CU075
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Notificaciones Automáticas" {
+
+&nbsp;       usecase "CU-078 Notificar Etapa" as CU078
+
+&nbsp;       usecase "CU-079 Notificar Lavado" as CU079
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "Auditoría" {
+
+&nbsp;       usecase "CU-087 Registrar Acciones" as CU087
+
+&nbsp;   }
+
+&nbsp;   
+
+&nbsp;   package "WhatsApp" {
+
+&nbsp;       usecase "CU-088 Procesar Mensaje" as CU088
+
+&nbsp;       usecase "CU-089 Validar Webhook" as CU089
+
+&nbsp;       usecase "CU-090 Gestionar Sesión" as CU090
+
+&nbsp;       usecase "CU-091 Mostrar Menú" as CU091
+
+&nbsp;   }
+
+}
+
+
+
+Sistema --> CU004
+
+Sistema --> CU011
+
+Sistema --> CU027
+
+Sistema --> CU059
+
+Sistema --> CU073
+
+Sistema --> CU074
+
+Sistema --> CU075
+
+Sistema --> CU078
+
+Sistema --> CU079
+
+Sistema --> CU087
+
+Sistema --> CU088
+
+Sistema --> CU089
+
+Sistema --> CU090
+
+Sistema --> CU091
+
+
+
+@enduml
+
+```
+
