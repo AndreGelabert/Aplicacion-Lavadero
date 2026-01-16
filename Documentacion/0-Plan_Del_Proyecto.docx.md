@@ -58,95 +58,95 @@ Se deben realizar una descripción de alto nivel de los Casos de usos identifica
 
 | Código | CU-001 |
 | :---- | :---- |
-| **Caso de Uso** | Iniciar Sesión |
+| **Caso de Uso** | **Iniciar Sesión** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El usuario accede al sistema mediante sus credenciales registradas.  Este caso de uso es la puerta de entrada al sistema y verifica que el usuario tenga estado activo. |
+| **Descripción** | El usuario accede al sistema mediante sus credenciales registradas. Este caso de uso es la puerta de entrada al sistema y verifica que el usuario tenga estado activo. |
 
 | Código | CU-001.1 |
-| :---- | : ---- |
-| **Caso de Uso** | Iniciar sesión con correo y contraseña |
+| :---- | :---- |
+| **Caso de Uso** | **Iniciar sesión con correo y contraseña** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | Extiende de CU-001. El usuario ingresa su correo electrónico y contraseña para validar su identidad mediante Firebase Authentication. Se verifica que el correo esté verificado antes de permitir el acceso.  |
+| **Descripción** | Extiende de CU-001. El usuario ingresa su correo electrónico y contraseña para validar su identidad mediante Firebase Authentication. Se verifica que el correo esté verificado antes de permitir el acceso. |
 
 | Código | CU-001.2 |
-| :---- | : ---- |
-| **Caso de Uso** | Iniciar sesión con Google |
+| :---- | :---- |
+| **Caso de Uso** | **Iniciar sesión con Google** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | Extiende de CU-001. El usuario se autentica mediante Google Authentication, evitando la necesidad de contraseña propia. Si es un usuario nuevo, se crea automáticamente su perfil con rol "Empleado". |
 
 | Código | CU-002 |
-| : ---- | :---- |
-| **Caso de Uso** | Cerrar sesión |
+| :---- | :---- |
+| **Caso de Uso** | **Cerrar sesión** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El usuario cierra su sesión de manera manual desde la aplicación. Se invalida la sesión actual y se redirige a la página de login. |
 
 | Código | CU-003 |
-| : ---- | :---- |
-| **Caso de Uso** | Recuperar contraseña |
+| :---- | :---- |
+| **Caso de Uso** | **Recuperar contraseña** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El sistema permite al usuario recuperar su contraseña mediante un enlace enviado a su correo electrónico a través de Firebase Authentication. |
 
 | Código | CU-004 |
 | :---- | :---- |
-| **Caso de Uso** | Cierre de sesión automático por inactividad |
+| **Caso de Uso** | **Cierre de sesión automático por inactividad** |
 | **Actor/es** | Sistema |
 | **Descripción** | El sistema cierra automáticamente la sesión de los usuarios tras un periodo prolongado de inactividad configurable desde el módulo de configuración. |
 
 ---
 
-### **Módulo:  Gestión de Empleados**
+### **Módulo: Gestión de Empleados**
 
 | Código | CU-005 |
-| :---- | : ---- |
-| **Caso de Uso** | Registrarse en el sistema |
+| :---- | :---- |
+| **Caso de Uso** | **Registrarse en el sistema** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | Un nuevo usuario crea su perfil en el sistema, quedando registrado como empleado con rol por defecto de 'Empleado'.  Requiere verificación de correo electrónico.  |
+| **Descripción** | Un nuevo usuario crea su perfil en el sistema, quedando registrado como empleado con rol por defecto de 'Empleado'. Requiere verificación de correo electrónico. |
 
 | Código | CU-005.1 |
-| :---- | : ---- |
-| **Caso de Uso** | Registrarse por correo |
+| :---- | :---- |
+| **Caso de Uso** | **Registrarse por correo** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | Extiende de CU-005. El usuario completa un formulario con correo y contraseña para generar su cuenta. Se envía un correo de verificación que debe ser confirmado antes de poder iniciar sesión.  |
+| **Descripción** | Extiende de CU-005. El usuario completa un formulario con correo y contraseña para generar su cuenta. Se envía un correo de verificación que debe ser confirmado antes de poder iniciar sesión. |
 
 | Código | CU-005.2 |
-| :---- | : ---- |
-| **Caso de Uso** | Registrarse por Google |
+| :---- | :---- |
+| **Caso de Uso** | **Registrarse por Google** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | Extiende de CU-005. El registro se realiza mediante autenticación directa con Google, verificando automáticamente el correo electrónico.  |
+| **Descripción** | Extiende de CU-005. El registro se realiza mediante autenticación directa con Google, verificando automáticamente el correo electrónico. |
 
 | Código | CU-006 |
 | :---- | :---- |
-| **Caso de Uso** | Modificar empleado |
+| **Caso de Uso** | **Modificar empleado** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador actualiza la información de un empleado existente, incluyendo nombre completo y rol asignado. |
 
 | Código | CU-007 |
 | :---- | :---- |
-| **Caso de Uso** | Desactivar empleado |
+| **Caso de Uso** | **Desactivar empleado** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador desactiva a un empleado del sistema. Un empleado desactivado no puede iniciar sesión hasta ser reactivado. |
 
 | Código | CU-008 |
 | :---- | :---- |
-| **Caso de Uso** | Reactivar empleado |
+| **Caso de Uso** | **Reactivar empleado** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador reactiva a un empleado previamente desactivado, permitiéndole nuevamente iniciar sesión en el sistema. |
 
 | Código | CU-009 |
 | :---- | :---- |
-| **Caso de Uso** | Consultar empleados |
+| **Caso de Uso** | **Consultar empleados** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador visualiza la lista de empleados registrados en el sistema con opciones de filtrado por estado y rol, ordenamiento y paginación. |
 
 | Código | CU-010 |
 | :---- | :---- |
-| **Caso de Uso** | Asignar roles a empleados |
+| **Caso de Uso** | **Asignar roles a empleados** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador define los roles de los empleados (Empleado o Administrador) para determinar sus permisos en el sistema. |
 
 | Código | CU-011 |
 | :---- | :---- |
-| **Caso de Uso** | Autenticar usuario con Google y registrar perfil si es nuevo |
+| **Caso de Uso** | **Autenticar usuario con Google y registrar perfil si es nuevo** |
 | **Actor/es** | Sistema |
 | **Descripción** | El sistema valida un inicio de sesión por Google y, si no existe el usuario, lo registra automáticamente con los datos del perfil de Google y rol por defecto "Empleado". |
 
@@ -155,104 +155,104 @@ Se deben realizar una descripción de alto nivel de los Casos de usos identifica
 ### **Módulo: Gestión de Clientes y Vehículos**
 
 | Código | CU-012 |
-| : ---- | :---- |
-| **Caso de Uso** | Crear cliente |
+| :---- | :---- |
+| **Caso de Uso** | **Crear cliente** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal del lavadero registra un nuevo cliente en el sistema con sus datos personales:  tipo de documento, número de documento, nombre, apellido, teléfono y correo electrónico.  |
+| **Descripción** | El personal del lavadero registra un nuevo cliente en el sistema con sus datos personales: tipo de documento, número de documento, nombre, apellido, teléfono y correo electrónico. |
 
 | Código | CU-013 |
-| : ---- | :---- |
-| **Caso de Uso** | Modificar cliente |
+| :---- | :---- |
+| **Caso de Uso** | **Modificar cliente** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal del lavadero actualiza la información de un cliente existente.  |
+| **Descripción** | El personal del lavadero actualiza la información de un cliente existente. |
 
 | Código | CU-014 |
-| : ---- | :---- |
-| **Caso de Uso** | Desactivar cliente |
+| :---- | :---- |
+| **Caso de Uso** | **Desactivar cliente** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador desactiva un cliente del sistema. La desactivación es lógica y también desactiva en cascada los vehículos asociados exclusivamente a ese cliente. |
 
 | Código | CU-015 |
-| :---- | : ---- |
-| **Caso de Uso** | Reactivar cliente |
+| :---- | :---- |
+| **Caso de Uso** | **Reactivar cliente** |
 | **Actor/es** | Administrador |
-| **Descripción** | El administrador reactiva un cliente previamente desactivado.  La reactivación también reactiva en cascada los vehículos que fueron desactivados junto con el cliente. |
+| **Descripción** | El administrador reactiva un cliente previamente desactivado. La reactivación también reactiva en cascada los vehículos que fueron desactivados junto con el cliente. |
 
 | Código | CU-016 |
 | :---- | :---- |
-| **Caso de Uso** | Consultar clientes |
+| **Caso de Uso** | **Consultar clientes** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El personal consulta la lista de clientes registrados en el sistema con opciones de filtrado por estado, ordenamiento y paginación. |
 
 | Código | CU-017 |
 | :---- | :---- |
-| **Caso de Uso** | Buscar clientes |
+| **Caso de Uso** | **Buscar clientes** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal busca clientes por nombre, apellido, documento, teléfono o email. La búsqueda se realiza en tiempo real con resultados paginados.  |
+| **Descripción** | El personal busca clientes por nombre, apellido, documento, teléfono o email. La búsqueda se realiza en tiempo real con resultados paginados. |
 
 | Código | CU-018 |
-| : ---- | :---- |
-| **Caso de Uso** | Crear vehículo |
+| :---- | :---- |
+| **Caso de Uso** | **Crear vehículo** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal registra un nuevo vehículo con patente, tipo de vehículo, marca, modelo y color. Opcionalmente puede asociarlo a un cliente existente. Se genera una clave de asociación para permitir que otros clientes vinculen el vehículo.  |
+| **Descripción** | El personal registra un nuevo vehículo con patente, tipo de vehículo, marca, modelo y color. Opcionalmente puede asociarlo a un cliente existente. Se genera una clave de asociación para permitir que otros clientes vinculen el vehículo. |
 
 | Código | CU-019 |
-| : ---- | :---- |
-| **Caso de Uso** | Modificar vehículo |
+| :---- | :---- |
+| **Caso de Uso** | **Modificar vehículo** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal actualiza los datos editables de un vehículo (modelo y color). La patente, tipo de vehículo y marca no son editables una vez registrado el vehículo.  |
+| **Descripción** | El personal actualiza los datos editables de un vehículo (modelo y color). La patente, tipo de vehículo y marca no son editables una vez registrado el vehículo. |
 
 | Código | CU-020 |
-| : ---- | :---- |
-| **Caso de Uso** | Desactivar vehículo |
+| :---- | :---- |
+| **Caso de Uso** | **Desactivar vehículo** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador desactiva un vehículo del sistema. Solo se puede desactivar si no está asignado a ningún cliente activo. |
 
 | Código | CU-021 |
-| :---- | : ---- |
-| **Caso de Uso** | Consultar vehículos |
+| :---- | :---- |
+| **Caso de Uso** | **Consultar vehículos** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El personal visualiza la lista de vehículos registrados con opciones de filtrado por tipo de vehículo, marca, color y estado. |
 
 | Código | CU-022 |
 | :---- | :---- |
-| **Caso de Uso** | Buscar vehículos |
+| **Caso de Uso** | **Buscar vehículos** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal busca vehículos por patente, marca o modelo. La búsqueda se realiza en tiempo real.  |
+| **Descripción** | El personal busca vehículos por patente, marca o modelo. La búsqueda se realiza en tiempo real. |
 
 | Código | CU-023 |
-| : ---- | :---- |
-| **Caso de Uso** | Vincular vehículo a cliente |
+| :---- | :---- |
+| **Caso de Uso** | **Vincular vehículo a cliente** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal asocia un vehículo existente a un cliente.  Un vehículo puede estar asociado a múltiples clientes (dueños compartidos). |
+| **Descripción** | El personal asocia un vehículo existente a un cliente. Un vehículo puede estar asociado a múltiples clientes (dueños compartidos). |
 
 | Código | CU-024 |
-| :---- | : ---- |
-| **Caso de Uso** | Desvincular vehículo de cliente |
+| :---- | :---- |
+| **Caso de Uso** | **Desvincular vehículo de cliente** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El personal desvincula un vehículo de un cliente. Si el vehículo queda sin clientes asociados, se desactiva automáticamente. |
 
 | Código | CU-025 |
 | :---- | :---- |
-| **Caso de Uso** | Registrarse como cliente por WhatsApp |
+| **Caso de Uso** | **Registrarse como cliente por WhatsApp** |
 | **Actor/es** | Cliente |
 | **Descripción** | El cliente se registra en el sistema mediante interacción guiada con el bot de WhatsApp, proporcionando sus datos personales paso a paso. |
 
 | Código | CU-026 |
 | :---- | :---- |
-| **Caso de Uso** | Registrar vehículo por WhatsApp |
+| **Caso de Uso** | **Registrar vehículo por WhatsApp** |
 | **Actor/es** | Cliente |
 | **Descripción** | El cliente asocia un nuevo vehículo a su cuenta mediante el flujo conversacional de WhatsApp, indicando tipo de vehículo, patente, marca, modelo y color. |
 
 | Código | CU-027 |
 | :---- | :---- |
-| **Caso de Uso** | Identificar si el número de teléfono está registrado |
+| **Caso de Uso** | **Identificar si el número de teléfono está registrado** |
 | **Actor/es** | Sistema |
 | **Descripción** | El sistema valida si el número de WhatsApp que envía un mensaje pertenece a un cliente existente, determinando el flujo de conversación apropiado. |
 
 | Código | CU-028 |
-| :---- | : ---- |
-| **Caso de Uso** | Editar datos personales por WhatsApp |
+| :---- | :---- |
+| **Caso de Uso** | **Editar datos personales por WhatsApp** |
 | **Actor/es** | Cliente |
 | **Descripción** | El cliente modifica sus datos personales (nombre, apellido, email) a través del flujo conversacional de WhatsApp. |
 
@@ -262,97 +262,97 @@ Se deben realizar una descripción de alto nivel de los Casos de usos identifica
 
 | Código | CU-029 |
 | :---- | :---- |
-| **Caso de Uso** | Crear servicio |
+| **Caso de Uso** | **Crear servicio** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador crea un nuevo servicio para el lavadero con nombre, descripción, precio, tiempo estimado, tipo de servicio, tipo de vehículo y opcionalmente etapas de ejecución. |
 
 | Código | CU-030 |
 | :---- | :---- |
-| **Caso de Uso** | Modificar servicio |
+| **Caso de Uso** | **Modificar servicio** |
 | **Actor/es** | Administrador |
-| **Descripción** | El administrador actualiza los detalles de un servicio existente, incluyendo nombre, descripción, precio, tiempo estimado y etapas.  |
+| **Descripción** | El administrador actualiza los detalles de un servicio existente, incluyendo nombre, descripción, precio, tiempo estimado y etapas. |
 
 | Código | CU-031 |
-| : ---- | :---- |
-| **Caso de Uso** | Desactivar servicio |
+| :---- | :---- |
+| **Caso de Uso** | **Desactivar servicio** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador desactiva un servicio del sistema. Los servicios desactivados no aparecen disponibles para seleccionar en nuevos lavados. |
 
 | Código | CU-032 |
 | :---- | :---- |
-| **Caso de Uso** | Reactivar servicio |
+| **Caso de Uso** | **Reactivar servicio** |
 | **Actor/es** | Administrador |
-| **Descripción** | El administrador reactiva un servicio previamente desactivado, volviéndolo disponible para selección.  |
+| **Descripción** | El administrador reactiva un servicio previamente desactivado, volviéndolo disponible para selección. |
 
 | Código | CU-033 |
 | :---- | :---- |
-| **Caso de Uso** | Consultar servicios |
+| **Caso de Uso** | **Consultar servicios** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal consulta la lista de servicios disponibles con opciones de filtrado por estado, tipo de servicio, tipo de vehículo y rango de precios.  |
+| **Descripción** | El personal consulta la lista de servicios disponibles con opciones de filtrado por estado, tipo de servicio, tipo de vehículo y rango de precios. |
 
 | Código | CU-034 |
-| : ---- | :---- |
-| **Caso de Uso** | Buscar servicios |
+| :---- | :---- |
+| **Caso de Uso** | **Buscar servicios** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal busca servicios por nombre.  La búsqueda se realiza en tiempo real con resultados paginados. |
+| **Descripción** | El personal busca servicios por nombre. La búsqueda se realiza en tiempo real con resultados paginados. |
 
 | Código | CU-035 |
 | :---- | :---- |
-| **Caso de Uso** | Crear tipo de servicio |
+| **Caso de Uso** | **Crear tipo de servicio** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador crea un nuevo tipo de servicio (categoría) para clasificar los servicios del lavadero. |
 
 | Código | CU-036 |
 | :---- | :---- |
-| **Caso de Uso** | Eliminar tipo de servicio |
+| **Caso de Uso** | **Eliminar tipo de servicio** |
 | **Actor/es** | Administrador |
-| **Descripción** | El administrador elimina un tipo de servicio.  Solo se permite si no hay servicios activos utilizando ese tipo. |
+| **Descripción** | El administrador elimina un tipo de servicio. Solo se permite si no hay servicios activos utilizando ese tipo. |
 
 | Código | CU-037 |
-| :---- | : ---- |
-| **Caso de Uso** | Crear tipo de vehículo |
+| :---- | :---- |
+| **Caso de Uso** | **Crear tipo de vehículo** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador crea un nuevo tipo de vehículo con nombre, formato de patente y cantidad de empleados requeridos por defecto. |
 
 | Código | CU-038 |
-| :---- | : ---- |
-| **Caso de Uso** | Eliminar tipo de vehículo |
+| :---- | :---- |
+| **Caso de Uso** | **Eliminar tipo de vehículo** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador elimina un tipo de vehículo. Solo se permite si no hay servicios ni vehículos activos utilizando ese tipo. |
 
 | Código | CU-039 |
 | :---- | :---- |
-| **Caso de Uso** | Gestionar etapas del servicio |
+| **Caso de Uso** | **Gestionar etapas del servicio** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador define las etapas o fases en las que se divide un servicio para su ejecución, permitiendo un seguimiento granular del progreso. |
 
 | Código | CU-040 |
 | :---- | :---- |
-| **Caso de Uso** | Crear paquete de servicios |
+| **Caso de Uso** | **Crear paquete de servicios** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador crea un paquete que agrupa 2 o más servicios del mismo tipo de vehículo con un porcentaje de descuento aplicable. |
 
 | Código | CU-041 |
-| :---- | : ---- |
-| **Caso de Uso** | Modificar paquete de servicios |
+| :---- | :---- |
+| **Caso de Uso** | **Modificar paquete de servicios** |
 | **Actor/es** | Administrador |
-| **Descripción** | El administrador actualiza la configuración de un paquete de servicios, incluyendo servicios incluidos y porcentaje de descuento.  |
+| **Descripción** | El administrador actualiza la configuración de un paquete de servicios, incluyendo servicios incluidos y porcentaje de descuento. |
 
 | Código | CU-042 |
-| : ---- | :---- |
-| **Caso de Uso** | Desactivar paquete de servicios |
+| :---- | :---- |
+| **Caso de Uso** | **Desactivar paquete de servicios** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador desactiva un paquete de servicios, dejándolo no disponible para selección. |
 
 | Código | CU-043 |
 | :---- | :---- |
-| **Caso de Uso** | Reactivar paquete de servicios |
+| **Caso de Uso** | **Reactivar paquete de servicios** |
 | **Actor/es** | Administrador |
-| **Descripción** | El administrador reactiva un paquete previamente desactivado.  |
+| **Descripción** | El administrador reactiva un paquete previamente desactivado. |
 
 | Código | CU-044 |
 | :---- | :---- |
-| **Caso de Uso** | Consultar paquetes de servicios |
+| **Caso de Uso** | **Consultar paquetes de servicios** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El personal visualiza los paquetes de servicios disponibles con información de precio final, descuento y tiempo estimado total. |
 
@@ -361,92 +361,92 @@ Se deben realizar una descripción de alto nivel de los Casos de usos identifica
 ### **Módulo: Registro de Lavados**
 
 | Código | CU-045 |
-| : ---- | :---- |
-| **Caso de Uso** | Registrar realización de un servicio (lavado) |
+| :---- | :---- |
+| **Caso de Uso** | **Registrar realización de un servicio (lavado)** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El personal registra un lavado seleccionando un vehículo (por búsqueda de patente), el cliente asociado, los servicios o paquetes a realizar, el descuento aplicable y notas adicionales. El lavado inicia inmediatamente tras su creación. |
 
 | Código | CU-046 |
-| :---- | : ---- |
-| **Caso de Uso** | Consultar lavados |
+| :---- | :---- |
+| **Caso de Uso** | **Consultar lavados** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El personal visualiza el historial de lavados con opciones de filtrado por estado, cliente, vehículo, rango de fechas, rango de precios, estado de pago y estado de retiro. |
 
 | Código | CU-047 |
 | :---- | :---- |
-| **Caso de Uso** | Buscar lavados |
+| **Caso de Uso** | **Buscar lavados** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal busca lavados por patente, nombre de cliente o ID. La búsqueda se realiza en tiempo real.  |
+| **Descripción** | El personal busca lavados por patente, nombre de cliente o ID. La búsqueda se realiza en tiempo real. |
 
 | Código | CU-048 |
-| : ---- | :---- |
-| **Caso de Uso** | Ver detalle de lavado |
+| :---- | :---- |
+| **Caso de Uso** | **Ver detalle de lavado** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal visualiza el detalle completo de un lavado, incluyendo servicios con su estado y progreso de etapas, información del cliente, vehículo, pago y tiempos.  |
+| **Descripción** | El personal visualiza el detalle completo de un lavado, incluyendo servicios con su estado y progreso de etapas, información del cliente, vehículo, pago y tiempos. |
 
 | Código | CU-049 |
-| : ---- | :---- |
-| **Caso de Uso** | Iniciar servicio en lavado |
+| :---- | :---- |
+| **Caso de Uso** | **Iniciar servicio en lavado** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal inicia la ejecución de un servicio específico dentro de un lavado, registrando el tiempo de inicio.  |
+| **Descripción** | El personal inicia la ejecución de un servicio específico dentro de un lavado, registrando el tiempo de inicio. |
 
 | Código | CU-050 |
-| : ---- | :---- |
-| **Caso de Uso** | Iniciar etapa de servicio |
+| :---- | :---- |
+| **Caso de Uso** | **Iniciar etapa de servicio** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El personal inicia una etapa específica dentro de un servicio que tiene múltiples etapas definidas. |
 
 | Código | CU-051 |
-| :---- | : ---- |
-| **Caso de Uso** | Finalizar etapa de servicio |
+| :---- | :---- |
+| **Caso de Uso** | **Finalizar etapa de servicio** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El personal marca como finalizada una etapa de un servicio en ejecución. |
 
 | Código | CU-052 |
 | :---- | :---- |
-| **Caso de Uso** | Finalizar servicio en lavado |
+| **Caso de Uso** | **Finalizar servicio en lavado** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El personal marca como completado un servicio específico dentro del lavado, registrando el tiempo de finalización. |
 
 | Código | CU-053 |
 | :---- | :---- |
-| **Caso de Uso** | Finalizar lavado completo |
+| **Caso de Uso** | **Finalizar lavado completo** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El personal marca como completado un lavado cuando todos los servicios han sido finalizados. Se registra el tiempo de finalización total. |
 
 | Código | CU-054 |
 | :---- | :---- |
-| **Caso de Uso** | Cancelar lavado |
+| **Caso de Uso** | **Cancelar lavado** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El personal cancela un lavado completo indicando el motivo de cancelación. |
 
 | Código | CU-055 |
-| :---- | : ---- |
-| **Caso de Uso** | Cancelar servicio en lavado |
+| :---- | :---- |
+| **Caso de Uso** | **Cancelar servicio en lavado** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal cancela un servicio específico dentro de un lavado indicando el motivo, permitiendo que el lavado continúe con los servicios restantes.  |
+| **Descripción** | El personal cancela un servicio específico dentro de un lavado indicando el motivo, permitiendo que el lavado continúe con los servicios restantes. |
 
 | Código | CU-056 |
-| : ---- | :---- |
-| **Caso de Uso** | Registrar pago recibido |
+| :---- | :---- |
+| **Caso de Uso** | **Registrar pago recibido** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal registra un pago total recibido por un cliente, actualizando el estado de pago del lavado a "Pagado".  |
+| **Descripción** | El personal registra un pago total recibido por un cliente, actualizando el estado de pago del lavado a "Pagado". |
 
 | Código | CU-057 |
-| : ---- | :---- |
-| **Caso de Uso** | Registrar pago parcial |
+| :---- | :---- |
+| **Caso de Uso** | **Registrar pago parcial** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El personal registra un pago parcial indicando el monto recibido, el estado de pago se actualiza a "Parcial" y se mantiene registro de cada pago individual. |
 
 | Código | CU-058 |
 | :---- | :---- |
-| **Caso de Uso** | Marcar vehículo como retirado |
+| **Caso de Uso** | **Marcar vehículo como retirado** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El personal marca un vehículo como retirado por el cliente, registrando la fecha y hora del retiro. |
 
 | Código | CU-059 |
-| :---- | : ---- |
-| **Caso de Uso** | Calcular duración estimada de lavado |
+| :---- | :---- |
+| **Caso de Uso** | **Calcular duración estimada de lavado** |
 | **Actor/es** | Sistema |
 | **Descripción** | El sistema calcula automáticamente la duración estimada de un lavado sumando los tiempos estimados de cada servicio seleccionado. |
 
@@ -456,37 +456,37 @@ Se deben realizar una descripción de alto nivel de los Casos de usos identifica
 
 | Código | CU-060 |
 | :---- | :---- |
-| **Caso de Uso** | Configurar horarios del lavadero |
+| **Caso de Uso** | **Configurar horarios del lavadero** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador configura el horario de funcionamiento del establecimiento para cada día de la semana, incluyendo horarios divididos y días cerrados. |
 
 | Código | CU-061 |
-| :---- | : ---- |
-| **Caso de Uso** | Configurar capacidad concurrente |
+| :---- | :---- |
+| **Caso de Uso** | **Configurar capacidad concurrente** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador configura el número máximo de lavados que se pueden atender simultáneamente y si se debe considerar el número de empleados activos para calcular la capacidad efectiva. |
 
 | Código | CU-062 |
-| :---- | : ---- |
-| **Caso de Uso** | Configurar tiempos de tolerancia y notificación |
+| :---- | :---- |
+| **Caso de Uso** | **Configurar tiempos de tolerancia y notificación** |
 | **Actor/es** | Administrador |
-| **Descripción** | El administrador configura los minutos de anticipación para notificar antes del tiempo estimado, los minutos de tolerancia máxima y el intervalo para preguntar si ya terminó cuando se excede el tiempo.  |
+| **Descripción** | El administrador configura los minutos de anticipación para notificar antes del tiempo estimado, los minutos de tolerancia máxima y el intervalo para preguntar si ya terminó cuando se excede el tiempo. |
 
 | Código | CU-063 |
-| : ---- | :---- |
-| **Caso de Uso** | Configurar duración de sesión |
+| :---- | :---- |
+| **Caso de Uso** | **Configurar duración de sesión** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador configura la duración máxima de la sesión en horas y el tiempo de inactividad en minutos antes del cierre automático. |
 
 | Código | CU-064 |
-| :---- | : ---- |
-| **Caso de Uso** | Configurar nombre y ubicación del lavadero |
+| :---- | :---- |
+| **Caso de Uso** | **Configurar nombre y ubicación del lavadero** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador configura el nombre del lavadero y su ubicación, que se muestran en las notificaciones por WhatsApp y otros lugares del sistema. |
 
 | Código | CU-065 |
 | :---- | :---- |
-| **Caso de Uso** | Configurar paso de descuento para paquetes |
+| **Caso de Uso** | **Configurar paso de descuento para paquetes** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador configura el incremento mínimo de porcentaje de descuento al crear paquetes de servicios (mínimo 5%). |
 
@@ -496,61 +496,61 @@ Se deben realizar una descripción de alto nivel de los Casos de usos identifica
 
 | Código | CU-066 |
 | :---- | :---- |
-| **Caso de Uso** | Registrar turno |
+| **Caso de Uso** | **Registrar turno** |
 | **Actor/es** | Administrador |
 | **Descripción** | El personal agenda un turno para un cliente en el sistema, especificando fecha, hora y servicios solicitados. |
 
 | Código | CU-067 |
 | :---- | :---- |
-| **Caso de Uso** | Modificar turno |
+| **Caso de Uso** | **Modificar turno** |
 | **Actor/es** | Administrador |
 | **Descripción** | El personal actualiza la información de un turno ya registrado, validando la disponibilidad en el nuevo horario. |
 
 | Código | CU-068 |
 | :---- | :---- |
-| **Caso de Uso** | Consultar turnos asignados |
+| **Caso de Uso** | **Consultar turnos asignados** |
 | **Actor/es** | Administrador |
-| **Descripción** | El personal consulta la agenda de turnos registrados en el sistema con vista de calendario.  |
+| **Descripción** | El personal consulta la agenda de turnos registrados en el sistema con vista de calendario. |
 
 | Código | CU-069 |
-| : ---- | :---- |
-| **Caso de Uso** | Cancelar turno |
+| :---- | :---- |
+| **Caso de Uso** | **Cancelar turno** |
 | **Actor/es** | Administrador |
 | **Descripción** | El personal cancela un turno previamente asignado a un cliente. |
 
 | Código | CU-070 |
 | :---- | :---- |
-| **Caso de Uso** | Solicitar turno por WhatsApp |
+| **Caso de Uso** | **Solicitar turno por WhatsApp** |
 | **Actor/es** | Cliente |
 | **Descripción** | El cliente agenda un turno directamente mediante el flujo conversacional de WhatsApp, indicando vehículo y servicios deseados. |
 
 | Código | CU-071 |
 | :---- | :---- |
-| **Caso de Uso** | Consultar turnos próximos por WhatsApp |
+| **Caso de Uso** | **Consultar turnos próximos por WhatsApp** |
 | **Actor/es** | Cliente |
-| **Descripción** | El cliente visualiza los turnos futuros registrados a su nombre mediante WhatsApp.  |
+| **Descripción** | El cliente visualiza los turnos futuros registrados a su nombre mediante WhatsApp. |
 
 | Código | CU-072 |
-| : ---- | :---- |
-| **Caso de Uso** | Cancelar turno por WhatsApp |
+| :---- | :---- |
+| **Caso de Uso** | **Cancelar turno por WhatsApp** |
 | **Actor/es** | Cliente |
 | **Descripción** | El cliente cancela un turno previamente asignado mediante el flujo de WhatsApp. |
 
 | Código | CU-073 |
-| :---- | : ---- |
-| **Caso de Uso** | Asignar turno automáticamente sin superposición |
+| :---- | :---- |
+| **Caso de Uso** | **Asignar turno automáticamente sin superposición** |
 | **Actor/es** | Sistema |
 | **Descripción** | El sistema asigna turnos asegurando que no existan solapamientos en la agenda, considerando la duración estimada de los servicios. |
 
 | Código | CU-074 |
-| :---- | : ---- |
-| **Caso de Uso** | Validar disponibilidad al mover un turno |
+| :---- | :---- |
+| **Caso de Uso** | **Validar disponibilidad al mover un turno** |
 | **Actor/es** | Sistema |
 | **Descripción** | El sistema valida si existe disponibilidad en la agenda al modificar la fecha u hora de un turno. |
 
 | Código | CU-075 |
-| :---- | : ---- |
-| **Caso de Uso** | Reorganizar agenda ante cancelaciones |
+| :---- | :---- |
+| **Caso de Uso** | **Reorganizar agenda ante cancelaciones** |
 | **Actor/es** | Sistema |
 | **Descripción** | El sistema reordena automáticamente la agenda de turnos cuando ocurre una cancelación, notificando a clientes sobre posibles adelantos. |
 
@@ -560,33 +560,33 @@ Se deben realizar una descripción de alto nivel de los Casos de usos identifica
 
 | Código | CU-076 |
 | :---- | :---- |
-| **Caso de Uso** | Enviar notificación por WhatsApp |
+| **Caso de Uso** | **Enviar notificación por WhatsApp** |
 | **Actor/es** | Empleado, Administrador |
 | **Descripción** | El personal envía notificaciones personalizadas a los clientes por WhatsApp utilizando la integración con WhatsApp Cloud API. |
 
 | Código | CU-077 |
 | :---- | :---- |
-| **Caso de Uso** | Enviar notificación por correo electrónico |
+| **Caso de Uso** | **Enviar notificación por correo electrónico** |
 | **Actor/es** | Empleado, Administrador |
-| **Descripción** | El personal envía notificaciones personalizadas a los clientes por correo electrónico.  |
+| **Descripción** | El personal envía notificaciones personalizadas a los clientes por correo electrónico. |
 
 | Código | CU-078 |
-| : ---- | :---- |
-| **Caso de Uso** | Notificar etapa finalizada |
+| :---- | :---- |
+| **Caso de Uso** | **Notificar etapa finalizada** |
 | **Actor/es** | Sistema |
 | **Descripción** | El sistema envía automáticamente una notificación por WhatsApp al cliente cuando una etapa de su servicio ha sido finalizada. |
 
 | Código | CU-079 |
-| :---- | : ---- |
-| **Caso de Uso** | Notificar lavado finalizado |
+| :---- | :---- |
+| **Caso de Uso** | **Notificar lavado finalizado** |
 | **Actor/es** | Sistema |
 | **Descripción** | El sistema envía automáticamente una notificación por WhatsApp al cliente cuando el lavado de su vehículo está completo y listo para retirar. |
 
 | Código | CU-080 |
 | :---- | :---- |
-| **Caso de Uso** | Solicitar hablar con el personal |
+| **Caso de Uso** | **Solicitar hablar con el personal** |
 | **Actor/es** | Cliente |
-| **Descripción** | El cliente envía un mensaje por WhatsApp para comunicarse directamente con el personal del lavadero, saliendo del flujo automatizado.  |
+| **Descripción** | El cliente envía un mensaje por WhatsApp para comunicarse directamente con el personal del lavadero, saliendo del flujo automatizado. |
 
 ---
 
@@ -594,53 +594,53 @@ Se deben realizar una descripción de alto nivel de los Casos de usos identifica
 
 | Código | CU-081 |
 | :---- | :---- |
-| **Caso de Uso** | Consultar estadísticas básicas |
+| **Caso de Uso** | **Consultar estadísticas básicas** |
 | **Actor/es** | Administrador |
-| **Descripción** | El administrador consulta estadísticas sobre la actividad general del lavadero:  lavados realizados, clientes activos, servicios más solicitados, cumplimiento de turnos.  |
+| **Descripción** | El administrador consulta estadísticas sobre la actividad general del lavadero: lavados realizados, clientes activos, servicios más solicitados, cumplimiento de turnos. |
 
 | Código | CU-082 |
-| : ---- | :---- |
-| **Caso de Uso** | Consultar historial de pagos |
+| :---- | :---- |
+| **Caso de Uso** | **Consultar historial de pagos** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador accede al historial de todos los pagos registrados con opciones de filtrado por fecha, cliente y monto. |
 
 | Código | CU-083 |
-| :---- | : ---- |
-| **Caso de Uso** | Generar reportes |
+| :---- | :---- |
+| **Caso de Uso** | **Generar reportes** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador genera reportes personalizables de los diversos aspectos del sistema para un período de tiempo específico. |
 
 | Código | CU-083. 1 |
-| : ---- | :---- |
-| **Caso de Uso** | Exportar reportes a PDF o Excel |
+| :---- | :---- |
+| **Caso de Uso** | **Exportar reportes a PDF o Excel** |
 | **Actor/es** | Administrador |
-| **Descripción** | Extiende del CU-083. El sistema permite exportar los reportes generados en formato PDF o Excel.  |
+| **Descripción** | Extiende del CU-083. El sistema permite exportar los reportes generados en formato PDF o Excel. |
 
 ---
 
 ### **Módulo: Auditoría**
 
 | Código | CU-084 |
-| :---- | : ---- |
-| **Caso de Uso** | Consultar historial de auditoría |
+| :---- | :---- |
+| **Caso de Uso** | **Consultar historial de auditoría** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador accede al registro completo de acciones realizadas en el sistema, con información del usuario, acción, fecha/hora y entidad afectada. |
 
 | Código | CU-085 |
 | :---- | :---- |
-| **Caso de Uso** | Filtrar registros de auditoría |
+| **Caso de Uso** | **Filtrar registros de auditoría** |
 | **Actor/es** | Administrador |
 | **Descripción** | El administrador filtra los registros de auditoría por rango de fechas, tipo de acción, tipo de entidad objetivo y usuario. |
 
 | Código | CU-086 |
 | :---- | :---- |
-| **Caso de Uso** | Ver detalle de registro de auditoría |
+| **Caso de Uso** | **Ver detalle de registro de auditoría** |
 | **Actor/es** | Administrador |
-| **Descripción** | El administrador visualiza el detalle completo de un registro de auditoría específico, incluyendo navegación a la entidad afectada.  |
+| **Descripción** | El administrador visualiza el detalle completo de un registro de auditoría específico, incluyendo navegación a la entidad afectada. |
 
 | Código | CU-087 |
-| : ---- | :---- |
-| **Caso de Uso** | Registrar todas las acciones para auditoría |
+| :---- | :---- |
+| **Caso de Uso** | **Registrar todas las acciones para auditoría** |
 | **Actor/es** | Sistema |
 | **Descripción** | El sistema almacena automáticamente todas las acciones relevantes de los usuarios en un historial para fines de auditoría, incluyendo creación, modificación, activación y desactivación de entidades. |
 
@@ -649,32 +649,32 @@ Se deben realizar una descripción de alto nivel de los Casos de usos identifica
 ### **Módulo: Integración WhatsApp**
 
 | Código | CU-088 |
-| :---- | : ---- |
-| **Caso de Uso** | Procesar mensaje entrante de WhatsApp |
+| :---- | :---- |
+| **Caso de Uso** | **Procesar mensaje entrante de WhatsApp** |
 | **Actor/es** | Sistema |
 | **Descripción** | El sistema recibe y procesa los mensajes entrantes de WhatsApp, identificando el estado de la conversación y ejecutando el flujo correspondiente. |
 
 | Código | CU-089 |
-| :---- | : ---- |
-| **Caso de Uso** | Validar webhook de WhatsApp |
+| :---- | :---- |
+| **Caso de Uso** | **Validar webhook de WhatsApp** |
 | **Actor/es** | Sistema |
 | **Descripción** | El sistema valida las solicitudes de verificación del webhook de Meta/WhatsApp Cloud API. |
 
 | Código | CU-090 |
-| :---- | : ---- |
-| **Caso de Uso** | Gestionar sesión de conversación |
+| :---- | :---- |
+| **Caso de Uso** | **Gestionar sesión de conversación** |
 | **Actor/es** | Sistema |
 | **Descripción** | El sistema mantiene el estado de la conversación de cada usuario de WhatsApp, almacenando datos temporales y el paso actual del flujo conversacional. |
 
 | Código | CU-091 |
-| :---- | : ---- |
-| **Caso de Uso** | Mostrar menú de cliente autenticado |
+| :---- | :---- |
+| **Caso de Uso** | **Mostrar menú de cliente autenticado** |
 | **Actor/es** | Sistema |
-| **Descripción** | El sistema presenta al cliente autenticado un menú interactivo con las opciones disponibles:  ver datos, gestionar vehículos, consultar turnos, información del lavadero.  |
+| **Descripción** | El sistema presenta al cliente autenticado un menú interactivo con las opciones disponibles: ver datos, gestionar vehículos, consultar turnos, información del lavadero. |
 
 | Código | CU-092 |
-| :---- | : ---- |
-| **Caso de Uso** | Mostrar información del lavadero |
+| :---- | :---- |
+| **Caso de Uso** | **Mostrar información del lavadero** |
 | **Actor/es** | Cliente |
 | **Descripción** | El cliente consulta información del lavadero (nombre, ubicación, horarios, servicios disponibles) a través de WhatsApp. |
 
