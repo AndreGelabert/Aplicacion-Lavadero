@@ -2291,21 +2291,21 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | **Objetivos asociados** | OBJ–06 Planificación y Gestión de Turnos | |
 | **Requisitos asociados** | IRQ–09 Información sobre Turnos | |
 | **Descripción** | El personal agenda un turno para un cliente en el sistema, especificando fecha, hora y servicios solicitados. | |
-| **Precondición** | El usuario debe tener rol de Administrador. Deben existir clientes, vehículos y servicios activos. | |
+| **Precondición** | El usuario debe tener rol de Administrador o Empleado. Deben existir clientes, vehículos y servicios activos. | |
 | **Secuencia normal** | **Paso** | **Acción** |
-| | 1 | El administrador accede a la sección de gestión de turnos. |
-| | 2 | El administrador hace clic en "Nuevo Turno". |
+| | 1 | El usuario accede a la sección de gestión de turnos. |
+| | 2 | El usuario hace clic en "Nuevo Turno". |
 | | 3 | El sistema muestra un formulario con campos: Fecha, Hora, Cliente, Vehículo, Servicios. |
-| | 4 | El administrador selecciona la fecha del turno. |
+| | 4 | El usuario selecciona la fecha del turno. |
 | | 5 | El sistema muestra los horarios disponibles según la configuración y turnos existentes. |
-| | 6 | El administrador selecciona la hora del turno. |
-| | 7 | El administrador busca y selecciona el cliente. |
+| | 6 | El usuario selecciona la hora del turno. |
+| | 7 | El usuario busca y selecciona el cliente. |
 | | 8 | El sistema muestra los vehículos asociados al cliente. |
-| | 9 | El administrador selecciona el vehículo. |
+| | 9 | El usuario selecciona el vehículo. |
 | | 10 | El sistema carga los servicios disponibles para el tipo de vehículo. |
-| | 11 | El administrador selecciona los servicios deseados. |
+| | 11 | El usuario selecciona los servicios deseados. |
 | | 12 | El sistema ejecuta CU-073 para validar disponibilidad. |
-| | 13 | El administrador hace clic en "Guardar". |
+| | 13 | El usuario hace clic en "Guardar". |
 | | 14 | El sistema crea el turno con estado "Pendiente". |
 | | 15 | El sistema muestra un mensaje de éxito. |
 | | 16 | El sistema registra la acción en auditoría. |
@@ -2328,14 +2328,14 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | **Objetivos asociados** | OBJ–06 Planificación y Gestión de Turnos | |
 | **Requisitos asociados** | IRQ–09 Información sobre Turnos | |
 | **Descripción** | El personal actualiza la información de un turno ya registrado, validando la disponibilidad en el nuevo horario. | |
-| **Precondición** | El usuario debe tener rol de Administrador. El turno debe existir y estar en estado "Pendiente". | |
+| **Precondición** | El usuario debe tener rol de Administrador o Empleado. El turno debe existir y estar en estado "Pendiente". | |
 | **Secuencia normal** | **Paso** | **Acción** |
 | | 1 | Se ejecuta el caso de uso CU-068 Consultar turnos asignados. |
-| | 2 | El administrador selecciona el turno a modificar. |
+| | 2 | El usuario selecciona el turno a modificar. |
 | | 3 | El sistema muestra el formulario de edición con los datos actuales. |
-| | 4 | El administrador modifica los campos deseados (fecha, hora, servicios). |
+| | 4 | El usuario modifica los campos deseados (fecha, hora, servicios). |
 | | 5 | El sistema ejecuta CU-074 para validar disponibilidad en el nuevo horario. |
-| | 6 | El administrador hace clic en "Guardar". |
+| | 6 | El usuario hace clic en "Guardar". |
 | | 7 | El sistema actualiza el turno. |
 | | 8 | El sistema muestra un mensaje de éxito. |
 | | 9 | El sistema registra la acción en auditoría. |
@@ -2357,17 +2357,17 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | **Objetivos asociados** | OBJ–06 Planificación y Gestión de Turnos | |
 | **Requisitos asociados** | IRQ–09 Información sobre Turnos | |
 | **Descripción** | El personal consulta la agenda de turnos registrados en el sistema con vista de calendario. | |
-| **Precondición** | El usuario debe tener rol de Administrador. | |
+| **Precondición** | El usuario debe tener rol de Administrador o Empleado. | |
 | **Secuencia normal** | **Paso** | **Acción** |
-| | 1 | El administrador accede a la sección de gestión de turnos. |
+| | 1 | El usuario accede a la sección de gestión de turnos. |
 | | 2 | El sistema obtiene los turnos del período actual (semana/mes). |
 | | 3 | El sistema muestra la vista de calendario con los turnos. |
-| | 4 | El administrador puede cambiar entre vista diaria, semanal o mensual. |
-| | 5 | El administrador puede navegar entre fechas. |
-| | 6 | El administrador puede filtrar por estado del turno. |
+| | 4 | El usuario puede cambiar entre vista diaria, semanal o mensual. |
+| | 5 | El usuario puede navegar entre fechas. |
+| | 6 | El usuario puede filtrar por estado del turno. |
 | | 7 | El sistema actualiza la vista según los criterios seleccionados. |
-| | 8 | El administrador puede hacer clic en un turno para ver detalles. |
-| **Postcondición** | El administrador visualiza la agenda de turnos. | |
+| | 8 | El usuario puede hacer clic en un turno para ver detalles. |
+| **Postcondición** | El usuario visualiza la agenda de turnos. | |
 | **Excepciones** | **Paso** | **Acción** |
 | | 2a | Si no hay turnos en el período, el sistema muestra calendario vacío. |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
@@ -2385,13 +2385,13 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | **Objetivos asociados** | OBJ–06 Planificación y Gestión de Turnos | |
 | **Requisitos asociados** | IRQ–09 Información sobre Turnos | |
 | **Descripción** | El personal cancela un turno previamente asignado a un cliente. | |
-| **Precondición** | El usuario debe tener rol de Administrador. El turno debe existir y estar en estado "Pendiente". | |
+| **Precondición** | El usuario debe tener rol de Administrador o Empleado. El turno debe existir y estar en estado "Pendiente". | |
 | **Secuencia normal** | **Paso** | **Acción** |
 | | 1 | Se ejecuta el caso de uso CU-068 Consultar turnos asignados. |
-| | 2 | El administrador selecciona el turno a cancelar. |
+| | 2 | El usuario selecciona el turno a cancelar. |
 | | 3 | El sistema muestra un diálogo de confirmación solicitando motivo. |
-| | 4 | El administrador ingresa el motivo de cancelación. |
-| | 5 | El administrador confirma la cancelación. |
+| | 4 | El usuario ingresa el motivo de cancelación. |
+| | 5 | El usuario confirma la cancelación. |
 | | 6 | El sistema cambia el estado del turno a "Cancelado". |
 | | 7 | El sistema ejecuta CU-075 para reorganizar agenda si corresponde. |
 | | 8 | El sistema puede notificar al cliente por WhatsApp (si está configurado). |
