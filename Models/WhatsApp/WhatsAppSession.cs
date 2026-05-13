@@ -3,19 +3,19 @@ using Google.Cloud.Firestore;
 namespace Firebase.Models.WhatsApp;
 
 /// <summary>
-/// Modelo que almacena el estado de conversaci�n de un usuario de WhatsApp.
+/// Modelo que almacena el estado de conversación de un usuario de WhatsApp.
 /// </summary>
 [FirestoreData]
 public class WhatsAppSession
 {
     /// <summary>
-    /// ID de la sesi�n (n�mero de tel�fono del usuario, ej: "5491112345678")
+    /// ID de la sesión (número de teléfono del usuario, ej: "5491112345678")
     /// </summary>
     [FirestoreProperty]
     public required string Id { get; set; }
 
     /// <summary>
-    /// ID del cliente asociado (null si a�n no est� registrado)
+    /// ID del cliente asociado (null si aún no está registrado)
     /// </summary>
     [FirestoreProperty]
     public string? ClienteId { get; set; }
@@ -33,19 +33,19 @@ public class WhatsAppSession
     public Dictionary<string, string> TemporaryData { get; set; } = new();
 
     /// <summary>
-    /// �ltima interacci�n del usuario
+    /// Ultima interacción del usuario
     /// </summary>
     [FirestoreProperty]
     public DateTime LastInteraction { get; set; }
 
     /// <summary>
-    /// Fecha de creaci�n de la sesi�n
+    /// Fecha de creación de la sesión
     /// </summary>
     [FirestoreProperty]
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
-    /// Indica si el usuario est� autenticado (tiene ClienteId)
+    /// Indica si el usuario está autenticado (tiene ClienteId)
     /// </summary>
     public bool IsAuthenticated => !string.IsNullOrEmpty(ClienteId);
 }
@@ -63,7 +63,7 @@ public static class WhatsAppFlowStates
     public const string REGISTRO_EMAIL = "REGISTRO_EMAIL";
     public const string REGISTRO_CONFIRMACION = "REGISTRO_CONFIRMACION";
 
-    // Estados de gesti�n de veh�culos
+    // Estados de gestión de vehículos
     public const string VEHICULO_MENU = "VEHICULO_MENU";
     public const string VEHICULO_TIPO = "VEHICULO_TIPO";
     public const string VEHICULO_PATENTE = "VEHICULO_PATENTE";
@@ -76,14 +76,14 @@ public static class WhatsAppFlowStates
     public const string MENU_CLIENTE_AUTENTICADO = "MENU_CLIENTE_AUTENTICADO";
     public const string MOSTRAR_DATOS = "MOSTRAR_DATOS";
     
-    // Estados de edici�n de cliente
+    // Estados de edicion de cliente
     public const string EDITAR_DATOS_MENU = "EDITAR_DATOS_MENU";
     public const string EDITAR_NOMBRE = "EDITAR_NOMBRE";
     public const string EDITAR_APELLIDO = "EDITAR_APELLIDO";
     public const string EDITAR_EMAIL = "EDITAR_EMAIL";
     public const string CONFIRMAR_EDICION = "CONFIRMAR_EDICION";
 
-    // Estados de gesti�n de veh�culos
+    // Estados de gestion de vehiculos
     public const string MENU_VEHICULOS = "MENU_VEHICULOS";
     public const string MOSTRAR_VEHICULOS = "MOSTRAR_VEHICULOS";
     public const string SELECCIONAR_VEHICULO_MODIFICAR = "SELECCIONAR_VEHICULO_MODIFICAR";
