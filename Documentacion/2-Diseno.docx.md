@@ -2,7 +2,7 @@
 
 ## Modelo Conceptual
 
-### Lista de Concepto Candidatos
+### Lista de Conceptos Candidatos
 - Cliente
 - Empleado
 - Usuario autenticado
@@ -25,7 +25,7 @@
 - Mensaje de WhatsApp
 - Registro de auditoría
 
-### Lista de conceptos idóneos
+### Lista de Conceptos Idóneos
 - Cliente
 - Empleado
 - TipoDocumento
@@ -50,7 +50,7 @@
 | Cliente | Persona que contrata servicios del lavadero y puede tener uno o varios vehículos asociados. |
 | Empleado | Usuario interno que opera el sistema y ejecuta lavados según rol y disponibilidad. |
 | TipoDocumento | Catálogo de tipos de documento válidos para identificar clientes. |
-| Vehículo | Unidad a lavar, asociable a uno o varios clientes mediante clave de asociación. |
+| Vehículo | Unidad a lavar, asociable a uno o varios clientes mediante clave de asociación. Incluye referencia al nombre completo del dueño principal para visualización operativa. |
 | TipoVehiculo | Clasificación del vehículo con formato de patente y cantidad de empleados requeridos. |
 | Servicio | Prestación individual ofrecida por el lavadero con precio, tiempo estimado y etapas opcionales. |
 | TipoServicio | Categoría funcional de los servicios para controlar combinaciones y filtros. |
@@ -142,6 +142,7 @@ class Vehiculo {
   Color
   ClienteId
   ClientesIds
+  ClienteNombreCompleto
   ClaveAsociacionHash
   Estado
 }
