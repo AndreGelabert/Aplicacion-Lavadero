@@ -1,4 +1,4 @@
-# LavaFacil
+# LavaFácil
 
 ## Modelo Conceptual
 
@@ -264,7 +264,7 @@ Configuracion ..> Lavado : reglas operativas
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar iniciar Sesión
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -281,7 +281,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar iniciar sesión con correo y contraseña
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -298,7 +298,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar iniciar sesión con Google
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -315,7 +315,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar cerrar sesión
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -332,7 +332,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar recuperar contraseña
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -349,7 +349,7 @@ end
 ```plantuml
 @startuml
 actor "Sistema" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar cierre de sesión automático por inactividad
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -366,7 +366,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar registrarse en el sistema
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -383,7 +383,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar registrarse por correo
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -400,7 +400,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar registrarse por Google
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -417,7 +417,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar modificar empleado
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -434,7 +434,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar desactivar empleado
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -451,7 +451,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar reactivar empleado
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -468,7 +468,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar consultar empleados
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -485,7 +485,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar asignar roles a empleados
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -502,7 +502,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar autenticar usuario con Google y registrar perfil si es nuevo
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -519,7 +519,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar crear cliente
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -536,7 +536,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar modificar cliente
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -553,7 +553,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar desactivar cliente
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -570,7 +570,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar reactivar cliente
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -587,7 +587,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar consultar clientes
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -604,7 +604,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar buscar clientes
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -621,7 +621,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar crear vehículo
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -638,7 +638,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar modificar vehículo
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -655,7 +655,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar desactivar vehículo
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -672,7 +672,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar consultar vehículos
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -689,7 +689,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar buscar vehículos
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -706,7 +706,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar vincular vehículo a cliente
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -723,7 +723,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar desvincular vehículo de cliente
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -740,7 +740,7 @@ end
 ```plantuml
 @startuml
 actor "Cliente" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar registrarse como cliente por WhatsApp
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -757,7 +757,7 @@ end
 ```plantuml
 @startuml
 actor "Cliente" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar registrar vehículo por WhatsApp
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -774,7 +774,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar identificar si el número de teléfono está registrado
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -791,7 +791,7 @@ end
 ```plantuml
 @startuml
 actor "Cliente" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar editar datos personales por WhatsApp
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -808,7 +808,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar crear servicio
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -825,7 +825,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar modificar servicio
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -842,7 +842,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar desactivar servicio
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -859,7 +859,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar reactivar servicio
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -876,7 +876,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar consultar servicios
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -893,7 +893,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar buscar servicios
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -910,7 +910,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar crear tipo de servicio
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -927,7 +927,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar eliminar tipo de servicio
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -944,7 +944,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar crear tipo de vehículo
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -961,7 +961,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar eliminar tipo de vehículo
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -978,7 +978,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar gestionar etapas del servicio
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -995,7 +995,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar crear paquete de servicios
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1012,7 +1012,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar modificar paquete de servicios
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1029,7 +1029,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar desactivar paquete de servicios
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1046,7 +1046,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar reactivar paquete de servicios
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1063,7 +1063,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar consultar paquetes de servicios
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1080,7 +1080,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar registrar realización de un servicio (lavado)
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1097,7 +1097,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar consultar lavados
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1114,7 +1114,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar buscar lavados
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1131,7 +1131,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar ver detalle de lavado
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1148,7 +1148,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar iniciar servicio en lavado
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1165,7 +1165,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar iniciar etapa de servicio
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1182,7 +1182,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar finalizar etapa de servicio
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1199,7 +1199,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar finalizar servicio en lavado
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1216,7 +1216,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar finalizar lavado completo
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1233,7 +1233,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar cancelar lavado
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1250,7 +1250,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar cancelar servicio en lavado
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1267,7 +1267,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar registrar pago recibido
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1284,7 +1284,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar registrar pago parcial
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1301,7 +1301,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar marcar vehículo como retirado
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1318,7 +1318,7 @@ end
 ```plantuml
 @startuml
 actor "Sistema" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar calcular duración estimada de lavado
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1335,7 +1335,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar configurar horarios del lavadero
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1352,7 +1352,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar configurar capacidad concurrente
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1369,7 +1369,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar configurar tiempos de tolerancia y notificación
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1386,7 +1386,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar configurar duración de sesión
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1403,7 +1403,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar configurar nombre y ubicación del lavadero
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1420,7 +1420,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar configurar paso de descuento para paquetes
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1437,7 +1437,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar registrar turno
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1454,7 +1454,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar modificar turno
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1471,7 +1471,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar consultar turnos asignados
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1488,7 +1488,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar cancelar turno
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1505,7 +1505,7 @@ end
 ```plantuml
 @startuml
 actor "Cliente" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar solicitar turno por WhatsApp
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1522,7 +1522,7 @@ end
 ```plantuml
 @startuml
 actor "Cliente" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar consultar turnos próximos por WhatsApp
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1539,7 +1539,7 @@ end
 ```plantuml
 @startuml
 actor "Cliente" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar cancelar turno por WhatsApp
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1556,7 +1556,7 @@ end
 ```plantuml
 @startuml
 actor "Sistema" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar asignar turno automáticamente sin superposición
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1573,7 +1573,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar validar disponibilidad al mover un turno
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1590,7 +1590,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar reorganizar agenda ante cancelaciones
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1607,7 +1607,7 @@ end
 ```plantuml
 @startuml
 actor "Cliente" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar enviar notificación por WhatsApp
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1624,7 +1624,7 @@ end
 ```plantuml
 @startuml
 actor "Sistema" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar enviar notificación por correo electrónico
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1641,7 +1641,7 @@ end
 ```plantuml
 @startuml
 actor "Sistema" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar notificar etapa finalizada
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1658,7 +1658,7 @@ end
 ```plantuml
 @startuml
 actor "Sistema" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar notificar lavado finalizado
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1675,7 +1675,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar solicitar hablar con el personal
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1692,7 +1692,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar consultar estadísticas básicas
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1709,7 +1709,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar consultar historial de pagos
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1726,7 +1726,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar generar reportes
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1743,7 +1743,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar exportar reportes a PDF o Excel
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1760,7 +1760,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar consultar historial de auditoría
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1777,7 +1777,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar filtrar registros de auditoría
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1794,7 +1794,7 @@ end
 ```plantuml
 @startuml
 actor "Administrador" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar ver detalle de registro de auditoría
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1811,7 +1811,7 @@ end
 ```plantuml
 @startuml
 actor "Sistema" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar registrar todas las acciones para auditoría
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1828,7 +1828,7 @@ end
 ```plantuml
 @startuml
 actor "Cliente" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar procesar mensaje entrante de WhatsApp
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1845,7 +1845,7 @@ end
 ```plantuml
 @startuml
 actor "Meta WhatsApp" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar validar webhook de WhatsApp
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1862,7 +1862,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar gestionar sesión de conversación
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1879,7 +1879,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar mostrar menú de cliente autenticado
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
@@ -1896,7 +1896,7 @@ end
 ```plantuml
 @startuml
 actor "Empleado" as Actor
-participant "LavaFacil" as Sistema
+participant "LavaFácil" as Sistema
 
 Actor -> Sistema: Solicitar mostrar información del lavadero
 Sistema -> Sistema: Validar precondiciones y reglas de negocio
