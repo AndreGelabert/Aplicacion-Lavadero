@@ -521,13 +521,19 @@ end
 actor "Empleado" as Actor
 participant "LavaFácil" as Sistema
 
-Actor -> Sistema: Solicitar crear cliente
-Sistema -> Sistema: Validar precondiciones y reglas de negocio
-alt Operación válida
-  Sistema -> Sistema: Ejecutar el flujo del caso de uso
-  Sistema --> Actor: Confirmación de resultado
-else Operación inválida
-  Sistema --> Actor: Notificación de error o rechazo
+Actor -> Sistema: Iniciar alta de cliente
+Sistema -> Sistema: Mostrar formulario y validar datos del cliente
+Actor -> Sistema: Confirmar datos del cliente
+Sistema -> Sistema: Guardar datos del cliente en memoria temporal
+Sistema --> Actor: Abrir modal de registro de vehículo
+Actor -> Sistema: Cargar y confirmar datos del vehículo
+Sistema -> Sistema: Validar patente y datos del vehículo
+alt Datos válidos
+  Actor -> Sistema: Confirmar alta definitiva
+  Sistema -> Sistema: Crear cliente + crear vehículo + asociar cliente-vehículo
+  Sistema --> Actor: Confirmación de alta completa
+else Datos inválidos o cancelación
+  Sistema --> Actor: Error o cancelación sin persistencia
 end
 @enduml
 ```
@@ -623,13 +629,16 @@ end
 actor "Empleado" as Actor
 participant "LavaFácil" as Sistema
 
-Actor -> Sistema: Solicitar crear vehículo
-Sistema -> Sistema: Validar precondiciones y reglas de negocio
-alt Operación válida
-  Sistema -> Sistema: Ejecutar el flujo del caso de uso
-  Sistema --> Actor: Confirmación de resultado
-else Operación inválida
-  Sistema --> Actor: Notificación de error o rechazo
+Actor -> Sistema: Abrir modal "Nuevo Vehículo" desde flujo de cliente
+Sistema -> Sistema: Cargar tipos de vehículo y ayudas de marca/modelo
+Actor -> Sistema: Confirmar datos del vehículo
+Sistema -> Sistema: Validar patente y reglas de negocio
+alt Contexto edición de cliente
+  Sistema -> Sistema: Crear vehículo y asociarlo al cliente existente
+  Sistema --> Actor: Confirmación de alta y asociación
+else Contexto alta de cliente nuevo
+  Sistema -> Sistema: Guardar vehículo en estado pendiente del alta conjunta
+  Sistema --> Actor: Confirmación en memoria hasta finalizar CU-012
 end
 @enduml
 ```
@@ -2002,9 +2011,9 @@ end
 
 #### CU-012 - Crear cliente
 - **Operación del sistema:** `cu_012_Crear_cliente(...)`
-- **Precondiciones:** actor primario empleado con contexto válido para ejecutar el caso de uso.
-- **Postcondiciones de éxito:** el sistema aplica reglas de negocio, persiste/consulta los datos correspondientes y devuelve confirmación del resultado.
-- **Postcondiciones de error:** el sistema no confirma la operación, mantiene consistencia de datos y devuelve mensaje de rechazo/validación.
+- **Precondiciones:** actor primario empleado autenticado, tipos de vehículo activos y formulario de cliente válido para iniciar alta conjunta.
+- **Postcondiciones de éxito:** el sistema persiste cliente y vehículo en la misma confirmación final, crea la asociación cliente-vehículo y devuelve confirmación.
+- **Postcondiciones de error:** el sistema no persiste registros definitivos, descarta datos temporales cuando corresponde y devuelve validaciones/rechazo.
 
 #### CU-013 - Modificar cliente
 - **Operación del sistema:** `cu_013_Modificar_cliente(...)`
@@ -2038,9 +2047,9 @@ end
 
 #### CU-018 - Crear vehículo
 - **Operación del sistema:** `cu_018_Crear_veh_culo(...)`
-- **Precondiciones:** actor primario empleado con contexto válido para ejecutar el caso de uso.
-- **Postcondiciones de éxito:** el sistema aplica reglas de negocio, persiste/consulta los datos correspondientes y devuelve confirmación del resultado.
-- **Postcondiciones de error:** el sistema no confirma la operación, mantiene consistencia de datos y devuelve mensaje de rechazo/validación.
+- **Precondiciones:** actor primario empleado autenticado dentro de un flujo de cliente (alta o edición) con tipos de vehículo activos.
+- **Postcondiciones de éxito:** el sistema registra/prepara el vehículo con clave de asociación y lo vincula al cliente en contexto (inmediato en edición o diferido a confirmación de CU-012).
+- **Postcondiciones de error:** el sistema no registra el vehículo ni crea asociación y devuelve mensaje de validación o cancelación.
 
 #### CU-019 - Modificar vehículo
 - **Operación del sistema:** `cu_019_Modificar_veh_culo(...)`

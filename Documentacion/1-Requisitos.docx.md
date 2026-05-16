@@ -667,32 +667,34 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | UC–012 | Crear cliente | |
 | :---- | :---- | :---- |
 | **Objetivos asociados** | OBJ–02 Gestión de Clientes y Vehículos | |
-| **Requisitos asociados** | IRQ–02 Información sobre Clientes | |
-| **Descripción** | El personal del lavadero registra un nuevo cliente en el sistema con sus datos personales: tipo de documento, número de documento, nombre, apellido, teléfono y correo electrónico. | |
-| **Precondición** | El usuario debe estar autenticado con rol de Trabajador o Administrador. | |
+| **Requisitos asociados** | IRQ–02 Información sobre Clientes, IRQ–03 Información sobre Vehículos | |
+| **Descripción** | El personal del lavadero registra un nuevo cliente junto con al menos un vehículo en un único flujo. Los datos del cliente se mantienen temporalmente hasta completar el registro del vehículo en un modal. | |
+| **Precondición** | El usuario debe estar autenticado con rol de Trabajador o Administrador. Deben existir tipos de vehículo activos. | |
 | **Secuencia normal** | **Paso** | **Acción** |
 | | 1 | El usuario accede a la sección de gestión de clientes desde el menú. |
 | | 2 | El usuario hace clic en el botón "Nuevo Cliente". |
 | | 3 | El sistema muestra un formulario con campos: Tipo Documento, Número Documento, Nombre, Apellido, Teléfono, Email. |
 | | 4 | El sistema carga dinámicamente los tipos de documento disponibles. |
-| | 5 | El usuario selecciona el tipo de documento. |
-| | 6 | El sistema actualiza la validación del número de documento según el formato del tipo seleccionado. |
-| | 7 | El usuario completa todos los campos del formulario. |
-| | 8 | El usuario hace clic en "Guardar". |
-| | 9 | El sistema valida los datos (formato de documento, email válido si se ingresa, teléfono único). |
-| | 10 | El sistema crea el cliente con estado "Activo". |
-| | 11 | El sistema muestra un mensaje de éxito. |
-| | 12 | El sistema registra la acción en auditoría. |
-| **Postcondición** | El cliente está registrado en el sistema. | |
+| | 5 | El usuario completa los datos del cliente y selecciona "Continuar". |
+| | 6 | El sistema valida los datos del cliente y los guarda en memoria temporal, sin persistir aún. |
+| | 7 | El sistema abre un modal de registro de vehículo con campos: Patente, Tipo Vehículo, Marca, Modelo, Color. |
+| | 8 | El sistema carga los tipos de vehículo activos y ayudas de autocompletado para marca/modelo. |
+| | 9 | El usuario completa los datos del vehículo y confirma el modal. |
+| | 10 | El sistema valida los datos del vehículo (incluida patente única para vehículos activos). |
+| | 11 | El usuario confirma el alta del cliente. |
+| | 12 | El sistema persiste el cliente con estado "Activo", crea el vehículo con estado "Activo" y genera la asociación cliente-vehículo. |
+| | 13 | El sistema muestra un mensaje de éxito. |
+| | 14 | El sistema registra la acción en auditoría. |
+| **Postcondición** | El cliente y su vehículo quedan registrados y asociados en el sistema. | |
 | **Excepciones** | **Paso** | **Acción** |
-| | 9a | Si el número de documento ya existe para ese tipo, el sistema informa el error. |
-| | 9b | Si el teléfono ya está registrado, el sistema informa el error. |
-| | 9c | Si el formato del documento no es válido, el sistema muestra el error. |
+| | 6a | Si los datos del cliente son inválidos o duplicados, el sistema informa el error y no permite continuar. |
+| | 10a | Si la patente ya existe para un vehículo activo, el sistema informa el error y mantiene el cliente en estado no persistido. |
+| | 11a | Si el usuario cancela antes de confirmar el alta, el sistema descarta los datos temporales y no persiste registros. |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
-| | 10 | 1 segundo |
+| | 12 | 2 segundos |
 | **Frecuencia** | Frecuente | |
 | **Estabilidad** | Alta | |
-| **Comentarios** | Los vehículos se asocian al cliente mediante casos de uso separados (CU-023). | |
+| **Comentarios** | El alta inicial cliente-vehículo se realiza en este caso de uso. CU-023 se utiliza para asociaciones adicionales posteriores. | |
 
 ---
 
@@ -840,32 +842,33 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | :---- | :---- | :---- |
 | **Objetivos asociados** | OBJ–02 Gestión de Clientes y Vehículos | |
 | **Requisitos asociados** | IRQ–03 Información sobre Vehículos, IRQ–06 Información sobre Tipos de Vehículo | |
-| **Descripción** | El personal registra un nuevo vehículo con patente, tipo de vehículo, marca, modelo y color. Opcionalmente puede asociarlo a un cliente existente. Se genera una clave de asociación para permitir que otros clientes vinculen el vehículo. | |
-| **Precondición** | El usuario debe estar autenticado. Deben existir tipos de vehículo activos. | |
+| **Descripción** | El personal registra un vehículo únicamente dentro del contexto de un cliente (alta de cliente o edición de cliente). No existe alta de vehículo de forma aislada. | |
+| **Precondición** | El usuario debe estar autenticado. Deben existir tipos de vehículo activos y un cliente en contexto (nuevo en proceso de alta o existente en edición). | |
 | **Secuencia normal** | **Paso** | **Acción** |
-| | 1 | El usuario accede a la sección de gestión de vehículos o a la edición de un cliente. |
-| | 2 | El usuario hace clic en "Nuevo Vehículo". |
+| | 1 | El usuario inicia el registro de un cliente nuevo o la edición de un cliente existente. |
+| | 2 | El usuario abre el modal "Nuevo Vehículo" desde el formulario de cliente. |
 | | 3 | El sistema muestra un formulario con campos: Patente, Tipo Vehículo, Marca, Modelo, Color. |
 | | 4 | El sistema carga los tipos de vehículo activos disponibles. |
 | | 5 | El usuario selecciona el tipo de vehículo. |
 | | 6 | El sistema ofrece autocompletado de marcas desde la API CarQuery. |
 | | 7 | El usuario selecciona o ingresa la marca. |
 | | 8 | El sistema ofrece autocompletado de modelos según la marca seleccionada. |
-| | 9 | El usuario completa todos los campos del formulario. |
-| | 10 | El usuario hace clic en "Guardar". |
+| | 9 | El usuario completa los campos del formulario. |
+| | 10 | El usuario confirma el modal. |
 | | 11 | El sistema valida que la patente no esté registrada para otro vehículo activo. |
 | | 12 | El sistema genera una clave de asociación aleatoria y la almacena como hash SHA256. |
-| | 13 | El sistema crea el vehículo con estado "Activo". |
-| | 14 | El sistema muestra un mensaje de éxito con la clave de asociación generada. |
-| | 15 | El sistema registra la acción en auditoría. |
-| **Postcondición** | El vehículo está registrado en el sistema con su clave de asociación. | |
+| | 13 | El sistema prepara/crea el vehículo con estado "Activo". |
+| | 14 | El sistema asocia el vehículo al cliente en contexto (inmediatamente si es edición, o al confirmar CU-012 si es alta nueva). |
+| | 15 | El sistema muestra mensaje de éxito y registra la acción en auditoría. |
+| **Postcondición** | El vehículo queda registrado y asociado al cliente en contexto, o queda pendiente de persistencia conjunta al confirmar CU-012. | |
 | **Excepciones** | **Paso** | **Acción** |
-| | 11a | Si la patente ya existe para un vehículo activo, el sistema informa el error y sugiere vincular el vehículo existente. |
+| | 11a | Si la patente ya existe para un vehículo activo, el sistema informa el error y no registra el vehículo. |
+| | 10a | Si el usuario cierra/cancela el modal, no se registran cambios de vehículo. |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
-| | 12-13 | 1 segundo |
+| | 12-14 | 1 segundo |
 | **Frecuencia** | Frecuente | |
 | **Estabilidad** | Alta | |
-| **Comentarios** | La clave de asociación debe mostrarse al usuario para que pueda compartirla con otros dueños del vehículo. | |
+| **Comentarios** | Este caso de uso se ejecuta exclusivamente desde flujos de cliente (CU-012 y CU-013). | |
 
 ---
 
