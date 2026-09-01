@@ -197,12 +197,10 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | CU-086 - Filtrar registros de auditoría | Media |
 | CU-087 - Ver detalle de registro de auditoría | Media |
 | CU-088 - Registrar todas las acciones para auditoría | Alta |
-| **Módulo Integración WhatsApp** | |
-| CU-089 - Procesar mensaje entrante de WhatsApp | Alta |
-| CU-090 - Validar webhook de WhatsApp | Alta |
-| CU-091 - Gestionar sesión de conversación | Alta |
-| CU-092 - Mostrar menú de cliente autenticado | Media |
-| CU-093 - Mostrar información del lavadero | Media |
+| CU-089 - Crear rol | Media |
+| CU-090 - Modificar rol | Media |
+| CU-091 - Consultar roles | Media |
+| CU-092 - Eliminar rol | Media |
 
 ---
 
@@ -313,6 +311,83 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 
 ---
 
+### CU-002 - Cerrar sesión
+
+| UC–002 | Cerrar sesión | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–09 Gestión de Seguridad | |
+| **Requisitos asociados** | IRQ–01 Información sobre Empleados | |
+| **Descripción** | El usuario finaliza voluntariamente su sesión activa en el sistema. | |
+| **Precondición** | El usuario debe tener una sesión autenticada activa. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El usuario solicita cerrar su sesión. |
+| | 2 | El sistema invalida los identificadores y credenciales de la sesión activa. |
+| | 3 | El sistema finaliza el contexto autenticado del usuario. |
+| | 4 | El sistema registra el evento en auditoría. |
+| | 5 | El sistema confirma la finalización del acceso seguro. |
+| **Postcondición** | La sesión queda revocada y se requiere una nueva autenticación para ingresar. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | - | - |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 2-4 | 1 segundo |
+| **Frecuencia** | Diaria | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Revoca el acceso a todos los recursos protegidos del sistema. | |
+
+---
+
+### CU-003 - Recuperar contraseña
+
+| UC–003 | Recuperar contraseña | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–09 Gestión de Seguridad | |
+| **Requisitos asociados** | IRQ–01 Información sobre Empleados | |
+| **Descripción** | Permite a un usuario restablecer su contraseña mediante el envío seguro de instrucciones a su dirección de correo. | |
+| **Precondición** | El usuario debe poseer una cuenta registrada con credenciales locales. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El usuario solicita la recuperación de su contraseña. |
+| | 2 | El sistema solicita el correo electrónico vinculado a la cuenta. |
+| | 3 | El usuario ingresa su correo electrónico. |
+| | 4 | El sistema genera y envía un enlace seguro de restablecimiento. |
+| | 5 | El sistema confirma el envío de las instrucciones. |
+| | 6 | El usuario accede mediante el enlace recibido e ingresa su nueva contraseña. |
+| | 7 | El sistema valida y actualiza la nueva contraseña. |
+| **Postcondición** | La contraseña del usuario ha sido actualizada exitosamente. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 4a | Si el correo no existe, por seguridad se emite la misma confirmación sin enviar el enlace. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 4-5 | 5 segundos |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Garantiza la privacidad sin revelar la existencia de cuentas registradas. | |
+
+---
+
+### CU-004 - Cierre de sesión automático por inactividad
+
+| UC–004 | Cierre de sesión automático por inactividad | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–09 Gestión de Seguridad, OBJ–11 Gestión de Configuración | |
+| **Requisitos asociados** | IRQ–01 Información sobre Empleados, IRQ–11 Información de Configuración | |
+| **Descripción** | El sistema revoca automáticamente la sesión de un usuario tras detectar la ausencia de interacción durante el tiempo límite configurado. | |
+| **Precondición** | El usuario cuenta con una sesión activa y supera el tiempo máximo de inactividad permitido. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El sistema monitorea el tiempo transcurrido desde la última interacción del usuario. |
+| | 2 | El sistema detecta que se ha alcanzado el límite de inactividad configurado. |
+| | 3 | El sistema invalida la sesión del usuario. |
+| | 4 | El sistema bloquea el acceso a las operaciones y notifica la expiración de la sesión. |
+| | 5 | El sistema registra el evento de expiración en auditoría. |
+| **Postcondición** | La sesión queda cerrada y se requiere una nueva autenticación. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | - | - |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 3 | Inmediato |
+| **Frecuencia** | Variable | |
+| **Estabilidad** | Media | |
+| **Comentarios** | El parámetro de tolerancia es configurable por el administrador. | |
+
+---
+
 ### Módulo: Gestión de Empleados
 
 ### CU-005 - Registrarse en el sistema
@@ -365,6 +440,32 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | **Frecuencia** | Ocasional |  |
 | **Estabilidad** | Alta |  |
 | **Comentarios** | Ninguno. |  |
+
+---
+
+### CU-005.2 - Registrarse por Google
+
+| UC–005.2 | Registrarse por Google | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–01 Gestión de Empleados, OBJ–09 Gestión de Seguridad | |
+| **Requisitos asociados** | IRQ–01 Información sobre Empleados | |
+| **Descripción** | Extiende de CU-005. El registro se realiza mediante la vinculación con una cuenta de Google, validando automáticamente la identidad del usuario. | |
+| **Precondición** | El usuario debe poseer una cuenta de Google activa. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El usuario solicita el registro mediante proveedor externo Google. |
+| | 2 | El sistema inicia el proceso de autorización federada. |
+| | 3 | El usuario autoriza la transferencia de sus datos de perfil. |
+| | 4 | El sistema valida que el correo obtenido no exista en los registros. |
+| | 5 | Se continúa con el flujo principal del CU-005 asignando los datos del proveedor externo. |
+| **Postcondición** | La cuenta de empleado queda creada y automáticamente confirmada. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 3a | Si el usuario cancela el proceso de autorización, el sistema interrumpe el registro. |
+| | 4a | Si el correo ya existe, el sistema informa que debe iniciar sesión. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 2-4 | 3 segundos |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | La verificación de correo es heredada del proveedor de identidad. | |
 
 ---
 
@@ -529,6 +630,36 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 
 ### Módulo: Gestión de Clientes y Vehículos
 
+### CU-012 - Crear cliente
+
+| UC–012 | Crear cliente | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–02 Gestión de Clientes y Vehículos | |
+| **Requisitos asociados** | IRQ–02 Información sobre Clientes, IRQ–03 Información sobre Vehículos | |
+| **Descripción** | El personal registra un nuevo cliente en el sistema junto con la carga obligatoria de al menos un vehículo asociado a su flota. | |
+| **Precondición** | El usuario debe estar autenticado en el sistema. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El usuario solicita crear un nuevo cliente. |
+| | 2 | El sistema presenta el formulario de registro solicitando los datos del cliente. |
+| | 3 | El usuario ingresa los datos requeridos. |
+| | 4 | El sistema valida que los identificadores principales no se encuentren duplicados. |
+| | 5 | **Bucle de Gestión de Vehículos [Obligatorio: Mínimo 1]:** Mientras el usuario necesite incorporar vehículos a la flota del cliente, selecciona una opción por cada unidad:<br>a) Si el vehículo es nuevo: se ejecuta CU-018.<br>b) Si el vehículo ya existe en el sistema: se ejecuta CU-024. |
+| | 6 | Por cada vehículo procesado con éxito, el sistema lo lista en la flota temporal del cliente. |
+| | 7 | El usuario solicita confirmar el alta del cliente y su flota. |
+| | 8 | El sistema valida que exista al menos un vehículo asociado, persiste las entidades de forma transaccional, registra la acción en auditoría y emite la confirmación de éxito. |
+| **Postcondición** | El cliente y sus vehículos quedan registrados en estado activo en el sistema. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 4a | Si los datos principales ya pertenecen a otro cliente registrado, el sistema informa el conflicto. |
+| | 8a | Si no se ha vinculado al menos un vehículo, el sistema impide guardar el registro. |
+| | 7a | Si el usuario cancela la operación antes de confirmar, se descartan todos los datos temporales. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 8 | 2 segundos |
+| **Frecuencia** | Frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | La persistencia del cliente y sus vehículos asociados se realiza de manera atómica y transaccional. | |
+
+---
+
 ### CU-013 - Modificar cliente
 | UC–013 | Modificar cliente |  |
 | ------ | ------ | ------ |
@@ -563,6 +694,62 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | **Frecuencia** | Ocasional |  |
 | **Estabilidad** | Media |  |
 | **Comentarios** | Los identificadores de documento no son editables para garantizar la integridad. |  |
+
+---
+
+### CU-014 - Desactivar cliente
+
+| UC–014 | Desactivar cliente | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–02 Gestión de Clientes y Vehículos | |
+| **Requisitos asociados** | IRQ–02 Información sobre Clientes, IRQ–03 Información sobre Vehículos | |
+| **Descripción** | El personal inhabilita a un cliente en el sistema, aplicando una baja lógica en cascada sobre los vehículos que le pertenecen de manera exclusiva. | |
+| **Precondición** | El usuario debe estar autenticado. El cliente debe existir y encontrarse activo. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | Se ejecuta el caso de uso CU-016 Consultar clientes. |
+| | 2 | El usuario selecciona al cliente a desactivar. |
+| | 3 | El sistema evalúa la flota del cliente e identifica los vehículos exclusivos que se desactivarán junto con él. |
+| | 4 | El sistema solicita la confirmación de la desactivación informando el impacto sobre los vehículos. |
+| | 5 | El usuario confirma la operación. |
+| | 6 | El sistema cambia el estado del cliente a "Inactivo" y ejecuta la baja lógica de los vehículos exclusivos mediante CU-020. |
+| | 7 | Por cada vehículo multipropietario, el sistema remueve únicamente la relación con este cliente, preservándolo activo. |
+| | 8 | El sistema registra la desactivación en auditoría y emite la confirmación correspondiente. |
+| **Postcondición** | El cliente y sus vehículos exclusivos pasan a estado inactivo. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 5a | Si el usuario cancela la confirmación, se interrumpe la operación sin aplicar cambios. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 6-7 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Media | |
+| **Comentarios** | Los vehículos compartidos con otros clientes activos conservan su estado activo en el lavadero. | |
+
+---
+
+### CU-015 - Reactivar cliente
+
+| UC–015 | Reactivar cliente | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–02 Gestión de Clientes y Vehículos | |
+| **Requisitos asociados** | IRQ–02 Información sobre Clientes, IRQ–03 Información sobre Vehículos | |
+| **Descripción** | El administrador habilita nuevamente a un cliente inactivo y reactiva automáticamente aquellos vehículos exclusivos que se desactivaron con su baja. | |
+| **Precondición** | El usuario debe ser Administrador. El cliente debe existir y estar inactivo. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | Se ejecuta el caso de uso CU-016 Consultar clientes. |
+| | 2 | El administrador selecciona al cliente inactivo a reactivar. |
+| | 3 | El sistema identifica los vehículos que habían sido dados de baja de forma exclusiva por este cliente. |
+| | 4 | El sistema solicita la confirmación de reactivación informando la restauración de los vehículos. |
+| | 5 | El administrador confirma la reactivación. |
+| | 6 | El sistema cambia el estado del cliente a "Activo". |
+| | 7 | El sistema ejecuta el caso de uso CU-021 para reactivar cada vehículo exclusivo identificado. |
+| | 8 | El sistema registra la reactivación en auditoría y emite la confirmación de éxito. |
+| **Postcondición** | El cliente y sus vehículos exclusivos vuelven a estar en estado activo. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 5a | Si el administrador cancela la confirmación, se aborta la operación. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 6-7 | 2 segundos |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Media | |
+| **Comentarios** | Los vehículos multipersonales que se mantuvieron activos con otros dueños no sufren alteraciones. | |
 
 ---
 
@@ -615,6 +802,33 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 
 ---
 
+### CU-018 - Crear vehículo
+
+| UC–018 | Crear vehículo | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–02 Gestión de Clientes y Vehículos | |
+| **Requisitos asociados** | IRQ–03 Información sobre Vehículos, IRQ–06 Información sobre Tipos de Vehículo | |
+| **Descripción** | Permite registrar un vehículo nuevo dentro del contexto del flujo de un cliente (alta o edición). | |
+| **Precondición** | Ejecutado de manera dependiente desde los casos de uso CU-012 o CU-013. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El caso de uso inicia al ser invocado por el flujo de gestión de cliente. |
+| | 2 | El sistema presenta el formulario solicitando los datos del vehículo. |
+| | 3 | El usuario ingresa los datos solicitados. |
+| | 4 | El sistema valida el formato del identificador vehicular y comprueba que no exista activo en el sistema. |
+| | 5 | El sistema genera la clave de asociación del vehículo y lo incorpora temporalmente a la flota del cliente en proceso. |
+| | 6 | El caso de uso finaliza retornando el control al caso de uso invocador. |
+| **Postcondición** | El vehículo queda preparado para ser persistido junto con la confirmación del cliente. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 4a | Si el identificador vehicular ya se encuentra registrado y activo, el sistema informa el error y sugiere utilizar la vinculación. |
+| | 3a | Si el usuario cancela la carga, se descartan los datos del vehículo y se retorna al flujo de cliente. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 4-5 | Inmediato |
+| **Frecuencia** | Frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | La persistencia definitiva depende de la confirmación final del caso de uso principal. | |
+
+---
+
 ### CU-019 - Modificar vehículo
 | UC–019 | Modificar vehículo |  |
 | ------ | ------ | ------ |
@@ -641,6 +855,55 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | **Frecuencia** | Ocasional |  |
 | **Estabilidad** | Media |  |
 | **Comentarios** | Incluye el caso de uso CU-022 Consultar vehículos. |  |
+
+---
+
+### CU-020 - Desactivar vehículo
+
+| UC–020 | Desactivar vehículo | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–02 Gestión de Clientes y Vehículos | |
+| **Requisitos asociados** | IRQ–03 Información sobre Vehículos | |
+| **Descripción** | Permite dar de baja lógica a un vehículo cuando este queda sin clientes asociados o es desactivado en cascada con su único dueño. | |
+| **Precondición** | El vehículo debe existir y encontrarse en estado activo. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El caso de uso inicia al ser invocado por la desactivación de un cliente o desvinculación de su único dueño. |
+| | 2 | El sistema cambia el estado del vehículo a "Inactivo". |
+| | 3 | El sistema actualiza el registro del vehículo en la base de datos. |
+| | 4 | El sistema registra la desactivación en auditoría. |
+| **Postcondición** | El vehículo pasa a estado inactivo y no está disponible para nuevos servicios. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | - | - |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 2-3 | Inmediato |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Media | |
+| **Comentarios** | Es un caso de uso contextual y dependiente de los flujos de cliente. | |
+
+---
+
+### CU-021 - Reactivar vehículo
+
+| UC–021 | Reactivar vehículo | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–02 Gestión de Clientes y Vehículos | |
+| **Requisitos asociados** | IRQ–03 Información sobre Vehículos | |
+| **Descripción** | Restaura el estado activo de un vehículo inactivo como parte de la reactivación transaccional de un cliente. | |
+| **Precondición** | Ejecutado desde el caso de uso CU-015 Reactivar cliente. El vehículo debe encontrarse inactivo. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El caso de uso inicia al ser invocado automáticamente por el flujo de reactivación de cliente. |
+| | 2 | El sistema cambia el estado del vehículo a "Activo". |
+| | 3 | El sistema asocia el identificador del cliente a la lista de propietarios del vehículo. |
+| | 4 | El sistema persiste el estado actualizado del vehículo en la base de datos. |
+| | 5 | El caso de uso finaliza y retorna el control al flujo principal. |
+| **Postcondición** | El vehículo vuelve a encontrarse activo y vinculado al cliente. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | - | - |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 2-4 | Inmediato |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Mantiene la consistencia de datos de vehículos con dueños únicos restaurados. | |
 
 ---
 
@@ -693,6 +956,142 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 
 ---
 
+### CU-024 - Vincular vehículo a cliente
+
+| UC–024 | Vincular vehículo a cliente | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–02 Gestión de Clientes y Vehículos | |
+| **Requisitos asociados** | IRQ–02 Información sobre Clientes, IRQ–03 Información sobre Vehículos | |
+| **Descripción** | Permite asociar un vehículo ya existente en el sistema a un cliente mediante la validación de su clave de asociación (soporte multipropietario). | |
+| **Precondición** | El vehículo debe estar registrado y activo. El usuario debe poseer la clave de asociación del vehículo. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El usuario solicita vincular un vehículo existente dentro del flujo del cliente. |
+| | 2 | El sistema solicita el identificador vehicular y la clave de asociación. |
+| | 3 | El usuario ingresa los datos solicitados. |
+| | 4 | El sistema valida la existencia del vehículo y verifica que la clave ingresada sea correcta. |
+| | 5 | El sistema valida que el vehículo no esté ya vinculado a este cliente. |
+| | 6 | El sistema asocia la relación entre el cliente y el vehículo en memoria temporal. |
+| | 7 | El sistema registra la vinculación y retorna al flujo principal. |
+| **Postcondición** | El vehículo queda asociado al cliente como co-propietario. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 4a | Si el vehículo no existe o la clave de asociación es incorrecta, el sistema rechaza la vinculación e informa el error. |
+| | 5a | Si el vehículo ya pertenece al cliente, el sistema informa que la asociación ya existe. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 4-6 | 1 segundo |
+| **Frecuencia** | Frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Garantiza la seguridad y privacidad al requerir la clave provista por el dueño original. | |
+
+---
+
+### CU-025 - Desvincular vehículo de cliente
+
+| UC–025 | Desvincular vehículo de cliente | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–02 Gestión de Clientes y Vehículos | |
+| **Requisitos asociados** | IRQ–02 Información sobre Clientes, IRQ–03 Información sobre Vehículos | |
+| **Descripción** | Remueve la relación entre un cliente y un vehículo multipropietario. Si el vehículo solo pertenecía a este cliente, se procede a su desactivación. | |
+| **Precondición** | El vehículo debe estar vinculado al cliente. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El usuario solicita desvincular un vehículo de la flota del cliente. |
+| | 2 | El sistema comprueba la cantidad de propietarios asociados al vehículo. |
+| | 3a | Si el vehículo tiene más dueños activos, el sistema remueve únicamente al cliente de la lista de propietarios. |
+| | 3b | Si el vehículo solo posee a este cliente como dueño, el sistema ejecuta el caso de uso CU-020 Desactivar vehículo. |
+| | 4 | El sistema actualiza los registros en la base de datos. |
+| | 5 | El sistema registra la desvinculación en auditoría y emite la confirmación correspondiente. |
+| **Postcondición** | El vehículo deja de estar asociado al cliente. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | - | - |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 3-4 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Media | |
+| **Comentarios** | Protege la existencia de vehículos compartidos en el sistema. | |
+
+---
+
+### CU-026 - Registrarse como cliente por WhatsApp
+
+| UC–026 | Registrarse como cliente por WhatsApp | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–10 Integración con WhatsApp, OBJ–02 Gestión de Clientes y Vehículos | |
+| **Requisitos asociados** | IRQ–02 Información sobre Clientes, IRQ–12 Información de Sesiones WhatsApp, IRQ–03 Información sobre Vehículos | |
+| **Descripción** | El cliente se registra de forma guiada interactuando con el bot de WhatsApp, siendo obligatoria la carga inicial de al menos un vehículo para completar el alta. | |
+| **Precondición** | El número de teléfono no debe pertenecer a un cliente activo en el sistema. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El cliente envía un mensaje al canal de WhatsApp del lavadero. |
+| | 2 | El sistema identifica que el número no está registrado e inicia el flujo de registro. |
+| | 3 | El sistema solicita secuencialmente los datos personales requeridos. |
+| | 4 | El cliente proporciona los datos solicitados en cada interacción. |
+| | 5 | El sistema valida los datos y los almacena temporalmente en el contexto de la sesión. |
+| | 6 | El sistema solicita la carga obligatoria del primer vehículo ejecutando CU-027. |
+| | 7 | El cliente completa el registro del vehículo. |
+| | 8 | El sistema presenta el resumen de los datos y solicita la confirmación final. |
+| | 9 | El cliente confirma el registro. |
+| | 10 | El sistema almacena de forma definitiva al cliente y a su vehículo en la base de datos. |
+| | 11 | El sistema envía un mensaje de bienvenida formal con las opciones del menú principal y registra la acción en auditoría. |
+| **Postcondición** | El cliente queda registrado en el sistema con su vehículo asociado y habilitado para operar vía WhatsApp. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 4a | Si los datos de identificación ya están registrados, el sistema notifica el error y cancela el flujo. |
+| | 9a | Si el cliente solicita cancelar en cualquier momento, el sistema elimina los datos temporales y cancela el alta. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 10 | 2 segundos |
+| **Frecuencia** | Frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Gestionado a través de sesiones de conversación automatizadas. | |
+
+---
+
+### CU-027 - Registrar vehículo por WhatsApp
+
+| UC–027 | Registrar vehículo por WhatsApp | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–10 Integración con WhatsApp, OBJ–02 Gestión de Clientes y Vehículos | |
+| **Requisitos asociados** | IRQ–03 Información sobre Vehículos, IRQ–12 Información de Sesiones WhatsApp | |
+| **Descripción** | El cliente registra un vehículo nuevo o vincula uno existente a través de la interacción conversacional por WhatsApp. | |
+| **Precondición** | El cliente debe estar en proceso de registro o autenticado en la sesión de WhatsApp. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El sistema solicita la opción deseada (Registrar vehículo nuevo o Vincular vehículo existente). |
+| | 2a | Si selecciona registrar nuevo: el sistema solicita los datos del vehículo, el cliente los proporciona, el sistema valida el identificador y genera la clave de asociación. |
+| | 2b | Si selecciona vincular existente: el sistema solicita el identificador y la clave de asociación, el cliente los ingresa y el sistema valida la coincidencia. |
+| | 3 | El sistema añade el vehículo a la flota del cliente en la sesión. |
+| | 4 | El sistema emite la confirmación del vehículo registrado. |
+| **Postcondición** | El vehículo queda incorporado a la flota del cliente. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 2a.1 | Si el identificador ya está registrado en el lavadero, el sistema informa y sugiere la opción de vinculación. |
+| | 2b.1 | Si la clave de asociación es inválida, el sistema rechaza la vinculación. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 3 | 1 segundo |
+| **Frecuencia** | Frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Puede ejecutarse dentro de CU-026 o de forma autónoma desde el menú principal de WhatsApp. | |
+
+---
+
+### CU-028 - Identificar si el número de teléfono está registrado
+
+| UC–028 | Identificar si el número de teléfono está registrado | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–10 Integración con WhatsApp | |
+| **Requisitos asociados** | IRQ–02 Información sobre Clientes, IRQ–12 Información de Sesiones WhatsApp | |
+| **Descripción** | Proceso del sistema que determina si un número entrante de WhatsApp pertenece a un cliente registrado y activo para enrutar el flujo conversacional. | |
+| **Precondición** | Mensaje entrante recibido vía WhatsApp. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El sistema extrae el número de teléfono del mensaje entrante. |
+| | 2 | El sistema consulta en la base de datos la existencia de un cliente activo con dicho teléfono. |
+| | 3a | Si el cliente existe y está activo, el sistema asocia la sesión al cliente y deriva al menú autenticado (CU-092). |
+| | 3b | Si el número no existe, el sistema deriva al flujo de registro de nuevo cliente (CU-026). |
+| **Postcondición** | El sistema identifica el estado del usuario y enruta la conversación. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | - | - |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 2 | < 500ms |
+| **Frecuencia** | Muy frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Ejecutado automáticamente por el webhook del sistema ante cada mensaje inicial. | |
+
+---
+
 ### CU-029 - Editar datos personales por WhatsApp
 | UC–029 | Editar datos personales por WhatsApp |  |
 | ------ | ------ | ------ |
@@ -724,6 +1123,34 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 
 ### Módulo: Gestión de Servicios
 
+### CU-030 - Crear servicio
+
+| UC–030 | Crear servicio | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes | |
+| **Requisitos asociados** | IRQ–04 Información sobre Servicios, IRQ–05 Información sobre Tipos de Servicio, IRQ–06 Información sobre Tipos de Vehículo | |
+| **Descripción** | El administrador da de alta un nuevo servicio indicando sus datos comerciales, clasificación y opcionalmente sus etapas. | |
+| **Precondición** | El usuario debe ser Administrador. Deben existir categorías y tipos de vehículo activos. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El administrador solicita crear un nuevo servicio. |
+| | 2 | El sistema presenta el formulario solicitando los datos del servicio. |
+| | 3 | El administrador ingresa los datos requeridos. |
+| | 4 | Opcionalmente, se ejecuta CU-040 para definir las etapas de ejecución del servicio. |
+| | 5 | El administrador solicita guardar el nuevo servicio. |
+| | 6 | El sistema valida que la denominación sea única para la categoría correspondiente y que los valores sean consistentes. |
+| | 7 | El sistema registra el nuevo servicio con estado "Activo". |
+| | 8 | El sistema registra la creación en auditoría y emite la confirmación correspondiente. |
+| **Postcondición** | El servicio queda registrado y disponible para cotizaciones y lavados. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 6a | Si los datos no cumplen las reglas de validación o el nombre está duplicado, el sistema informa el error. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 7 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Permite parametrizar el tiempo de lavado según el tamaño del vehículo. | |
+
+---
+
 ### CU-031 - Modificar servicio
 | UC–031 | Modificar servicio |  |
 | ------ | ------ | ------ |
@@ -750,6 +1177,59 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | **Frecuencia** | Ocasional |  |
 | **Estabilidad** | Media |  |
 | **Comentarios** | Incluye el caso de uso CU-034 Consultar servicios. |  |
+
+---
+
+### CU-032 - Desactivar servicio
+
+| UC–032 | Desactivar servicio | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes | |
+| **Requisitos asociados** | IRQ–04 Información sobre Servicios | |
+| **Descripción** | El administrador deshabilita un servicio para que no pueda ser seleccionado en nuevos lavados o turnos. | |
+| **Precondición** | El usuario debe ser Administrador. El servicio debe existir y estar activo. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | Se ejecuta el caso de uso CU-034 Consultar servicios. |
+| | 2 | El administrador selecciona el servicio a desactivar. |
+| | 3 | El sistema comprueba si el servicio forma parte de paquetes activos. |
+| | 4 | El sistema solicita confirmación advirtiendo el impacto sobre los paquetes si corresponde. |
+| | 5 | El administrador confirma la desactivación. |
+| | 6 | El sistema cambia el estado del servicio a "Inactivo". |
+| | 7 | El sistema registra la acción en auditoría y confirma la desactivación. |
+| **Postcondición** | El servicio queda en estado inactivo. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 5a | Si el administrador cancela la confirmación, se aborta la operación. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 6 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Media | |
+| **Comentarios** | No afecta a los lavados o turnos registrados previamente. | |
+
+---
+
+### CU-033 - Reactivar servicio
+
+| UC–033 | Reactivar servicio | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes | |
+| **Requisitos asociados** | IRQ–04 Información sobre Servicios | |
+| **Descripción** | El administrador habilita nuevamente un servicio previamente desactivado. | |
+| **Precondición** | El usuario debe ser Administrador. El servicio debe existir y estar inactivo. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | Se ejecuta el caso de uso CU-034 Consultar servicios. |
+| | 2 | El administrador selecciona el servicio a reactivar. |
+| | 3 | El sistema solicita la confirmación de la reactivación. |
+| | 4 | El administrador confirma la reactivación. |
+| | 5 | El sistema cambia el estado del servicio a "Activo". |
+| | 6 | El sistema registra la acción en auditoría y confirma la operación. |
+| **Postcondición** | El servicio vuelve a estar disponible para cotizaciones y registros. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 4a | Si el administrador cancela la confirmación, se aborta la reactivación. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 5 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Media | |
+| **Comentarios** | Incluye el caso de uso CU-034 Consultar servicios. | |
 
 ---
 
@@ -799,6 +1279,114 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | **Frecuencia** | Frecuente |  |
 | **Estabilidad** | Alta |  |
 | **Comentarios** | La búsqueda no distingue entre mayúsculas y minúsculas. |  |
+
+---
+
+### CU-036 - Crear tipo de servicio
+
+| UC–036 | Crear tipo de servicio | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes | |
+| **Requisitos asociados** | IRQ–05 Información sobre Tipos de Servicio | |
+| **Descripción** | El administrador registra una nueva categoría o tipo de servicio para clasificar las prestaciones del lavadero. | |
+| **Precondición** | El usuario debe tener rol de Administrador. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El administrador solicita crear un nuevo tipo de servicio. |
+| | 2 | El sistema presenta el formulario solicitando la denominación del tipo de servicio. |
+| | 3 | El administrador ingresa los datos requeridos. |
+| | 4 | El administrador solicita guardar el registro. |
+| | 5 | El sistema valida que la denominación sea única y no se encuentre duplicada. |
+| | 6 | El sistema almacena el nuevo tipo de servicio con estado "Activo". |
+| | 7 | El sistema registra la acción en auditoría y confirma la creación. |
+| **Postcondición** | El tipo de servicio queda registrado y disponible para clasificar servicios. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 5a | Si el nombre ya existe, el sistema rechaza el alta e informa la duplicidad. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 6 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Media | |
+| **Comentarios** | Permite organizar los paquetes asegurando un único servicio por tipo. | |
+
+---
+
+### CU-037 - Eliminar tipo de servicio
+
+| UC–037 | Eliminar tipo de servicio | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes | |
+| **Requisitos asociados** | IRQ–05 Información sobre Tipos de Servicio, IRQ–04 Información sobre Servicios | |
+| **Descripción** | El administrador elimina una categoría de servicio que no posea servicios asociados. | |
+| **Precondición** | El usuario debe ser Administrador. El tipo de servicio debe existir. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El administrador selecciona el tipo de servicio a eliminar. |
+| | 2 | El sistema comprueba que no existan servicios asociados a dicha categoría. |
+| | 3 | El sistema solicita confirmación para la eliminación. |
+| | 4 | El administrador confirma la operación. |
+| | 5 | El sistema elimina el tipo de servicio de la base de datos. |
+| | 6 | El sistema registra la acción en auditoría y confirma la eliminación. |
+| **Postcondición** | El tipo de servicio queda eliminado del sistema. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 2a | Si existen servicios vinculados a esta categoría, el sistema bloquea la eliminación. |
+| | 4a | Si el administrador cancela, se aborta la operación. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 5 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Baja | |
+| **Comentarios** | Aplica integridad referencial estricta. | |
+
+---
+
+### CU-038 - Crear tipo de vehículo
+
+| UC–038 | Crear tipo de vehículo | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes | |
+| **Requisitos asociados** | IRQ–06 Información sobre Tipos de Vehículo | |
+| **Descripción** | El administrador define un nuevo tipo de vehículo con sus reglas de validación y dotación operativa requerida. | |
+| **Precondición** | El usuario debe ser Administrador. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El administrador solicita registrar un nuevo tipo de vehículo. |
+| | 2 | El sistema presenta el formulario solicitando los datos del tipo de vehículo. |
+| | 3 | El administrador ingresa los datos solicitados. |
+| | 4 | El administrador solicita guardar el registro. |
+| | 5 | El sistema valida que el nombre sea único y que los parámetros operativos sean válidos. |
+| | 6 | El sistema almacena el tipo de vehículo con estado "Activo". |
+| | 7 | El sistema registra la creación en auditoría y confirma el éxito. |
+| **Postcondición** | El tipo de vehículo queda registrado y disponible para tarifas y validaciones. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 5a | Si los datos ya existen o los valores son inválidos, el sistema informa el error. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 6 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Media | |
+| **Comentarios** | Permite adaptar el sistema a diferentes tipos de rodados. | |
+
+---
+
+### CU-039 - Eliminar tipo de vehículo
+
+| UC–039 | Eliminar tipo de vehículo | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes | |
+| **Requisitos asociados** | IRQ–06 Información sobre Tipos de Vehículo, IRQ–03 Información sobre Vehículos, IRQ–04 Información sobre Servicios | |
+| **Descripción** | El administrador elimina un tipo de vehículo que no tenga vehículos ni servicios asociados. | |
+| **Precondición** | El usuario debe ser Administrador. El tipo de vehículo debe existir. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El administrador selecciona el tipo de vehículo a eliminar. |
+| | 2 | El sistema valida que no existan vehículos registrados ni servicios asociados a este tipo. |
+| | 3 | El sistema solicita confirmación de la eliminación. |
+| | 4 | El administrador confirma la acción. |
+| | 5 | El sistema elimina el tipo de vehículo de la base de datos. |
+| | 6 | El sistema registra la acción en auditoría y emite la confirmación. |
+| **Postcondición** | El tipo de vehículo queda eliminado del sistema. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 2a | Si existen vehículos o servicios que utilizan este tipo, el sistema impide la eliminación. |
+| | 4a | Si el administrador cancela, se aborta la operación. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 5 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Baja | |
+| **Comentarios** | Asegura la integridad referencial de la base de datos. | |
 
 ---
 
@@ -884,6 +1472,60 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 
 ---
 
+### CU-043 - Desactivar paquete de servicios
+
+| UC–043 | Desactivar paquete de servicios | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes | |
+| **Requisitos asociados** | IRQ–07 Información sobre Paquetes de Servicios | |
+| **Descripción** | El administrador deshabilita un paquete para que no se ofrezca en nuevos turnos o lavados. | |
+| **Precondición** | El usuario debe ser Administrador. El paquete debe existir y estar activo. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | Se ejecuta el caso de uso CU-045 Consultar paquetes de servicios. |
+| | 2 | El administrador selecciona el paquete a desactivar. |
+| | 3 | El sistema solicita la confirmación de la desactivación. |
+| | 4 | El administrador confirma la operación. |
+| | 5 | El sistema cambia el estado del paquete a "Inactivo". |
+| | 6 | El sistema registra la acción en auditoría y emite la confirmación. |
+| **Postcondición** | El paquete pasa a estado inactivo. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 4a | Si el administrador cancela, se interrumpe la operación sin aplicar cambios. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 5 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Baja | |
+| **Comentarios** | No altera los turnos ya agendados con este paquete. | |
+
+---
+
+### CU-044 - Reactivar paquete de servicios
+
+| UC–044 | Reactivar paquete de servicios | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes | |
+| **Requisitos asociados** | IRQ–07 Información sobre Paquetes de Servicios, IRQ–04 Información sobre Servicios | |
+| **Descripción** | El administrador habilita nuevamente un paquete previamente desactivado, verificando que sus servicios componentes sigan activos. | |
+| **Precondición** | El usuario debe ser Administrador. El paquete debe existir y estar inactivo. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | Se ejecuta el caso de uso CU-045 Consultar paquetes de servicios. |
+| | 2 | El administrador selecciona el paquete a reactivar. |
+| | 3 | El sistema comprueba que todos los servicios que componen el paquete se encuentren en estado activo. |
+| | 4 | El sistema solicita confirmación de la reactivación. |
+| | 5 | El administrador confirma la operación. |
+| | 6 | El sistema cambia el estado del paquete a "Activo". |
+| | 7 | El sistema registra la acción en auditoría y confirma la reactivación. |
+| **Postcondición** | El paquete de servicios vuelve a estar disponible para su uso. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 3a | Si alguno de los servicios incluidos está inactivo, el sistema impide la reactivación y notifica la necesidad de reactivar el servicio o modificar el paquete. |
+| | 5a | Si el administrador cancela la confirmación, se aborta la operación. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 6 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Baja | |
+| **Comentarios** | Incluye el caso de uso CU-045 Consultar paquetes de servicios. | |
+
+---
+
 ### CU-045 - Consultar paquetes de servicios
 | UC–045 | Consultar paquetes de servicios |  |
 | ------ | ------ | ------ |
@@ -911,6 +1553,35 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 ---
 
 ### Módulo: Registro de Lavados
+
+### CU-046 - Registrar realización de un servicio (lavado)
+
+| UC–046 | Registrar realización de un servicio (lavado) | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–04 Registro y Gestión de Lavados | |
+| **Requisitos asociados** | IRQ–08 Información sobre Lavados, IRQ–02 Información sobre Clientes, IRQ–03 Información sobre Vehículos, IRQ–04 Información sobre Servicios | |
+| **Descripción** | El personal inicia la recepción de un vehículo en el lavadero, seleccionando el cliente, vehículo, servicios o paquetes solicitados y asignando los empleados responsables. | |
+| **Precondición** | El usuario debe estar autenticado. El cliente y vehículo deben existir y estar activos. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El usuario solicita registrar un nuevo lavado. |
+| | 2 | El sistema presenta el formulario de recepción solicitando la selección del cliente y vehículo. |
+| | 3 | El usuario selecciona el cliente y el vehículo correspondiente. |
+| | 4 | El sistema solicita los servicios o paquetes a realizar y los empleados asignados. |
+| | 5 | El usuario ingresa los servicios solicitados y asigna los empleados. |
+| | 6 | El sistema ejecuta CU-060 para calcular automáticamente la duración estimada total y el precio final. |
+| | 7 | El usuario solicita confirmar el registro del lavado. |
+| | 8 | El sistema valida la capacidad operativa y registra el lavado en estado "EnProceso", con pago pendiente y retiro no efectuado. |
+| | 9 | El sistema registra la acción en auditoría y confirma la creación del lavado. |
+| **Postcondición** | El lavado queda registrado en proceso de ejecución. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 8a | Si se supera la capacidad máxima de atención simultánea configurada, el sistema emite una advertencia. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 6-8 | 2 segundos |
+| **Frecuencia** | Muy frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Núcleo operativo del sistema para la gestión del servicio. | |
+
+---
 
 ### CU-047 - Consultar lavados
 | UC–047 | Consultar lavados |  |
@@ -982,6 +1653,32 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | **Frecuencia** | Muy frecuente |  |
 | **Estabilidad** | Alta |  |
 | **Comentarios** | Incluye el caso de uso CU-047 Consultar lavados. |  |
+
+---
+
+### CU-050 - Iniciar servicio en lavado
+
+| UC–050 | Iniciar servicio en lavado | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–04 Registro y Gestión de Lavados | |
+| **Requisitos asociados** | IRQ–08 Información sobre Lavados | |
+| **Descripción** | El personal registra el inicio formal de un servicio específico dentro de un lavado en curso, registrando la marca de tiempo correspondiente. | |
+| **Precondición** | El usuario debe estar autenticado. El lavado debe estar "EnProceso" y el servicio pendiente de inicio. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | Se ejecuta el caso de uso CU-049 Ver detalle de lavado. |
+| | 2 | El usuario solicita iniciar el servicio seleccionado. |
+| | 3 | El sistema registra la fecha y hora de inicio del servicio. |
+| | 4 | El sistema actualiza el estado del servicio a "EnProceso". |
+| | 5 | Si el servicio cuenta con etapas, el sistema habilita el inicio de la primera etapa. |
+| | 6 | El sistema registra la acción en auditoría y actualiza el estado del lavado. |
+| **Postcondición** | El servicio queda registrado en estado de ejecución con su tiempo de inicio. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | - | - |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 3-5 | 1 segundo |
+| **Frecuencia** | Muy frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Incluye el caso de uso CU-049 Ver detalle de lavado. | |
 
 ---
 
@@ -1141,6 +1838,33 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 
 ---
 
+### CU-057 - Registrar pago recibido
+
+| UC–057 | Registrar pago recibido | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–05 Registro de Pagos | |
+| **Requisitos asociados** | IRQ–08 Información sobre Lavados | |
+| **Descripción** | El personal asienta el cobro total del saldo pendiente de un lavado, actualizando su estado a "Pagado". | |
+| **Precondición** | El lavado debe existir y contar con saldo pendiente de pago. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | Se ejecuta el caso de uso CU-049 Ver detalle de lavado. |
+| | 2 | El usuario solicita registrar un pago. |
+| | 3 | El sistema presenta el balance del lavado indicando el saldo pendiente. |
+| | 4 | El usuario confirma el monto total del saldo y selecciona el medio de pago. |
+| | 5 | El usuario solicita asentar el pago. |
+| | 6 | El sistema valida el monto, registra la transacción con fecha y hora, y actualiza el estado a "Pagado". |
+| | 7 | El sistema registra la acción en auditoría y emite la confirmación de pago. |
+| **Postcondición** | El lavado queda registrado como totalmente pagado. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 6a | Si el monto ingresado es inconsistente con el saldo, el sistema informa el error. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 6 | 1 segundo |
+| **Frecuencia** | Muy frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Almacena el método de pago utilizado para reportes financieros. | |
+
+---
+
 ### CU-058 - Registrar pago parcial
 | UC–058 | Registrar pago parcial |  |
 | ------ | ------ | ------ |
@@ -1194,7 +1918,58 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 
 ---
 
+### CU-060 - Calcular duración estimada de lavado
+
+| UC–060 | Calcular duración estimada de lavado | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes, OBJ–04 Registro y Gestión de Lavados | |
+| **Requisitos asociados** | IRQ–04 Información sobre Servicios, IRQ–06 Información sobre Tipos de Vehículo, IRQ–08 Información sobre Lavados | |
+| **Descripción** | Proceso del sistema que calcula la duración estimada total de un lavado en función del tipo de vehículo y los servicios o paquetes seleccionados. | |
+| **Precondición** | Ejecutado automáticamente durante el registro de un turno o lavado. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El sistema recibe los servicios o paquetes solicitados y el tipo de vehículo. |
+| | 2 | El sistema recupera los tiempos estimados parametrizados para cada servicio según el tipo de vehículo. |
+| | 3 | El sistema suma los tiempos individuales aplicando reglas de optimización si existen servicios concurrentes. |
+| | 4 | El sistema retorna la duración estimada total en minutos. |
+| **Postcondición** | La duración estimada queda calculada y disponible para la agenda y el lavado. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | - | - |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 2-4 | < 500ms |
+| **Frecuencia** | Muy frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Esencial para evitar solapamientos en la planificación de turnos. | |
+
+---
+
 ### Módulo: Configuración
+
+### CU-061 - Configurar horarios del lavadero
+
+| UC–061 | Configurar horarios del lavadero | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–11 Gestión de Configuración del Sistema | |
+| **Requisitos asociados** | IRQ–11 Información de Configuración | |
+| **Descripción** | El administrador establece los días y rangos horarios de atención del lavadero. | |
+| **Precondición** | El usuario debe tener rol de Administrador. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El administrador solicita configurar los horarios de operación. |
+| | 2 | El sistema presenta la configuración horaria actual por cada día de la semana. |
+| | 3 | El administrador define los días laborales y los horarios de apertura y cierre. |
+| | 4 | El administrador solicita guardar los cambios. |
+| | 5 | El sistema valida que la hora de apertura sea anterior a la de cierre. |
+| | 6 | El sistema actualiza los parámetros de horarios en el sistema. |
+| | 7 | El sistema registra la acción en auditoría y confirma la configuración. |
+| **Postcondición** | Los horarios de atención quedan actualizados y rigen la asignación de turnos. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 5a | Si los rangos horarios son inconsistentes, el sistema informa el error. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 6 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Media | |
+| **Comentarios** | Restringe automáticamente la solicitud de turnos fuera del horario comercial. | |
+
+---
 
 ### CU-062 - Configurar capacidad concurrente
 | UC–062 | Configurar capacidad concurrente |  |
@@ -1219,6 +1994,60 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | **Frecuencia** | Ocasional |  |
 | **Estabilidad** | Alta |  |
 | **Comentarios** | Afecta directamente la validación al admitir nuevos lavados simultáneos. |  |
+
+---
+
+### CU-063 - Configurar tiempos de tolerancia y notificación
+
+| UC–063 | Configurar tiempos de tolerancia y notificación | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–11 Gestión de Configuración del Sistema, OBJ–12 Notificación al Cliente | |
+| **Requisitos asociados** | IRQ–11 Información de Configuración | |
+| **Descripción** | El administrador parametriza los minutos de tolerancia de espera para turnos y el tiempo de anticipación para el envío de recordatorios. | |
+| **Precondición** | El usuario debe tener rol de Administrador. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El administrador solicita configurar los tiempos de tolerancia y avisos. |
+| | 2 | El sistema presenta los valores actuales configurados. |
+| | 3 | El administrador ingresa los parámetros de tolerancia y anticipación de notificaciones. |
+| | 4 | El administrador solicita guardar los cambios. |
+| | 5 | El sistema valida que los valores sean positivos y coherentes. |
+| | 6 | El sistema actualiza la configuración en la base de datos. |
+| | 7 | El sistema registra la acción en auditoría y confirma la operación. |
+| **Postcondición** | Los parámetros de tolerancia y recordatorios quedan actualizados. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 5a | Si los valores son inválidos, el sistema informa el error. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 6 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Media | |
+| **Comentarios** | Rige la cancelación automática de turnos por inasistencia y el disparo de alertas. | |
+
+---
+
+### CU-064 - Configurar duración de sesión
+
+| UC–064 | Configurar duración de sesión | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–11 Gestión de Configuración del Sistema | |
+| **Requisitos asociados** | IRQ–11 Información de Configuración | |
+| **Descripción** | El administrador establece el tiempo de inactividad antes del cierre automático y la duración máxima permitida para una sesión de usuario. | |
+| **Precondición** | El usuario debe ser Administrador. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El administrador solicita configurar los parámetros de sesión. |
+| | 2 | El sistema presenta los valores vigentes de inactividad y duración máxima. |
+| | 3 | El administrador ingresa los nuevos límites temporales. |
+| | 4 | El administrador solicita guardar la configuración. |
+| | 5 | El sistema valida que los tiempos sean mayores a cero y coherentes. |
+| | 6 | El sistema actualiza la configuración global del sistema. |
+| | 7 | El sistema registra la acción en auditoría y confirma el cambio. |
+| **Postcondición** | Los nuevos límites de expiración rigen para las sesiones activas y futuras. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 5a | Si los valores son inválidos, el sistema informa el error. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 6 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Media | |
+| **Comentarios** | Impacta de forma directa sobre la ejecución de CU-004. | |
 
 ---
 
@@ -1248,7 +2077,62 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 
 ---
 
+### CU-066 - Configurar paso de descuento para paquetes
+
+| UC–066 | Configurar paso de descuento para paquetes | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–11 Gestión de Configuración del Sistema | |
+| **Requisitos asociados** | IRQ–11 Información de Configuración | |
+| **Descripción** | El administrador establece el valor del incremento porcentual mínimo permitido al configurar descuentos en paquetes de servicios. | |
+| **Precondición** | El usuario debe ser Administrador. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El administrador solicita configurar el paso de descuento. |
+| | 2 | El sistema presenta el valor actual configurado. |
+| | 3 | El administrador ingresa el nuevo valor de incremento permitido. |
+| | 4 | El administrador solicita guardar el valor. |
+| | 5 | El sistema valida que el valor se encuentre dentro del rango porcentual permitido. |
+| | 6 | El sistema actualiza el parámetro de configuración. |
+| | 7 | El sistema registra la acción en auditoría y emite la confirmación. |
+| **Postcondición** | El nuevo paso de descuento rige para la creación y edición de paquetes. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 5a | Si el valor no se encuentra en el rango permitido, el sistema informa el error. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 6 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Baja | |
+| **Comentarios** | Estandariza la escala de promociones del lavadero. | |
+
+---
+
 ### Módulo: Planificación de Turnos
+
+### CU-067 - Registrar turno
+
+| UC–067 | Registrar turno | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–06 Planificación y Gestión de Turnos | |
+| **Requisitos asociados** | IRQ–09 Información sobre Turnos, IRQ–02 Información sobre Clientes, IRQ–03 Información sobre Vehículos | |
+| **Descripción** | El personal agenda un nuevo turno para un cliente y vehículo, validando que no existan superposiciones en la agenda. | |
+| **Precondición** | El usuario debe estar autenticado. El cliente y vehículo deben existir y estar activos. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El usuario solicita agendar un nuevo turno. |
+| | 2 | El sistema presenta el formulario de reserva solicitando los datos del turno. |
+| | 3 | El usuario ingresa los datos solicitados. |
+| | 4 | El sistema ejecuta CU-060 para calcular la duración estimada total. |
+| | 5 | El sistema ejecuta CU-074 para validar la disponibilidad y ausencia de solapamientos. |
+| | 6 | El usuario solicita confirmar el registro del turno. |
+| | 7 | El sistema almacena el turno en estado "Pendiente". |
+| | 8 | El sistema registra la acción en auditoría y emite la confirmación. |
+| **Postcondición** | El turno queda agendado y reservado en la planificación del lavadero. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 5a | Si no hay disponibilidad horaria o capacidad disponible, el sistema informa el conflicto y ofrece alternativas. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 5-7 | 1 segundo |
+| **Frecuencia** | Frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Puede derivar en el envío automático de confirmación por WhatsApp. | |
+
+---
 
 ### CU-068 - Modificar turno
 | UC–068 | Modificar turno |  |
@@ -1274,6 +2158,167 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 | **Frecuencia** | Ocasional |  |
 | **Estabilidad** | Media |  |
 | **Comentarios** | Incluye el caso de uso CU-069 Consultar turnos asignados. |  |
+
+---
+
+### CU-069 - Consultar turnos asignados
+
+| UC–069 | Consultar turnos asignados | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–06 Planificación y Gestión de Turnos | |
+| **Requisitos asociados** | IRQ–09 Información sobre Turnos | |
+| **Descripción** | Permite al personal consultar la agenda de turnos con filtros por fecha, estado y cliente. | |
+| **Precondición** | El usuario debe estar autenticado en el sistema. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El usuario solicita consultar los turnos asignados. |
+| | 2 | El sistema recupera los turnos aplicando los filtros de fecha actuales. |
+| | 3 | El sistema presenta la agenda con los turnos planificados. |
+| | 4 | El usuario puede aplicar filtros por estado o cambiar el rango de fechas. |
+| | 5 | El sistema actualiza la agenda presentada según los criterios seleccionados. |
+| **Postcondición** | El usuario visualiza la agenda de turnos planificados. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 2a | Si no existen turnos para el período indicado, el sistema presenta la agenda vacía. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 2-3 | 1 segundo |
+| **Frecuencia** | Muy frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Base para la reorganización y seguimiento de la atención programada. | |
+
+---
+
+### CU-070 - Cancelar turno
+
+| UC–070 | Cancelar turno | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–06 Planificación y Gestión de Turnos | |
+| **Requisitos asociados** | IRQ–09 Información sobre Turnos | |
+| **Descripción** | El personal cancela un turno pendiente, liberando el espacio en la agenda y disparando la optimización de turnos posteriores. | |
+| **Precondición** | El turno debe existir y encontrarse en estado "Pendiente". | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | Se ejecuta el caso de uso CU-069 Consultar turnos asignados. |
+| | 2 | El usuario selecciona el turno a cancelar. |
+| | 3 | El sistema solicita el motivo de cancelación. |
+| | 4 | El usuario ingresa el motivo y confirma la cancelación. |
+| | 5 | El sistema cambia el estado del turno a "Cancelado". |
+| | 6 | El sistema ejecuta CU-076 Reorganizar agenda ante cancelaciones. |
+| | 7 | El sistema registra la acción en auditoría y emite la confirmación de cancelación. |
+| **Postcondición** | El turno queda cancelado y el espacio de agenda liberado. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 4a | Si el usuario no confirma la operación, se aborta la cancelación. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 5-6 | 2 segundos |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Media | |
+| **Comentarios** | Permite reasignar turnos de clientes que acepten adelantar su horario. | |
+
+---
+
+### CU-071 - Solicitar turno por WhatsApp
+
+| UC–071 | Solicitar turno por WhatsApp | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–10 Integración con WhatsApp, OBJ–06 Planificación y Gestión de Turnos | |
+| **Requisitos asociados** | IRQ–09 Información sobre Turnos, IRQ–12 Información de Sesiones WhatsApp | |
+| **Descripción** | El cliente solicita y reserva un turno de lavado mediante la interacción guiada con el bot de WhatsApp. | |
+| **Precondición** | El cliente debe estar registrado y autenticado en la sesión de WhatsApp. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El cliente solicita agendar un turno desde el menú de WhatsApp. |
+| | 2 | El sistema presenta los vehículos asociados al cliente. |
+| | 3 | El cliente selecciona el vehículo deseado. |
+| | 4 | El sistema presenta los servicios y paquetes disponibles para ese tipo de vehículo. |
+| | 5 | El cliente selecciona los servicios deseados. |
+| | 6 | El sistema calcula la duración (CU-060) y presenta las fechas y horarios disponibles sin superposición (CU-074). |
+| | 7 | El cliente selecciona el horario deseado. |
+| | 8 | El sistema presenta el resumen del turno y solicita confirmación. |
+| | 9 | El cliente confirma la reserva. |
+| | 10 | El sistema almacena el turno en estado "Pendiente", registra la auditoría y envía la confirmación con los detalles al cliente. |
+| **Postcondición** | El turno queda agendado automáticamente en el sistema. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 7a | Si el horario seleccionado fue ocupado durante la interacción, el sistema informa y presenta nuevos horarios disponibles. |
+| | 9a | Si el cliente cancela la confirmación, se descarta la reserva. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 10 | 2 segundos |
+| **Frecuencia** | Muy frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Automatiza completamente la agenda sin intervención del personal. | |
+
+---
+
+### CU-072 - Consultar turnos próximos por WhatsApp
+
+| UC–072 | Consultar turnos próximos por WhatsApp | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–10 Integración con WhatsApp, OBJ–06 Planificación y Gestión de Turnos | |
+| **Requisitos asociados** | IRQ–09 Información sobre Turnos, IRQ–12 Información de Sesiones WhatsApp | |
+| **Descripción** | El cliente consulta por WhatsApp sus turnos pendientes y programados. | |
+| **Precondición** | El cliente debe estar registrado y autenticado en la sesión de WhatsApp. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El cliente solicita consultar sus turnos desde el menú de WhatsApp. |
+| | 2 | El sistema recupera los turnos en estado "Pendiente" asociados al cliente. |
+| | 3 | El sistema envía un mensaje con el detalle de cada turno programado. |
+| | 4 | El sistema presenta opciones para solicitar un nuevo turno o cancelar alguno existente. |
+| **Postcondición** | El cliente visualiza el estado de sus reservas programadas. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 2a | Si no tiene turnos pendientes, el sistema informa que no posee reservas activas. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 2-3 | 1 segundo |
+| **Frecuencia** | Frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Provee autoservicio de consulta a los clientes. | |
+
+---
+
+### CU-073 - Cancelar turno por WhatsApp
+
+| UC–073 | Cancelar turno por WhatsApp | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–10 Integración con WhatsApp, OBJ–06 Planificación y Gestión de Turnos | |
+| **Requisitos asociados** | IRQ–09 Información sobre Turnos, IRQ–12 Información de Sesiones WhatsApp | |
+| **Descripción** | El cliente cancela uno de sus turnos programados a través del flujo de WhatsApp. | |
+| **Precondición** | El cliente debe tener al menos un turno en estado "Pendiente". | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El cliente solicita cancelar un turno desde el menú de turnos de WhatsApp. |
+| | 2 | El sistema presenta la lista de turnos pendientes del cliente. |
+| | 3 | El cliente selecciona el turno que desea cancelar. |
+| | 4 | El sistema solicita la confirmación de la cancelación. |
+| | 5 | El cliente confirma la acción. |
+| | 6 | El sistema cambia el estado del turno a "Cancelado" y ejecuta CU-076 para reorganizar la agenda. |
+| | 7 | El sistema registra la acción en auditoría y envía la confirmación de cancelación por WhatsApp. |
+| **Postcondición** | El turno queda cancelado y la disponibilidad es restituida al sistema. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 5a | Si el cliente cancela la confirmación, se mantiene el turno programado. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 6-7 | 2 segundos |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Permite optimizar la agenda ante avisos anticipados de inasistencia. | |
+
+---
+
+### CU-074 - Asignar turno automáticamente sin superposición
+
+| UC–074 | Asignar turno automáticamente sin superposición | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–06 Planificación y Gestión de Turnos | |
+| **Requisitos asociados** | IRQ–09 Información sobre Turnos, IRQ–11 Información de Configuración | |
+| **Descripción** | Proceso del sistema que evalúa la agenda y la duración estimada para garantizar que la asignación de un turno no genere solapamientos ni supere la capacidad máxima. | |
+| **Precondición** | Ejecutado durante la creación o reprogramación de turnos. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El sistema recibe la fecha, hora de inicio y duración estimada del turno solicitado. |
+| | 2 | El sistema calcula la hora de finalización estimada. |
+| | 3 | El sistema recupera los turnos ya agendados para esa fecha. |
+| | 4 | El sistema valida que el intervalo se encuentre dentro de los horarios de atención (CU-061). |
+| | 5 | El sistema comprueba que en ningún momento del intervalo se exceda la capacidad máxima concurrente (CU-062). |
+| | 6 | El sistema confirma la viabilidad del horario solicitado. |
+| **Postcondición** | La disponibilidad horaria queda validada para la reserva. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 4a | Si el turno excede el horario de cierre o es en día no laboral, el sistema informa el error. |
+| | 5a | Si se supera la capacidad máxima simultánea, el sistema rechaza el intervalo y calcula las alternativas más cercanas. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 3-6 | 500ms |
+| **Frecuencia** | Muy frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Ejecutado automáticamente por el motor de turnos del sistema. | |
 
 ---
 
@@ -1325,7 +2370,181 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 
 ---
 
+##### Módulo: Notificación al Cliente
+
+### CU-077 - Enviar notificación por WhatsApp
+
+| UC–077 | Enviar notificación por WhatsApp | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–12 Notificación al Cliente, OBJ–10 Integración con WhatsApp | |
+| **Requisitos asociados** | IRQ–02 Información sobre Clientes, IRQ–12 Información de Sesiones WhatsApp | |
+| **Descripción** | Servicio del sistema encargado del envío de mensajes estructurados a clientes a través del canal oficial de WhatsApp. | |
+| **Precondición** | El cliente debe poseer un número de teléfono válido y el servicio de mensajería debe estar activo. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El sistema recibe la solicitud de notificación con el destinatario y la información a despachar. |
+| | 2 | El sistema formatea los datos y envía la solicitud al servicio de mensajería. |
+| | 3 | El sistema recibe la confirmación de entrega por parte del servicio externo. |
+| | 4 | El sistema registra el envío de la notificación en el historial. |
+| **Postcondición** | El mensaje es entregado al cliente vía WhatsApp. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 3a | Si el servicio de mensajería reporta un fallo de entrega, el sistema registra el error sin interrumpir la operación del lavadero. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 2-3 | 2 segundos |
+| **Frecuencia** | Muy frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Componente transversal utilizado para avisos de turnos, etapas y finalización. | |
+
+---
+
+### CU-078 - Enviar notificación por correo electrónico
+
+| UC–078 | Enviar notificación por correo electrónico | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–12 Notificación al Cliente, OBJ–09 Gestión de Seguridad | |
+| **Requisitos asociados** | IRQ–01 Información sobre Empleados, IRQ–02 Información sobre Clientes | |
+| **Descripción** | Servicio del sistema encargado del envío de correos electrónicos transaccionales y de seguridad. | |
+| **Precondición** | Debe existir una dirección de correo válida para el destinatario. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El sistema recibe la solicitud de envío de correo con destinatario, asunto y contenido. |
+| | 2 | El sistema procesa la solicitud mediante el servicio de correo configurado. |
+| | 3 | El sistema registra el despacho del correo en los registros del sistema. |
+| **Postcondición** | El correo electrónico ha sido enviado al destinatario. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 2a | Si ocurre un fallo en el servidor de correo, el sistema registra el error para reintento posterior. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 2 | 2 segundos |
+| **Frecuencia** | Frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Gestiona las comunicaciones formales de seguridad del sistema. | |
+
+---
+
+### CU-079 - Notificar etapa finalizada
+
+| UC–079 | Notificar etapa finalizada | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–12 Notificación al Cliente | |
+| **Requisitos asociados** | IRQ–02 Información sobre Clientes, IRQ–08 Información sobre Lavados | |
+| **Descripción** | El sistema despacha una notificación automática por WhatsApp informando al cliente la culminación de una etapa de su servicio. | |
+| **Precondición** | Una etapa de servicio ha sido completada en CU-052 y la notificación automática está habilitada. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El sistema detecta la finalización de una etapa en el lavado. |
+| | 2 | El sistema obtiene los datos del cliente, vehículo y etapa concluida. |
+| | 3 | El sistema genera el mensaje informativo con el detalle del avance del servicio. |
+| | 4 | El sistema despacha la notificación a través de CU-077. |
+| | 5 | El sistema registra la notificación emitida. |
+| **Postcondición** | El cliente recibe el aviso del avance de su vehículo. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 4a | Si el envío falla, se registra la contingencia sin detener el flujo operativo del lavado. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 2-4 | 2 segundos |
+| **Frecuencia** | Frecuente | |
+| **Estabilidad** | Media | |
+| **Comentarios** | Mejora la transparencia y comunicación durante la atención del vehículo. | |
+
+---
+
+### CU-080 - Notificar lavado finalizado
+
+| UC–080 | Notificar lavado finalizado | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–12 Notificación al Cliente, OBJ–04 Registro y Gestión de Lavados | |
+| **Requisitos asociados** | IRQ–02 Información sobre Clientes, IRQ–08 Información sobre Lavados | |
+| **Descripción** | El sistema envía una notificación automática por WhatsApp informando al cliente que su vehículo se encuentra listo para ser retirado. | |
+| **Precondición** | El lavado ha sido finalizado en CU-054. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El sistema detecta la finalización completa del lavado. |
+| | 2 | El sistema obtiene los datos del cliente, vehículo, saldo pendiente y ubicación del lavadero. |
+| | 3 | El sistema genera el mensaje informando que el vehículo está listo para retirar, detallando el saldo pendiente si existe. |
+| | 4 | El sistema despacha la notificación ejecutando CU-077. |
+| | 5 | El sistema registra el envío de la notificación en el lavado. |
+| **Postcondición** | El cliente recibe el aviso para retirar su vehículo. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 4a | Si falla el canal de mensajería, se registra el evento en logs de auditoría. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 2-4 | 2 segundos |
+| **Frecuencia** | Muy frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Notificación crítica para agilizar el retiro de vehículos y la rotación del espacio. | |
+
+---
+
+### CU-081 - Solicitar hablar con el personal
+
+| UC–081 | Solicitar hablar con el personal | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–10 Integración con WhatsApp | |
+| **Requisitos asociados** | IRQ–12 Información de Sesiones WhatsApp | |
+| **Descripción** | El cliente solicita derivar la conversación de WhatsApp a un operador humano del lavadero. | |
+| **Precondición** | El cliente interactúa en una sesión de WhatsApp activa. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El cliente selecciona la opción de comunicarse con el personal desde el menú de WhatsApp. |
+| | 2 | El sistema cambia el estado de la sesión para requerir atención humana. |
+| | 3 | El sistema envía un mensaje al cliente confirmando la solicitud e informando los horarios de atención. |
+| | 4 | El sistema emite una notificación interna para el personal del lavadero. |
+| | 5 | El sistema pausa las respuestas automatizadas del bot para dicho número. |
+| **Postcondición** | La conversación queda en espera de atención manual por parte del personal. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | - | - |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 2-4 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Baja | |
+| **Comentarios** | Permite atender consultas especiales no contempladas en las opciones del bot. | |
+
+---
+
 ### Módulo: Estadísticas y Reportes
+
+### CU-082 - Consultar estadísticas básicas
+
+| UC–082 | Consultar estadísticas básicas | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–08 Módulo de Estadísticas y Reportes | |
+| **Requisitos asociados** | IRQ–08 Información sobre Lavados, IRQ–04 Información sobre Servicios | |
+| **Descripción** | El personal consulta indicadores operativos clave sobre la actividad general del lavadero. | |
+| **Precondición** | El usuario debe estar autenticado en el sistema. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El usuario solicita consultar el panel de estadísticas. |
+| | 2 | El sistema calcula y consolida las métricas del período actual. |
+| | 3 | El sistema presenta los indicadores y métricas consolidadas. |
+| | 4 | El usuario puede solicitar el cambio de período temporal de análisis. |
+| | 5 | El sistema actualiza los indicadores según el rango solicitado. |
+| **Postcondición** | El usuario visualiza los indicadores de desempeño operativo del lavadero. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 2a | Si no hay datos registrados para el período, el sistema presenta los indicadores en cero. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 2-3 | 1 segundo |
+| **Frecuencia** | Frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Provee información para la toma de decisiones y control de gestión. | |
+
+---
+
+### CU-083 - Consultar historial de pagos
+
+| UC–083 | Consultar historial de pagos | |
+| :---- | :---- | :---- |
+| **Objetivos asociados** | OBJ–05 Registro de Pagos, OBJ–08 Módulo de Estadísticas y Reportes | |
+| **Requisitos asociados** | IRQ–08 Información sobre Lavados | |
+| **Descripción** | Permite al personal consultar los cobros registrados con opciones de filtrado, ordenamiento y totales. | |
+| **Precondición** | El usuario debe estar autenticado en el sistema. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | El usuario solicita consultar el historial de pagos. |
+| | 2 | El sistema recupera los registros de cobro aplicando los filtros por defecto. |
+| | 3 | El sistema presenta el listado de pagos registrados y sus totales. |
+| | 4 | El usuario puede aplicar filtros por medio de pago, montos o rango de fechas. |
+| | 5 | El sistema actualiza los registros presentados y totaliza los montos filtrados. |
+| **Postcondición** | El usuario visualiza el detalle de los pagos recibidos. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 2a | Si no existen pagos registrados para los criterios seleccionados, el sistema informa la situación. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 2-3 | 1 segundo |
+| **Frecuencia** | Frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Base para el arqueo de caja y control de ingresos. | |
+
+---
 
 ### CU-084 - Generar reportes
 | UC–084 | Generar reportes |  |
@@ -1475,77 +2694,114 @@ A continuación se presenta el modelo de casos de uso general del sistema.
 
 ---
 
-### Módulo: Integración WhatsApp
+### Módulo: Gestión de Roles
 
-### CU-091 - Gestionar sesión de conversación
-| UC–091 | Gestionar sesión de conversación |  |
+### CU-089 - Crear rol
+| UC–089 | Crear rol | |
 | ------ | ------ | ------ |
-| **Objetivos asociados** | OBJ–10 Integración con WhatsApp |  |
-| **Requisitos asociados** | IRQ–12 Información de Sesiones WhatsApp |  |
-| **Descripción** | El sistema gestiona el estado conversacional y los datos contextuales temporales de cada interacción. |  |
-| **Precondición** | Se recibe o procesa un mensaje entrante. |  |
+| **Objetivos asociados** | OBJ–09 Gestión de Seguridad | |
+| **Requisitos asociados** | IRQ–01 Información sobre Empleados | |
+| **Descripción** | El administrador da de alta un nuevo rol dentro del sistema estableciendo su denominación y alcance de permisos. | |
+| **Precondición** | El usuario debe tener rol de Administrador. | |
 | **Secuencia normal** | **Paso** | **Acción** |
-|  | 1 | El sistema consulta si existe una sesión activa para el identificador del usuario. |
-|  | 2a | Si existe, carga el estado y datos acumulados de la sesión. |
-|  | 2b | Si no existe, inicializa una nueva sesión en el estado base. |
-|  | 3 | El sistema actualiza la marca de última actividad. |
-|  | 4 | El sistema actualiza los datos temporales y el paso actual del flujo según la interacción. |
-|  | 5 | El sistema persiste los cambios en la sesión conversacional. |
-| **Postcondición** | La sesión conversacional queda actualizada. |  |
+| | 1 | El administrador accede a la sección de gestión de roles. |
+| | 2 | El administrador selecciona la opción para registrar un nuevo rol. |
+| | 3 | El sistema presenta el formulario de alta con el catálogo de permisos disponibles. |
+| | 4 | El administrador ingresa el nombre, descripción y selecciona los permisos correspondientes. |
+| | 5 | El administrador confirma la creación del rol. |
+| | 6 | El sistema valida la unicidad del nombre y la consistencia de los datos ingresados. |
+| | 7 | El sistema registra el nuevo rol en la base de datos. |
+| | 8 | El sistema presenta un mensaje de confirmación de creación. |
+| | 9 | El sistema registra la acción en auditoría. |
+| **Postcondición** | El nuevo rol queda registrado y disponible para su asignación a empleados. | |
 | **Excepciones** | **Paso** | **Acción** |
-|  | - | - |
+| | 6a | Si el nombre del rol ya existe o faltan campos obligatorios, el sistema informa el error y solicita corrección. |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
-|  | 1-3 | 500ms |
-| **Frecuencia** | Muy frecuente |  |
-| **Estabilidad** | Alta |  |
-| **Comentarios** | Las sesiones caducan de forma automática tras el tiempo de inactividad configurado. |  |
+| | 7 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Permite definir esquemas de autorización personalizados en el sistema. | |
 
 ---
 
-### CU-092 - Mostrar menú de cliente autenticado
-| UC–092 | Mostrar menú de cliente autenticado |  |
+### CU-090 - Modificar rol
+| UC–090 | Modificar rol | |
 | ------ | ------ | ------ |
-| **Objetivos asociados** | OBJ–10 Integración con WhatsApp |  |
-| **Requisitos asociados** | IRQ–12 Información de Sesiones WhatsApp |  |
-| **Descripción** | El sistema presenta al cliente autenticado las opciones principales de autoservicio. |  |
-| **Precondición** | El cliente se encuentra autenticado en el canal conversacional. |  |
+| **Objetivos asociados** | OBJ–09 Gestión de Seguridad | |
+| **Requisitos asociados** | IRQ–01 Información sobre Empleados | |
+| **Descripción** | El administrador actualiza los datos y la configuración de permisos de un rol existente. | |
+| **Precondición** | El usuario debe tener rol de Administrador. El rol debe existir en el sistema. | |
 | **Secuencia normal** | **Paso** | **Acción** |
-|  | 1 | El sistema valida el estado de autenticación del cliente. |
-|  | 2 | El sistema genera el mensaje del menú principal con las opciones y servicios habilitados. |
-|  | 3 | El sistema envía el menú interactivo al cliente. |
-|  | 4 | El sistema actualiza la sesión a la espera de la opción seleccionada. |
-| **Postcondición** | El cliente visualiza el menú principal de opciones. |  |
+| | 1 | Se ejecuta el caso de uso CU-096 Consultar roles. |
+| | 2 | El administrador selecciona el rol a modificar. |
+| | 3 | El sistema presenta el formulario de edición con los datos y permisos actuales. |
+| | 4 | El administrador modifica el nombre, descripción o la matriz de permisos asociados. |
+| | 5 | El administrador confirma los cambios. |
+| | 6 | El sistema valida la integridad de los datos y las restricciones de roles reservados. |
+| | 7 | El sistema actualiza el registro del rol en la base de datos. |
+| | 8 | El sistema presenta un mensaje de confirmación. |
+| | 9 | El sistema registra la acción en auditoría. |
+| **Postcondición** | Los datos y permisos del rol quedan actualizados en el sistema. | |
 | **Excepciones** | **Paso** | **Acción** |
-|  | - | - |
+| | 6a | Si se intenta modificar un rol predefinido protegido o hay errores de validación, el sistema bloquea la acción e informa el motivo. |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
-|  | 2-3 | 1 segundo |
-| **Frecuencia** | Muy frecuente |  |
-| **Estabilidad** | Alta |  |
-| **Comentarios** | Caso de uso automatizado por el canal conversacional. |  |
+| | 7 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Incluye el caso de uso CU-091 Consultar roles. | |
 
 ---
 
-### CU-093 - Mostrar información del lavadero
-| UC–093 | Mostrar información del lavadero |  |
+### CU-091 - Consultar roles
+| UC–091 | Consultar roles | |
 | ------ | ------ | ------ |
-| **Objetivos asociados** | OBJ–10 Integración con WhatsApp, OBJ–11 Gestión de Configuración |  |
-| **Requisitos asociados** | IRQ–11 Información de Configuración del Sistema |  |
-| **Descripción** | El cliente consulta la información institucional y horarios de atención del establecimiento. |  |
-| **Precondición** | El cliente se encuentra en una conversación activa. |  |
+| **Objetivos asociados** | OBJ–09 Gestión de Seguridad | |
+| **Requisitos asociados** | IRQ–01 Información sobre Empleados | |
+| **Descripción** | El administrador visualiza la lista de roles definidos en el sistema con información de permisos y empleados asignados. | |
+| **Precondición** | El usuario debe tener rol de Administrador. | |
 | **Secuencia normal** | **Paso** | **Acción** |
-|  | 1 | El cliente solicita la información del lavadero. |
-|  | 2 | El sistema consulta los parámetros institucionales configurados. |
-|  | 3 | El sistema genera el mensaje con la información institucional y de atención del establecimiento. |
-|  | 4 | El sistema envía la información al cliente. |
-|  | 5 | El sistema presenta la opción de retornar al menú principal. |
-| **Postcondición** | El cliente visualiza los datos institucionales del lavadero. |  |
+| | 1 | El administrador accede a la sección de gestión de roles. |
+| | 2 | El sistema recupera el listado de roles aplicando los filtros por defecto. |
+| | 3 | El sistema presenta la grilla de roles con nombre, descripción y cantidad de usuarios vinculados. |
+| | 4 | El administrador puede aplicar filtros de búsqueda o criterios de ordenamiento. |
+| | 5 | El administrador navega entre páginas mediante los controles de paginación. |
+| | 6 | El sistema actualiza la visualización según los criterios seleccionados. |
+| **Postcondición** | El administrador visualiza los roles según los filtros aplicados. | |
 | **Excepciones** | **Paso** | **Acción** |
-|  | 2a | Si no existe configuración personalizada, el sistema despacha los datos predeterminados. |
+| | 2a | Si no se encuentran roles registrados, el sistema presenta un mensaje informativo. |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
-|  | 2-4 | 1 segundo |
-| **Frecuencia** | Ocasional |  |
-| **Estabilidad** | Media |  |
-| **Comentarios** | Disponible para usuarios registrados y público general. |  |
+| | 2-3 | 1 segundo |
+| **Frecuencia** | Frecuente | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Permite visualizar roles base del sistema y roles personalizados creados por el administrador. | |
+
+---
+
+### CU-092 - Eliminar rol
+| UC–092 | Eliminar rol | |
+| ------ | ------ | ------ |
+| **Objetivos asociados** | OBJ–09 Gestión de Seguridad | |
+| **Requisitos asociados** | IRQ–01 Información sobre Empleados | |
+| **Descripción** | El administrador elimina un rol existente garantizando que no existan dependencias con usuarios activos ni sea un rol base del sistema. | |
+| **Precondición** | El usuario debe tener rol de Administrador. El rol debe existir en el sistema. | |
+| **Secuencia normal** | **Paso** | **Acción** |
+| | 1 | Se ejecuta el caso de uso CU-091 Consultar roles. |
+| | 2 | El administrador selecciona el rol a eliminar. |
+| | 3 | El sistema presenta una solicitud de confirmación de la acción. |
+| | 4 | El administrador confirma la eliminación. |
+| | 5 | El sistema valida que el rol no sea un rol protegido del sistema ni posea empleados vinculados. |
+| | 6 | El sistema elimina el registro del rol de la base de datos. |
+| | 7 | El sistema presenta un mensaje de confirmación. |
+| | 8 | El sistema registra la acción en auditoría. |
+| **Postcondición** | El rol es eliminado del sistema. | |
+| **Excepciones** | **Paso** | **Acción** |
+| | 4a | Si el administrador cancela, se interrumpe la operación. |
+| | 5a | Si el rol posee empleados asignados o es un rol protegido (ej. Administrador), el sistema bloquea la eliminación y notifica el motivo. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+| | 6 | 1 segundo |
+| **Frecuencia** | Ocasional | |
+| **Estabilidad** | Alta | |
+| **Comentarios** | Incluye el caso de uso CU-091 Consultar roles. | |
 
 ## **Requisitos No Funcionales**
 
