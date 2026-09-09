@@ -15,9 +15,6 @@
     <None Remove="Firebase.Tests/**" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Documentacion\" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include=".github\copilot-instructions.md" />
   </ItemGroup>
 </Project>
