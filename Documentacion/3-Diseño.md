@@ -26,8 +26,6 @@ A continuación se presenta el modelo de base de datos del sistema.
 
 ## **Casos de Uso Reales del Sistema**
 
-## **Casos de Uso del Reales**
-
 ### Módulo: Seguridad
 
 ### CU-001 - Iniciar Sesión
