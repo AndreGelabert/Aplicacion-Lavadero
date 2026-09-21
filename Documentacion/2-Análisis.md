@@ -6,7 +6,7 @@
 
 **Versión 2.0**
 
-**Fecha:** 20/07/2026
+**Fecha:** 20/09/2026
 
 **Realizado por:** Gelabert André
 

@@ -1,23 +1,49 @@
-Apóstoles (Misiones), 27 de Abril de 2026
+Apóstoles (Misiones), 14 de Septiembre de 2026
 
-Al Prof. Adjunto de las cátedras  
-Trabajo Final (ASC) | Proyecto Software (LSI)  
-FCEQyN \- UNaM  
-Lic. Sergio Daniel Caballero  
+&nbsp;
+
+Al Prof. Adjunto de las cátedras
+
+Trabajo Final (ASC) | Proyecto Software (LSI)
+
+FCEQyN \- UNaM
+
+Lic. Sergio Daniel Caballero
+
 S/D
+
+&nbsp;
 
 De mi mayor consideración:
 
+&nbsp;
+
 Me dirijo a Ud. a efectos de presentar la propuesta para el desarrollo de un producto software como tema para las cátedras “Proyecto Software” de la carrera Licenciatura en Sistemas de Información (plan de estudios 2013\) y “Trabajo Final” de la carrera Analista en Sistemas de Computación (plan de estudios 2010).
+
+&nbsp;
 
 El producto software a desarrollar se denomina: LavaFacil
 
+&nbsp;
+
 Sin otro particular, y quedando a la espera de la evaluación de la propuesta, me despido atte.
 
-\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_  
-Gelabert y André  
-906444 \- Analista en Sistemas  
-LS01133 Licenciatura en Sistemas de Información   
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+
+Gelabert y André
+
+906444 \- Analista en Sistemas
+
+LS01133 Licenciatura en Sistemas de Información&nbsp;
+
 44950175
 
 *Reservado para el equipo de cátedra*
@@ -29,23 +55,33 @@ LS01133 Licenciatura en Sistemas de Información
 | Alumno/a |  |
 | Fecha de la evaluación |  |
 
+&nbsp;
+
 | Aspecto | Evaluación |
 | ----- | ----- |
-| Presentación en general |   |
-| Objetivos |   |
-| Requisitos funcionales |   |
-| Requisitos no funcionales |   |
-| Procesos automáticos | 1\. 2\. 3\.  |
-| Planificación |   |
-| Estrategia de validación / verificación |   |
-| Metodología |   |
+| Presentación en general | &nbsp; |
+| Objetivos | &nbsp; |
+| Requisitos funcionales | &nbsp; |
+| Requisitos no funcionales | &nbsp; |
+| Procesos automáticos | 1\. 2\. 3\.&nbsp; |
+| Planificación | &nbsp; |
+| Estrategia de validación / verificación | &nbsp; |
+| Metodología | &nbsp; |
+
+&nbsp;
+
+&nbsp;
 
 | Resultado final | APROBADO \- DEBE CORREGIR |
 | :---- | :---: |
 
+&nbsp;
+
 *Firma por el equipo de cátedra:*
 
 ## Contenidos {#contenidos}
+
+&nbsp;
 
 [**Evaluación de la propuesta	1**](#evaluación-de-la-propuesta)
 
@@ -71,15 +107,21 @@ LS01133 Licenciatura en Sistemas de Información
 
 [Funcionales	5](#funcionales)
 
-[No funcionales	6](#no-funcionales)
+[No funcionales	7](#no-funcionales)
 
-[**Procesos automatizados	7**](#procesos-automatizados)
+[**Procesos automatizados	8**](#procesos-automatizados)
 
-[**Estimación de tamaño por módulo	9**](#estimación-de-tamaño-por-módulo)
+[**Estimación de tamaño por módulo	11**](#estimación-de-tamaño-por-módulo)
 
-[**Entorno tecnológico y metodológico	9**](#entorno-tecnológico-y-metodológico)
+[**Historial del proyecto	11**](#historial-del-proyecto)
 
-[**Planificación de actividades	10**](#planificación-de-actividades)
+[**Entorno tecnológico y metodológico	12**](#entorno-tecnológico-y-metodológico)
+
+[**Planificación de actividades	12**](#planificación-de-actividades)
+
+&nbsp;
+
+&nbsp;
 
 ## Planteo del problema {#planteo-del-problema}
 
@@ -114,6 +156,7 @@ El sistema LavaFacil contempla en su primera versión un conjunto de funcionalid
 * **Administración de servicios:** Definición de servicios de lavado con su respectivo precio, descripción y duración estimada por tipo de vehículo (auto, moto, camioneta, etc.).  
 * **Planificación de lavados:** Asociación de un cliente, vehículo y servicios a un registro de lavado. Cálculo automático del tiempo estimado y posibilidad de registrar finalización y pago.  
 * **Gestión de turnos:** El sistema calcula la duración de un lavado según los servicios involucrados y asigna turnos en función de la disponibilidad del empleado, evitando solapamientos.  
+* **Gestión de insumos y recursos físicos:** Control de stock de productos, materiales y elementos consumibles utilizados en los servicios del lavadero, contando con notificaciones de alerta ante stock insuficiente y compra automática de lo faltante.  
 * **Integración con WhatsApp:** Los clientes pueden comunicarse con la aplicación mediante mensajes de WhatsApp. Pueden registrarse como clientes, sus respectivos vehículos y solicitar turnos.  
 * **Notificación al cliente:** Al finalizar el lavado, se permite enviar un aviso por correo electrónico y/o WhatsApp informando que el vehículo está listo.  
 * **Trazabilidad básica:** Registro de datos que permiten seguir la secuencia de lavados realizados por cada empleado.  
@@ -126,7 +169,6 @@ Para mantener un enfoque realista y manejable en esta primera versión del siste
 * **Gestión financiera limitada:** No se contempla la gestión contable o financiera del lavadero. Esto incluye la facturación, liquidación de sueldos, control de caja, emisión de tickets o administración de cuentas corrientes de clientes.  
 * **Sin cálculo automático de disponibilidad horaria avanzada:** Aunque el sistema calcula turnos evitando solapamientos, no contempla restricciones de jornada laboral por empleado ni manejo de horas máximas diarias, licencias, feriados o días no laborables.  
 * **Sin portal web/app para clientes.** No hay una interfaz directa (web o app) para que los clientes gestionen turnos dentro del sistema. La interacción externa se realiza exclusivamente mediante la integración automatizada de WhatsApp (alta de cliente, alta de vehículos, consulta y solicitud de turnos).  
-* **Gestión de insumos y recursos físicos no incluida:** No se gestionan productos, stock de materiales o elementos consumibles utilizados en el lavado.  
 * **Limitada capacidad de reportes:** El sistema no cuenta aún con generación avanzada de estadísticas o informes exportables. Tampoco se realizan análisis predictivos ni comparativas históricas de productividad.  
 * **Sin manejo de múltiples sucursales:** En esta versión inicial, el sistema está preparado para funcionar con una única sede de lavadero. No se consideran múltiples ubicaciones ni segmentación por zonas geográficas.
 
@@ -137,6 +179,7 @@ Para mantener un enfoque realista y manejable en esta primera versión del siste
 * Gestión de Empleados  
 * Gestión de Clientes y Vehículos  
 * Gestión de Servicios  
+* Gestión de Insumos y Recursos Físicos  
 * Registro de Lavados  
 * Planificación de Turnos  
 * Notificación al Cliente  
@@ -158,17 +201,24 @@ Para mantener un enfoque realista y manejable en esta primera versión del siste
 
 **Gestión de Servicios:** En este módulo se administran los distintos tipos de servicios de lavado ofrecidos por el lavadero. Cada servicio puede tener un nombre, descripción, precio y una duración estimada variable según el tipo de vehículo. Esta duración se utiliza luego en el cálculo automático de turnos y la planificación diaria. Los servicios pueden ser combinados en un servicio individual.
 
+**Gestión de Insumos y Recursos Físicos:** Este módulo permite administrar de forma centralizada el stock de productos, materiales y elementos consumibles utilizados en los servicios del lavadero. Incluye el registro de entradas y salidas de insumos, el establecimiento de niveles mínimos de stock con notificaciones de alerta ante faltantes, y el registro de proveedores asociados.
+
 **Registro de Lavados:** Permite al personal registrar el inicio y finalización de un lavado. El módulo toma como entrada un cliente, uno de sus vehículos, y uno o más servicios seleccionados. Calcula el tiempo estimado de duración, permite marcar el lavado como finalizado, y registrar si fue pagado o no, así como el monto recibido. Almacena toda la información para generar estadísticas posteriores y seguimiento de trabajo.
 
 **Planificación de Turnos:** Este módulo se encarga de gestionar los turnos asignados internamente al personal y a los clientes del lavadero. Basado en la duración total de los servicios seleccionados para un lavado, se calcula un horario estimado y se asigna automáticamente un turno disponible, evitando superposiciones con otros turnos ya asignados. No ofrece portal de autogestión web/app para clientes. Las reservas pueden iniciarse por la integración de WhatsApp, tras lo cual el sistema calcula la duración del servicio, asigna el primer espacio disponible y evita superposiciones.
 
 **Notificación al Cliente:** Una vez finalizado un servicio, o una etapa del mismo, el sistema ofrece al empleado la posibilidad de enviar una notificación al cliente mediante correo electrónico o mensaje de WhatsApp. Este aviso comunica que el vehículo está listo para ser retirado, mejorando la experiencia del cliente sin que este interactúe directamente con el sistema.
 
-**Estadísticas y Reportes:**  
-Este módulo tiene como finalidad la generación, consulta y exportación de información estadística sobre las operaciones del lavadero. Permite al administrador visualizar indicadores clave como lavados realizados, clientes activos e inactivos, servicios más utilizados, cumplimiento de turnos y pagos registrados.  
+**Estadísticas y Reportes:**
+
+Este módulo tiene como finalidad la generación, consulta y exportación de información estadística sobre las operaciones del lavadero. Permite al administrador visualizar indicadores clave como lavados realizados, clientes activos e inactivos, servicios más utilizados, cumplimiento de turnos y pagos registrados.
+
 Adicionalmente, el módulo soporta la creación de reportes personalizados, los cuales pueden exportarse en formatos como PDF o Excel.
 
-**Seguridad:**  
+&nbsp;
+
+**Seguridad:**
+
 Este módulo se encarga de la gestión de accesos al sistema, garantizando que solo usuarios autorizados puedan operar con la aplicación. Incluye las funcionalidades de inicio y cierre de sesión, ya sea mediante credenciales propias (correo y contraseña) o a través de autenticación con Google. También contempla la opción de recuperar contraseña y el cierre automático de sesión por inactividad, lo que refuerza la protección de la información.
 
 ### No funcionales {#no-funcionales}
@@ -187,16 +237,21 @@ Este módulo se encarga de la gestión de accesos al sistema, garantizando que s
 | Gestión inteligente de turnos | Planificación de Turnos Gestión de Clientes y Vehículos Notificación al Cliente | El sistema administra de forma automatizada la asignación, reacomodamiento y optimización de los turnos. Cuando un cliente solicita un turno, el sistema calcula automáticamente el primer espacio disponible según los servicios seleccionados y el tipo de vehículo. Además: Si un cliente cancela su turno con al menos 24 horas de anticipación, el sistema le otorga un descuento del 10% sobre los servicios originalmente solicitados. Este beneficio es válido solo por un mes y se limita a una cancelación bonificada por cliente por mes. Si otro cliente está dispuesto a adelantar su turno, el sistema le notifica cuando un espacio anterior queda libre y le ofrece reprogramar. En caso afirmativo, se reorganiza automáticamente la agenda. Si no acepta, se consulta al siguiente cliente disponible. **Resultados esperados:**Mejor aprovechamiento del tiempo operativo, reducción de espacios vacíos en la agenda y fidelización del cliente mediante bonificaciones ante cancelaciones responsables. **Impacto en los registros del producto:**Registro automático de descuentos aplicados, cambios de horario, notificaciones enviadas, aceptación o rechazo de reprogramaciones y trazabilidad completa de la agenda. |
 | Inicio de sesión con Google y verificación de identidad | Gestión de Empleados Módulo de Roles y Permisos Autenticación y Seguridad | El sistema permite a los empleados autenticarse mediante su cuenta de Google utilizando Firebase Authentication. Cuando el usuario hace clic en "Continuar con Google", el sistema redirige al flujo de login proporcionado por Google, valida el token generado y, si el correo ya existe en el sistema, lo vincula al usuario correspondiente. Si es la primera vez que ese correo accede, se crea automáticamente un nuevo perfil de empleado con rol por defecto "empleado" y los datos básicos extraídos del perfil de Google (nombre completo y email). Este proceso reduce la fricción en el acceso y elimina la necesidad de recordar contraseñas. **Resultados esperados:**Ingreso rápido y seguro al sistema, menor carga administrativa de creación de usuarios y mejor experiencia para los empleados. **Impacto en los registros del producto:**Alta automática de usuarios Google, registro de cada inicio de sesión y asignación de rol por defecto al primer acceso. |
 
+&nbsp;
+
 ## 
 
 ## Estimación de tamaño por módulo {#estimación-de-tamaño-por-módulo}
+
+&nbsp;
 
 | Módulo | Porcentaje de participación / Producto |
 | ----- | ----- |
 | Gestión de Empleados | 5% |
 | Gestión de Clientes y Vehículos | 15% |
 | Gestión de Servicios | 15% |
-| Registro de Lavados | 20% |
+| Gestión de Insumos y Recursos físicos | 5% |
+| Registro de Lavados | 15% |
 | Planificación de Turnos | 20% |
 | Seguridad | 5% |
 | Estadísticas y Reportes | 5% |
@@ -205,7 +260,9 @@ Este módulo se encarga de la gestión de accesos al sistema, garantizando que s
 | Módulo de Roles y Permisos | 5% |
 | **Total** | 100% |
 
-## Historial del proyecto
+## Historial del proyecto {#historial-del-proyecto}
+
+&nbsp;
 
 | Año de presentación original | Porcentaje de avance logrado |
 | :---- | :---- |
@@ -217,6 +274,8 @@ Este módulo se encarga de la gestión de accesos al sistema, garantizando que s
 
 ## Entorno tecnológico y metodológico {#entorno-tecnológico-y-metodológico}
 
+&nbsp;
+
 | Lenguajes de programación: | C\#, HTML/CSS, JS |
 | :---- | :---- |
 | **Framework:** | ASP.NET Core, Entity Framework Core y Blazor |
@@ -225,9 +284,9 @@ Este módulo se encarga de la gestión de accesos al sistema, garantizando que s
 | **Metodología seleccionada:** | UP (Unified Process) |
 | **Tipo de proyecto:** | Con cliente final |
 
-## 
-
 ## Planificación de actividades {#planificación-de-actividades}
+
+&nbsp;
 
 | Actividad | Fecha de inicio | Fecha de finalización |
 | ----- | :---: | :---: |
