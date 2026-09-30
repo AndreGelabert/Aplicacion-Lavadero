@@ -988,65 +988,59 @@ A continuación se presenta el modelo de base de datos del sistema.
 
 ### CU-030 - Crear servicio
 
-| UC–030 | Crear servicio | |
-| :---- | :---- | :---- |
-| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes | |
-| **Requisitos asociados** | IRQ–04 Información sobre Servicios, IRQ–05 Información sobre Tipos de Servicio, IRQ–06 Información sobre Tipos de Vehículo | |
-| **Descripción** | El administrador crea un nuevo servicio para el lavadero con nombre, descripción, precio, tiempo estimado, tipo de servicio, tipo de vehículo y opcionalmente etapas de ejecución. | |
-| **Precondición** | El usuario debe tener rol de Administrador. Deben existir tipos de servicio y tipos de vehículo activos. | |
+| UC–030 | Crear servicio |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes, OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–04 Información sobre Servicios, IRQ–05 Tipos de Servicio, IRQ–06 Tipos de Vehículo, IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El Administrador da de alta un servicio especificando sus datos comerciales, clasificación y definiendo la receta técnica de insumos químicos requeridos para su ejecución. |  |
+| **Precondición** | El usuario debe tener rol de Administrador. Deben existir tipos de servicio, tipos de vehículo e insumos químicos activos. |  |
 | **Secuencia normal** | **Paso** | **Acción** |
-| | 1 | El administrador accede a la sección de gestión de servicios desde el menú. |
-| | 2 | El administrador hace clic en "Nuevo Servicio". |
-| | 3 | El sistema muestra un formulario con campos: Nombre, Descripción, Tipo de Servicio, Tipo de Vehículo, Precio, Tiempo Estimado. |
-| | 4 | El sistema carga los tipos de servicio y tipos de vehículo activos. |
-| | 5 | El administrador completa todos los campos obligatorios. |
-| | 6 | Opcionalmente, el administrador agrega etapas al servicio haciendo clic en "Agregar Etapa". |
-| | 7 | Para cada etapa, el administrador ingresa: Nombre, Descripción, Orden. |
-| | 8 | El administrador hace clic en "Guardar". |
-| | 9 | El sistema valida los datos (nombre único por tipo de vehículo, precio >= 0, tiempo > 0). |
-| | 10 | El sistema crea el servicio con estado "Activo". |
-| | 11 | El sistema muestra un mensaje de éxito. |
-| | 12 | El sistema registra la acción en auditoría. |
-| **Postcondición** | El servicio está registrado y disponible para ser utilizado en lavados. | |
+|  | 1 | El Administrador accede a la sección Servicios desde el menú lateral y presiona el botón "+ Nuevo Servicio". |
+|  | 2 | El sistema despliega la pantalla de carga con los campos: Nombre, Descripción, selector desplegable Tipo de Servicio, selector Tipo de Vehículo, Precio ($) y Tiempo Estimado (min). |
+|  | 3 | El Administrador completa los datos comerciales del servicio. |
+|  | 4 | En la sección inferior "Receta de Insumos Químicos", el Administrador hace clic en "+ Asignar Insumo". |
+|  | 5 | El sistema añade una fila en la grilla editable con un selector desplegable filtrado únicamente por insumos de tipo Químico Medible y un campo numérico para la Dosis Teórica (junto con la unidad de medida fija del insumo: ml, gr, etc.). |
+|  | 6 | El Administrador selecciona el insumo químico e ingresa la cantidad teórica estándar por lavado. |
+|  | 7 | Opcionalmente, el Administrador define las fases operativas en la pestaña "Etapas del Servicio" (CU-040). |
+|  | 8 | El Administrador presiona el botón "Guardar". |
+|  | 9 | El sistema valida que el nombre sea único para el tipo de rodado, precio mayor o igual a cero, tiempo mayor a cero y que las dosis de insumos sean mayores a cero. |
+|  | 10 | El sistema persiste el nuevo documento en la colección servicios de Firestore con estado "Activo", registra la acción en auditoría y muestra un Toast verde: "Servicio y receta técnica registrados exitosamente". |
+| **Postcondición** | El servicio queda registrado en el catálogo y su receta técnica regirá el consumo de químicos en taller. |  |
 | **Excepciones** | **Paso** | **Acción** |
-| | 9a | Si ya existe un servicio con el mismo nombre para ese tipo de vehículo, el sistema informa el error. |
-| | 9b | Si hay errores de validación, el sistema muestra los errores específicos. |
+|  | 9a | Si el nombre ya existe para ese tipo de vehículo, el sistema marca el campo en rojo y muestra el mensaje: "Ya existe un servicio con esa denominación para el tipo de vehículo seleccionado". |
+|  | 9b | Si se intenta asignar una dosis menor o igual a cero, el sistema bloquea el guardado: "La dosis teórica debe ser un valor positivo". |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
-| | 10 | 1 segundo |
-| **Frecuencia** | Ocasional | |
-| **Estabilidad** | Alta | |
-| **Comentarios** | Las etapas permiten dividir el servicio en pasos que se pueden marcar como completados durante el lavado. | |
+|  | 9-10 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Los insumos de la receta determinan la deducción de existencias al completar las etapas de lavado. |  |
 
 ---
 
 ### CU-031 - Modificar servicio
 
-| UC–031 | Modificar servicio | |
-| :---- | :---- | :---- |
-| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes | |
-| **Requisitos asociados** | IRQ–04 Información sobre Servicios | |
-| **Descripción** | El administrador actualiza los detalles de un servicio existente, incluyendo nombre, descripción, precio, tiempo estimado y etapas. | |
-| **Precondición** | El usuario debe tener rol de Administrador. El servicio debe existir en el sistema. | |
+| UC–031 | Modificar servicio |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes, OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–04 Información sobre Servicios, IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El Administrador actualiza las condiciones comerciales, etapas y dosis de insumos químicos asignadas a un servicio existente. |  |
+| **Precondición** | El usuario debe tener rol de Administrador. El servicio debe existir en el sistema. |  |
 | **Secuencia normal** | **Paso** | **Acción** |
-| | 1 | Se ejecuta el caso de uso CU-034 Consultar servicios. |
-| | 2 | El administrador selecciona el servicio a modificar. |
-| | 3 | El sistema muestra el formulario de edición con los datos actuales. |
-| | 4 | El administrador modifica los campos deseados. |
-| | 5 | El administrador puede agregar, modificar o eliminar etapas. |
-| | 6 | El administrador hace clic en "Guardar". |
-| | 7 | El sistema valida los datos. |
-| | 8 | El sistema actualiza el registro del servicio. |
-| | 9 | El sistema actualiza los paquetes que contienen este servicio (recalcula precios y tiempos). |
-| | 10 | El sistema muestra un mensaje de éxito. |
-| | 11 | El sistema registra la acción en auditoría. |
-| **Postcondición** | Los datos del servicio han sido actualizados. | |
+|  | 1 | Se ejecuta CU-034 Consultar servicios y el Administrador hace clic en el botón de edición (icono lápiz) del servicio deseado. |
+|  | 2 | El sistema abre el formulario de edición precargando los valores vigentes y la tabla de insumos dosificados. |
+|  | 3 | El Administrador ajusta los campos deseados (Precio, Tiempo Estimado, Descripción) o modifica las cantidades de la receta de insumos químicos. |
+|  | 4 | El Administrador hace clic en "Guardar Cambios". |
+|  | 5 | El sistema valida los datos modificados e impacta las modificaciones en Firestore. |
+|  | 6 | Si el servicio compone paquetes activos, el sistema recalcula automáticamente los precios y tiempos finales de dichos paquetes. |
+|  | 7 | El sistema registra el evento en auditoría y muestra un Toast verde: "Servicio actualizado correctamente". |
+| **Postcondición** | El servicio queda actualizado. Los cambios de dosificación rigen para los lavados que se inicien a partir de ese momento. |  |
 | **Excepciones** | **Paso** | **Acción** |
-| | 7a | Si hay errores de validación, el sistema muestra los errores específicos. |
+|  | 5a | Si se ingresan valores negativos o incompletos, el sistema frena el guardado y resalta los errores. |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
-| | 8-9 | 2 segundos |
-| **Frecuencia** | Ocasional | |
-| **Estabilidad** | Media | |
-| **Comentarios** | Incluye el caso de uso CU-034 Consultar servicios. La modificación de un servicio afecta a los paquetes que lo contienen. | |
+|  | 5-7 | 2 segundos |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Media |  |
+| **Comentarios** | Las modificaciones no alteran los consumos históricos asentados en lavados finalizados. |  |
 
 ---
 
@@ -1277,32 +1271,27 @@ A continuación se presenta el modelo de base de datos del sistema.
 
 ### CU-040 - Gestionar etapas del servicio
 
-| UC–040 | Gestionar etapas del servicio | |
-| :---- | :---- | :---- |
-| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes | |
-| **Requisitos asociados** | IRQ–04 Información sobre Servicios | |
-| **Descripción** | El administrador define las etapas o fases en las que se divide un servicio para su ejecución, permitiendo un seguimiento granular del progreso. | |
-| **Precondición** | El usuario debe tener rol de Administrador. El servicio debe existir. | |
+| UC–040 | Gestionar etapas del servicio |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–03 Gestión de Servicios y Paquetes, OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–04 Información sobre Servicios, IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El Administrador organiza la secuencia de fases operativas de un servicio y asocia qué insumo químico específico se consume al concluir cada fase. |  |
+| **Precondición** | El usuario debe ser Administrador. Se encuentra abierto el formulario de creación o edición de servicio. |  |
 | **Secuencia normal** | **Paso** | **Acción** |
-| | 1 | El administrador accede a la edición del servicio (dentro de CU-030 o CU-031). |
-| | 2 | El sistema muestra la sección de etapas con las etapas actuales (si existen). |
-| | 3 | El administrador puede: |
-| | 3a | Agregar nueva etapa: clic en "Agregar Etapa", ingresa Nombre, Descripción, Orden. |
-| | 3b | Modificar etapa existente: edita los campos de la etapa. |
-| | 3c | Eliminar etapa: clic en botón eliminar de la etapa. |
-| | 3d | Reordenar etapas: arrastra y suelta para cambiar el orden. |
-| | 4 | El administrador guarda los cambios del servicio. |
-| | 5 | El sistema valida que los nombres de etapa sean únicos dentro del servicio. |
-| | 6 | El sistema actualiza las etapas del servicio. |
-| | 7 | El sistema registra la acción en auditoría. |
-| **Postcondición** | Las etapas del servicio han sido actualizadas. | |
+|  | 1 | El Administrador accede a la pestaña "Etapas del Servicio" dentro del formulario de servicio. |
+|  | 2 | El sistema presenta la lista interactiva de etapas configuradas. |
+|  | 3 | El Administrador puede añadir una etapa haciendo clic en "+ Agregar Etapa", completando Nombre, Orden y seleccionando en el desplegable el Insumo Químico que se consume en dicha fase junto con su Dosis Teórica. |
+|  | 4 | El Administrador puede arrastrar las tarjetas para reordenar la secuencia operativa o presionar el botón de cesto rojo para eliminar etapas. |
+|  | 5 | El Administrador confirma los cambios del servicio. |
+|  | 6 | El sistema valida que los nombres de etapa no se repitan y persiste la estructura embebida en el documento del servicio. |
+| **Postcondición** | La secuencia de etapas y su vinculación con insumos quedan parametrizadas para el seguimiento en taller. |  |
 | **Excepciones** | **Paso** | **Acción** |
-| | 5a | Si hay nombres duplicados, el sistema informa el error. |
+|  | 6a | Si existen etapas con nombres duplicados dentro del mismo servicio, el sistema alerta: "No pueden existir dos etapas con el mismo nombre en un servicio". |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
-| | 6 | 1 segundo |
-| **Frecuencia** | Ocasional | |
-| **Estabilidad** | Media | |
-| **Comentarios** | Las etapas se ejecutan secuencialmente durante el lavado. Este caso de uso se realiza dentro de CU-030 o CU-031. | |
+|  | 5-6 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Media |  |
+| **Comentarios** | Permite que al completar la etapa en el lavado, el sistema sepa con exactitud qué químico deducir del stock. |  |
 
 ---
 
@@ -1639,29 +1628,33 @@ A continuación se presenta el modelo de base de datos del sistema.
 
 ### CU-052 - Finalizar etapa de servicio
 
-| UC–052 | Finalizar etapa de servicio | |
-| :---- | :---- | :---- |
-| **Objetivos asociados** | OBJ–04 Registro y Gestión de Lavados | |
-| **Requisitos asociados** | IRQ–08 Información sobre Lavados | |
-| **Descripción** | El personal marca como finalizada una etapa de un servicio en ejecución. | |
-| **Precondición** | El usuario debe estar autenticado. La etapa debe estar en estado "EnProceso". | |
+| UC–052 | Finalizar etapa de servicio |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–04 Registro y Gestión de Lavados, OBJ–13 Gestión de Insumos y Stock, OBJ–12 Notificación al Cliente |  |
+| **Requisitos asociados** | IRQ–08 Información sobre Lavados, IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El operario finaliza una etapa en curso, confirmando o ajustando el consumo real de insumos químicos utilizados, impactando automáticamente el Kardex. |  |
+| **Precondición** | El usuario debe estar autenticado. La etapa seleccionada debe estar en estado "EnProceso". |  |
 | **Secuencia normal** | **Paso** | **Acción** |
-| | 1 | Se ejecuta el caso de uso CU-049 Ver detalle de lavado. |
-| | 2 | El usuario hace clic en "Finalizar" en la etapa en proceso. |
-| | 3 | El sistema registra la fecha y hora de finalización de la etapa. |
-| | 4 | El sistema actualiza el estado de la etapa a "Completada". |
-| | 5 | Si es la última etapa del servicio, el servicio se marca como completado automáticamente. |
-| | 6 | El sistema puede ejecutar CU-079 Notificar etapa finalizada (si está configurado). |
-| | 7 | El sistema actualiza la vista del detalle del lavado. |
-| | 8 | El sistema registra la acción en auditoría. |
-| **Postcondición** | La etapa está completada. | |
+|  | 1 | Desde la pantalla de detalle del lavado (CU-049), el usuario presiona el botón "Finalizar Etapa" en la fase que se encuentra en ejecución. |
+|  | 2 | El sistema abre la ventana modal "Cierre de Etapa y Consumo de Insumos". |
+|  | 3 | El sistema lista los insumos químicos asignados a la etapa, precargando en el campo Cantidad Real el valor de la dosis teórica configurada en la receta. |
+|  | 4 | Si la cantidad real coincide con la receta, el operario conserva el valor precargado; si hubo un mayor o menor uso de producto, el usuario edita el campo numérico Cantidad Real e ingresa obligatoriamente el motivo en el área de texto Justificación de Desvío. |
+|  | 5 | El usuario presiona el botón "Confirmar Cierre". |
+|  | 6 | El sistema valida que las cantidades reales no sean negativas y que los desvíos cuenten con justificación. |
+|  | 7 | El sistema ejecuta una transacción en Firestore: actualiza la etapa a "Completada" con su hora de fin, descuenta el stock en la colección insumos y genera los documentos correspondientes en movimientos_stock (Kardex). |
+|  | 8 | Si el insumo alcanza o perfora su nivel mínimo, el sistema evalúa de forma asíncrona la reposición automática (CU-106). |
+|  | 9 | Si la etapa finalizada era la última del servicio, el servicio pasa automáticamente a "Completado". |
+|  | 10 | Si está habilitada la notificación, se despacha el mensaje de avance por WhatsApp al cliente (CU-079). |
+|  | 11 | El sistema cierra el modal, refresca la grilla del lavado y emite un Toast verde: "Etapa completada y consumo registrado en stock". |
+| **Postcondición** | La etapa queda cerrada, el stock físico actualizado y el movimiento de Kardex registrado de forma inmutable. |  |
 | **Excepciones** | **Paso** | **Acción** |
-| | - | - |
+|  | 6a | Si se modificó la cantidad teórica pero el campo Justificación de Desvío está en blanco, el sistema marca el campo en rojo: "Debe ingresar una justificación si la cantidad real difiere de la receta teórica". |
+|  | 7a | Si el stock actual es insuficiente para la deducción, el sistema asienta el consumo en negativo y emite una alerta flotante de stock en rotura crítica para el administrador. |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
-| | 3-5 | 1 segundo |
-| **Frecuencia** | Muy frecuente | |
-| **Estabilidad** | Alta | |
-| **Comentarios** | Incluye el caso de uso CU-049 Ver detalle de lavado. | |
+|  | 6-11 | 2 segundos |
+| **Frecuencia** | Muy frecuente |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Agiliza la carga operativa diaria al sugerir la dosis estándar sin requerir digitación manual obligatoria si no hubo desvíos. |  |
 
 ---
 
@@ -1695,92 +1688,81 @@ A continuación se presenta el modelo de base de datos del sistema.
 
 ### CU-054 - Finalizar lavado completo
 
-| UC–054 | Finalizar lavado completo | |
-| :---- | :---- | :---- |
-| **Objetivos asociados** | OBJ–04 Registro y Gestión de Lavados | |
-| **Requisitos asociados** | IRQ–08 Información sobre Lavados | |
-| **Descripción** | El personal marca como completado un lavado cuando todos los servicios han sido finalizados. Se registra el tiempo de finalización total. | |
-| **Precondición** | El usuario debe estar autenticado. El lavado debe estar en estado "EnProceso". | |
+| UC–054 | Finalizar lavado completo |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–04 Registro y Gestión de Lavados, OBJ–12 Notificación al Cliente, OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–08 Información sobre Lavados, IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El personal finaliza la orden de trabajo general del vehículo, consolidando servicios completados, costo total de insumos aplicados y despachando el aviso de retiro. |  |
+| **Precondición** | El lavado debe estar en estado "EnProceso" y todos sus servicios componentes finalizados o cancelados. |  |
 | **Secuencia normal** | **Paso** | **Acción** |
-| | 1 | Se ejecuta el caso de uso CU-049 Ver detalle de lavado. |
-| | 2 | El usuario hace clic en "Finalizar Lavado". |
-| | 3 | El sistema verifica el estado de todos los servicios. |
-| | 4a | Si todos los servicios están completados, el sistema marca el lavado como "Realizado". |
-| | 4b | Si hay servicios pendientes/parciales, el sistema marca como "RealizadoParcialmente" y solicita motivo. |
-| | 5 | El sistema registra la fecha y hora de finalización. |
-| | 6 | El sistema ejecuta CU-080 Notificar lavado finalizado (si está configurado). |
-| | 7 | El sistema actualiza la vista y muestra mensaje de éxito. |
-| | 8 | El sistema registra la acción en auditoría. |
-| **Postcondición** | El lavado está finalizado (Realizado o RealizadoParcialmente). | |
+|  | 1 | En la ficha del lavado (CU-049), el usuario presiona el botón principal "Finalizar Lavado Completo". |
+|  | 2 | El sistema abre el diálogo modal "Resumen de Finalización de Lavado", exhibiendo la lista de servicios realizados, el costo total acumulado de insumos químicos deducidos en el Kardex y el estado de pagos (saldo pendiente o pagado). |
+|  | 3 | El usuario hace clic en el botón "Confirmar Finalización". |
+|  | 4 | El sistema actualiza en Firestore el documento lavados: asigna Estado = "Realizado" y registra TiempoFinalizacion = ahora. |
+|  | 5 | El sistema dispara automáticamente la notificación por WhatsApp informando al cliente que su vehículo está listo para retirar (CU-080). |
+|  | 6 | El sistema cierra el modal, actualiza el estado visual del lavado a "Realizado" y muestra un Toast verde: "Lavado finalizado. Cliente notificado para el retiro". |
+| **Postcondición** | El lavado queda en estado finalizado y disponible para el registro de retiro vehicular. |  |
 | **Excepciones** | **Paso** | **Acción** |
-| | 4b.1 | Si el usuario no proporciona motivo, el sistema lo solicita. |
+|  | 2a | Si existen servicios o etapas aún en estado "EnProceso", el sistema bloquea el botón de finalización indicando: "No se puede finalizar el lavado: existen tareas operativas pendientes de cierre". |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
-| | 4-6 | 2 segundos |
-| **Frecuencia** | Muy frecuente | |
-| **Estabilidad** | Alta | |
-| **Comentarios** | Incluye el caso de uso CU-049 Ver detalle de lavado. | |
+|  | 3-6 | 2 segundos |
+| **Frecuencia** | Muy frecuente |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | El vehículo permanece en el taller con EstadoRetiro = "NoRetirado" hasta la ejecución de CU-059. |  |
 
 ---
 
 ### CU-055 - Cancelar lavado
 
-| UC–055 | Cancelar lavado | |
-| :---- | :---- | :---- |
-| **Objetivos asociados** | OBJ–04 Registro y Gestión de Lavados | |
-| **Requisitos asociados** | IRQ–08 Información sobre Lavados | |
-| **Descripción** | El personal cancela un lavado completo indicando el motivo de cancelación. | |
-| **Precondición** | El usuario debe estar autenticado. El lavado debe estar en estado "EnProceso". | |
+| UC–055 | Cancelar lavado |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–04 Registro y Gestión de Lavados, OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–08 Información sobre Lavados, IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El personal anula un lavado en curso, registrando el motivo obligatorio y preservando en el Kardex como merma los insumos químicos que ya hayan sido aplicados en etapas previas. |  |
+| **Precondición** | El lavado debe encontrarse en estado "EnProceso". |  |
 | **Secuencia normal** | **Paso** | **Acción** |
-| | 1 | Se ejecuta el caso de uso CU-049 Ver detalle de lavado. |
-| | 2 | El usuario hace clic en "Cancelar Lavado". |
-| | 3 | El sistema muestra un formulario solicitando el motivo de cancelación (obligatorio). |
-| | 4 | El usuario ingresa el motivo de cancelación. |
-| | 5 | El sistema solicita confirmación de la acción. |
-| | 6 | El usuario confirma la cancelación. |
-| | 7 | El sistema cambia el estado del lavado a "Cancelado". |
-| | 8 | El sistema registra el motivo y la fecha de cancelación. |
-| | 9 | El sistema muestra un mensaje de éxito. |
-| | 10 | El sistema registra la acción en auditoría. |
-| **Postcondición** | El lavado ha sido cancelado. | |
+|  | 1 | En la vista de detalle del lavado, el usuario hace clic en el botón "Cancelar Lavado". |
+|  | 2 | El sistema despliega la ventana modal "Anulación de Lavado". Si se habían completado etapas previamente, el sistema muestra una advertencia en amarillo: "Atención: Los insumos consumidos en etapas previas quedarán registrados como merma operativa en el Kardex". |
+|  | 3 | El usuario completa el campo obligatorio Motivo de Cancelación y presiona "Confirmar Anulación". |
+|  | 4 | El sistema valida que el motivo contenga texto justificativo. |
+|  | 5 | El sistema actualiza el documento en lavados: Estado = "Cancelado", registra MotivoCancelacion y marca las etapas no iniciadas como canceladas. |
+|  | 6 | Para los insumos consumidos en las etapas concluidas antes de la anulación, el sistema asienta en sus registros de movimientos_stock el concepto de merma por cancelación. |
+|  | 7 | El sistema libera el box de atención, registra auditoría y muestra un Toast informativo: "Lavado cancelado y mermas asentadas en Kardex". |
+| **Postcondición** | El lavado queda cancelado y se preserva la exactitud del inventario físico. |  |
 | **Excepciones** | **Paso** | **Acción** |
-| | 4a | Si no se ingresa motivo, el sistema informa que es obligatorio. |
-| | 6a | Si el usuario no confirma, se aborta la operación. |
+|  | 4a | Si el campo de motivo se encuentra vacío, el sistema marca el borde en rojo e impide continuar. |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
-| | 7-8 | 1 segundo |
-| **Frecuencia** | Ocasional | |
-| **Estabilidad** | Alta | |
-| **Comentarios** | Incluye el caso de uso CU-049 Ver detalle de lavado. El motivo de cancelación es obligatorio para trazabilidad. | |
+|  | 4-7 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Garantiza que no se reintegren ficticiamente al stock productos químicos que ya fueron rociados o aplicados sobre el rodado. |  |
 
 ---
 
 ### CU-056 - Cancelar servicio en lavado
 
-| UC–056 | Cancelar servicio en lavado | |
-| :---- | :---- | :---- |
-| **Objetivos asociados** | OBJ–04 Registro y Gestión de Lavados | |
-| **Requisitos asociados** | IRQ–08 Información sobre Lavados | |
-| **Descripción** | El personal cancela un servicio específico dentro de un lavado indicando el motivo, permitiendo que el lavado continúe con los servicios restantes. | |
-| **Precondición** | El usuario debe estar autenticado. El lavado debe estar en estado "EnProceso". El servicio debe estar pendiente o en proceso. | |
+| UC–056 | Cancelar servicio en lavado |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–04 Registro y Gestión de Lavados, OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–08 Información sobre Lavados, IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El personal anula un servicio puntual dentro de un lavado compuesto, recalculando los importes a cobrar y asentando como merma los insumos de las etapas ya ejecutadas. |  |
+| **Precondición** | El servicio no debe encontrarse finalizado ni cancelado previamente. |  |
 | **Secuencia normal** | **Paso** | **Acción** |
-| | 1 | Se ejecuta el caso de uso CU-049 Ver detalle de lavado. |
-| | 2 | El usuario hace clic en "Cancelar" en el servicio correspondiente. |
-| | 3 | El sistema muestra un formulario solicitando el motivo de cancelación. |
-| | 4 | El usuario ingresa el motivo de cancelación. |
-| | 5 | El sistema solicita confirmación. |
-| | 6 | El usuario confirma la cancelación. |
-| | 7 | El sistema marca el servicio como "Cancelado". |
-| | 8 | El sistema recalcula el precio total del lavado. |
-| | 9 | El sistema actualiza la vista del detalle del lavado. |
-| | 10 | El sistema registra la acción en auditoría. |
-| **Postcondición** | El servicio ha sido cancelado y el precio del lavado recalculado. | |
+|  | 1 | En la grilla de servicios del lavado, el usuario hace clic en el botón de cancelar correspondiente a la fila del servicio. |
+|  | 2 | El sistema abre el modal de cancelación solicitando el Motivo de Cancelación y advirtiendo el recalculo de importes. |
+|  | 3 | El usuario ingresa la justificación y hace clic en "Confirmar". |
+|  | 4 | El sistema marca la subestructura ServicioEnLavado como "Cancelado". |
+|  | 5 | El sistema descuenta el importe del servicio en Precio y SaldoPendiente del lavado. |
+|  | 6 | Si el servicio poseía etapas previas completadas, sus insumos se consolidan bajo causa merma en movimientos_stock. |
+|  | 7 | El sistema actualiza la vista y emite un Toast verde: "Servicio cancelado e importes recalculados". |
+| **Postcondición** | El servicio queda anulado sin interrumpir la ejecución de los demás servicios del vehículo. |  |
 | **Excepciones** | **Paso** | **Acción** |
-| | 6a | Si el usuario no confirma, se aborta la operación. |
-| | 7a | Si era el único servicio, el sistema sugiere cancelar el lavado completo. |
+|  | 3a | Si el servicio ya figuraba como "Completado", el sistema bloquea la acción indicando que no se pueden anular servicios concluidos. |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
-| | 7-8 | 1 segundo |
-| **Frecuencia** | Ocasional | |
-| **Estabilidad** | Media | |
-| **Comentarios** | Incluye el caso de uso CU-049 Ver detalle de lavado. | |
+|  | 4-7 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Mantiene la coherencia entre el trabajo real efectuado y el cobro final en caja. |  |
 
 ---
 
@@ -2525,9 +2507,9 @@ A continuación se presenta el modelo de base de datos del sistema.
 | UC–082 | Consultar estadísticas básicas | |
 | :---- | :---- | :---- |
 | **Objetivos asociados** | OBJ–08 Módulo de Estadísticas y Reportes | |
-| **Requisitos asociados** | IRQ–08 Información sobre Lavados, IRQ–02 Información sobre Clientes | |
-| **Descripción** | El administrador consulta estadísticas sobre la actividad general del lavadero: lavados realizados, clientes activos, servicios más solicitados, cumplimiento de turnos. | |
-| **Precondición** | El usuario debe tener rol de Administrador. | |
+| **Requisitos asociados** | IRQ–08 Información sobre Lavados, IRQ–02 Información sobre Clientes, IRQ–13 Información sobre Insumos y Stock | |
+| **Descripción** | El usuario consulta estadísticas sobre la actividad general del lavadero: lavados realizados, clientes activos, servicios más solicitados, cumplimiento de turnos y stock. | |
+| **Precondición** | El usuario debe estar autenticado en el sistema. | |
 | **Secuencia normal** | **Paso** | **Acción** |
 | | 1 | El administrador accede a la sección de estadísticas. |
 | | 2 | El sistema calcula y muestra indicadores clave: |
@@ -2538,6 +2520,9 @@ A continuación se presenta el modelo de base de datos del sistema.
 | | 2e | Servicios más solicitados. |
 | | 2f | Promedio de tiempo por lavado. |
 | | 2g | Tasa de cumplimiento de turnos. |
+| | 2h | Alertas de Stock Mínimo. |
+| | 2i | Insumos con Mayor Rotación. |
+| | 2j | Órdenes de Compra Pendientes de Recepción. |
 | | 3 | El administrador puede filtrar por rango de fechas. |
 | | 4 | El sistema actualiza las estadísticas según el filtro. |
 | **Postcondición** | El administrador visualiza las estadísticas del lavadero. | |
@@ -2582,7 +2567,7 @@ A continuación se presenta el modelo de base de datos del sistema.
 | UC–084 | Generar reportes | |
 | :---- | :---- | :---- |
 | **Objetivos asociados** | OBJ–08 Módulo de Estadísticas y Reportes | |
-| **Requisitos asociados** | IRQ–08 Información sobre Lavados, IRQ–02 Información sobre Clientes | |
+| **Requisitos asociados** | IRQ–08 Información sobre Lavados, IRQ–02 Información sobre Clientes, IRQ–13 Información sobre Insumos y Stock | |
 | **Descripción** | El administrador genera reportes personalizables de los diversos aspectos del sistema para un período de tiempo específico. | |
 | **Precondición** | El usuario debe tener rol de Administrador. | |
 | **Secuencia normal** | **Paso** | **Acción** |
@@ -2592,6 +2577,8 @@ A continuación se presenta el modelo de base de datos del sistema.
 | | 2b | Reporte de ingresos (por período, método de pago). |
 | | 2c | Reporte de clientes (nuevos registros, frecuencia). |
 | | 2d | Reporte de servicios (más solicitados, ingresos por servicio). |
+| | 2e | Reporte de insumos (nivel de stock, rotación). |
+| | 2f | Reporte de órdenes de compra (pendientes de recepción, finalizadas y proveedores a cargo). |
 | | 3 | El administrador selecciona el tipo de reporte. |
 | | 4 | El administrador configura los filtros del reporte (fechas, criterios). |
 | | 5 | El administrador hace clic en "Generar Reporte". |
@@ -2729,10 +2716,10 @@ A continuación se presenta el modelo de base de datos del sistema.
 | :---- | :---- | :---- |
 | **Objetivos asociados** | OBJ–07 Registro de Auditoría | |
 | **Requisitos asociados** | IRQ–10 Información de Auditoría | |
-| **Descripción** | El sistema almacena automáticamente todas las acciones relevantes de los usuarios en un historial para fines de auditoría, incluyendo creación, modificación, activación y desactivación de entidades. | |
+| **Descripción** | El sistema almacena automáticamente todas las acciones relevantes de los usuarios en un historial para fines de auditoría, incluyendo creación, modificación, compras, ajustes, activación y desactivación de entidades. | |
 | **Precondición** | Un usuario está realizando una acción en el sistema. | |
 | **Secuencia normal** | **Paso** | **Acción** |
-| | 1 | El usuario ejecuta una acción (crear, modificar, desactivar, reactivar, login, logout). |
+| | 1 | El usuario ejecuta una acción (crear, modificar, desactivar, reactivar, compra o ajuste, login, logout). |
 | | 2 | El sistema captura el ID y email del usuario actual. |
 | | 3 | El sistema determina el tipo de acción y la entidad afectada. |
 | | 4 | El sistema crea un registro de auditoría con: |
@@ -2873,3 +2860,496 @@ A continuación se presenta el modelo de base de datos del sistema.
 | **Frecuencia** | Baja |  |
 | **Estabilidad** | Alta |  |
 | **Comentarios** | Incluye el caso de uso CU-091 Consultar roles. |  |
+
+---
+
+### Módulo: Gestión de Insumos y Stock
+
+#### CU-093 - Crear insumo
+
+| UC–093 | Crear insumo |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock, OBJ–09 Gestión de Seguridad |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El Administrador da de alta un insumo en el catálogo del lavadero, definiendo su tipología, unidad de medida, umbrales de reabastecimiento y proveedores autorizados. |  |
+| **Precondición** | El usuario debe tener rol de Administrador. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | El Administrador accede a "Inventario y Stock" desde la barra lateral y presiona el botón "+ Nuevo Insumo". |
+|  | 2 | El sistema abre la ventana modal "Registrar Nuevo Insumo", presentando los campos: Nombre del Insumo, selector desplegable Tipo de Insumo (Químico Medible, Consumible Físico, Activo/Herramienta), selector Unidad de Medida (ml, l, gr, kg, unidad), campos numéricos Stock Mínimo, Cantidad de Reabastecimiento, Costo Unitario ($), checkbox Permite Reabastecimiento Automático y selector múltiple Proveedores Vinculados. |
+|  | 3 | El Administrador completa los datos y asocia al menos un proveedor comercial. |
+|  | 4 | El Administrador hace clic en "Guardar Insumo". |
+|  | 5 | El sistema valida que el nombre no exista en el lavadero, que los umbrales numéricos sean mayores o iguales a cero y que se haya seleccionado al menos un proveedor si tiene reabastecimiento automático habilitado. |
+|  | 6 | El sistema crea el documento en la colección insumos con StockActual = 0 y Estado = "Activo". |
+|  | 7 | El sistema asienta el evento en registros_auditoria (CU-088). |
+|  | 8 | El sistema cierra la ventana modal, actualiza la tabla de inventario y exhibe un Toast verde: "Insumo registrado exitosamente". |
+| **Postcondición** | El insumo queda disponible para compras, dosificaciones y control de stock. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 5a | Si el nombre del insumo ya se encuentra registrado, el sistema resalta el campo en rojo y notifica: "Ya existe un insumo registrado con ese nombre". |
+|  | 5b | Si se activa el reabastecimiento automático pero no se seleccionó ningún proveedor, el sistema frena el guardado: "Debe asignar al menos un proveedor para habilitar la compra automática". |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 5-8 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Las existencias físicas iniciales deben cargarse posteriormente mediante un ingreso manual (CU-103) o recepción de compra (CU-109). |  |
+
+---
+
+#### CU-094 - Modificar insumo
+
+| UC–094 | Modificar insumo |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El Administrador actualiza la denominación, costos estimados, umbrales de alerta y proveedores asociados a un insumo existente. |  |
+| **Precondición** | El usuario debe ser Administrador y el insumo debe estar registrado. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | Se ejecuta CU-097 Consultar inventario y el Administrador hace clic en el botón con icono de lápiz "Editar" en la fila del insumo. |
+|  | 2 | El sistema despliega el modal "Modificar Insumo", precargando los datos vigentes. Los campos Tipo de Insumo, Unidad de Medida y Stock Actual se presentan deshabilitados en modo de solo lectura para preservar la consistencia histórica del Kardex. |
+|  | 3 | El Administrador modifica los campos editables (Nombre, Stock Mínimo, Cantidad de Reabastecimiento, Costo Unitario, Proveedores Vinculados). |
+|  | 4 | El Administrador presiona "Guardar Cambios". |
+|  | 5 | El sistema valida la consistencia de los datos e impacta la actualización en Firestore. |
+|  | 6 | El sistema registra la acción en auditoría, cierra el modal y muestra un Toast verde: "Insumo actualizado exitosamente". |
+| **Postcondición** | Los parámetros del insumo quedan actualizados. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 5a | Si se ingresan valores negativos en stock mínimo o cantidad de reabastecimiento, el sistema alerta los errores específicos y cancela la operación. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 5-6 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Para alterar el stock físico actual debe utilizarse el procedimiento de ajuste correspondiente. |  |
+
+---
+
+#### CU-095 - Desactivar insumo
+
+| UC–095 | Desactivar insumo |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El Administrador aplica una baja lógica sobre un insumo para que no pueda ser seleccionado en nuevas recetas ni compras. |  |
+| **Precondición** | El usuario debe ser Administrador. El insumo debe estar activo. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | En la tabla de inventario (CU-097), el Administrador presiona el botón "Desactivar" en la fila del insumo. |
+|  | 2 | El sistema verifica que el insumo no forme parte de órdenes de compra pendientes de arribo ni de lavados en curso. |
+|  | 3 | El sistema abre la ventana modal de confirmación: "¿Está seguro de que desea desactivar el insumo [Nombre]? Ya no podrá seleccionarse en nuevas órdenes ni recetas", con botones "Confirmar" y "Cancelar". |
+|  | 4 | El Administrador presiona "Confirmar". |
+|  | 5 | El sistema actualiza en Firestore el campo Estado = "Inactivo" del insumo. |
+|  | 6 | El sistema registra el evento en auditoría, refresca la grilla y emite un Toast verde: "Insumo desactivado exitosamente". |
+| **Postcondición** | El insumo pasa a estado inactivo sin borrar su historial de movimientos. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 2a | Si el insumo está incluido en una orden de compra pendiente de entrega, el sistema bloquea la acción: "No es posible desactivar el insumo: existen órdenes de compra pendientes que lo contienen". |
+|  | 4a | Si el Administrador presiona cancelar, se cierra el diálogo sin alterar la base de datos. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 5-6 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Media |  |
+| **Comentarios** | La baja es lógica para preservar la integridad de los reportes históricos. |  |
+
+---
+
+#### CU-096 - Reactivar insumo
+
+| UC–096 | Reactivar insumo |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El Administrador habilita nuevamente un insumo inactivo para que pueda volver a ser adquirido y utilizado en el lavadero. |  |
+| **Precondición** | El usuario debe tener rol de Administrador. El insumo debe estar inactivo. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | El Administrador aplica el filtro Inactivos en la consulta de inventario (CU-097). |
+|  | 2 | En la fila del insumo, presiona el botón verde "Reactivar". |
+|  | 3 | El sistema abre el modal de confirmación: "¿Desea reactivar el insumo [Nombre]?". |
+|  | 4 | El Administrador presiona "Confirmar Reactivación". |
+|  | 5 | El sistema actualiza en Firestore el campo Estado = "Activo". |
+|  | 6 | El sistema asienta la reactivación en auditoría y muestra un Toast verde: "Insumo reactivado exitosamente". |
+| **Postcondición** | El insumo vuelve a estar activo y disponible en el sistema. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 4a | Si el Administrador cancela la confirmación, se aborta la operación. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 5-6 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Restaura inmediatamente la visibilidad del producto en catálogos y recetas. |  |
+
+---
+
+#### CU-097 - Consultar inventario y alertas de stock
+
+| UC–097 | Consultar inventario y alertas de stock |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El personal visualiza el catálogo de insumos con control de existencias en tiempo real, identificando mediante indicadores visuales rojos aquellos artículos en o bajo el stock mínimo. |  |
+| **Precondición** | El usuario debe estar autenticado en el sistema. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | El usuario accede a la sección "Inventario y Stock" desde el menú principal. |
+|  | 2 | El sistema recupera los documentos de insumos en Firestore aplicando por defecto el filtro de activos. |
+|  | 3 | El sistema despliega la tabla con las columnas: Nombre, Tipo, Stock Actual (con badge rojo si es menor o igual al Stock Mínimo, amarillo si está próximo y verde si es óptimo), Stock Mínimo, Unidad de Medida, Costo Unitario, Estado y Acciones (Editar, Desactivar, Ajustar). |
+|  | 4 | El usuario puede utilizar la barra de búsqueda en tiempo real "Buscar insumo...", el selector de tipo (Químicos, Consumibles, Herramientas) o marcar el checkbox "Solo bajo stock mínimo". |
+|  | 5 | El sistema actualiza de forma reactiva la tabla de resultados. |
+|  | 6 | El usuario navega entre las páginas mediante los controles de paginación. |
+| **Postcondición** | El usuario visualiza el estado del inventario y detecta faltantes críticos. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 2a | Si no hay insumos registrados, el sistema muestra el mensaje: "No hay insumos registrados en el inventario". |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 2-3 | 1 segundo |
+| **Frecuencia** | Muy frecuente |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Punto central de monitoreo operativo para reabastecimiento del taller. |  |
+
+---
+
+#### CU-098 - Crear proveedor
+
+| UC–098 | Crear proveedor |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock, OBJ–09 Gestión de Seguridad |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El Administrador registra una nueva firma proveedora con sus datos fiscales y de contacto para la emisión de pedidos y cotizaciones. |  |
+| **Precondición** | El usuario debe tener rol de Administrador. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | El Administrador accede a "Proveedores" en el menú lateral y presiona el botón "+ Nuevo Proveedor". |
+|  | 2 | El sistema abre la ventana modal "Registrar Proveedor", con los campos: Razón Social, CUIT, Teléfono, Dirección y Correo Electrónico. |
+|  | 3 | El Administrador completa los campos y hace clic en "Guardar". |
+|  | 4 | El sistema valida que la Razón Social y el CUIT no existan previamente y verifica el formato válido de CUIT y correo electrónico. |
+|  | 5 | El sistema crea el documento en la colección proveedores con Estado = "Activo" y fecha de creación. |
+|  | 6 | El sistema asienta el alta en registros_auditoria. |
+|  | 7 | El sistema cierra el modal, incorpora el nuevo proveedor en la grilla y muestra un Toast verde: "Proveedor registrado exitosamente". |
+| **Postcondición** | El proveedor queda disponible para vincular a insumos y emitir órdenes de compra. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 4a | Si el CUIT o Razón Social ya se encuentran registrados, el sistema notifica el conflicto e impide la duplicidad. |
+|  | 4b | Si el formato de CUIT o email es incorrecto, el sistema muestra mensajes de validación inline. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 4-7 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | El correo electrónico ingresado es el destinatario de las órdenes automáticas por email. |  |
+
+---
+
+#### CU-099 - Modificar proveedor
+
+| UC–099 | Modificar proveedor |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El Administrador actualiza los datos comerciales y canales de contacto de una firma proveedora registrada. |  |
+| **Precondición** | El usuario debe ser Administrador. El proveedor debe existir en el sistema. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | En la grilla de proveedores (CU-102), el Administrador presiona el botón "Editar" en la fila correspondiente. |
+|  | 2 | El sistema abre la ventana modal de edición precargando los datos actuales. El campo CUIT se presenta bloqueado en modo solo lectura por integridad fiscal. |
+|  | 3 | El Administrador modifica Razón Social, Teléfono, Dirección o Correo Electrónico y presiona "Guardar Cambios". |
+|  | 4 | El sistema valida los datos modificados e impacta la actualización en Firestore. |
+|  | 5 | El sistema registra el evento en auditoría, cierra el modal y muestra un Toast verde: "Proveedor actualizado exitosamente". |
+| **Postcondición** | Los datos del proveedor quedan actualizados para futuras compras. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 4a | Si el formato del correo es inválido, el sistema alerta el error y cancela el guardado. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 4-5 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | No altera las órdenes de compra emitidas con anterioridad. |  |
+
+---
+
+#### CU-100 - Desactivar proveedor
+
+| UC–100 | Desactivar proveedor |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El Administrador inhabilita a un proveedor en el sistema mediante baja lógica, excluyéndolo de futuras cotizaciones y pedidos. |  |
+| **Precondición** | El usuario debe ser Administrador. El proveedor debe encontrarse en estado activo. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | En la grilla de proveedores, el Administrador hace clic en el botón "Desactivar". |
+|  | 2 | El sistema valida que el proveedor no posea órdenes de compra en curso pendientes de entrega (en estado "Enviada" o "Confirmada"). |
+|  | 3 | El sistema presenta un diálogo modal de confirmación con el mensaje: "¿Está seguro de que desea desactivar a [Razón Social]? Ya no se le enviarán órdenes de compra automáticas". |
+|  | 4 | El Administrador presiona "Confirmar Desactivación". |
+|  | 5 | El sistema actualiza en Firestore el campo Estado = "Inactivo" del proveedor. |
+|  | 6 | El sistema registra la acción en auditoría y muestra un Toast verde: "Proveedor desactivado exitosamente". |
+| **Postcondición** | El proveedor pasa a estado inactivo y no es seleccionado por el algoritmo de compras automáticas. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 2a | Si el proveedor tiene órdenes pendientes de recepción, el sistema frena la acción: "No se puede desactivar el proveedor: existen órdenes de compra en curso pendientes de arribo". |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 4-6 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Media |  |
+| **Comentarios** | Preserva la trazabilidad de las compras históricas realizadas a la firma. |  |
+
+---
+
+#### CU-101 - Reactivar proveedor
+
+| UC–101 | Reactivar proveedor |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El Administrador restaura el estado activo de un proveedor inactivo para reanudar operaciones comerciales. |  |
+| **Precondición** | El usuario debe ser Administrador. El proveedor debe encontrarse inactivo. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | El Administrador filtra la grilla de proveedores por Inactivos. |
+|  | 2 | En la fila del proveedor deseado, hace clic en el botón verde "Reactivar". |
+|  | 3 | El sistema presenta un diálogo de confirmación: "¿Desea reactivar a [Razón Social]?". |
+|  | 4 | El Administrador presiona "Confirmar". |
+|  | 5 | El sistema actualiza en Firestore el campo Estado = "Activo". |
+|  | 6 | El sistema registra el evento en auditoría y emite un Toast verde: "Proveedor reactivado exitosamente". |
+| **Postcondición** | El proveedor vuelve a estar disponible para recibir pedidos. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 4a | Si el Administrador cancela en el diálogo modal, se aborta la reactivación. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 4-6 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Restaura de forma inmediata la posibilidad de seleccionarlo en órdenes de compra. |  |
+
+---
+
+#### CU-102 - Consultar proveedores
+
+| UC–102 | Consultar proveedores |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock, OBJ–09 Gestión de Seguridad |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El Administrador visualiza el padrón de firmas proveedoras registradas con sus datos de contacto y estado comercial. |  |
+| **Precondición** | El usuario debe tener rol de Administrador. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | El Administrador hace clic en la opción "Proveedores" de la barra lateral. |
+|  | 2 | El sistema recupera los registros de la colección proveedores en Firestore. |
+|  | 3 | El sistema despliega la grilla con las columnas: Razón Social, CUIT, Teléfono, Correo Electrónico, Estado y Acciones (Editar, Desactivar). |
+|  | 4 | El Administrador puede filtrar por texto en el campo "Buscar proveedor..." o seleccionar el filtro desplegable de estado (Activos, Inactivos, Todos). |
+|  | 5 | El sistema filtra reactivamente los registros presentados. |
+|  | 6 | El Administrador navega entre páginas mediante los botones de paginación. |
+| **Postcondición** | El Administrador visualiza los proveedores registrados según los filtros aplicados. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 2a | Si no hay proveedores cargados, el sistema muestra el mensaje: "No se encontraron proveedores registrados". |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 2-3 | 1 segundo |
+| **Frecuencia** | Frecuente |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Exclusivo para administradores por confidencialidad de datos comerciales de compra. |  |
+
+---
+
+#### CU-103 - Registrar ingreso manual de insumos
+
+| UC–103 | Registrar ingreso manual de insumos |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El personal asienta un incremento directo en las existencias de un insumo justificando la causa (ajuste de inventario físico, donación, compra menor de urgencia). |  |
+| **Precondición** | El usuario debe estar autenticado en el sistema. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | En la pantalla de inventario (CU-097), el usuario hace clic en el botón "Ingreso Manual" o selecciona la opción contextual en la fila del insumo. |
+|  | 2 | El sistema abre la ventana modal "Ajuste Positivo de Inventario", presentando un selector desplegable con los insumos activos, el campo numérico Cantidad a Ingresar, un campo opcional Costo Unitario ($) y el área de texto obligatoria Motivo / Justificación. |
+|  | 3 | El usuario selecciona el insumo, ingresa la cantidad física ingresada y redacta la justificación. |
+|  | 4 | El usuario presiona el botón "Confirmar Ingreso". |
+|  | 5 | El sistema valida que la cantidad sea estrictamente mayor a cero y que se haya completado el motivo. |
+|  | 6 | El sistema ejecuta una transacción en Firestore: incrementa el campo StockActual del insumo y genera un documento en movimientos_stock con TipoMovimiento = "IngresoManual", la cantidad, el nuevo saldo y el usuario responsable. |
+|  | 7 | El sistema asienta el evento en auditoría, cierra el modal, refresca el stock en pantalla y emite un Toast verde: "Stock ingresado correctamente". |
+| **Postcondición** | Las existencias físicas quedan incrementadas y asentadas en el Kardex inmutable. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 5a | Si la cantidad es menor o igual a cero o el motivo está en blanco, el sistema marca los campos en rojo y frena la operación. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 5-7 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Utilizado para regularizar desvíos detectados durante recuentos físicos periódicos. |  |
+
+---
+
+#### CU-104 - Registrar egreso manual / baja de insumo
+
+| UC–104 | Registrar egreso manual / baja de insumo |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El personal registra una disminución directa de stock por causas no operativas (vencimiento de químicos, rotura de envases, desgaste de microfibras o descarte de herramientas). |  |
+| **Precondición** | El usuario debe estar autenticado. El insumo debe contar con existencias mayores a cero. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | En la pantalla de inventario, el usuario presiona el botón "Baja / Descarte" en la fila del producto. |
+|  | 2 | El sistema abre la ventana modal "Registro de Egreso / Baja de Insumo", mostrando el stock actual disponible, el campo numérico Cantidad a Dar de Baja, el selector desplegable Causa de Baja (Desgaste Natural, Rotura / Avería, Vencimiento, Merma) y el área de texto Justificación. |
+|  | 3 | El usuario completa la cantidad a descartar, selecciona la causa e ingresa la justificación detallada. |
+|  | 4 | El usuario presiona el botón "Confirmar Baja". |
+|  | 5 | El sistema valida que la cantidad a dar de baja no supere el stock actual disponible y que la justificación no esté vacía. |
+|  | 6 | El sistema ejecuta una transacción: reduce StockActual del insumo y genera el documento en movimientos_stock con TipoMovimiento = "EgresoManual". |
+|  | 7 | Si el saldo resultante perfora el stock mínimo, el sistema evalúa la compra automática (CU-106). |
+|  | 8 | El sistema cierra el modal, refresca el saldo en la grilla y emite un Toast informativo: "Baja de stock registrada exitosamente". |
+| **Postcondición** | El stock disminuye y el egreso queda formalmente justificado en el Kardex. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 5a | Si la cantidad ingresada es mayor al stock disponible en el lavadero, el sistema frena la acción: "La cantidad a dar de baja no puede superar el stock actual disponible". |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 5-8 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Esencial para auditar consumos de materiales que no se aplican por mililitro (como paños o cepillos). |  |
+
+---
+
+#### CU-105 - Consultar movimientos de stock (Kardex)
+
+| UC–105 | Consultar movimientos de stock (Kardex) |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock, OBJ–07 Registro de Auditoría |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock, IRQ–10 Información de Auditoría |  |
+| **Descripción** | El Administrador inspecciona la bitácora cronológica inmutable de movimientos de stock para auditar consumos, entradas, salidas y justificaciones de desvíos. |  |
+| **Precondición** | El usuario debe tener rol de Administrador. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | El Administrador accede a "Kardex / Movimientos de Stock" en el menú de navegación. |
+|  | 2 | El sistema recupera los documentos de la colección movimientos_stock en orden cronológico descendente. |
+|  | 3 | El sistema despliega la grilla con las columnas: Fecha y Hora, Insumo, Tipo de Movimiento (badge de color: verde para entradas, rojo para consumos/egresos, amarillo para mermas), Cantidad, Saldo Resultante, Responsable (Email), Referencia (Lavado / Orden) y Justificación. |
+|  | 4 | El Administrador puede filtrar por selector de insumo, selector de tipo de movimiento o rango de fechas (Desde / Hasta). |
+|  | 5 | El sistema actualiza reactivamente la tabla de movimientos. |
+|  | 6 | El usuario navega entre las páginas mediante los controles de paginación. |
+| **Postcondición** | El Administrador visualiza la trazabilidad detallada del inventario físico. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 2a | Si no hay movimientos para los filtros seleccionados, el sistema muestra el mensaje: "No se encontraron registros de movimientos para los criterios aplicados". |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 2-3 | 1 segundo |
+| **Frecuencia** | Frecuente |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Bitácora inmutable de solo lectura; ningún movimiento puede editarse ni eliminarse. |  |
+
+---
+
+#### CU-106 - Disparar orden de compra automática
+
+| UC–106 | Disparar orden de compra automática |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock, OBJ–11 Configuración del Sistema |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock, IRQ–11 Información de Configuración |  |
+| **Descripción** | Proceso en segundo plano ejecutado automáticamente por el sistema cuando el stock de un insumo habilitado cae a o bajo su mínimo, emitiendo pedidos de reposición según la directiva configurada. |  |
+| **Precondición** | Un movimiento de stock redujo el StockActual a un valor menor o igual a StockMinimo. El insumo tiene PermiteReabastecimientoAutomatico = true. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | El sistema detecta que el insumo alcanzó el umbral crítico y verifica que no existan órdenes abiertas pendientes para dicho producto. |
+|  | 2 | El sistema obtiene la lista de proveedores asociados al insumo y la cantidad de reabastecimiento predeterminada. |
+|  | 3 | El sistema genera un GrupoSolicitudId unívoco para agrupar la compulsa de compras. |
+|  | 4 | Por cada proveedor asociado, el sistema crea un documento en la colección ordenes_compra con los ítems solicitados. |
+|  | 5 | El sistema consulta el parámetro RequiereAprobacionHumanaOrdenes de configuracion: |
+|  |  | a) Si requiere aprobación: asigna Estado = "PendienteAprobacion" y emite una alerta interna en el dashboard del Administrador. |
+|  |  | b) Si es envío directo: asigna Estado = "Enviada" y despacha un correo electrónico formal con la plantilla configurada a la casilla del proveedor (CU-078). |
+|  | 6 | El sistema asienta el evento en registros_auditoria con UserId = "Sistema". |
+| **Postcondición** | Las órdenes de compra quedan generadas y los proveedores notificados según la directiva del lavadero. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 1a | Si el insumo ya cuenta con una orden en estado "Enviada" o "PendienteAprobacion", el sistema omite generar duplicados para evitar sobrestock. |
+|  | 5b.1 | Si falla el envío de correo por red, la orden permanece en Firestore y se encola un reintento automático. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 1-6 | 2 segundos (desatendido) |
+| **Frecuencia** | Muy frecuente (según rotación de stock) |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Garantiza la reposición ininterrumpida de insumos sin depender del control visual humano. |  |
+
+---
+
+#### CU-107 - Generar orden de compra manual
+
+| UC–107 | Generar orden de compra manual |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El Administrador confecciona y despacha manualmente una orden de compra hacia un proveedor específico fuera de los disparadores automáticos. |  |
+| **Precondición** | El usuario debe tener rol de Administrador. Deben existir proveedores e insumos activos. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | El Administrador accede a "Órdenes de Compra" en la barra lateral y presiona el botón "+ Nueva Orden de Compra". |
+|  | 2 | El sistema despliega la pantalla de confección de pedidos con el selector desplegable Proveedor, campo Fecha de Emisión, área de texto Notas / Observaciones de Entrega y la tabla editable de artículos. |
+|  | 3 | El Administrador selecciona el proveedor comercial. |
+|  | 4 | El Administrador presiona "+ Agregar Insumo", seleccionando el producto del catálogo e ingresando la Cantidad Solicitada y el Precio Unitario Estimado ($). |
+|  | 5 | El sistema calcula en tiempo real el subtotal por fila y el monto total proyectado de la orden. |
+|  | 6 | El Administrador presiona el botón "Emitir y Enviar Orden". |
+|  | 7 | El sistema valida que la orden posea al menos un ítem con cantidad mayor a cero. |
+|  | 8 | El sistema crea el documento en ordenes_compra con Estado = "Enviada". |
+|  | 9 | El sistema despacha el correo electrónico con el detalle del pedido al proveedor (CU-078). |
+|  | 10 | El sistema registra el evento en auditoría, redirige al listado de compras y muestra un Toast verde: "Orden de compra emitida y enviada al proveedor". |
+| **Postcondición** | La orden queda en estado enviada a la espera de la entrega física de la mercadería. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 7a | Si la tabla de artículos está vacía o las cantidades son cero, el sistema frena la emisión: "Debe agregar al menos un insumo con cantidad válida a la orden". |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 7-10 | 2 segundos |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Empleado para adquisiciones extraordinarias, compras por bulto o promociones de proveedores. |  |
+
+---
+
+#### CU-108 - Consultar y gestionar órdenes de compra
+
+| UC–108 | Consultar y gestionar órdenes de compra |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El Administrador monitorea el estado de las órdenes de compra emitidas, autoriza pedidos pendientes de aprobación o descarta cotizaciones no seleccionadas en compulsas. |  |
+| **Precondición** | El usuario debe tener rol de Administrador. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | El Administrador ingresa a la sección "Órdenes de Compra" desde el menú. |
+|  | 2 | El sistema recupera los documentos de la colección ordenes_compra en Firestore. |
+|  | 3 | El sistema presenta la grilla con: ID de Orden, Fecha de Emisión, Proveedor, Cantidad de Artículos, Estado (badge: Pendiente Aprobación, Enviada, Confirmada, Recibida, Cancelada) y Acciones (Ver Detalle, Aprobar, Cancelar). |
+|  | 4 | El Administrador hace clic en una orden para abrir la vista modal "Detalle de Orden de Compra", inspeccionando los artículos y precios cotizados. |
+|  | 5 | Si la orden se encuentra en estado "PendienteAprobacion", se habilitan los botones "Aprobar y Enviar" y "Descartar": |
+|  |  | a) Si presiona "Aprobar y Enviar": el sistema pasa el estado a "Enviada", despacha el correo al proveedor y emite un Toast verde. |
+|  |  | b) Si presiona "Descartar": el sistema solicita motivo de descarte, actualiza a "Cancelada" y registra la auditoría. |
+| **Postcondición** | El Administrador gestiona el ciclo de vida de los pedidos a proveedores. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 5b.1 | Si la orden ya se encuentra en estado "Recibida", los botones de anulación y aprobación se presentan ocultos o deshabilitados. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 2-3 | 1 segundo |
+| **Frecuencia** | Frecuente |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | En compulsas de cotización automática permite aprobar la mejor propuesta y cancelar las demás. |  |
+
+---
+
+#### CU-109 - Registrar recepción de orden de compra
+
+| UC–109 | Registrar recepción de orden de compra |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock |  |
+| **Descripción** | El personal registra el arribo físico de mercadería al lavadero, verificando las cantidades recibidas frente a las pedidas, actualizando el stock y cancelando cotizaciones concurrentes. |  |
+| **Precondición** | El usuario debe estar autenticado. La orden debe estar en estado "Enviada" o "Confirmada". |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | En la lista de órdenes de compra, el usuario presiona el botón "Recepcionar Mercadería" en la orden entregada. |
+|  | 2 | El sistema abre la ventana modal "Control de Recepción de Mercadería", exhibiendo la tabla con los insumos solicitados, las Cantidades Pedidas y los campos editables Cantidades Recibidas (precargados con la cantidad pedida). |
+|  | 3 | El usuario realiza el recuento físico y ajusta los valores si hubo faltantes en la entrega. |
+|  | 4 | Si la orden pertenece a un GrupoSolicitudId (compulsa concurrente a varios proveedores), el sistema exhibe el checkbox marcado por defecto: "Cancelar automáticamente cotizaciones concurrentes del mismo grupo". |
+|  | 5 | El usuario hace clic en el botón "Confirmar Recepción y Actualizar Stock". |
+|  | 6 | El sistema valida que las cantidades ingresadas sean mayores a cero. |
+|  | 7 | El sistema ejecuta una transacción atómica en Firestore: |
+|  |  | a) Para cada insumo recibido, incrementa Insumo.StockActual en la cantidad efectivamente entregada. |
+|  |  | b) Genera los documentos en movimientos_stock con TipoMovimiento = "RecepcionOrden" y referencia a la orden. |
+|  |  | c) Actualiza la orden recibida a Estado = "Recibida". |
+|  |  | d) Si el checkbox del paso 4 estaba activo, busca las demás órdenes del mismo grupo y las actualiza a Estado = "Cancelada" con motivo "Adjudicación orden [ID]". |
+|  | 8 | El sistema registra el evento en auditoría, cierra el modal, refresca la grilla y muestra un Toast verde: "Mercadería ingresada al inventario y stock actualizado". |
+| **Postcondición** | El stock del taller queda incrementado y las órdenes alternativas de la compulsa canceladas. |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 6a | Si se ingresan cantidades menores o iguales a cero, el sistema frena el guardado y señala la fila a corregir. |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 6-8 | 2 segundos |
+| **Frecuencia** | Frecuente (según recepciones) |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Resuelve transaccionalmente la compulsa de compras sin riesgo de duplicar pagos o entregas. |  |
+
+---
+
+#### CU-110 - Configurar directivas de reabastecimiento automático
+
+| UC–110 | Configurar directivas de reabastecimiento automático |  |
+| :--- | :--- | :--- |
+| **Objetivos asociados** | OBJ–13 Gestión de Insumos y Stock, OBJ–11 Configuración del Sistema |  |
+| **Requisitos asociados** | IRQ–13 Información sobre Insumos y Stock, IRQ–11 Información de Configuración |  |
+| **Descripción** | El Administrador parametriza el comportamiento del motor de compras automáticas (modalidad de emisión directa vs. aprobación humana) y los textos de las plantillas de correo. |  |
+| **Precondición** | El usuario debe tener rol de Administrador. |  |
+| **Secuencia normal** | **Paso** | **Acción** |
+|  | 1 | El Administrador accede a "Configuración del Sistema" desde el menú lateral y hace clic en la pestaña "Directivas de Reabastecimiento". |
+|  | 2 | El sistema despliega el formulario con los controles: selector de modalidad Emisión de Órdenes (opciones por radio button: "Envío directo automático al proveedor" o "Requerir aprobación manual del Administrador"), campo de texto Asunto de Correo Predeterminado, área de texto Encabezado del Mensaje y área de texto Notas al Pie de Orden. |
+|  | 3 | El Administrador selecciona la modalidad operativa deseada y actualiza los textos de las plantillas de pedido. |
+|  | 4 | El Administrador hace clic en "Guardar Configuración". |
+|  | 5 | El sistema valida que los campos de texto no estén vacíos. |
+|  | 6 | El sistema actualiza en Firestore el documento system_config en la colección configuracion con los nuevos parámetros y la marca temporal de actualización. |
+|  | 7 | El sistema registra el cambio en auditoría y muestra un Toast verde: "Directivas de reabastecimiento guardadas correctamente". |
+| **Postcondición** | Las nuevas directivas rigen de forma inmediata para los futuros disparos de compra automática (CU-106). |  |
+| **Excepciones** | **Paso** | **Acción** |
+|  | 5a | Si el asunto o encabezado están vacíos, el sistema marca el error: "Los textos de plantilla son obligatorios para formalizar el pedido al proveedor". |
+| **Rendimiento** | **Paso** | **Cota de tiempo** |
+|  | 5-7 | 1 segundo |
+| **Frecuencia** | Ocasional |  |
+| **Estabilidad** | Alta |  |
+| **Comentarios** | Brinda flexibilidad al dueño del lavadero para elegir entre automatización total o supervisión previa. |  |
