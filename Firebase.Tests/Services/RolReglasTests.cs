@@ -18,6 +18,16 @@ namespace Firebase.Tests.Services
         }
 
         [Fact]
+        public void ValidarDescripcion_ShouldRejectTooLongButAllowEmpty()
+        {
+            Assert.Null(RolReglas.ValidarDescripcion(null));
+            Assert.Null(RolReglas.ValidarDescripcion("   "));
+            Assert.Null(RolReglas.ValidarDescripcion(new string('a', 250)));
+            Assert.Equal(RolReglas.MensajeDescripcionLarga,
+                RolReglas.ValidarDescripcion(new string('a', 251)));
+        }
+
+        [Fact]
         public void ValidarPermisos_ShouldRejectEmptyAndUnknown()
         {
             Assert.Equal(RolReglas.MensajePermisoRequerido, RolReglas.ValidarPermisos(Array.Empty<string>()));
