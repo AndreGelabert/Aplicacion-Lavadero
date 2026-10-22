@@ -35,6 +35,7 @@
         setupSearchWithDebounce();
         setupFilters();
         setupPermissionDelegation();
+        setupDeleteConfirmation();
         syncSortSelect();
     }
 
@@ -129,7 +130,7 @@
         params.set('pageSize', '10');
 
         const url = (searchTerm ? '/Rol/SearchPartial?' : '/Rol/TablePartial?') + params.toString();
-        loadTablePartial(url);
+        return loadTablePartial(url);
     }
 
     /**
@@ -140,7 +141,7 @@
         const requestSeq = ++tableRequestSeq;
         const antiCache = (url.includes('?') ? '&' : '?') + '_=' + Date.now();
 
-        fetch(url + antiCache, {
+        return fetch(url + antiCache, {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Cache-Control': 'no-cache' },
             cache: 'no-store'
         })
@@ -468,10 +469,146 @@
 
     window.showRolToast = showRolToast;
 
-    // ===================== Eliminación (implementada en la siguiente tarea) =====================
-    window.openRolDeleteModal = function () { };
-    window.closeRolDeleteModal = function () { };
-    window.showRolBlockModal = function () { };
-    window.closeRolBlockModal = function () { };
+    // ===================== Eliminación =====================
+
+    /**
+     * Abre el modal de confirmación de eliminación o muestra el bloqueo correspondiente.
+     * @param {HTMLButtonElement} button
+     */
+    window.openRolDeleteModal = function (button) {
+        if (!button) return;
+
+        const id = button.dataset.id || '';
+        const nombre = button.dataset.nombre || '';
+        const protegido = button.dataset.protegido === 'true';
+        const usuarios = parseInt(button.dataset.usuarios || '0', 10) || 0;
+
+        if (protegido) {
+            showRolBlockModal('Acción no permitida: Los roles predeterminados del sistema no pueden ser eliminados');
+            return;
+        }
+
+        if (usuarios > 0) {
+            showRolBlockModal(
+                'No es posible eliminar el rol: Existen ' + usuarios +
+                ' empleados que tienen este rol asignado. Reasígnelos a otro rol antes de continuar'
+            );
+            return;
+        }
+
+        const idInput = document.getElementById('rol-delete-id');
+        const text = document.getElementById('rol-delete-text');
+        const modal = document.getElementById('rol-delete-modal');
+
+        if (idInput) idInput.value = id;
+        if (text) text.textContent = `¿Está seguro de que desea eliminar el rol ${nombre}? Esta operación es irreversible.`;
+        if (modal) showModal(modal);
+    };
+
+    /**
+     * Cierra el modal de confirmación de eliminación.
+     */
+    window.closeRolDeleteModal = function () {
+        const modal = document.getElementById('rol-delete-modal');
+        if (modal) hideModal(modal);
+
+        const idInput = document.getElementById('rol-delete-id');
+        if (idInput) idInput.value = '';
+    };
+
+    /**
+     * Muestra el modal de bloqueo con el mensaje indicado.
+     * @param {string} mensaje
+     */
+    window.showRolBlockModal = function (mensaje) {
+        const text = document.getElementById('rol-block-message');
+        const modal = document.getElementById('rol-block-modal');
+
+        if (text) text.textContent = mensaje || '';
+        if (modal) showModal(modal);
+    };
+
+    /**
+     * Cierra el modal de bloqueo.
+     */
+    window.closeRolBlockModal = function () {
+        const modal = document.getElementById('rol-block-modal');
+        if (modal) hideModal(modal);
+    };
+
+    /**
+     * Envía la confirmación de eliminación por AJAX.
+     */
+    function setupDeleteConfirmation() {
+        const confirmButton = document.getElementById('rol-delete-confirm-btn');
+        const form = document.getElementById('rol-delete-form');
+
+        if (form) {
+            form.addEventListener('submit', event => event.preventDefault());
+        }
+
+        if (!confirmButton || !form) return;
+
+        confirmButton.addEventListener('click', event => {
+            event.preventDefault();
+            if (confirmButton.disabled) return;
+
+            confirmButton.disabled = true;
+
+            fetch('/Rol/EliminarRolAjax', {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin'
+            })
+                .then(async response => {
+                    const data = await response.json().catch(() => null);
+                    return { response, data };
+                })
+                .then(({ response, data }) => {
+                    if (!response.ok || !data) {
+                        closeRolDeleteModal();
+                        showRolToast('Error al eliminar el rol.', 'error');
+                        return;
+                    }
+
+                    if (data.success) {
+                        const container = document.getElementById('rol-table-container');
+                        const currentPage = parseInt(container?.dataset.currentPage || '1', 10) || 1;
+
+                        closeRolDeleteModal();
+                        showRolToast(data.message || 'Rol eliminado exitosamente.', 'success');
+
+                        reloadRolTable(currentPage).then(() => {
+                            const emptyRow = document.querySelector('#rol-table-container tbody tr td[colspan="6"]');
+                            if (emptyRow && currentPage > 1) {
+                                reloadRolTable(1);
+                            }
+                        });
+                        return;
+                    }
+
+                    closeRolDeleteModal();
+
+                    const message = data.message || 'No se pudo eliminar el rol.';
+                    const bloqueado = message.startsWith('No es posible eliminar el rol') ||
+                        message.startsWith('Acción no permitida');
+
+                    if (bloqueado) {
+                        showRolBlockModal(message);
+                    } else {
+                        showRolToast(message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('setupDeleteConfirmation error:', error);
+                    closeRolDeleteModal();
+                    showRolToast('Error al eliminar el rol.', 'error');
+                })
+                .finally(() => {
+                    confirmButton.disabled = false;
+                });
+        });
+    }
 
 })();
