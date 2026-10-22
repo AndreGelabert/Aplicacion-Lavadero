@@ -248,6 +248,73 @@ public class RolService
     }
 
     /// <summary>
+    /// Actualiza un rol y, si cambió su nombre, reasigna el nuevo nombre a todos los
+    /// empleados que tenían el nombre anterior. El rol y la primera tanda de empleados
+    /// se confirman en un mismo lote de Firestore.
+    /// </summary>
+    /// <param name="rol">Rol con los datos actualizados.</param>
+    /// <param name="nombreAnterior">Nombre que tenía el rol antes de la edición.</param>
+    public async Task ActualizarRolConReasignacion(Rol rol, string nombreAnterior)
+    {
+        if (rol == null)
+        {
+            throw new ArgumentNullException(nameof(rol));
+        }
+
+        if (string.IsNullOrWhiteSpace(rol.Id))
+        {
+            throw new ArgumentException("El ID del rol no puede estar vacío.", nameof(rol));
+        }
+
+        var nombreNuevo = RolReglas.NormalizarNombre(rol.Nombre);
+
+        if (string.IsNullOrWhiteSpace(nombreAnterior)
+            || string.Equals(
+                RolReglas.NormalizarNombre(nombreAnterior),
+                nombreNuevo,
+                StringComparison.Ordinal))
+        {
+            await ActualizarRol(rol);
+            return;
+        }
+
+        var empleadosSnapshot = await _firestore.Collection(COLLECTION_EMPLEADOS).GetSnapshotAsync();
+        var empleadosAfectados = empleadosSnapshot.Documents
+            .Where(doc => doc.ContainsField("Rol")
+                && RolReglas.SonNombresIguales(doc.GetValue<string>("Rol"), nombreAnterior))
+            .Select(doc => doc.Reference)
+            .ToList();
+
+        var indice = 0;
+        var primerLote = true;
+
+        do
+        {
+            var batch = _firestore.StartBatch();
+            var operaciones = 0;
+
+            if (primerLote)
+            {
+                batch.Set(
+                    _firestore.Collection(COLLECTION_NAME).Document(rol.Id),
+                    CrearDiccionarioRol(rol),
+                    SetOptions.Overwrite);
+                primerLote = false;
+                operaciones++;
+            }
+
+            while (indice < empleadosAfectados.Count && operaciones < 500)
+            {
+                batch.Update(empleadosAfectados[indice], "Rol", nombreNuevo);
+                indice++;
+                operaciones++;
+            }
+
+            await batch.CommitAsync();
+        } while (indice < empleadosAfectados.Count);
+    }
+
+    /// <summary>
     /// Elimina físicamente un rol por su ID.
     /// </summary>
     /// <param name="id">ID del rol a eliminar.</param>

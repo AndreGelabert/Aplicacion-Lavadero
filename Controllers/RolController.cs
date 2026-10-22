@@ -157,6 +157,8 @@ public class RolController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CrearRolAjax(Rol rol)
     {
+        await _rolService.AsegurarRolesBaseAsync();
+
         rol.Nombre = RolReglas.NormalizarNombre(rol.Nombre);
         rol.Descripcion = (rol.Descripcion ?? string.Empty).Trim();
 
@@ -209,6 +211,8 @@ public class RolController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ActualizarRolAjax(Rol rol)
     {
+        await _rolService.AsegurarRolesBaseAsync();
+
         var rolActual = await _rolService.ObtenerRol(rol.Id);
         if (rolActual == null)
         {
@@ -267,7 +271,7 @@ public class RolController : Controller
         rol.Estado = rolActual.Estado;
         rol.FechaCreacion = rolActual.FechaCreacion;
 
-        await _rolService.ActualizarRol(rol);
+        await _rolService.ActualizarRolConReasignacion(rol, rolActual.Nombre);
         await RegistrarEvento("Modificacion Rol", rol.Id);
 
         return Json(new { success = true, message = "Rol actualizado exitosamente" });
@@ -282,6 +286,8 @@ public class RolController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EliminarRolAjax(string? id)
     {
+        await _rolService.AsegurarRolesBaseAsync();
+
         var rol = await _rolService.ObtenerRol(id ?? string.Empty);
         if (rol == null)
         {
