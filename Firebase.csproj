@@ -16,5 +16,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include=".github\copilot-instructions.md" />
+    <None Include="C:\Users\Andre\Downloads\2-Análisis.md" Link="2-Análisis.md" />
   </ItemGroup>
 </Project>
