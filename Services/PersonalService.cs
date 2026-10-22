@@ -163,17 +163,20 @@ public class PersonalService
     }
 
     /// <summary>
-    /// Obtiene todos los roles únicos registrados.
+    /// Obtiene todos los roles activos registrados.
     /// </summary>
-    /// <returns>Lista de roles únicos ordenados.</returns>
+    /// <returns>Lista de roles activos únicos ordenados.</returns>
     public async Task<List<string>> ObtenerRolesUnicos()
     {
-        var snapshot = await _firestore.Collection(COLLECTION_NAME).GetSnapshotAsync();
+        var snapshot = await _firestore.Collection(RolService.COLLECTION_NAME).GetSnapshotAsync();
         return snapshot.Documents
-            .Select(doc => doc.ContainsField("Rol") ? doc.GetValue<string>("Rol") : "Empleado")
-            .Where(rol => !string.IsNullOrWhiteSpace(rol))
-            .Distinct()
-            .OrderBy(rol => rol)
+            .Where(doc => !doc.ContainsField("Estado")
+                || string.Equals(doc.GetValue<string>("Estado"), "Activo", StringComparison.OrdinalIgnoreCase))
+            .Select(doc => doc.ContainsField("Nombre") ? doc.GetValue<string>("Nombre") : null)
+            .Where(nombre => !string.IsNullOrWhiteSpace(nombre))
+            .Select(nombre => nombre!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(nombre => nombre, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
     #endregion

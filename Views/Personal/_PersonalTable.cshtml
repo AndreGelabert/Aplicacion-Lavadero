@@ -2,6 +2,7 @@
 @{
     var user = User as ClaimsPrincipal;
     var currentUserEmail = user?.FindFirst(ClaimTypes.Email)?.Value;
+    var rolesRegistrados = ViewBag.TodosLosRoles as List<string> ?? new List<string>();
 }
 
 <!-- Input oculto para almacenar la página actual -->
@@ -110,8 +111,14 @@ else
     <form id="rol-form-@empleado.Id" method="post" asp-action="UpdateRole" class="hidden">
                  <input type="hidden" name="id" value="@empleado.Id" />
         <select name="newRole" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" onchange="submitForm('@empleado.Id')">
-   <option value="Empleado" selected="@(empleado.Rol == "Empleado")">Empleado</option>
-          <option value="Administrador" selected="@(empleado.Rol == "Administrador")">Administrador</option>
+            @foreach (var rol in rolesRegistrados
+                .Concat(new[] { empleado.Rol })
+                .Where(nombre => !string.IsNullOrWhiteSpace(nombre))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(nombre => nombre, StringComparer.OrdinalIgnoreCase))
+            {
+                <option value="@rol" selected="@(string.Equals(rol, empleado.Rol, StringComparison.OrdinalIgnoreCase))">@rol</option>
+            }
   </select>
        </form>
            </td>

@@ -12,16 +12,19 @@ public class PersonalController : Controller
 {
     #region Dependencias
     private readonly PersonalService _personalService;
+    private readonly RolService _rolService;
     private readonly AuditService _auditService;
 
     /// <summary>
     /// Crea una nueva instancia del controlador de personal.
     /// </summary>
     /// <param name="personalService">Servicio para operaciones de personal.</param>
+    /// <param name="rolService">Servicio para operaciones de roles.</param>
     /// <param name="auditService">Servicio para registro de auditoría.</param>
-    public PersonalController(PersonalService personalService, AuditService auditService)
+    public PersonalController(PersonalService personalService, RolService rolService, AuditService auditService)
     {
         _personalService = personalService;
+        _rolService = rolService;
         _auditService = auditService;
     }
     #endregion
@@ -47,6 +50,8 @@ public class PersonalController : Controller
         string sortBy = null,
         string sortOrder = null)
     {
+        await _rolService.AsegurarRolesBaseAsync();
+
         estados = ConfigurarEstadosDefecto(estados);
 
         sortBy ??= "NombreCompleto";
@@ -86,6 +91,8 @@ public class PersonalController : Controller
         string sortBy = null,
         string sortOrder = null)
     {
+        await _rolService.AsegurarRolesBaseAsync();
+
         estados = ConfigurarEstadosDefecto(estados);
 
         sortBy ??= "NombreCompleto";
@@ -107,6 +114,7 @@ public class PersonalController : Controller
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
         ViewBag.SearchTerm = searchTerm;
+        ViewBag.TodosLosRoles = await _personalService.ObtenerRolesUnicos();
 
         return PartialView("_PersonalTable", empleados);
     }
@@ -130,6 +138,8 @@ public class PersonalController : Controller
         string sortBy = null,
         string sortOrder = null)
     {
+        await _rolService.AsegurarRolesBaseAsync();
+
         estados = ConfigurarEstadosDefecto(estados);
 
         sortBy ??= "NombreCompleto";
@@ -146,6 +156,7 @@ public class PersonalController : Controller
         ViewBag.Roles = roles;
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
+        ViewBag.TodosLosRoles = await _personalService.ObtenerRolesUnicos();
 
         return PartialView("_PersonalTable", empleados);
     }
@@ -164,6 +175,19 @@ public class PersonalController : Controller
     {
         try
         {
+            if (!await _rolService.ExisteRolActivo(newRole))
+            {
+                const string mensaje = "El rol seleccionado no existe o no está activo.";
+
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                {
+                    return Json(new { success = false, message = mensaje });
+                }
+
+                TempData["Error"] = mensaje;
+                return RedirectToAction("Index");
+            }
+
             await _personalService.ActualizarRol(id, newRole);
 
             // Auditoría
