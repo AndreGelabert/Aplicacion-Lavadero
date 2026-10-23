@@ -107,6 +107,7 @@ builder.Services.AddHttpClient<Firebase.Services.ICarQueryService, Firebase.Serv
 });
 
 builder.Services.AddScoped<AuditService>();
+builder.Services.AddScoped<RolService>();
 builder.Services.AddScoped<PersonalService>();
 builder.Services.AddScoped<ServicioService>();
 builder.Services.AddScoped<TipoServicioService>();
