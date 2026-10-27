@@ -4,7 +4,7 @@ using System.Text;
 /// <summary>
 /// Catálogo central de módulos, acciones y permisos disponibles para los roles.
 /// </summary>
-public sealed record ModuloPermisos(string Clave, string Nombre);
+public sealed record ModuloPermisos(string Clave, string Nombre, IReadOnlyList<string> Acciones);
 
 /// <summary>
 /// Definición de un rol base protegido del sistema.
@@ -22,31 +22,27 @@ public static class RolCatalogo
     public const string Eliminar = "Eliminar";
 
     /// <summary>
-    /// Acciones disponibles para cada módulo, en el orden en que se muestran.
-    /// </summary>
-    public static IReadOnlyList<string> Acciones { get; } = new[] { Consultar, Crear, Modificar, Eliminar };
-
-    /// <summary>
-    /// Módulos reales del sistema que participan en la matriz de permisos.
+    /// Módulos reales del sistema que participan en la matriz de permisos,
+    /// cada uno con las acciones que realmente existen en su controlador.
     /// </summary>
     public static IReadOnlyList<ModuloPermisos> Modulos { get; } = new[]
     {
-        new ModuloPermisos("Clientes", "Clientes"),
-        new ModuloPermisos("Vehiculos", "Vehículos"),
-        new ModuloPermisos("Servicios", "Servicios"),
-        new ModuloPermisos("Paquetes", "Paquetes"),
-        new ModuloPermisos("Lavados", "Lavados"),
-        new ModuloPermisos("Personal", "Personal"),
-        new ModuloPermisos("Configuracion", "Configuración"),
-        new ModuloPermisos("Auditoria", "Auditoría"),
-        new ModuloPermisos("Roles", "Roles y Permisos")
+        new ModuloPermisos("Clientes", "Clientes", new[] { Consultar, Crear, Modificar, Eliminar }),
+        new ModuloPermisos("Vehiculos", "Vehículos", new[] { Consultar, Crear, Modificar, Eliminar }),
+        new ModuloPermisos("Servicios", "Servicios", new[] { Consultar, Crear, Modificar, Eliminar }),
+        new ModuloPermisos("Paquetes", "Paquetes", new[] { Consultar, Crear, Modificar, Eliminar }),
+        new ModuloPermisos("Lavados", "Lavados", new[] { Consultar, Crear, Modificar }),
+        new ModuloPermisos("Personal", "Personal", new[] { Consultar, Modificar }),
+        new ModuloPermisos("Configuracion", "Configuración", new[] { Consultar, Modificar }),
+        new ModuloPermisos("Auditoria", "Auditoría", new[] { Consultar }),
+        new ModuloPermisos("Roles", "Roles y Permisos", new[] { Consultar, Crear, Modificar, Eliminar })
     };
 
     /// <summary>
     /// Todas las claves de permiso válidas, en orden de módulo y acción.
     /// </summary>
     public static IReadOnlyList<string> TodosLosPermisos { get; } =
-        Modulos.SelectMany(modulo => Acciones.Select(accion => Clave(modulo.Clave, accion)))
+        Modulos.SelectMany(modulo => modulo.Acciones.Select(accion => Clave(modulo.Clave, accion)))
             .ToList();
 
     /// <summary>
@@ -84,6 +80,22 @@ public static class RolCatalogo
     /// Construye la clave de permiso con el formato "Modulo.Accion".
     /// </summary>
     public static string Clave(string modulo, string accion) => $"{modulo}.{accion}";
+
+    /// <summary>
+    /// Acciones que existen para un módulo, en el orden en que se muestran.
+    /// Devuelve una lista vacía si el módulo no existe en el catálogo.
+    /// </summary>
+    public static IReadOnlyList<string> AccionesPara(string? moduloClave)
+    {
+        if (string.IsNullOrWhiteSpace(moduloClave))
+        {
+            return Array.Empty<string>();
+        }
+
+        return Modulos
+            .FirstOrDefault(modulo => string.Equals(modulo.Clave, moduloClave, StringComparison.Ordinal))
+            ?.Acciones ?? Array.Empty<string>();
+    }
 
     /// <summary>
     /// Indica si la clave corresponde exactamente a un permiso del catálogo.

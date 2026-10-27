@@ -139,6 +139,32 @@ public class RolService
     }
 
     /// <summary>
+    /// Obtiene los permisos normalizados del rol activo con el nombre indicado.
+    /// Devuelve una lista vacía cuando el rol no existe o está inactivo.
+    /// </summary>
+    /// <param name="nombreRol">Nombre del rol asignado al usuario.</param>
+    /// <returns>Permisos válidos del rol, en orden del catálogo.</returns>
+    public async Task<IReadOnlyList<string>> ObtenerPermisosRolAsync(string? nombreRol)
+    {
+        if (string.IsNullOrWhiteSpace(nombreRol))
+        {
+            return Array.Empty<string>();
+        }
+
+        await AsegurarRolesBaseAsync();
+
+        var roles = await ObtenerTodosLosRolesAsync();
+        var rol = roles.FirstOrDefault(r => RolReglas.SonNombresIguales(r.Nombre, nombreRol));
+
+        if (rol == null || !string.Equals(rol.Estado, ESTADO_DEFECTO, StringComparison.OrdinalIgnoreCase))
+        {
+            return Array.Empty<string>();
+        }
+
+        return RolCatalogo.NormalizarPermisos(rol.Permisos);
+    }
+
+    /// <summary>
     /// Determina si existe un rol con el nombre indicado, ignorando mayúsculas y espacios.
     /// </summary>
     /// <param name="nombre">Nombre a verificar.</param>
@@ -521,7 +547,7 @@ public class RolService
             Descripcion = documento.ContainsField("Descripcion")
                 ? documento.GetValue<string>("Descripcion") ?? string.Empty
                 : string.Empty,
-            Permisos = permisos,
+            Permisos = RolCatalogo.NormalizarPermisos(permisos).ToList(),
             Estado = string.IsNullOrWhiteSpace(estado) ? ESTADO_DEFECTO : estado,
             FechaCreacion = documento.ContainsField("FechaCreacion")
                 ? documento.GetValue<Timestamp>("FechaCreacion").ToDateTime()
