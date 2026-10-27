@@ -1,4 +1,5 @@
 using Firebase.Models;
+using Firebase.Security;
 using Firebase.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,8 +8,8 @@ using System.Security.Claims;
 namespace Firebase.Controllers
 {
     /// <summary>
-    /// Controlador para la gestión de tipos de vehículo.
-    /// Maneja operaciones CRUD y validaciones relacionadas con tipos de vehículo.
+    /// Controlador para la gestiÃ³n de tipos de vehÃ­culo.
+    /// Maneja operaciones CRUD y validaciones relacionadas con tipos de vehÃ­culo.
     /// </summary>
     [Authorize]
     public class TipoVehiculoController : Controller
@@ -19,8 +20,8 @@ namespace Firebase.Controllers
         /// <summary>
         /// Constructor que inyecta las dependencias necesarias.
         /// </summary>
-        /// <param name="tipoVehiculoService">Servicio para operaciones con tipos de vehículo.</param>
-        /// <param name="auditService">Servicio para registro de auditoría.</param>
+        /// <param name="tipoVehiculoService">Servicio para operaciones con tipos de vehÃ­culo.</param>
+        /// <param name="auditService">Servicio para registro de auditorÃ­a.</param>
         public TipoVehiculoController(TipoVehiculoService tipoVehiculoService, AuditService auditService)
         {
             _tipoVehiculoService = tipoVehiculoService;
@@ -28,9 +29,10 @@ namespace Firebase.Controllers
         }
 
         /// <summary>
-        /// Obtiene todos los tipos de vehículo con sus formatos.
+        /// Obtiene todos los tipos de vehÃ­culo con sus formatos.
         /// </summary>
         [HttpGet]
+        [Permiso("Vehiculos.Consultar", "Servicios.Consultar", "Clientes.Consultar")]
         public async Task<IActionResult> ObtenerTiposConFormatos()
         {
             var tipos = await _tipoVehiculoService.ObtenerTiposVehiculosCompletos();
@@ -43,9 +45,10 @@ namespace Firebase.Controllers
         }
 
         /// <summary>
-        /// Obtiene el formato de un tipo de vehículo específico.
+        /// Obtiene el formato de un tipo de vehÃ­culo especÃ­fico.
         /// </summary>
         [HttpGet]
+        [Permiso("Vehiculos.Consultar", "Servicios.Consultar", "Clientes.Consultar")]
         public async Task<IActionResult> ObtenerFormato(string nombreTipo)
         {
             if (string.IsNullOrWhiteSpace(nombreTipo))

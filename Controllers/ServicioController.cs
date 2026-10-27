@@ -1,4 +1,5 @@
 using Firebase.Models;
+using Firebase.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -8,7 +9,7 @@ using System.Security.Claims;
 /// Incluye filtros, paginación, búsqueda, acciones AJAX de creación/actualización,
 /// y administración de tipos (servicio/vehículo).
 /// </summary>
-[Authorize(Roles = "Administrador")]
+[Authorize]
 public class ServicioController : Controller
 {
     #region Dependencias
@@ -45,6 +46,7 @@ public class ServicioController : Controller
     /// Página principal de servicios con filtros, orden y paginación.
     /// </summary>
     [HttpGet]
+    [Permiso("Servicios.Consultar")]
     public async Task<IActionResult> Index(
         List<string> estados,
         List<string> tipos,
@@ -83,6 +85,7 @@ public class ServicioController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Servicios.Crear")]
     public async Task<IActionResult> CrearServicioAjax(Servicio servicio, string? EtapasJson)
     {
         try
@@ -106,6 +109,7 @@ public class ServicioController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Servicios.Modificar")]
     public async Task<IActionResult> ActualizarServicioAjax(Servicio servicio, string? EtapasJson)
     {
         try
@@ -131,6 +135,7 @@ public class ServicioController : Controller
     /// Busca servicios por término de búsqueda (parcial para actualización dinámica).
     /// </summary>
     [HttpGet]
+    [Permiso("Servicios.Consultar")]
     public async Task<IActionResult> SearchPartial(
         string searchTerm,
         List<string> estados,
@@ -173,6 +178,7 @@ public class ServicioController : Controller
     /// Devuelve la tabla parcial (sin búsqueda) con filtros y orden.
     /// </summary>
     [HttpGet]
+    [Permiso("Servicios.Consultar")]
     public async Task<IActionResult> TablePartial(
         List<string> estados,
         List<string> tipos,
@@ -212,6 +218,7 @@ public class ServicioController : Controller
     /// Desactiva un servicio.
     /// </summary>
     [HttpPost]
+    [Permiso("Servicios.Eliminar")]
     public async Task<IActionResult> DeactivateServicio(string id)
         => await CambiarEstadoServicio(id, "Inactivo", "Desactivacion de servicio");
 
@@ -219,6 +226,7 @@ public class ServicioController : Controller
     /// Reactiva un servicio.
     /// </summary>
     [HttpPost]
+    [Permiso("Servicios.Modificar")]
     public async Task<IActionResult> ReactivateServicio(string id)
         => await CambiarEstadoServicio(id, "Activo", "Reactivacion de servicio");
     #endregion
@@ -230,6 +238,7 @@ public class ServicioController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Servicios.Crear")]
     public async Task<IActionResult> CrearTipoServicio(string nombreTipo)
     {
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
@@ -284,6 +293,7 @@ public class ServicioController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Servicios.Eliminar")]
     public async Task<IActionResult> EliminarTipoServicio(string nombreTipo)
     {
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
@@ -341,6 +351,7 @@ public class ServicioController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Servicios.Crear", "Vehiculos.Crear")]
     public async Task<IActionResult> CrearTipoVehiculo(string nombreTipo, string? formatoPatente = null, int cantidadEmpleadosRequeridos = 1)
     {
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
@@ -423,6 +434,7 @@ public class ServicioController : Controller
     /// Obtiene el formato de patente para un tipo de vehículo específico.
     /// </summary>
     [HttpGet]
+    [Permiso("Servicios.Consultar", "Vehiculos.Consultar")]
     public async Task<IActionResult> ObtenerFormatoPatente(string nombreTipo)
     {
         if (string.IsNullOrWhiteSpace(nombreTipo))
@@ -448,6 +460,7 @@ public class ServicioController : Controller
     /// Obtiene todos los tipos de vehículo con sus formatos de patente.
     /// </summary>
     [HttpGet]
+    [Permiso("Servicios.Consultar", "Vehiculos.Consultar")]
     public async Task<IActionResult> ObtenerTiposConFormatos()
     {
         var tipos = await _tipoVehiculoService.ObtenerTiposVehiculosCompletos();
@@ -464,6 +477,7 @@ public class ServicioController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Servicios.Eliminar", "Vehiculos.Eliminar")]
     public async Task<IActionResult> EliminarTipoVehiculo(string nombreTipo)
     {
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
@@ -535,6 +549,7 @@ public class ServicioController : Controller
     /// Devuelve el formulario parcial (usado por AJAX para editar/crear).
     /// </summary>
     [HttpGet]
+    [Permiso("Servicios.Consultar")]
     public async Task<IActionResult> FormPartial(string id)
     {
         await CargarListasForm();

@@ -1,10 +1,11 @@
 using Firebase.Models;
+using Firebase.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Firebase.Services;
 
-[Authorize(Roles = "Administrador,Empleado")]
+[Authorize]
 public class VehiculoController : Controller
 {
     private readonly VehiculoService _vehiculoService;
@@ -31,6 +32,7 @@ public class VehiculoController : Controller
     }
 
     [HttpGet]
+    [Permiso("Vehiculos.Consultar")]
     public async Task<IActionResult> Index(
         string searchTerm,
         List<string> tiposVehiculo,
@@ -86,6 +88,7 @@ public class VehiculoController : Controller
     }
 
     [HttpGet]
+    [Permiso("Vehiculos.Consultar")]
     public async Task<IActionResult> SearchPartial(
         string searchTerm,
         List<string> tiposVehiculo,
@@ -121,6 +124,7 @@ public class VehiculoController : Controller
     }
 
     [HttpGet]
+    [Permiso("Vehiculos.Consultar")]
     public async Task<IActionResult> TablePartial(
         List<string> tiposVehiculo,
         List<string> marcas,
@@ -135,6 +139,7 @@ public class VehiculoController : Controller
     }
 
     [HttpGet]
+    [Permiso("Vehiculos.Consultar")]
     public async Task<IActionResult> FormPartial(string id)
     {
         await CargarListasForm();
@@ -146,6 +151,7 @@ public class VehiculoController : Controller
     }
 
     [HttpGet]
+    [Permiso("Vehiculos.Consultar")]
     public async Task<IActionResult> GetClienteInfo(string clienteId)
     {
         if (string.IsNullOrEmpty(clienteId)) return NotFound();
@@ -162,6 +168,7 @@ public class VehiculoController : Controller
     }
 
     [HttpGet]
+    [Permiso("Vehiculos.Consultar")]
     public async Task<IActionResult> GetMarcasYColores()
     {
         var marcas = await _vehiculoService.ObtenerMarcasUnicas();
@@ -178,6 +185,7 @@ public class VehiculoController : Controller
     /// Verifica si existe un vehículo con la patente especificada y determina si puede ser reasignado
     /// </summary>
     [HttpGet]
+    [Permiso("Vehiculos.Consultar", "Clientes.Consultar")]
     public async Task<IActionResult> VerificarVehiculoSinDueno(string patente, string marca, string modelo)
     {
         try
@@ -250,6 +258,7 @@ public class VehiculoController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Vehiculos.Crear")]
     public async Task<IActionResult> CrearVehiculoAjax(Vehiculo vehiculo)
     {
         try
@@ -316,6 +325,7 @@ public class VehiculoController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Vehiculos.Modificar")]
     public async Task<IActionResult> ActualizarVehiculoAjax(Vehiculo vehiculo)
     {
         try
@@ -349,6 +359,7 @@ public class VehiculoController : Controller
     }
 
     [HttpPost]
+    [Permiso("Vehiculos.Eliminar")]
     public async Task<IActionResult> DeactivateVehiculo(string id)
     {
         try
@@ -384,6 +395,7 @@ public class VehiculoController : Controller
     // Por lo tanto, este endpoint ha sido removido para mantener consistencia
 
     [HttpPost]
+    [Permiso("Vehiculos.Eliminar")]
     public async Task<IActionResult> EliminarVehiculo(string id)
     {
         try
@@ -465,6 +477,7 @@ public class VehiculoController : Controller
     /// Retorna lista de marcas de vehículos desde CarQuery API
     /// </summary>
     [HttpGet]
+    [Permiso("Vehiculos.Consultar")]
     public async Task<IActionResult> GetMarcas()
     {
         try
@@ -491,6 +504,7 @@ public class VehiculoController : Controller
     /// Retorna marcas filtradas por tipo de vehículo
     /// </summary>
     [HttpGet]
+    [Permiso("Vehiculos.Consultar")]
     public async Task<IActionResult> GetMarcasPorTipo(string tipoVehiculo)
     {
         try
@@ -523,6 +537,7 @@ public class VehiculoController : Controller
     /// Retorna modelos de una marca (opcionalmente filtrado por año)
     /// </summary>
     [HttpGet]
+    [Permiso("Vehiculos.Consultar")]
     public async Task<IActionResult> GetModelos(string marcaId, int? year = null)
     {
         if (string.IsNullOrWhiteSpace(marcaId))
@@ -546,6 +561,7 @@ public class VehiculoController : Controller
     /// Retorna lista de colores comunes
     /// </summary>
     [HttpGet]
+    [Permiso("Vehiculos.Consultar")]
     public async Task<IActionResult> GetColores()
     {
         try
@@ -564,6 +580,7 @@ public class VehiculoController : Controller
     /// Retorna rango de años disponibles para una marca
     /// </summary>
     [HttpGet]
+    [Permiso("Vehiculos.Consultar")]
     public async Task<IActionResult> GetYears(string marcaId)
     {
         if (string.IsNullOrWhiteSpace(marcaId))
@@ -587,6 +604,7 @@ public class VehiculoController : Controller
     /// Retorna vehículos activos que pueden ser asociados a otros clientes (tienen clave de asociación).
     /// </summary>
     [HttpGet]
+    [Permiso("Vehiculos.Consultar", "Clientes.Consultar")]
     public async Task<IActionResult> GetVehiculosParaAsociacion()
     {
         try
@@ -616,6 +634,7 @@ public class VehiculoController : Controller
     /// Valida que la clave de asociación sea correcta para un vehículo específico.
     /// </summary>
     [HttpPost]
+    [Permiso("Vehiculos.Consultar", "Clientes.Consultar")]
     public async Task<IActionResult> ValidarClaveAsociacion([FromBody] ValidarClaveRequest request)
     {
         try

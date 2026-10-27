@@ -3,6 +3,7 @@
     var config = ViewBag.Configuracion as Firebase.Models.Configuracion;
     var tiempoNotificacion = config?.TiempoNotificacionMinutos ?? 15;
     var tiempoTolerancia = config?.TiempoToleranciaMinutos ?? 15;
+    var puedeModificar = User.TienePermiso("Lavados.Modificar");
 }
 
 <div class="grid gap-4 md:grid-cols-2">
@@ -211,7 +212,7 @@
             // 3. Y el vehículo no ha sido retirado aún
             var pagoValido = estadoPagoRetiro == "Pagado" || estadoPagoRetiro == "Cancelado";
             var lavadoFinalizado = estadoLavado == "Realizado" || estadoLavado == "RealizadoParcialmente" || estadoLavado == "Cancelado";
-            var puedeRetirar = pagoValido && lavadoFinalizado && estadoRetiro != "Retirado";
+            var puedeRetirar = puedeModificar && pagoValido && lavadoFinalizado && estadoRetiro != "Retirado";
         }
         @if (puedeRetirar)
         {
@@ -228,7 +229,7 @@
                 </p>
             </div>
         }
-        else if (estadoRetiro != "Retirado")
+        else if (puedeModificar && estadoRetiro != "Retirado")
         {
             <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
                 <p class="text-xs text-yellow-600 dark:text-yellow-400">
@@ -285,7 +286,7 @@
                             <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-gray-900 dark:text-gray-300">Pendiente</span>
                         }
                         
-                        @if (Model.Estado == "EnProceso" && (servicio.Estado == "Pendiente" || servicio.Estado == "EnProceso"))
+                        @if (puedeModificar && Model.Estado == "EnProceso" && (servicio.Estado == "Pendiente" || servicio.Estado == "EnProceso"))
                         {
                             @if (servicio.Estado == "Pendiente")
                             {
@@ -378,7 +379,7 @@
                                             <span class="text-xs text-gray-500 dark:text-gray-400">Pendiente</span>
                                         }
                                         
-                                        @if (Model.Estado == "EnProceso" && servicio.Estado == "EnProceso" && (etapa.Estado == "Pendiente" || etapa.Estado == "EnProceso"))
+                                        @if (puedeModificar && Model.Estado == "EnProceso" && servicio.Estado == "EnProceso" && (etapa.Estado == "Pendiente" || etapa.Estado == "EnProceso"))
                                         {
                                             @if (etapa.Estado == "Pendiente")
                                             {
@@ -417,7 +418,7 @@
 </div>
 
 <!-- Botón de Finalizar Lavado (solo si todos los servicios están finalizados) -->
-@if (Model.Estado == "EnProceso")
+@if (puedeModificar && Model.Estado == "EnProceso")
 {
     var todosServiciosFinalizados = Model.Servicios.All(s => s.Estado == "Realizado" || s.Estado == "Cancelado");
     @if (todosServiciosFinalizados)

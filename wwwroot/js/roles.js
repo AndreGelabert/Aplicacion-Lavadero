@@ -5,7 +5,7 @@
  * Responsabilidades:
  *  - Búsqueda con debounce, filtro por estado y ordenamiento.
  *  - Recarga parcial de la tabla con paginación.
- *  - Apertura del modal de creación/edición y envío AJAX.
+ *  - Apertura del formulario inline de creación/edición y envío AJAX.
  *  - Selección masiva de permisos y notificaciones tipo toast.
  *
  * Solo se exponen las funciones invocadas desde el HTML.
@@ -36,7 +36,28 @@
         setupFilters();
         setupPermissionDelegation();
         setupDeleteConfirmation();
+        setupInlineFormAccordion();
         syncSortSelect();
+    }
+
+    /**
+     * Carga el formulario de creación al abrir el acordeón vacío.
+     */
+    function setupInlineFormAccordion() {
+        const { button } = getRolFormParts();
+        if (!button) return;
+
+        button.addEventListener('click', () => {
+            const { body, container } = getRolFormParts();
+            if (!body || !container || body.classList.contains('hidden')) return;
+            if (container.innerHTML.trim()) return;
+
+            if (document.getElementById('btn-nuevo-rol')) {
+                window.openRolForm();
+            } else {
+                container.innerHTML = '<p class="p-4 text-sm text-gray-500 dark:text-gray-400">Seleccione «Editar» en un rol de la tabla para modificar sus datos.</p>';
+            }
+        });
     }
 
     // ===================== Búsqueda (debounce) =====================
@@ -201,24 +222,55 @@
         if (element) element.value = value;
     }
 
-    // ===================== Modal crear / editar =====================
+    // ===================== Formulario inline crear / editar =====================
 
     /**
-     * Abre el modal de rol y carga el formulario correspondiente.
+     * Obtiene los elementos del acordeón y del contenedor del formulario.
+     * @returns {{button: HTMLElement|null, body: HTMLElement|null, title: HTMLElement|null, container: HTMLElement|null}}
+     */
+    function getRolFormParts() {
+        return {
+            button: document.querySelector('[data-accordion-target="#accordion-flush-body-1"]'),
+            body: document.getElementById('accordion-flush-body-1'),
+            title: document.getElementById('rol-form-title'),
+            container: document.getElementById('rol-form-container')
+        };
+    }
+
+    /**
+     * Abre el acordeón del formulario si está cerrado.
+     */
+    function expandRolForm() {
+        const { button, body } = getRolFormParts();
+        if (button && body && body.classList.contains('hidden')) {
+            button.click();
+        }
+    }
+
+    /**
+     * Cierra el acordeón del formulario si está abierto.
+     */
+    function collapseRolForm() {
+        const { button, body } = getRolFormParts();
+        if (button && body && !body.classList.contains('hidden')) {
+            button.click();
+        }
+    }
+
+    /**
+     * Abre el formulario inline y carga el rol solicitado.
      * @param {string} [id] ID del rol a editar; vacío para crear.
      */
-    window.openRolModal = function (id) {
-        const modal = document.getElementById('rol-modal');
-        const title = document.getElementById('rol-modal-title');
-        const container = document.getElementById('rol-form-container');
-        if (!modal || !title || !container) return;
+    window.openRolForm = function (id) {
+        const { title, container } = getRolFormParts();
+        if (!title || !container) return;
 
         const editando = Boolean(id);
         const requestSeq = ++formRequestSeq;
 
-        title.textContent = editando ? 'Modificar Rol' : 'Crear Nuevo Rol';
+        title.textContent = editando ? 'Modificar Rol' : 'Nuevo Rol';
         container.innerHTML = '';
-        showModal(modal);
+        expandRolForm();
 
         const url = editando
             ? '/Rol/FormPartial?id=' + encodeURIComponent(id)
@@ -235,24 +287,24 @@
                 container.innerHTML = html;
                 updateSelectAllState();
                 document.getElementById('Nombre')?.focus();
+                container.scrollIntoView({ behavior: 'smooth', block: 'start' });
             })
             .catch(error => {
                 if (requestSeq !== formRequestSeq) return;
-                console.error('openRolModal error:', error);
-                closeRolModal();
+                console.error('openRolForm error:', error);
+                window.closeRolForm();
                 showRolToast('No se pudo cargar el formulario del rol.', 'error');
             });
     };
 
     /**
-     * Cierra el modal de rol y limpia el formulario.
+     * Cierra el formulario inline y limpia su contenido.
      */
-    window.closeRolModal = function () {
+    window.closeRolForm = function () {
         formRequestSeq++;
-        const modal = document.getElementById('rol-modal');
-        const container = document.getElementById('rol-form-container');
-        if (modal) hideModal(modal);
+        const { container } = getRolFormParts();
         if (container) container.innerHTML = '';
+        collapseRolForm();
     };
 
     /**
@@ -309,7 +361,7 @@
                 }
 
                 if (data.success) {
-                    closeRolModal();
+                    window.closeRolForm();
                     showRolToast(data.message || 'Operación exitosa.', 'success');
 
                     const searchInput = document.getElementById('rol-search');

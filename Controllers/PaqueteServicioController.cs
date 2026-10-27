@@ -1,4 +1,5 @@
 using Firebase.Models;
+using Firebase.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -7,7 +8,7 @@ using System.Security.Claims;
 /// Controlador para la gestión de paquetes de servicios del lavadero.
 /// Incluye filtros, paginación, búsqueda, acciones AJAX de creación/actualización.
 /// </summary>
-[Authorize(Roles = "Administrador")]
+[Authorize]
 public class PaqueteServicioController : Controller
 {
     #region Dependencias
@@ -42,6 +43,7 @@ public class PaqueteServicioController : Controller
     /// OPTIMIZADO: Calcula precios/tiempos una sola vez.
     /// </summary>
     [HttpGet]
+    [Permiso("Paquetes.Consultar")]
     public async Task<IActionResult> Index(
         List<string> estados,
         List<string> tiposVehiculo,
@@ -95,6 +97,7 @@ public class PaqueteServicioController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Paquetes.Crear")]
     public async Task<IActionResult> CrearPaqueteAjax(PaqueteServicio paquete, string? ServiciosIdsJson)
     {
         try
@@ -118,6 +121,7 @@ public class PaqueteServicioController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Paquetes.Modificar")]
     public async Task<IActionResult> ActualizarPaqueteAjax(PaqueteServicio paquete, string? ServiciosIdsJson)
     {
         try
@@ -144,6 +148,7 @@ public class PaqueteServicioController : Controller
     /// OPTIMIZADO con caché.
     /// </summary>
     [HttpGet]
+    [Permiso("Paquetes.Consultar")]
     public async Task<IActionResult> SearchPartial(
         string searchTerm,
         List<string> estados,
@@ -198,6 +203,7 @@ public class PaqueteServicioController : Controller
     /// OPTIMIZADO con caché.
     /// </summary>
     [HttpGet]
+    [Permiso("Paquetes.Consultar")]
     public async Task<IActionResult> TablePartial(
         List<string> estados,
         List<string> tiposVehiculo,
@@ -248,6 +254,7 @@ public class PaqueteServicioController : Controller
     /// Devuelve dinámicamente el rango de precio posible para los filtros actuales (sin aplicar precioMin/Max)
     /// </summary>
     [HttpGet]
+    [Permiso("Paquetes.Consultar")]
     public async Task<IActionResult> PriceRange(
         List<string> estados,
         List<string> tiposVehiculo,
@@ -272,6 +279,7 @@ public class PaqueteServicioController : Controller
     /// Devuelve dinámicamente el rango de descuento posible para los filtros actuales (sin aplicar descuentoMin/Max)
     /// </summary>
     [HttpGet]
+    [Permiso("Paquetes.Consultar")]
     public async Task<IActionResult> DiscountRange(
         List<string> estados,
         List<string> tiposVehiculo,
@@ -298,6 +306,7 @@ public class PaqueteServicioController : Controller
     /// Desactiva un paquete.
     /// </summary>
     [HttpPost]
+    [Permiso("Paquetes.Eliminar")]
     public async Task<IActionResult> DeactivatePaquete(string id)
         => await CambiarEstadoPaquete(id, "Inactivo", "Desactivacion de paquete de servicios");
 
@@ -305,6 +314,7 @@ public class PaqueteServicioController : Controller
     /// Reactiva un paquete.
     /// </summary>
     [HttpPost]
+    [Permiso("Paquetes.Modificar")]
     public async Task<IActionResult> ReactivatePaquete(string id)
         => await CambiarEstadoPaquete(id, "Activo", "Reactivacion de paquete de servicios");
     #endregion
@@ -315,6 +325,7 @@ public class PaqueteServicioController : Controller
     /// Devuelve el formulario parcial (usado por AJAX para editar/crear).
     /// </summary>
     [HttpGet]
+    [Permiso("Paquetes.Consultar")]
     public async Task<IActionResult> FormPartial(string id)
     {
         await CargarListasForm();
@@ -347,6 +358,7 @@ public class PaqueteServicioController : Controller
     /// Obtiene los servicios activos filtrados por tipo de vehículo.
     /// </summary>
     [HttpGet]
+    [Permiso("Paquetes.Consultar")]
     public async Task<IActionResult> ObtenerServiciosPorTipoVehiculo(string tipoVehiculo)
     {
         if (string.IsNullOrWhiteSpace(tipoVehiculo))

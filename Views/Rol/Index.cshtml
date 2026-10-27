@@ -13,13 +13,16 @@
                 Roles y Permisos
             </h1>
             <div class="flex items-center gap-2 ml-auto">
-                <button id="btn-nuevo-rol" type="button" onclick="openRolModal()"
-                        class="text-white inline-flex items-center bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-3 py-2 text-center dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-800">
-                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
-                    </svg>
-                    + Nuevo Rol
-                </button>
+                @if (User.TienePermiso("Roles.Crear"))
+                {
+                    <button id="btn-nuevo-rol" type="button" onclick="openRolForm()"
+                            class="text-white inline-flex items-center bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-3 py-2 text-center dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-800">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
+                        </svg>
+                        Nuevo Rol
+                    </button>
+                }
                 <!-- Botón de ayuda -->
                 <button data-popover-target="rol-help-popover" data-popover-trigger="click" type="button"
                         class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-2 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
@@ -39,6 +42,37 @@
                 </div>
             </div>
         </div>
+
+        @if (User.TienePermiso("Roles.Crear") || User.TienePermiso("Roles.Modificar"))
+        {
+            <!-- Formulario de Registro/Edición -->
+            <div id="accordion-flush" data-accordion="collapse" data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white" data-inactive-classes="text-gray-500 dark:text-gray-400">
+                <h2 id="accordion-flush-heading-1">
+                    <button type="button"
+                            class="flex items-center justify-between w-full p-2 py-5 font-medium rtl:text-right text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400 gap-3"
+                            data-accordion-target="#accordion-flush-body-1"
+                            aria-expanded="false"
+                            aria-controls="accordion-flush-body-1">
+                        <div class="flex items-center gap-2">
+                            <span id="rol-form-title">Nuevo Rol</span>
+                            <svg data-accordion-icon class="w-3 h-3 rotate-180 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5" />
+                            </svg>
+                        </div>
+                    </button>
+                </h2>
+                <div id="accordion-flush-body-1" class="hidden" aria-labelledby="accordion-flush-heading-1">
+                    <div class="py-2 border-b border-gray-200 dark:border-gray-700">
+                        <div id="rol-form-container">
+                            @if (User.TienePermiso("Roles.Crear"))
+                            {
+                                @await Html.PartialAsync("_RolForm", new Firebase.Models.Rol())
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
 
         <!-- Filtros y búsqueda -->
         <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-4 border-b dark:border-gray-600">
@@ -86,24 +120,6 @@
     </div>
 </section>
 
-<!-- Modal de creación/edición de rol -->
-<div id="rol-modal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50 p-4" aria-hidden="true">
-    <div class="relative w-full max-w-4xl bg-white dark:bg-gray-800 rounded-lg shadow-lg"
-         style="max-height: 90vh; overflow-y: auto;">
-        <div class="flex items-center justify-between p-4 border-b dark:border-gray-600">
-            <h3 id="rol-modal-title" class="text-lg font-semibold text-gray-900 dark:text-white">Crear Nuevo Rol</h3>
-            <button type="button" onclick="closeRolModal()"
-                    class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 dark:hover:bg-gray-600 dark:hover:text-white">
-                <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-                </svg>
-                <span class="sr-only">Cerrar</span>
-            </button>
-        </div>
-        <div id="rol-form-container"></div>
-    </div>
-</div>
-
 <!-- Modal de confirmación de eliminación -->
 <div id="rol-delete-modal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50 p-4" aria-hidden="true">
     <div class="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-5 text-center">
@@ -149,9 +165,11 @@
 </div>
 
 <!-- Contenedor de notificaciones -->
-<div id="rol-toast-container" class="fixed top-4 right-4 z-50" aria-live="polite" aria-atomic="true"></div>
+<div id="rol-toast-container" class="fixed flex flex-col items-end gap-2"
+     style="top: 5rem; right: 1rem; z-index: 60;"
+     aria-live="polite" aria-atomic="true"></div>
 <template id="rol-toast-template">
-    <div class="flex items-center w-full max-w-xs p-4 mb-4 text-sm rounded-lg shadow-sm" role="status">
+    <div class="flex items-center w-full max-w-sm p-4 text-sm rounded-lg shadow-lg" role="status">
         <span data-toast-text></span>
     </div>
 </template>

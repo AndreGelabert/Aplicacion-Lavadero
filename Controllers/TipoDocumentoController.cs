@@ -1,4 +1,5 @@
 using Firebase.Models;
+using Firebase.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -6,7 +7,7 @@ using System.Security.Claims;
 /// <summary>
 /// Controlador para la gestión de tipos de documento.
 /// </summary>
-[Authorize(Roles = "Administrador,Empleado")]
+[Authorize]
 public class TipoDocumentoController : Controller
 {
     private readonly TipoDocumentoService _tipoDocumentoService;
@@ -25,6 +26,7 @@ public class TipoDocumentoController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Clientes.Crear")]
     public async Task<IActionResult> CrearTipoDocumento(string nombreTipo, string? formato = null)
     {
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
@@ -88,6 +90,7 @@ public class TipoDocumentoController : Controller
     /// Obtiene el formato de un tipo de documento específico.
     /// </summary>
     [HttpGet]
+    [Permiso("Clientes.Consultar")]
     public async Task<IActionResult> ObtenerFormato(string nombreTipo)
     {
         if (string.IsNullOrWhiteSpace(nombreTipo))
@@ -113,6 +116,7 @@ public class TipoDocumentoController : Controller
     /// Obtiene todos los tipos de documento con sus formatos.
     /// </summary>
     [HttpGet]
+    [Permiso("Clientes.Consultar")]
     public async Task<IActionResult> ObtenerTiposConFormatos()
     {
         var tipos = await _tipoDocumentoService.ObtenerTiposDocumentoCompletos();
@@ -126,6 +130,7 @@ public class TipoDocumentoController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Clientes.Eliminar")]
     public async Task<IActionResult> EliminarTipoDocumento(string nombreTipo)
     {
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")

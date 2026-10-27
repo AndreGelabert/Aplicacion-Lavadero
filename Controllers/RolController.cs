@@ -1,4 +1,5 @@
 using Firebase.Models;
+using Firebase.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -7,7 +8,7 @@ using System.Security.Claims;
 /// Controlador para la gestión de roles y permisos.
 /// Incluye filtros, paginación, búsqueda y acciones AJAX de creación, edición y eliminación.
 /// </summary>
-[Authorize(Roles = "Administrador")]
+[Authorize]
 public class RolController : Controller
 {
     #region Dependencias
@@ -38,6 +39,7 @@ public class RolController : Controller
     /// <param name="sortOrder">Dirección del ordenamiento.</param>
     /// <returns>Vista con la lista de roles.</returns>
     [HttpGet]
+    [Permiso("Roles.Consultar")]
     public async Task<IActionResult> Index(
         string? estado,
         int pageNumber = 1,
@@ -72,6 +74,7 @@ public class RolController : Controller
     /// <param name="sortOrder">Dirección del ordenamiento.</param>
     /// <returns>Vista parcial con la tabla de roles.</returns>
     [HttpGet]
+    [Permiso("Roles.Consultar")]
     public async Task<IActionResult> SearchPartial(
         string? searchTerm,
         string? estado,
@@ -102,6 +105,7 @@ public class RolController : Controller
     /// <param name="sortOrder">Dirección del ordenamiento.</param>
     /// <returns>Vista parcial con la tabla de roles.</returns>
     [HttpGet]
+    [Permiso("Roles.Consultar")]
     public async Task<IActionResult> TablePartial(
         string? estado,
         int pageNumber = 1,
@@ -129,6 +133,7 @@ public class RolController : Controller
     /// <param name="id">ID del rol a editar; null para creación.</param>
     /// <returns>Vista parcial del formulario.</returns>
     [HttpGet]
+    [Permiso("Roles.Consultar")]
     public async Task<IActionResult> FormPartial(string? id = null)
     {
         if (string.IsNullOrWhiteSpace(id))
@@ -155,6 +160,7 @@ public class RolController : Controller
     /// <returns>Resultado de la operación en JSON.</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Roles.Crear")]
     public async Task<IActionResult> CrearRolAjax(Rol rol)
     {
         await _rolService.AsegurarRolesBaseAsync();
@@ -209,6 +215,7 @@ public class RolController : Controller
     /// <returns>Resultado de la operación en JSON.</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Roles.Modificar")]
     public async Task<IActionResult> ActualizarRolAjax(Rol rol)
     {
         await _rolService.AsegurarRolesBaseAsync();
@@ -284,6 +291,7 @@ public class RolController : Controller
     /// <returns>Resultado de la operación en JSON.</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Roles.Eliminar")]
     public async Task<IActionResult> EliminarRolAjax(string? id)
     {
         await _rolService.AsegurarRolesBaseAsync();

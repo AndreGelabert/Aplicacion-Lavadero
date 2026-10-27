@@ -1,4 +1,5 @@
 using Firebase.Models;
+using Firebase.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -7,7 +8,7 @@ using System.Security.Claims;
 /// Controlador para la gestión de configuración del sistema.
 /// Solo accesible para administradores.
 /// </summary>
-[Authorize(Roles = "Administrador")]
+[Authorize]
 public class ConfiguracionController : Controller
 {
     #region Dependencias
@@ -35,6 +36,7 @@ public class ConfiguracionController : Controller
     /// </summary>
     /// <returns>Vista con la configuración actual.</returns>
     [HttpGet]
+    [Permiso("Configuracion.Consultar")]
     public async Task<IActionResult> Index()
     {
         try
@@ -61,6 +63,7 @@ public class ConfiguracionController : Controller
     /// <returns>Redirección a Index tras actualizar.</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Configuracion.Modificar")]
     public async Task<IActionResult> Actualizar(Configuracion configuracion, Dictionary<string, string>? HorariosOperacion)
     {
         try

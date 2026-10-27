@@ -2,6 +2,10 @@
 @{
     ViewData["Title"] = "Servicios";
     var user = User as ClaimsPrincipal;
+    var puedeCrear = User.TienePermiso("Servicios.Crear");
+    var puedeModificar = User.TienePermiso("Servicios.Modificar");
+    var puedeFormulario = puedeCrear || puedeModificar;
+    var tituloFormulario = puedeCrear ? (ViewBag.FormTitle ?? "Registrando Servicio") : "Editar Servicio";
     var currentUserEmail = user?.FindFirst(ClaimTypes.Email)?.Value; // Obtener el email del usuario actual
     if (TempData["StateChangeEvent_UserId"] != null && TempData["StateChangeEvent_NewState"] != null)
     {
@@ -40,11 +44,13 @@
 
         </div>
         <!-- Formulario de Registro/Edicion -->
+        @if (puedeFormulario)
+        {
         <div id="accordion-flush" data-accordion="collapse" data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white" data-inactive-classes="text-gray-500 dark:text-gray-400">
             <h2 id="accordion-flush-heading-1">
                 <button type="button" class="flex items-center justify-between w-full p-2 py-5 font-medium rtl:text-right text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400 gap-3" data-accordion-target="#accordion-flush-body-1" aria-expanded="false" aria-controls="accordion-flush-body-1">
                     <div class="flex items-center gap-2">
-                        <span id="form-title">@ViewBag.FormTitle</span>
+                        <span id="form-title">@tituloFormulario</span>
                         <svg data-accordion-icon class="w-3 h-3 rotate-180 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
                             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5" />
                         </svg>
@@ -55,11 +61,19 @@
                 <div class="py-2 border-b border-gray-200 dark:border-gray-700">
                     <!-- Modal body -->
                     <div id="servicio-form-container">
-                        @await Html.PartialAsync("_ServicioForm", ViewBag.EditServicio as Firebase.Models.Servicio)
+                        @if (puedeCrear || (puedeModificar && ViewBag.EditServicio != null))
+                        {
+                            @await Html.PartialAsync("_ServicioForm", ViewBag.EditServicio as Firebase.Models.Servicio)
+                        }
+                        else if (puedeModificar)
+                        {
+                            <p class="p-4 text-sm text-gray-500 dark:text-gray-400">Seleccione un servicio de la tabla para editarlo.</p>
+                        }
                     </div>
                 </div>
             </div>
         </div>
+        }
         <!-- Modal de Tipo de Servicio -->
         <div id="defaultModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
             <div class="relative p-4 w-full max-w-2xl h-full md:h-auto">

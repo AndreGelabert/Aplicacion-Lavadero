@@ -1,0 +1,36 @@
+@{
+    ViewData["Title"] = "Acceso denegado";
+    var tieneModulo = ViewBag.TieneModulo as bool? ?? false;
+    var mensaje = ViewBag.Mensaje as string ?? "No tiene permiso para acceder a esta sección. Contacte al administrador.";
+}
+
+<section class="flex items-center justify-center px-4 py-16">
+    <div class="w-full max-w-lg bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-8 text-center">
+        <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900">
+            <svg class="w-9 h-9 text-amber-600 dark:text-amber-300" fill="none" stroke="currentColor" stroke-width="1.8"
+                 viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+        </div>
+
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-3">Acceso denegado</h1>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-6">@mensaje</p>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+            @if (tieneModulo)
+            {
+                <a href="/"
+                   class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-4 py-2">
+                    Ir a mi página inicial
+                </a>
+            }
+            <form asp-controller="Login" asp-action="Logout" method="post">
+                <button type="submit"
+                        class="text-gray-700 inline-flex items-center bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 border border-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-700 font-medium rounded-lg text-sm px-4 py-2">
+                    Cerrar sesión
+                </button>
+            </form>
+        </div>
+    </div>
+</section>
