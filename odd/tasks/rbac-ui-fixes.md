@@ -1,7 +1,7 @@
 # RBAC + UI fixes (permissions, inline role form, navigation, toasts)
 
 Objective: make the role/permission feature usable end to end, with the permission matrix matching the real actions of each module, permission-aware navigation and landing, and the role form embedded inline like the other CRUD views.
-Branch: `main` (worktree changes uncommitted; no feature branch, push, or PR created).
+Branch: `feature/rbac-ui-fixes` (local work-unit commits; no push or PR created).
 Delivery: `ask-on-risk` (default). Test runner: `dotnet test Firebase.Tests`.
 
 ## Specs
