@@ -3,23 +3,31 @@
     ViewData["Title"] = "Error";
 }
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
+<section class="flex items-center justify-center px-4 py-16">
+    <div class="w-full max-w-lg bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-8 text-center">
+        <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900">
+            <svg class="w-9 h-9 text-red-600 dark:text-red-300" fill="none" stroke="currentColor" stroke-width="1.8"
+                 viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+        </div>
 
-@if (Model.ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@Model.RequestId</code>
-    </p>
-}
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-3">Se produjo un error</h1>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-6">
+            No pudimos procesar su solicitud. Intente nuevamente; si el problema persiste, contacte al administrador.
+        </p>
 
-<h3>Development Mode</h3>
-<p>
-    Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
-</p>
-<p>
-    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
-    It can result in displaying sensitive information from exceptions to end users.
-    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
-    and restarting the app.
-</p>
+        @if (Model?.ShowRequestId == true)
+        {
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-6">
+                Identificador de la solicitud: <code>@Model.RequestId</code>
+            </p>
+        }
+
+        <a href="/"
+           class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-4 py-2">
+            Volver al inicio
+        </a>
+    </div>
+</section>
