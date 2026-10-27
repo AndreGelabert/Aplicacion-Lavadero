@@ -171,8 +171,9 @@ public class LoginController : Controller
 
             return Json(new { redirectUrl = NavegacionSistema.RutaLanding(permisos) });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Error durante la autenticación con Google.");
             return BadRequest(new { error = "Error al autenticar con Google. Por favor, intente de nuevo." });
         }
     }
