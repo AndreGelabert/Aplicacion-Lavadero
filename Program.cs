@@ -1,17 +1,27 @@
 using Firebase.Middleware;
 using Firebase.Models;
+using Firebase.Security;
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Localization;
 using System.Globalization;
+
+// Las solicitudes AJAX reciben 401/403 en lugar de una redirección HTML.
+static bool EsSolicitudAjax(HttpRequest request) =>
+    string.Equals(request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase)
+    || request.Headers.Accept.ToString().Contains("application/json", StringComparison.OrdinalIgnoreCase);
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddMemoryCache();
+
+// Políticas dinámicas para los permisos "Modulo.Accion".
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermisoPolicyProvider>();
 
 // Configuración de autenticación
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -19,7 +29,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     {
         options.LoginPath = "/Login/Index";
         options.LogoutPath = "/Lavados/Logout";
-        options.AccessDeniedPath = "/Login/Index";
+        options.AccessDeniedPath = "/Home/AccessDenied";
         // La duración se configurará dinámicamente en el LoginController
         options.ExpireTimeSpan = TimeSpan.FromHours(8); // Valor por defecto
         options.SlidingExpiration = false; // No renovar automáticamente
@@ -36,6 +46,28 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 }
+            },
+            OnRedirectToLogin = context =>
+            {
+                if (EsSolicitudAjax(context.Request))
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return Task.CompletedTask;
+                }
+
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            },
+            OnRedirectToAccessDenied = context =>
+            {
+                if (EsSolicitudAjax(context.Request))
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return Task.CompletedTask;
+                }
+
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
             }
         };
     });
@@ -158,7 +190,7 @@ app.UseSessionActivity(); // Middleware de inactividad
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Lavados}/{action=Index}/{id?}");
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 // NUEVO: Configuracion mejorada de FirebaseApp
 try

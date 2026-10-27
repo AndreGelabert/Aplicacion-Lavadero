@@ -441,19 +441,28 @@ namespace Firebase.Services
         }
 
         /// <summary>
-        /// Crea los claims de autenticación para un usuario.
+        /// Crea los claims de autenticación para un usuario, incluyendo un claim
+        /// por cada permiso válido de su rol activo.
         /// </summary>
         /// <param name="userInfo">Información del usuario.</param>
+        /// <param name="permisos">Permisos del rol activo.</param>
         /// <returns>Lista de claims.</returns>
-        public List<Claim> CreateUserClaims(UserInfo userInfo)
+        public List<Claim> CreateUserClaims(UserInfo userInfo, IEnumerable<string>? permisos = null)
         {
-            return new List<Claim>
+            var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, userInfo.Uid),
                 new Claim(ClaimTypes.Name, userInfo.Name),
                 new Claim(ClaimTypes.Email, userInfo.Email),
                 new Claim(ClaimTypes.Role, userInfo.Role)
             };
+
+            foreach (var permiso in RolCatalogo.NormalizarPermisos(permisos))
+            {
+                claims.Add(new Claim(Firebase.Security.PermisoClaim.Tipo, permiso));
+            }
+
+            return claims;
         }
 
         /// <summary>
