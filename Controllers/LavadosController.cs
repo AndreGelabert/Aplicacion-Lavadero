@@ -1,9 +1,11 @@
 ﻿using Firebase.Models;
+using Firebase.Security;
 using Firebase.Services;
 using FirebaseLoginCustom.Models;
 using FirebaseLoginCustom.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using System.Security.Claims;
@@ -14,7 +16,7 @@ namespace FirebaseLoginCustom.Controllers
     /// Controlador para la gestión de lavados/realizaciones de servicio.
     /// Incluye filtros, paginación, búsqueda, y acciones AJAX.
     /// </summary>
-    [AutorizacionRequerida]
+    [Authorize]
     public class LavadosController : Controller
     {
         #region Dependencias
@@ -63,6 +65,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Página principal de lavados con filtros, orden y paginación.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> Index(
             List<string>? estados,
             string? clienteId,
@@ -121,6 +124,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Busca lavados por término de búsqueda.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> SearchPartial(
             string searchTerm,
             List<string>? estados,
@@ -173,6 +177,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Devuelve la tabla parcial con filtros y orden.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> TablePartial(
             List<string>? estados,
             string? clienteId,
@@ -226,6 +231,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Devuelve el formulario parcial para crear un nuevo lavado.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> FormPartial(string? id)
         {
             await CargarDatosFormulario();
@@ -243,6 +249,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Devuelve el detalle de un lavado.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> DetailPartial(string id)
         {
             var lavado = await _lavadoService.ObtenerLavado(id);
@@ -261,6 +268,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Vista completa de detalle de un lavado.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> Detalle(string id)
         {
             var lavado = await _lavadoService.ObtenerLavado(id);
@@ -284,6 +292,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("Lavados.Crear")]
         public async Task<IActionResult> CrearLavadoAjax([FromBody] CrearLavadoRequest request)
         {
             try
@@ -497,6 +506,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("Lavados.Modificar")]
         public async Task<IActionResult> FinalizarLavado(string id)
         {
             try
@@ -517,6 +527,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("Lavados.Modificar")]
         public async Task<IActionResult> FinalizarServicio(string lavadoId, string servicioId)
         {
             try
@@ -537,6 +548,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("Lavados.Modificar")]
         public async Task<IActionResult> FinalizarEtapa(string lavadoId, string servicioId, string etapaId)
         {
             try
@@ -557,6 +569,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("Lavados.Modificar")]
         public async Task<IActionResult> IniciarServicio(string lavadoId, string servicioId)
         {
             try
@@ -577,6 +590,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("Lavados.Modificar")]
         public async Task<IActionResult> IniciarEtapa(string lavadoId, string servicioId, string etapaId)
         {
             try
@@ -597,6 +611,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("Lavados.Modificar")]
         public async Task<IActionResult> CancelarLavado(string id, string motivo)
         {
             try
@@ -617,6 +632,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("Lavados.Modificar")]
         public async Task<IActionResult> CancelarServicio(string lavadoId, string servicioId, string motivo)
         {
             try
@@ -637,6 +653,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("Lavados.Modificar")]
         public async Task<IActionResult> CancelarEtapa(string lavadoId, string servicioId, string etapaId, string motivo)
         {
             try
@@ -657,6 +674,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("Lavados.Modificar")]
         public async Task<IActionResult> RegistrarPago(string lavadoId, decimal monto, string medioPago, string? notas)
         {
             try
@@ -678,6 +696,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("Lavados.Modificar")]
         public async Task<IActionResult> RegistrarRetiro(string lavadoId)
         {
             try
@@ -726,6 +745,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Obtiene los clientes para el selector.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> ObtenerClientes(string? search)
         {
             var clientes = await _clienteService.ObtenerClientes(
@@ -748,6 +768,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Busca vehículos por patente para el selector.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> BuscarVehiculosPorPatente(string? search)
         {
             if (string.IsNullOrWhiteSpace(search) || search.Length < 2)
@@ -784,6 +805,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Obtiene los clientes asociados a un vehículo.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> ObtenerClientesVehiculo(string vehiculoId)
         {
             var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
@@ -835,6 +857,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Obtiene la cantidad de empleados requeridos para un tipo de vehículo.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> ObtenerEmpleadosPorTipoVehiculo(string tipoVehiculo)
         {
             var tipo = await _tipoVehiculoService.ObtenerTipoVehiculoPorNombre(tipoVehiculo);
@@ -847,6 +870,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Obtiene los vehículos de un cliente.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> ObtenerVehiculosCliente(string clienteId)
         {
             var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(clienteId);
@@ -870,6 +894,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Obtiene los servicios disponibles para un tipo de vehículo.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> ObtenerServiciosPorTipoVehiculo(string tipoVehiculo)
         {
             var servicios = await _servicioService.ObtenerServicios(
@@ -896,6 +921,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Obtiene los paquetes disponibles para un tipo de vehículo.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> ObtenerPaquetesPorTipoVehiculo(string tipoVehiculo)
         {
             var paquetes = await _paqueteServicioService.ObtenerPaquetes(
@@ -947,6 +973,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Obtiene la configuración del sistema.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> ObtenerConfiguracion()
         {
             var config = await _configuracionService.ObtenerConfiguracion();
@@ -974,6 +1001,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Obtiene información sobre empleados disponibles.
         /// </summary>
         [HttpGet]
+        [Permiso("Lavados.Consultar")]
         public async Task<IActionResult> ObtenerEmpleadosDisponibles()
         {
             try

@@ -1,4 +1,5 @@
 ﻿using Firebase.Models;
+using Firebase.Security;
 using Firebase.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 /// Controlador para la visualización de registros de auditoría.
 /// Proporciona acciones para listar, buscar y consultar registros de auditoría.
 /// </summary>
-[Authorize(Roles = "Administrador")]
+[Authorize]
 public class AuditoriaController : Controller
 {
     #region Dependencias
@@ -71,6 +72,7 @@ public class AuditoriaController : Controller
     /// <param name="sortOrder">Dirección del ordenamiento.</param>
     /// <returns>Vista con la lista de registros de auditoría.</returns>
     [HttpGet]
+    [Permiso("Auditoria.Consultar")]
     public async Task<IActionResult> Index(
         DateTime? fechaInicio = null,
         DateTime? fechaFin = null,
@@ -141,6 +143,7 @@ public class AuditoriaController : Controller
     /// <param name="sortOrder">Dirección del ordenamiento.</param>
     /// <returns>Vista parcial con la tabla de auditoría.</returns>
     [HttpGet]
+    [Permiso("Auditoria.Consultar")]
     public async Task<IActionResult> TablePartial(
         DateTime? fechaInicio = null,
         DateTime? fechaFin = null,
@@ -220,6 +223,7 @@ public class AuditoriaController : Controller
     /// <param name="sortOrder">Dirección del ordenamiento.</param>
     /// <returns>Vista parcial with la tabla de auditoría.</returns>
     [HttpGet]
+    [Permiso("Auditoria.Consultar")]
     public async Task<IActionResult> SearchPartial(
         string searchTerm,
         DateTime? fechaInicio,

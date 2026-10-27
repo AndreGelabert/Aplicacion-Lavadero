@@ -1,9 +1,10 @@
 using Firebase.Models;
+using Firebase.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
-[Authorize(Roles = "Administrador,Empleado")]
+[Authorize]
 public class ClienteController : Controller
 {
     private readonly ClienteService _clienteService;
@@ -24,6 +25,7 @@ public class ClienteController : Controller
     }
 
     [HttpGet]
+    [Permiso("Clientes.Consultar")]
     public async Task<IActionResult> Index(
         string searchTerm,
         List<string> estados,
@@ -59,6 +61,7 @@ public class ClienteController : Controller
     }
 
     [HttpGet]
+    [Permiso("Clientes.Consultar")]
     public async Task<IActionResult> SearchPartial(
         string searchTerm,
         List<string> estados,
@@ -88,6 +91,7 @@ public class ClienteController : Controller
     }
 
     [HttpGet]
+    [Permiso("Clientes.Consultar")]
     public async Task<IActionResult> TablePartial(
         List<string> estados,
         int pageNumber = 1,
@@ -99,6 +103,7 @@ public class ClienteController : Controller
     }
 
     [HttpGet]
+    [Permiso("Clientes.Consultar")]
     public async Task<IActionResult> FormPartial(string id)
     {
         await CargarListasForm();
@@ -113,6 +118,7 @@ public class ClienteController : Controller
     /// Obtiene el detalle de un cliente para mostrar en modal.
     /// </summary>
     [HttpGet]
+    [Permiso("Clientes.Consultar", "Vehiculos.Consultar")]
     public async Task<IActionResult> DetailPartial(string id)
     {
         if (string.IsNullOrEmpty(id))
@@ -135,6 +141,7 @@ public class ClienteController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Clientes.Crear")]
     public async Task<IActionResult> CrearClienteAjax(Cliente cliente, string? vehiculosDataJson = null)
     {
         try
@@ -315,6 +322,7 @@ public class ClienteController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Permiso("Clientes.Modificar")]
     public async Task<IActionResult> ActualizarClienteAjax(Cliente cliente, string? vehiculosDataJson = null)
     {
         try
@@ -515,6 +523,7 @@ public class ClienteController : Controller
     }
 
     [HttpPost]
+    [Permiso("Clientes.Eliminar")]
     public async Task<IActionResult> DeactivateCliente(string id)
     {
         try
@@ -595,6 +604,7 @@ public class ClienteController : Controller
     }
 
     [HttpPost]
+    [Permiso("Clientes.Modificar")]
     public async Task<IActionResult> ReactivateCliente(string id)
     {
         try
@@ -675,6 +685,7 @@ public class ClienteController : Controller
     }
 
     [HttpGet]
+    [Permiso("Clientes.Consultar")]
     public async Task<IActionResult> GetVehiculosCliente(string clienteId)
     {
         try
@@ -746,6 +757,7 @@ public class ClienteController : Controller
     }
 
     [HttpPost]
+    [Permiso("Clientes.Eliminar")]
     public async Task<IActionResult> EliminarCliente(string id)
     {
         try

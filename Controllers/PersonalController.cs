@@ -1,4 +1,5 @@
 ﻿using Firebase.Models;
+using Firebase.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -7,7 +8,7 @@ using System.Security.Claims;
 /// Controlador para la gestión de personal.
 /// Incluye filtros, paginación, búsqueda, acciones AJAX y ordenamiento.
 /// </summary>
-[Authorize(Roles = "Administrador")]
+[Authorize]
 public class PersonalController : Controller
 {
     #region Dependencias
@@ -42,6 +43,7 @@ public class PersonalController : Controller
     /// <param name="sortOrder">Dirección del ordenamiento.</param>
     /// <returns>Vista con la lista de empleados.</returns>
     [HttpGet]
+    [Permiso("Personal.Consultar")]
     public async Task<IActionResult> Index(
         List<string> estados,
         List<string> roles,
@@ -82,6 +84,7 @@ public class PersonalController : Controller
     /// <param name="sortOrder">Dirección del ordenamiento.</param>
     /// <returns>Vista parcial con la tabla de empleados.</returns>
     [HttpGet]
+    [Permiso("Personal.Consultar")]
     public async Task<IActionResult> SearchPartial(
         string searchTerm,
         List<string> estados,
@@ -130,6 +133,7 @@ public class PersonalController : Controller
     /// <param name="sortOrder">Dirección del ordenamiento.</param>
     /// <returns>Vista parcial con la tabla de empleados.</returns>
     [HttpGet]
+    [Permiso("Personal.Consultar")]
     public async Task<IActionResult> TablePartial(
         List<string> estados,
         List<string> roles,
@@ -171,6 +175,7 @@ public class PersonalController : Controller
     /// <param name="newRole">Nuevo rol a asignar.</param>
     /// <returns>Resultado de la operación.</returns>
     [HttpPost]
+    [Permiso("Personal.Modificar")]
     public async Task<IActionResult> UpdateRole(string id, string newRole)
     {
         try
@@ -226,6 +231,7 @@ public class PersonalController : Controller
     /// <param name="id">ID del empleado.</param>
     /// <returns>Resultado de la operación.</returns>
     [HttpPost]
+    [Permiso("Personal.Modificar")]
     public async Task<IActionResult> DeactivateEmployee(string id)
     {
         try
@@ -268,6 +274,7 @@ public class PersonalController : Controller
     /// <param name="id">ID del empleado.</param>
     /// <returns>Resultado de la operación.</returns>
     [HttpPost]
+    [Permiso("Personal.Modificar")]
     public async Task<IActionResult> ReactivateEmployee(string id)
     {
         try
