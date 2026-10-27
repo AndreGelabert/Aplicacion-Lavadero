@@ -3,9 +3,10 @@
     var user = User as ClaimsPrincipal;
     var currentUserEmail = user?.FindFirst(ClaimTypes.Email)?.Value;
     var rolesRegistrados = ViewBag.TodosLosRoles as List<string> ?? new List<string>();
+    var puedeModificar = User.TienePermiso("Personal.Modificar");
 }
 
-<!-- Input oculto para almacenar la p醙ina actual -->
+<!-- Input oculto para almacenar la p谩gina actual -->
 <input type="hidden" id="current-page-value" value="@ViewBag.CurrentPage" />
 
 <!-- Inputs ocultos para el ordenamiento -->
@@ -37,7 +38,7 @@ else
       </th>
     <th scope="col" class="px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600" onclick="sortTable('Email')">
 <div class="flex items-center">
-    Correo electr髇ico
+    Correo electr贸nico
          @if (ViewBag.SortBy == "Email")
            {
          @if (ViewBag.SortOrder == "asc")
@@ -134,11 +135,11 @@ else
            </td>
           <td class="px-4 py-3 w-1/6 whitespace-nowrap text-center">
                <div class="flex items-center justify-center gap-2">
-      @if (empleado.Email != currentUserEmail)
+      @if (puedeModificar && empleado.Email != currentUserEmail)
     {
                @if (empleado.Estado == "Inactivo")
        {
-  <!-- Bot髇 Reactivar -->
+  <!-- Bot贸n Reactivar -->
        <button type="button"
             class="p-1.5 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
                title="Reactivar"
@@ -150,13 +151,13 @@ else
                }
        else
      {
-            <!-- Bot髇 Editar -->
+            <!-- Bot贸n Editar -->
       <button onclick="toggleEdit('@empleado.Id')" class="p-1.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors" title="Editar rol">
    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"></path>
         </svg>
               </button>
-              <!-- Bot髇 Desactivar -->
+              <!-- Bot贸n Desactivar -->
        <button type="button"
          class="p-1.5 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
     title="Desactivar"
@@ -183,17 +184,17 @@ else
     </tbody>
 </table>
 
-<!-- Paginaci髇 de la tabla -->
+<!-- Paginaci贸n de la tabla -->
 <nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">
     <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
-      Mostrando p醙ina
+      Mostrando p谩gina
         <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.CurrentPage</span>
         de
         <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.TotalPages</span>
     </span>
 
     <ul class="inline-flex items-stretch -space-x-px">
-        <!-- Bot髇 Anterior -->
+        <!-- Bot贸n Anterior -->
   <li>
    @if (ViewBag.CurrentPage > 1)
         {
@@ -214,7 +215,7 @@ else
             }
         </li>
 
-        <!-- N鷐eros de p醙ina -->
+        <!-- N煤meros de p谩gina -->
         @foreach (var pageNum in ViewBag.VisiblePages)
         {
             <li>
@@ -231,7 +232,7 @@ else
             </li>
         }
 
-   <!-- Bot髇 Siguiente -->
+   <!-- Bot贸n Siguiente -->
   <li>
      @if (ViewBag.CurrentPage < ViewBag.TotalPages)
     {

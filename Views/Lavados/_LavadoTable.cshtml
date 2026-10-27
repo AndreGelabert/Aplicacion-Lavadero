@@ -1,4 +1,7 @@
 @model List<Firebase.Models.Lavado>
+@{
+    var puedeModificar = User.TienePermiso("Lavados.Modificar");
+}
 <input type="hidden" id="current-page-value" value="@ViewBag.CurrentPage" />
 <input type="hidden" id="current-sort-by" value="@(ViewBag.SortBy ?? "FechaCreacion")" />
 <input type="hidden" id="current-sort-order" value="@(ViewBag.SortOrder ?? "desc")" />
@@ -203,7 +206,7 @@
                             
                             
                             @* Mostrar botón de pago si no está completamente pagado *@
-                            @if (pagoEstado != "Pagado" & lavado.Estado != "Cancelado")
+                            @if (puedeModificar && pagoEstado != "Pagado" & lavado.Estado != "Cancelado")
                             {
                                 <!-- Registrar Pago -->
                                 <button type="button"
@@ -216,7 +219,7 @@
                                 </button>
                             }
                             
-                            @if (lavado.Estado == "EnProceso")
+                            @if (puedeModificar && lavado.Estado == "EnProceso")
                             {
                                 <!-- Cancelar Lavado -->
                                 <button type="button"

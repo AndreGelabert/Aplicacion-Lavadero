@@ -1,4 +1,9 @@
 @model List<Firebase.Models.Cliente>
+@{
+    var puedeModificar = User.TienePermiso("Clientes.Modificar");
+    var puedeEliminar = User.TienePermiso("Clientes.Eliminar");
+    var puedeVerVehiculos = User.TienePermiso("Vehiculos.Consultar");
+}
 <input type="hidden" id="current-page-value" value="@ViewBag.CurrentPage" />
 <input type="hidden" id="current-sort-by" value="@(ViewBag.SortBy ?? "Nombre")" />
 <input type="hidden" id="current-sort-order" value="@(ViewBag.SortOrder ?? "asc")" />
@@ -68,6 +73,8 @@
                     <td class="px-4 py-3">@c.Telefono</td>
                     <td class="px-4 py-3">@c.Email</td>
                     <td class="px-4 py-3 text-center">
+                        @if (puedeVerVehiculos)
+                        {
                         <button type="button" class="text-blue-600 hover:text-blue-800" onclick="verVehiculos('@c.Id')" title="Ver vehículos">
                             <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
@@ -75,6 +82,7 @@
                             </svg>
                             <span class="ml-1 text-xs">(@(c.VehiculosIds?.Count ?? 0))</span>
                         </button>
+                        }
                     </td>
                     <td class="px-4 py-3 text-center">
                         @if (c.Estado == "Activo")
@@ -92,7 +100,7 @@
                     </td>
                     <td class="px-4 py-3 w-1/6 whitespace-nowrap text-center">
                         <div class="flex items-center justify-center gap-2">
-                            @if (c.Estado == "Activo")
+                            @if (c.Estado == "Activo" && puedeModificar)
                             {
                                 <button type="button"
                                         class="p-1.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
@@ -103,7 +111,7 @@
                                     </svg>
                                 </button>
                             }
-                            @if (c.Estado == "Activo")
+                            @if (c.Estado == "Activo" && puedeEliminar)
                             {
                                 <button type="button"
                                         class="p-1.5 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
@@ -114,7 +122,7 @@
                                     </svg>
                                 </button>
                             }
-                            else
+                            @if (c.Estado != "Activo" && puedeModificar)
                             {
                                 <button type="button"
                                         class="p-1.5 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"

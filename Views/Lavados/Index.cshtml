@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Lavados";
     var user = User as ClaimsPrincipal;
+    var puedeCrear = User.TienePermiso("Lavados.Crear");
     var currentUserEmail = user?.FindFirst(ClaimTypes.Email)?.Value;
     if (TempData["LoginEvent"] != null)
     {
@@ -37,6 +38,8 @@
         </div>
 
         <!-- Formulario de Registro -->
+        @if (puedeCrear)
+        {
         <div id="accordion-flush" data-accordion="collapse" data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white" data-inactive-classes="text-gray-500 dark:text-gray-400">
             <h2 id="accordion-flush-heading-1">
                 <button type="button" class="flex items-center justify-between w-full p-2 py-5 font-medium rtl:text-right text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400 gap-3" data-accordion-target="#accordion-flush-body-1" aria-expanded="false" aria-controls="accordion-flush-body-1">
@@ -56,6 +59,7 @@
                 </div>
             </div>
         </div>
+        }
 
         <!-- Encabezado de la tabla -->
         <div class="flex flex-col md:flex-row items-center justify-between space-y-3 md:space-y-0 md:space-x-4 p-4">
