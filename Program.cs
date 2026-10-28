@@ -86,9 +86,16 @@ builder.Services.AddSession(options =>
 
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {
-    options.DefaultRequestCulture = new RequestCulture("es-MX");
-    options.SupportedCultures = new[] { new CultureInfo("es-MX"), new CultureInfo("es-ES") };
-    options.SupportedUICultures = new[] { new CultureInfo("es-MX"), new CultureInfo("es-ES") };
+    options.DefaultRequestCulture = new RequestCulture("es-AR");
+    options.SupportedCultures = new[] { new CultureInfo("es-AR"), new CultureInfo("es-MX"), new CultureInfo("es-ES") };
+    options.SupportedUICultures = new[] { new CultureInfo("es-AR"), new CultureInfo("es-MX"), new CultureInfo("es-ES") };
+    // Do not let the browser's Accept-Language header override the application's regional default.
+    // Explicit region choices remain available through the query string or culture cookie.
+    options.RequestCultureProviders = new IRequestCultureProvider[]
+    {
+        new QueryStringRequestCultureProvider(),
+        new CookieRequestCultureProvider()
+    };
 });
 
 // NUEVO: Configuración mejorada para FirestoreDb que funciona en local y producción
