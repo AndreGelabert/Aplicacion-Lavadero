@@ -178,9 +178,9 @@ namespace Firebase.Services
                 {
                     await TriggerFirebaseTemplateVerificationEmailAsync(request.Email, request.Password);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    Console.WriteLine($"Error enviando verificación: {ex.Message}");
+                    Console.WriteLine("No se pudo enviar el correo de verificación.");
                     // No abortar el registro, solo log
                 }
 
@@ -206,9 +206,9 @@ namespace Firebase.Services
                 var errorCode = ex.AuthErrorCode.ToString();
                 return AuthenticationResult.Failure($"Error al registrar el usuario: {GetFirebaseErrorMessage(errorCode)}");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return AuthenticationResult.Failure($"Error al registrar el usuario: {ex.Message}");
+                return AuthenticationResult.Failure("Error al registrar el usuario. Por favor, intente de nuevo.");
             }
         }
 
@@ -253,9 +253,9 @@ namespace Firebase.Services
                     Role = ""
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine($"Error enviando correo de recuperación: {ex.Message}");
+                Console.WriteLine("No se pudo procesar el correo de recuperación.");
                 return AuthenticationResult.Failure("Error al enviar el correo de recuperación. Por favor, intente de nuevo.");
             }
         }
@@ -365,9 +365,9 @@ namespace Firebase.Services
 
                 return AuthenticationResult.Success(userInfo);
             }
-            catch (Firebase.Auth.FirebaseAuthException ex)
+            catch (Firebase.Auth.FirebaseAuthException)
             {
-                return AuthenticationResult.Failure("Error de autenticación: " + ex.Message);
+                return AuthenticationResult.Failure("Error de autenticación. Por favor, intente de nuevo.");
             }
             catch (Exception)
             {
@@ -405,8 +405,7 @@ namespace Firebase.Services
 
             if (!signInResponse.IsSuccessStatusCode)
             {
-                var raw = await signInResponse.Content.ReadAsStringAsync();
-                throw new Exception($"Fallo en signIn técnico: {raw}");
+                throw new InvalidOperationException("No fue posible validar la cuenta para enviar el correo de verificación.");
             }
 
             var signInJson = await signInResponse.Content.ReadAsStringAsync();
@@ -433,8 +432,7 @@ namespace Firebase.Services
 
             if (!verifyResponse.IsSuccessStatusCode)
             {
-                var raw = await verifyResponse.Content.ReadAsStringAsync();
-                throw new Exception($"Fallo al solicitar envío de verificación: {raw}");
+                throw new InvalidOperationException("No fue posible solicitar el correo de verificación.");
             }
 
             Console.WriteLine("Correo de verificación enviado mediante plantilla Firebase.");

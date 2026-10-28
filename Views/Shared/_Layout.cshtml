@@ -100,7 +100,7 @@
                         <ul class="py-1 text-gray-700 dark:text-gray-300"
                             aria-labelledby="dropdown">
                             <li>
-                                <form asp-controller="Login" asp-action="Logout" method="post">
+                                <form id="session-logout-form" asp-controller="Login" asp-action="Logout" method="post">
                                     <button type="submit" class="block py-2 px-4 text-sm hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Cerrar sesión</button>
                                 </form>
                             </li>
@@ -173,6 +173,7 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/session-logout.js" asp-append-version="true"></script>
     <script src="~/js/session-warning.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

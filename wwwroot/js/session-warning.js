@@ -229,12 +229,15 @@ class SessionWarningManager {
      * @param {string} reason - Razón de la expiración ('duration' o 'inactivity')
      */
     handleSessionExpired(reason) {
-        clearInterval(this.checkTimer);
         const redirectUrl = reason === 'duration'
             ? '/Login/Index?expired=duration'
             : '/Login/Index?expired=inactivity';
 
-        window.location.href = redirectUrl;
+        if (window.appLogout) {
+            window.appLogout(reason);
+        } else {
+            window.location.href = redirectUrl;
+        }
     }
 
     /**
