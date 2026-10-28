@@ -1,4 +1,9 @@
-﻿@{
+﻿@inject ConfiguracionService ConfiguracionService
+@{
+    var configuracion = await ConfiguracionService.ObtenerConfiguracion();
+    var nombreLavadero = string.IsNullOrWhiteSpace(configuracion?.NombreLavadero)
+        ? "Lavadero AutoClean"
+        : configuracion.NombreLavadero;
     var user = User as ClaimsPrincipal;
     var userName = user?.FindFirst(ClaimTypes.Name)?.Value;
     var userEmail = user?.FindFirst(ClaimTypes.Email)?.Value;
@@ -26,7 +31,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Lavadero Andre</title>
+    <title>@ViewData["Title"] - @nombreLavadero</title>
     <base href="~/" />
     <link href="~/css/app.min.css" rel="stylesheet" asp-append-version="true" />
     <link rel="stylesheet" href="~/Firebase.styles.css" asp-append-version="true" />
@@ -75,7 +80,7 @@
                         <svg class="mr-2 h-8 w-8 text-blue-700 dark:text-blue-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 0 0 9-9c0-4.97-9-12-9-12S3 7.03 3 12a9 9 0 0 0 9 9Z" />
                         </svg>
-                        <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">Lavadero Andre</span>
+                        <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">@nombreLavadero</span>
                     </a>
                 </div>
                 <!-- Menu del usuario -->
