@@ -13,16 +13,6 @@
                 Roles y Permisos
             </h1>
             <div class="flex items-center gap-2 ml-auto">
-                @if (User.TienePermiso("Roles.Crear"))
-                {
-                    <button id="btn-nuevo-rol" type="button" onclick="openRolForm()"
-                            class="text-white inline-flex items-center bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-3 py-2 text-center dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-800">
-                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
-                        </svg>
-                        Nuevo Rol
-                    </button>
-                }
                 <!-- Botón de ayuda -->
                 <button data-popover-target="rol-help-popover" data-popover-trigger="click" type="button"
                         class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-2 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using static Firebase.Models.AuthModels;
 using Firebase.Services;
 using Firebase.Security;
@@ -18,6 +19,7 @@ public class LoginController : Controller
     private readonly ConfiguracionService _configuracionService;
     private readonly PersonalService _personalService;
     private readonly RolService _rolService;
+    private readonly AuthenticationSessionRegistry _sessionRegistry;
     private readonly ILogger<LoginController> _logger;
 
     /// <summary>
@@ -33,12 +35,14 @@ public class LoginController : Controller
         ConfiguracionService configuracionService,
         PersonalService personalService,
         RolService rolService,
+        AuthenticationSessionRegistry sessionRegistry,
         ILogger<LoginController> logger)
     {
         _authService = authService;
         _configuracionService = configuracionService;
         _personalService = personalService;
         _rolService = rolService;
+        _sessionRegistry = sessionRegistry;
         _logger = logger;
     }
     #endregion
@@ -103,7 +107,7 @@ public class LoginController : Controller
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error catastrófico durante el login.");
+            _logger.LogError("Error catastrófico durante el login. Tipo: {ErrorType}", ex.GetType().Name);
             ViewBag.Error = "Error al iniciar sesión. Por favor, intente de nuevo.";
             return View("Index");
         }
@@ -173,7 +177,7 @@ public class LoginController : Controller
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error durante la autenticación con Google.");
+            _logger.LogError("Error durante la autenticación con Google. Tipo: {ErrorType}", ex.GetType().Name);
             return BadRequest(new { error = "Error al autenticar con Google. Por favor, intente de nuevo." });
         }
     }
@@ -219,19 +223,20 @@ public class LoginController : Controller
     /// <returns>Permisos del rol activo, usados para resolver la página inicial.</returns>
     private async Task<IReadOnlyList<string>> SignInUserAsync(UserInfo userInfo)
     {
-        // Regenerar sesión
-        var oldSessionId = HttpContext.Session.Id;
+        _sessionRegistry.Revoke(User.FindFirst(SessionTracking.AuthenticationSessionClaimType)?.Value);
 
+        // Limpiar los datos de la sesión anterior sin eliminar la cookie que la identifica.
         HttpContext.Session.Clear();
         await HttpContext.Session.CommitAsync();
 
-        Response.Cookies.Delete(".AspNetCore.Session");
         Response.Cookies.Delete(".AspNetCore.Cookies");
 
         await HttpContext.Session.LoadAsync();
 
         var permisos = await _rolService.ObtenerPermisosRolAsync(userInfo.Role);
         var claims = _authService.CreateUserClaims(userInfo, permisos);
+        var authenticationSessionId = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        claims.Add(new Claim(SessionTracking.AuthenticationSessionClaimType, authenticationSessionId));
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
 
@@ -245,7 +250,7 @@ public class LoginController : Controller
         }
         catch (Exception ex)
         {
-            _logger.LogWarning($"Error al obtener configuración de sesión, usando valor por defecto: {ex.Message}");
+            _logger.LogWarning("Error al obtener configuración de sesión; se usará el valor predeterminado. Tipo: {ErrorType}", ex.GetType().Name);
             duracionSesionMinutos = 480; // 8 horas por defecto
         }
 
@@ -261,7 +266,6 @@ public class LoginController : Controller
         };
 
         _logger.LogInformation($"Usuario {userInfo.Email} - Sesión NO persistente (cookie de sesión)");
-        _logger.LogInformation($"Sesión regenerada: OLD={oldSessionId}, NEW={HttpContext.Session.Id}");
 
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProperties);
 
@@ -269,6 +273,8 @@ public class LoginController : Controller
         HttpContext.Session.SetString("LastActivity", DateTimeOffset.UtcNow.ToString("O"));
         HttpContext.Session.SetString("LoginTime", DateTimeOffset.UtcNow.ToString("O"));
         HttpContext.Session.SetString("MaxDuration", duracionSesionMinutos.ToString());
+        HttpContext.Session.SetString(SessionTracking.AuthenticationSessionKey, authenticationSessionId);
+        _sessionRegistry.Register(authenticationSessionId, TimeSpan.FromMinutes(duracionSesionMinutos));
         await HttpContext.Session.CommitAsync();
 
         _logger.LogInformation($"Sesión iniciada para {userInfo.Email}, duración máxima: {duracionSesionMinutos} min");
@@ -284,10 +290,26 @@ public class LoginController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+        var authenticationSessionId = User.FindFirst(SessionTracking.AuthenticationSessionClaimType)?.Value;
+        var trackedSessionId = HttpContext.Session.GetString(SessionTracking.AuthenticationSessionKey);
+
+        if (!string.IsNullOrEmpty(trackedSessionId) &&
+            !string.Equals(authenticationSessionId, trackedSessionId, StringComparison.Ordinal))
+        {
+            return Conflict();
+        }
+
+        if (string.IsNullOrEmpty(authenticationSessionId) && string.IsNullOrEmpty(trackedSessionId))
+        {
+            return Request.Headers["X-Requested-With"] == "XMLHttpRequest"
+                ? NoContent()
+                : RedirectToAction("Index", "Login");
+        }
+
         try
         {
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            var userEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
 
             // Registrar evento de auditoría ANTES de cerrar la sesión
             if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(userEmail))
@@ -304,6 +326,15 @@ public class LoginController : Controller
                 _logger.LogInformation($"Auditoría registrada - Usuario {userEmail} cerró sesión manualmente");
             }
 
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Error al registrar auditoría de cierre de sesión. Tipo: {ErrorType}", ex.GetType().Name);
+        }
+
+        try
+        {
+            _sessionRegistry.Revoke(authenticationSessionId);
             // Limpiar datos de tracking de sesión
             HttpContext.Session.Remove("LastActivity");
             HttpContext.Session.Remove("LoginTime");
@@ -311,18 +342,20 @@ public class LoginController : Controller
 
             // Limpiar toda la sesión
             HttpContext.Session.Clear();
+            await HttpContext.Session.CommitAsync();
 
-            // Cerrar sesión de autenticación
+            // Remove the authentication cookie only after the server-side revocation is durable.
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-
             _logger.LogInformation($"Usuario cerró sesión manualmente: {userEmail}");
 
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return NoContent();
             return RedirectToAction("Index", "Login");
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error al cerrar sesión: {ex.Message}");
-            return RedirectToAction("Index", "Login");
+            _logger.LogError("Error al cerrar sesión. Tipo: {ErrorType}", ex.GetType().Name);
+            return StatusCode(StatusCodes.Status500InternalServerError);
         }
     }
     #endregion

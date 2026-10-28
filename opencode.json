@@ -1,0 +1,26 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "providers": {
+    "openai": {
+      "models": {
+        "gpt-6-luna-gga": {
+          "modelID": "gpt-6-luna",
+          "name": "GPT-6 Luna (GGA 8k output cap)",
+          "limit": { "output": 8000 }
+        }
+      }
+    }
+  },
+  "agents": {
+    "gga-reviewer": {
+      "description": "Tool-free reviewer for the GGA pre-commit hook",
+      "mode": "primary",
+      "model": "openai/gpt-6-luna-gga",
+      "steps": 1,
+      "system": "Review the candidate supplied in the user's message using the stated project review rules. Do not call tools or perform repository operations. Follow GGA's requested output format exactly, starting with the required STATUS line and adding only concise findings when needed.",
+      "permissions": [
+        { "action": "*", "resource": "*", "effect": "deny" }
+      ]
+    }
+  }
+}

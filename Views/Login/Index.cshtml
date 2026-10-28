@@ -377,15 +377,8 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
 <script src="~/js/site.js" asp-append-version="true"></script>
-<script src="~/js/google.signin.js"></script>
 <script type="module" src="~/js/googleconnectionmodule.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
-    // Inicialización de Google Sign-In
-    document.getElementById('google-login-button')?.addEventListener('click', function () {
-        google.accounts.id.prompt();
-    });
-    
     // Abrir modal de registro
     document.querySelector('button.underline')?.addEventListener('click', function () {
         document.getElementById('registerModal')?.classList.remove('hidden');

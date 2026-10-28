@@ -6,7 +6,7 @@
  */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js';
-import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/9.19.1/firebase-auth.js';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/9.19.1/firebase-auth.js';
 
 /**
  * Configuración de Firebase
@@ -26,6 +26,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const provider = new GoogleAuthProvider();
 const auth = getAuth();
+window.firebaseSignOut = () => signOut(auth);
 
 /**
  * Detecta si el navegador es Brave
@@ -73,17 +74,35 @@ async function handleGoogleLogin() {
         }
 
         // Enviar token al servidor para verificación
-        const response = await fetch('/Login/LoginWithGoogle', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache'
-            },
-            body: JSON.stringify({ idToken })
-        });
+        let response;
+        try {
+            response = await fetch('/Login/LoginWithGoogle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
+                },
+                body: JSON.stringify({ idToken })
+            });
+        } catch (error) {
+            console.error('Error de conexión con el servidor.');
+            showErrorMessage('No se pudo conectar con el servidor. Por favor, intente de nuevo.');
+            return;
+        }
+
+        let data;
+        try {
+            data = await response.json();
+            if (!data || typeof data !== 'object' || Array.isArray(data)) {
+                throw new Error('Respuesta del servidor inválida');
+            }
+        } catch (error) {
+            console.error('No se pudo interpretar la respuesta del servidor.');
+            showErrorMessage('Error en la respuesta del servidor. Por favor, intente de nuevo.');
+            return;
+        }
 
         if (response.ok) {
-            const data = await response.json();
             if (data.redirectUrl) {
                 // Redirigir al usuario a la página principal
                 window.location.href = data.redirectUrl;
@@ -93,14 +112,13 @@ async function handleGoogleLogin() {
             }
         } else {
             // Manejar errores del servidor
-            const errorData = await response.json();
-            const errorMessage = errorData.error || 'Error desconocido al iniciar sesión con Google';
+            const errorMessage = data.error || 'Error desconocido al iniciar sesión con Google';
             console.error('Error del servidor:', errorMessage);
             showErrorMessage(errorMessage);
         }
     } catch (error) {
         // Manejar errores de Firebase o red
-        console.error('Error durante la autenticación con Google:', error);
+        console.error('Error durante la autenticación con Google.');
 
         // Proporcionar mensajes de error más específicos
         let userMessage = 'Error al iniciar sesión con Google. Por favor, intente de nuevo.';
@@ -127,9 +145,6 @@ async function handleGoogleLogin() {
             } else {
                 userMessage = 'Error interno de autenticación. Por favor, intente de nuevo.';
             }
-        } else if (error.message) {
-            // Si es un error personalizado con mensaje, mostrarlo
-            userMessage = `Error: ${error.message}`;
         }
 
         showErrorMessage(userMessage);
@@ -168,43 +183,13 @@ function showErrorMessage(message) {
     }, 5000);
 }
 
-/**
- * Muestra instrucciones específicas para Brave
- */
-function showBraveInstructions() {
-    const instructions = `
-        <strong>Para usar Google Login en Brave:</strong><br>
-        1. Haga clic en el ícono del escudo (🛡️) en la barra de direcciones<br>
-        2. Desactive "Shields" temporalmente para este sitio<br>
-        3. O permita "Cookies de terceros" en la configuración de Shields<br>
-        4. Intente iniciar sesión nuevamente
-    `;
-    showErrorMessage(instructions);
-}
-
 // Configurar el event listener cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', function() {
     const googleLoginButton = document.getElementById('google-login-button');
 
     if (googleLoginButton) {
         googleLoginButton.addEventListener('click', handleGoogleLogin);
 
-        // Si es Brave, mostrar un mensaje informativo
-        const isBrave = await isBraveBrowser();
-        if (isBrave) {
-            console.log('Navegador Brave detectado. Si tiene problemas con Google Login, desactive Shields temporalmente.');
-
-            // Agregar un pequeño ícono de ayuda junto al botón de Google
-            const helpIcon = document.createElement('button');
-            helpIcon.type = 'button';
-            helpIcon.className = 'text-blue-600 hover:text-blue-700 text-sm mt-2 underline';
-            helpIcon.textContent = '¿Problemas con Brave? Haga clic aquí';
-            helpIcon.addEventListener('click', showBraveInstructions);
-
-            if (googleLoginButton.parentNode) {
-                googleLoginButton.parentNode.appendChild(helpIcon);
-            }
-        }
     } else {
         console.warn('Botón de login con Google no encontrado en la página');
     }

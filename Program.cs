@@ -19,6 +19,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<Firebase.Security.AuthenticationSessionRegistry>();
 
 // Políticas dinámicas para los permisos "Modulo.Accion".
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermisoPolicyProvider>();

@@ -66,7 +66,7 @@ namespace Firebase.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error al obtener configuración de sesión: {ex.Message}");
+                _logger.LogError("Failed to retrieve session configuration.");
                 return StatusCode(500, new { error = "Error al obtener configuración de sesión" });
             }
         }
@@ -82,14 +82,13 @@ namespace Firebase.Controllers
                 // Actualizar el tiempo de última actividad
                 HttpContext.Session.SetString("LastActivity", DateTimeOffset.UtcNow.ToString("O"));
 
-                var userEmail = User.FindFirst(ClaimTypes.Email)?.Value;
-                _logger.LogInformation($"Sesión extendida para usuario: {userEmail}");
+                _logger.LogInformation("Session activity updated");
 
                 return Ok(new { message = "Sesión actualizada", timestamp = DateTimeOffset.UtcNow });
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error al hacer ping de sesión: {ex.Message}");
+                _logger.LogError("Failed to update session activity.");
                 return StatusCode(500, new { error = "Error al actualizar sesión" });
             }
         }
