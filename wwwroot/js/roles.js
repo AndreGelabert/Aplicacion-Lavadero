@@ -301,7 +301,12 @@
             return;
         }
 
-        window.closeRolForm();
+        const form = document.getElementById('rol-form');
+        if (form) {
+            form.reset();
+            clearFormErrors(form);
+            updateSelectAllState();
+        }
     };
 
     /**
@@ -559,7 +564,17 @@
         const title = document.getElementById('rol-state-title');
         const confirm = document.getElementById('rol-delete-confirm-btn');
         if (title) title.textContent = 'Confirmar desactivación';
-        if (confirm) confirm.textContent = 'Confirmar desactivación';
+        if (confirm) {
+            confirm.textContent = 'Confirmar desactivación';
+            confirm.className = 'py-2 px-3 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900';
+        }
+        const iconWrapper = document.getElementById('rol-state-icon-wrapper');
+        const icon = document.getElementById('rol-state-icon');
+        if (iconWrapper) iconWrapper.className = 'w-12 h-12 rounded-full bg-red-100 dark:bg-red-900 p-2 flex items-center justify-center mx-auto mb-3.5';
+        if (icon) {
+            icon.setAttribute('class', 'w-8 h-8 text-red-600 dark:text-red-400');
+            icon.innerHTML = '<path fill-rule="evenodd" d="M12 2.25a9.75 9.75 0 1 0 0 19.5 9.75 9.75 0 0 0 0-19.5Zm-.75 4.5a.75.75 0 0 1 1.5 0v6a.75.75 0 0 1-1.5 0v-6Zm0 9a.75.75 0 0 1 1.5 0v1.5a.75.75 0 0 1-1.5 0v-1.5Z" clip-rule="evenodd" />';
+        }
         if (modal) showModal(modal);
     };
 
@@ -572,7 +587,17 @@
         if (idInput) idInput.value = button.dataset.id;
         if (text) text.textContent = `¿Está seguro de que desea reactivar el rol ${button.dataset.nombre}?`;
         if (title) title.textContent = 'Confirmar reactivación';
-        if (confirm) confirm.textContent = 'Confirmar reactivación';
+        if (confirm) {
+            confirm.textContent = 'Confirmar reactivación';
+            confirm.className = 'py-2 px-3 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900';
+        }
+        const iconWrapper = document.getElementById('rol-state-icon-wrapper');
+        const icon = document.getElementById('rol-state-icon');
+        if (iconWrapper) iconWrapper.className = 'w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 p-2 flex items-center justify-center mx-auto mb-3.5';
+        if (icon) {
+            icon.setAttribute('class', 'w-8 h-8 text-green-600 dark:text-green-400');
+            icon.innerHTML = '<path fill-rule="evenodd" d="M2.25 12a9.75 9.75 0 1 1 19.5 0 9.75 9.75 0 0 1-19.5 0Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />';
+        }
         if (modal) { modal.dataset.action = 'reactivar'; showModal(modal); }
     };
 

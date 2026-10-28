@@ -48,6 +48,8 @@ public class RolController : Controller
     {
         await _rolService.AsegurarRolesBaseAsync();
 
+        if (!Request.Query.ContainsKey("estado")) estado = "Activo";
+
         var totalPages = Math.Max(await _rolService.ObtenerTotalPaginas(estado, pageSize), 1);
         pageNumber = Math.Clamp(pageNumber, 1, totalPages);
 
@@ -223,6 +225,11 @@ public class RolController : Controller
         if (rolActual == null)
         {
             return Json(new { success = false, message = "No se encontró el rol a actualizar." });
+        }
+
+        if (!string.Equals(rolActual.Estado, "Activo", StringComparison.OrdinalIgnoreCase))
+        {
+            return Json(new { success = false, message = "No se puede editar un rol inactivo." });
         }
 
         rol.Nombre = RolReglas.NormalizarNombre(rol.Nombre);
