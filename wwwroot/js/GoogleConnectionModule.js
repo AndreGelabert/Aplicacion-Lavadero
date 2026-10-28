@@ -29,14 +29,6 @@ const auth = getAuth();
 window.firebaseSignOut = () => signOut(auth);
 
 /**
- * Detecta si el navegador es Brave
- * @returns {Promise<boolean>} True si es Brave
- */
-async function isBraveBrowser() {
-    return (navigator.brave && await navigator.brave.isBrave()) || false;
-}
-
-/**
  * Maneja el proceso de autenticación con Google
  *
  * Este método:
@@ -47,12 +39,6 @@ async function isBraveBrowser() {
  */
 async function handleGoogleLogin() {
     try {
-        // Detectar Brave y mostrar advertencia
-        const isBrave = await isBraveBrowser();
-        if (isBrave) {
-            console.log('Navegador Brave detectado. Ajustando configuración de popup...');
-        }
-
         // Configurar provider con prompt para forzar selección de cuenta
         provider.setCustomParameters({
             prompt: 'select_account'
@@ -128,23 +114,13 @@ async function handleGoogleLogin() {
         } else if (error.code === 'auth/cancelled-popup-request') {
             userMessage = 'Solicitud de autenticación cancelada. Por favor, intente de nuevo.';
         } else if (error.code === 'auth/popup-blocked') {
-            const isBrave = await isBraveBrowser();
-            if (isBrave) {
-                userMessage = 'Brave está bloqueando el popup de autenticación. Por favor, permita popups para este sitio en la configuración de Brave (ícono del escudo en la barra de direcciones).';
-            } else {
-                userMessage = 'El navegador bloqueó el popup de autenticación. Por favor, permita popups para este sitio.';
-            }
+            userMessage = 'El navegador bloqueó el popup de autenticación. Por favor, permita popups para este sitio.';
         } else if (error.code === 'auth/network-request-failed') {
             userMessage = 'Error de conexión. Verifique su conexión a internet y intente de nuevo.';
         } else if (error.code === 'auth/too-many-requests') {
             userMessage = 'Demasiados intentos. Por favor, espere unos minutos antes de intentar de nuevo.';
         } else if (error.code === 'auth/internal-error') {
-            const isBrave = await isBraveBrowser();
-            if (isBrave) {
-                userMessage = 'Error interno de autenticación. En Brave, intente: 1) Desactivar Shields temporalmente, 2) Permitir cookies de terceros para este sitio, o 3) Usar otro navegador.';
-            } else {
-                userMessage = 'Error interno de autenticación. Por favor, intente de nuevo.';
-            }
+            userMessage = 'Error interno de autenticación. Por favor, intente de nuevo.';
         }
 
         showErrorMessage(userMessage);

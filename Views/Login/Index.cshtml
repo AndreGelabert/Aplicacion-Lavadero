@@ -238,7 +238,7 @@
     </div>
     <!-- Modal de advertencia: verificación de correo (estilo unificado con modal de Servicios) -->
     <div id="verificationModal" class="@(ViewBag.ShowVerificationModal == true ? "" : "hidden") fixed inset-0 z-50 flex items-center justify-center">
-        <div class="relative p-4 w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg sm:p-5 text-center">
+        <div class="relative p-4 w-full max-w-md bg-white rounded-lg shadow-lg sm:p-5 text-center">
             <!-- Botón de cierre -->
             <button type="button"
                     class="absolute top-2.5 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900
@@ -310,7 +310,7 @@
     </div>
     <!-- Modal de recuperación de contraseña -->
     <div id="forgotPasswordModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
-        <div class="relative p-4 w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg sm:p-5">
+        <div class="relative p-4 w-full max-w-md bg-white rounded-lg shadow-lg sm:p-5">
             <!-- Botón de cierre -->
             <button type="button"
                     class="absolute top-2.5 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900
@@ -377,7 +377,7 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
 <script src="~/js/site.js" asp-append-version="true"></script>
-<script type="module" src="~/js/googleconnectionmodule.js"></script>
+<script type="module" src="~/js/googleconnectionmodule.js" asp-append-version="true"></script>
 <script>
     // Abrir modal de registro
     document.querySelector('button.underline')?.addEventListener('click', function () {

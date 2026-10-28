@@ -72,17 +72,30 @@ test('unknown Firebase errors do not expose their message', async () => {
 });
 
 test('existing popup messages and successful login remain unchanged', async () => {
-    for (const [code, brave, message] of [
-        ['auth/popup-closed-by-user', false, 'La ventana de autenticación fue cerrada. Por favor, intente de nuevo.'],
-        ['auth/cancelled-popup-request', false, 'Solicitud de autenticación cancelada. Por favor, intente de nuevo.'],
-        ['auth/popup-blocked', false, 'El navegador bloqueó el popup de autenticación. Por favor, permita popups para este sitio.'],
-        ['auth/popup-blocked', true, 'Brave está bloqueando el popup de autenticación. Por favor, permita popups para este sitio en la configuración de Brave (ícono del escudo en la barra de direcciones).']
+    for (const [code, message] of [
+        ['auth/popup-closed-by-user', 'La ventana de autenticación fue cerrada. Por favor, intente de nuevo.'],
+        ['auth/cancelled-popup-request', 'Solicitud de autenticación cancelada. Por favor, intente de nuevo.'],
+        ['auth/popup-blocked', 'El navegador bloqueó el popup de autenticación. Por favor, permita popups para este sitio.']
     ]) {
-        assert.equal((await login({ firebaseError: { code }, brave })).message, message);
+        assert.equal((await login({ firebaseError: { code } })).message, message);
     }
     const result = await login({ response: { ok: true, json: async () => ({ redirectUrl: '/home' }) } });
     assert.equal(result.href, '/home');
     assert.equal(result.message, undefined);
+});
+
+test('popup troubleshooting is generic and does not show a browser-specific link', async () => {
+    const result = await login({ firebaseError: { code: 'auth/popup-blocked' }, brave: true });
+    assert.equal(result.message, 'El navegador bloqueó el popup de autenticación. Por favor, permita popups para este sitio.');
+    assert.doesNotMatch(result.message, /Brave|Problemas|Haga click/i);
+    const internalError = await login({ firebaseError: { code: 'auth/internal-error' }, brave: true });
+    assert.equal(internalError.message, 'Error interno de autenticación. Por favor, intente de nuevo.');
+    assert.doesNotMatch(internalError.message, /Brave|Shields|cookies de terceros/i);
+});
+
+test('login module script uses asset versioning to avoid stale cached UI', () => {
+    const view = fs.readFileSync(path.join(__dirname, '../Views/Login/Index.cshtml'), 'utf8');
+    assert.match(view, /<script type="module" src="~\/js\/googleconnectionmodule\.js" asp-append-version="true"><\/script>/i);
 });
 
 test('existing server error and missing redirect messages remain unchanged', async () => {
