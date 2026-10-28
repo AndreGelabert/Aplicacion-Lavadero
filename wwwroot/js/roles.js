@@ -18,6 +18,7 @@
     let searchTimeout = null;
     let tableRequestSeq = 0;
     let formRequestSeq = 0;
+    let rolFormIsEditing = false;
 
     // ===================== Inicialización del módulo =====================
     window.PageModules = window.PageModules || {};
@@ -266,6 +267,7 @@
         if (!title || !container) return;
 
         const editando = Boolean(id);
+        rolFormIsEditing = editando;
         const requestSeq = ++formRequestSeq;
 
         title.textContent = editando ? 'Modificar Rol' : 'Nuevo Rol';
@@ -285,6 +287,13 @@
                 if (requestSeq !== formRequestSeq) return;
 
                 container.innerHTML = html;
+                // El contenido cambia mientras el acordeón sigue abierto; volver a
+                // alternarlo permite que Flowbite recalcule el alto del panel.
+                const { body } = getRolFormParts();
+                if (body && !body.classList.contains('hidden')) {
+                    collapseRolForm();
+                    expandRolForm();
+                }
                 updateSelectAllState();
                 document.getElementById('Nombre')?.focus();
                 container.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -302,9 +311,22 @@
      */
     window.closeRolForm = function () {
         formRequestSeq++;
+        rolFormIsEditing = false;
         const { container } = getRolFormParts();
         if (container) container.innerHTML = '';
         collapseRolForm();
+    };
+
+    /**
+     * Cancela la edición volviendo al formulario de registro.
+     */
+    window.cancelRolForm = function () {
+        if (rolFormIsEditing) {
+            window.openRolForm();
+            return;
+        }
+
+        window.closeRolForm();
     };
 
     /**
