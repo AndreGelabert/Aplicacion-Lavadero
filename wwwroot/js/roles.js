@@ -52,7 +52,7 @@
             if (!body || !container || body.classList.contains('hidden')) return;
             if (container.innerHTML.trim()) return;
 
-            if (document.getElementById('btn-nuevo-rol')) {
+            if (container.dataset.canCreate === 'true') {
                 window.openRolForm();
             } else {
                 container.innerHTML = '<p class="p-4 text-sm text-gray-500 dark:text-gray-400">Seleccione «Editar» en un rol de la tabla para modificar sus datos.</p>';
@@ -287,17 +287,18 @@
     window.closeRolForm = function () {
         formRequestSeq++;
         rolFormIsEditing = false;
-        const { container } = getRolFormParts();
+        const { container, title } = getRolFormParts();
+        if (title) title.textContent = 'Nuevo Rol';
         if (container) container.innerHTML = '';
         collapseRolForm();
     };
 
     /**
-     * Cancela la edición volviendo al formulario de registro.
+     * Cancela la edición cerrando el formulario, o limpia el formulario de registro.
      */
     window.cancelRolForm = function () {
         if (rolFormIsEditing) {
-            window.openRolForm();
+            window.closeRolForm();
             return;
         }
 
@@ -363,11 +364,7 @@
                 }
 
                 if (data.success) {
-                    if (form.dataset.edit === 'true') {
-                        window.openRolForm();
-                    } else {
-                        window.closeRolForm();
-                    }
+                    window.closeRolForm();
                     showRolToast(data.message || 'Operación exitosa.', 'success');
 
                     const searchInput = document.getElementById('rol-search');
