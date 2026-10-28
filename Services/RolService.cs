@@ -341,17 +341,26 @@ public class RolService
     }
 
     /// <summary>
-    /// Elimina físicamente un rol por su ID.
+    /// Desactiva un rol por su ID sin eliminar sus datos.
     /// </summary>
-    /// <param name="id">ID del rol a eliminar.</param>
-    public async Task EliminarRol(string id)
+    /// <param name="id">ID del rol a desactivar.</param>
+    public async Task DesactivarRol(string id)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
             throw new ArgumentException("El ID del rol no puede estar vacío.", nameof(id));
         }
 
-        await _firestore.Collection(COLLECTION_NAME).Document(id).DeleteAsync();
+        await _firestore.Collection(COLLECTION_NAME).Document(id).UpdateAsync("Estado", "Inactivo");
+    }
+
+    /// <summary>Reactiva un rol sin modificar sus demás datos.</summary>
+    public async Task ReactivarRol(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            throw new ArgumentException("El ID del rol no puede estar vacío.", nameof(id));
+
+        await _firestore.Collection(COLLECTION_NAME).Document(id).UpdateAsync("Estado", "Activo");
     }
 
     /// <summary>

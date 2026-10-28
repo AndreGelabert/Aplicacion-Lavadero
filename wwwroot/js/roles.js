@@ -38,7 +38,6 @@
         setupPermissionDelegation();
         setupDeleteConfirmation();
         setupInlineFormAccordion();
-        syncSortSelect();
     }
 
     /**
@@ -101,29 +100,6 @@
      */
     function setupFilters() {
         document.getElementById('rol-estado')?.addEventListener('change', () => reloadRolTable(1));
-
-        document.getElementById('rol-sort')?.addEventListener('change', function () {
-            const [sortBy, sortOrder] = (this.value || '').split('|');
-            if (!sortBy || !sortOrder) return;
-
-            setHiddenValue('current-sort-by', sortBy);
-            setHiddenValue('current-sort-order', sortOrder);
-            reloadRolTable(1);
-        });
-    }
-
-    /**
-     * Sincroniza el selector de orden con los valores actuales de la tabla.
-     */
-    function syncSortSelect() {
-        const select = document.getElementById('rol-sort');
-        if (!select) return;
-
-        const sortBy = document.getElementById('current-sort-by')?.value || 'Nombre';
-        const sortOrder = document.getElementById('current-sort-order')?.value || 'asc';
-        const value = `${sortBy}|${sortOrder}`;
-        const option = Array.from(select.options).find(opt => opt.value === value);
-        if (option) select.value = value;
     }
 
     /**
@@ -180,7 +156,6 @@
                 container.innerHTML = html;
                 const currentPage = document.getElementById('current-page-value')?.value;
                 if (currentPage) container.dataset.currentPage = currentPage;
-                syncSortSelect();
             })
             .catch(error => {
                 if (requestSeq !== tableRequestSeq) return;
@@ -383,7 +358,11 @@
                 }
 
                 if (data.success) {
-                    window.closeRolForm();
+                    if (form.dataset.edit === 'true') {
+                        window.openRolForm();
+                    } else {
+                        window.closeRolForm();
+                    }
                     showRolToast(data.message || 'Operación exitosa.', 'success');
 
                     const searchInput = document.getElementById('rol-search');
@@ -575,8 +554,26 @@
         const modal = document.getElementById('rol-delete-modal');
 
         if (idInput) idInput.value = id;
-        if (text) text.textContent = `¿Está seguro de que desea eliminar el rol ${nombre}? Esta operación es irreversible.`;
+        if (text) text.textContent = `¿Está seguro de que desea desactivar el rol ${nombre}? El rol se conservará como inactivo.`;
+        if (modal) modal.dataset.action = 'desactivar';
+        const title = document.getElementById('rol-state-title');
+        const confirm = document.getElementById('rol-delete-confirm-btn');
+        if (title) title.textContent = 'Confirmar desactivación';
+        if (confirm) confirm.textContent = 'Confirmar desactivación';
         if (modal) showModal(modal);
+    };
+
+    window.openRolReactivateModal = function (button) {
+        const modal = document.getElementById('rol-delete-modal');
+        const idInput = document.getElementById('rol-delete-id');
+        const text = document.getElementById('rol-delete-text');
+        const title = document.getElementById('rol-state-title');
+        const confirm = document.getElementById('rol-delete-confirm-btn');
+        if (idInput) idInput.value = button.dataset.id;
+        if (text) text.textContent = `¿Está seguro de que desea reactivar el rol ${button.dataset.nombre}?`;
+        if (title) title.textContent = 'Confirmar reactivación';
+        if (confirm) confirm.textContent = 'Confirmar reactivación';
+        if (modal) { modal.dataset.action = 'reactivar'; showModal(modal); }
     };
 
     /**
@@ -629,7 +626,8 @@
 
             confirmButton.disabled = true;
 
-            fetch('/Rol/EliminarRolAjax', {
+            const reactivate = document.getElementById('rol-delete-modal')?.dataset.action === 'reactivar';
+            fetch(reactivate ? '/Rol/ReactivarRolAjax' : '/Rol/EliminarRolAjax', {
                 method: 'POST',
                 body: new FormData(form),
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -642,7 +640,7 @@
                 .then(({ response, data }) => {
                     if (!response.ok || !data) {
                         closeRolDeleteModal();
-                        showRolToast('Error al eliminar el rol.', 'error');
+                        showRolToast('Error al cambiar el estado del rol.', 'error');
                         return;
                     }
 
@@ -651,7 +649,7 @@
                         const currentPage = parseInt(container?.dataset.currentPage || '1', 10) || 1;
 
                         closeRolDeleteModal();
-                        showRolToast(data.message || 'Rol eliminado exitosamente.', 'success');
+                        showRolToast(data.message || 'Estado del rol actualizado.', 'success');
 
                         reloadRolTable(currentPage).then(() => {
                             const emptyRow = document.querySelector('#rol-table-container tbody tr td[colspan="6"]');
@@ -664,8 +662,8 @@
 
                     closeRolDeleteModal();
 
-                    const message = data.message || 'No se pudo eliminar el rol.';
-                    const bloqueado = message.startsWith('No es posible eliminar el rol') ||
+                    const message = data.message || 'No se pudo cambiar el estado del rol.';
+            const bloqueado = message.startsWith('No es posible desactivar el rol') ||
                         message.startsWith('Acción no permitida');
 
                     if (bloqueado) {
@@ -677,7 +675,7 @@
                 .catch(error => {
                     console.error('setupDeleteConfirmation error:', error);
                     closeRolDeleteModal();
-                    showRolToast('Error al eliminar el rol.', 'error');
+                    showRolToast('Error al cambiar el estado del rol.', 'error');
                 })
                 .finally(() => {
                     confirmButton.disabled = false;

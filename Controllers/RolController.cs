@@ -26,7 +26,6 @@ public class RolController : Controller
         _auditService = auditService;
     }
     #endregion
-
     #region Vistas Principales
 
     /// <summary>
@@ -285,7 +284,7 @@ public class RolController : Controller
     }
 
     /// <summary>
-    /// Elimina físicamente un rol vía AJAX.
+    /// Desactiva un rol vía AJAX sin eliminar sus datos.
     /// </summary>
     /// <param name="id">ID del rol a eliminar.</param>
     /// <returns>Resultado de la operación en JSON.</returns>
@@ -311,10 +310,24 @@ public class RolController : Controller
             return Json(new { success = false, message = errorEliminacion });
         }
 
-        await _rolService.EliminarRol(rol.Id);
-        await RegistrarEvento("Eliminacion Rol", rol.Id);
+        await _rolService.DesactivarRol(rol.Id);
+        await RegistrarEvento("Desactivacion Rol", rol.Id);
 
-        return Json(new { success = true, message = "Rol eliminado exitosamente" });
+        return Json(new { success = true, message = "Rol desactivado exitosamente" });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Permiso("Roles.Modificar")]
+    public async Task<IActionResult> ReactivarRolAjax(string? id)
+    {
+        var rol = await _rolService.ObtenerRol(id ?? string.Empty);
+        if (rol == null)
+            return Json(new { success = false, message = "No se encontró el rol a reactivar." });
+
+        await _rolService.ReactivarRol(rol.Id);
+        await RegistrarEvento("Reactivacion Rol", rol.Id);
+        return Json(new { success = true, message = "Rol reactivado exitosamente" });
     }
     #endregion
 

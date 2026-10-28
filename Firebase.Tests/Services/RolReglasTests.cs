@@ -61,7 +61,7 @@ namespace Firebase.Tests.Services
             Assert.Equal(RolReglas.MensajeRolProtegidoNoEliminable,
                 RolReglas.ValidarEliminacion(admin, 0));
             Assert.Equal(
-                "No es posible eliminar el rol: Existen 3 empleados que tienen este rol asignado. Reasígnelos a otro rol antes de continuar",
+                "No es posible desactivar el rol: Existen 3 empleados que tienen este rol asignado. Reasígnelos a otro rol antes de continuar",
                 RolReglas.ValidarEliminacion(custom, 3));
             Assert.Null(RolReglas.ValidarEliminacion(custom, 0));
         }

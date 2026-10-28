@@ -21,7 +21,7 @@ public static class RolReglas
     /// Mensaje de bloqueo cuando el rol tiene empleados asignados.
     /// </summary>
     public static string MensajeUsuariosAsignados(int cantidad) =>
-        $"No es posible eliminar el rol: Existen {cantidad} empleados que tienen este rol asignado. Reasígnelos a otro rol antes de continuar";
+        $"No es posible desactivar el rol: Existen {cantidad} empleados que tienen este rol asignado. Reasígnelos a otro rol antes de continuar";
 
     /// <summary>
     /// Valida el nombre de un rol. Devuelve null cuando es válido.
