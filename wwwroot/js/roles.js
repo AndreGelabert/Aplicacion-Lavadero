@@ -492,8 +492,36 @@
             const target = event.target;
             if (!(target instanceof HTMLInputElement)) return;
             if (target.name !== 'Permisos' || target.disabled) return;
+            if (target.checked) {
+                const pending = [...getRequiredPermission(target.value)];
+                const checked = new Set();
+                while (pending.length) {
+                    const permission = pending.shift();
+                    if (checked.has(permission)) continue;
+                    checked.add(permission);
+                    const dependent = document.querySelector(`#rol-form input[name="Permisos"][value="${permission}"]:not(:disabled)`);
+                    if (dependent && !dependent.checked) dependent.checked = true;
+                    pending.push(...getRequiredPermission(permission));
+                }
+            }
             updateSelectAllState();
         });
+    }
+
+    /**
+     * Devuelve permisos que se sugieren automáticamente al marcar una dependencia.
+     * @param {string} permission
+     * @returns {string[]}
+     */
+    function getRequiredPermission(permission) {
+        const [module, action] = permission.split('.');
+        if (action === 'Modificar' || action === 'Eliminar') {
+            return [`${module}.Consultar`];
+        }
+        if (permission === 'Clientes.Crear') return ['Vehiculos.Crear'];
+        if (permission === 'Clientes.Eliminar') return ['Vehiculos.Eliminar'];
+        if (permission === 'Vehiculos.Eliminar') return ['Clientes.Modificar'];
+        return [];
     }
 
     // ===================== Notificaciones =====================

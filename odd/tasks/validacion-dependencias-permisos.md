@@ -5,6 +5,8 @@ Runner: `dotnet test Firebase.Tests`; UI text: Spanish.
 
 ## Specs
 
+- **S7**: Al marcar un permiso con dependencias, marcar automáticamente los permisos requeridos; mostrar una aclaración de que se pueden desmarcar y mantener validación del servidor al guardar si quedan dependencias faltantes.
+
 - **S1**: "si a una vista le pongo permisos de Consultar, Modificar y Eliminar pero no de Crear, la vista no me sale en el navbar lateral"; "deberia entrar a la vista pero deberia tener deshabilitado/oculto el formulario de registro".
 - **S2**: "si se selecciona un permiso de modificar y/o eliminar, si o si debe tener el permiso de consultar".
 - **S3**: "en caso de seleccionar un registro a editar, el acordeon del formulario deberia ser visible e interactuable, pero despues de la edicion volver a inhabilitarse o desaparecer por no tener permiso de creacion".
@@ -17,6 +19,7 @@ Runner: `dotnet test Firebase.Tests`; UI text: Spanish.
 - T1 (S2, S4, S5): inline — permission dependency validation and tests; complete, GREEN.
 - T2 (S1, S3): inline — navigation behavior pinned; edit-only form lifecycle implemented; S3 browser interaction blocked by unavailable browser runtime.
 - T3 (S1–S5): inline + independent verifier for item 2 — isolated tests/build passed; S1, S2, S4, S5 met; S3 remains pending.
+- T4 (S7): inline — auto-marcar dependencias en la matriz de roles, explicar que son opcionales y conservar validación de servidor; complete, `node --check` and full test suite passed.
 
 ## Log
 
@@ -30,3 +33,5 @@ Runner: `dotnet test Firebase.Tests`; UI text: Spanish.
 - L8: Full local suite passed: 650 passed, 23 skipped, 0 failed; build passed with 0 warnings and 0 errors. The independent verifier could not prepare its fresh isolated baseline copy and returned no S1–S5 verdicts; required isolated probes remain pending. Its scratch directory was removed. No commits or push made.
 - L9: User requested a retry after installing Firebase CLI. The second independent attempt successfully prepared isolated Git worktrees at `bf0141b`, applied the candidate patch, and ran focused tests (23/23), full tests (650 passed, 23 skipped), and build (0 warnings/errors). Verifier marked S1, S2, S4, S5 met; S3 remains unverified because it did not run browser interaction for edit-only save. The CLI command was not found in the current shell; no emulator was run. Temporary worktrees were removed; no commits or push made.
 - L10: Retried S3 validation in the current environment. `node --check` passed for the Cliente, Servicio and Paquete scripts. No browser executable, Playwright/Puppeteer/jsdom package, Firebase CLI command, `firebase.json`, or emulator configuration was available in this shell, so an actual edit-submit interaction could not be executed. S3 remains unverified; no product code changed.
+- L11: User requested a smoother role-permission workflow: automatically check dependent permissions, explain why they were selected, allow unchecking, and retain server validation when dependencies remain absent.
+- L12: Added client-side recursive auto-selection for the existing permission dependencies, plus Spanish guidance that selections may be unchecked and server-side validation remains authoritative. `node --check wwwroot/js/roles.js` passed; `dotnet test Firebase.Tests` passed (650 passed, 23 skipped, 0 failed). Existing compiler/analyzer warnings remain; no browser interaction test was available/run.
