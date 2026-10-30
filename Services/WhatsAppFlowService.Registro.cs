@@ -321,7 +321,7 @@ public partial class WhatsAppFlowService
                 Estado = "Activo"
             };
 
-            await _vehiculoService.CrearVehiculo(vehiculo);
+            await _vehiculoService.CrearVehiculoConPropuesta(vehiculo, VehicleCatalogueProposal.FromSession(session.TemporaryData));
 
             // 4. Actualizar lista de vehículos del cliente
             cliente.VehiculosIds.Add(vehiculo.Id);

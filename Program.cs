@@ -140,11 +140,19 @@ builder.Services.AddSingleton(provider =>
 });
 
 // NUEVO: Servicio NHTSA API con HttpClient
-builder.Services.AddHttpClient<Firebase.Services.ICarQueryService, Firebase.Services.CarQueryService>(client =>
+builder.Services.AddHttpClient<Firebase.Services.CarQueryService>(client =>
 {
     client.BaseAddress = new Uri("https://vpic.nhtsa.dot.gov/api/vehicles/");
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+builder.Services.AddScoped<Firebase.Services.IVehicleCatalogueSnapshotStore, Firebase.Services.FirestoreVehicleCatalogueSnapshotStore>();
+builder.Services.AddScoped<Firebase.Services.IApprovedVehicleCatalogue, Firebase.Services.FirestoreApprovedVehicleCatalogue>();
+builder.Services.AddScoped<Firebase.Services.VehicleCatalogueReviewService>();
+builder.Services.AddScoped<Firebase.Services.ICarQueryService>(provider => new Firebase.Services.HybridVehicleCatalogue(
+    provider.GetRequiredService<Firebase.Services.CarQueryService>(),
+    provider.GetRequiredService<Firebase.Services.IVehicleCatalogueSnapshotStore>(),
+    provider.GetRequiredService<ILogger<Firebase.Services.HybridVehicleCatalogue>>(),
+    provider.GetRequiredService<Firebase.Services.IApprovedVehicleCatalogue>()));
 
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<RolService>();

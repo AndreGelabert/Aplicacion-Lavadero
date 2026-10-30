@@ -1,4 +1,5 @@
 using Firebase.Models;
+using Firebase.Services;
 using Google.Cloud.Firestore;
 using System.Security.Cryptography;
 using System.Text;
@@ -347,6 +348,24 @@ public class VehiculoService
         var docRef = _firestore.Collection("vehiculos").Document();
         vehiculo.Id = docRef.Id;
         await docRef.SetAsync(vehiculo);
+    }
+
+    public async Task CrearVehiculoConPropuesta(Vehiculo vehiculo, VehicleCatalogueProposal? propuesta)
+    {
+        if (propuesta == null)
+        {
+            await CrearVehiculo(vehiculo);
+            return;
+        }
+
+        var vehicleRef = _firestore.Collection("vehiculos").Document();
+        var proposalRef = _firestore.Collection("vehicleCatalogueProposals").Document(vehicleRef.Id);
+        vehiculo.Id = vehicleRef.Id;
+        propuesta.VehiculoId = vehicleRef.Id;
+        var batch = _firestore.StartBatch();
+        batch.Create(vehicleRef, vehiculo);
+        batch.Create(proposalRef, propuesta);
+        await batch.CommitAsync();
     }
 
     public async Task ActualizarVehiculo(Vehiculo vehiculo)

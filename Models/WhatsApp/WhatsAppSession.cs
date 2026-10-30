@@ -69,6 +69,8 @@ public static class WhatsAppFlowStates
     public const string VEHICULO_PATENTE = "VEHICULO_PATENTE";
     public const string VEHICULO_MARCA = "VEHICULO_MARCA";
     public const string VEHICULO_MODELO = "VEHICULO_MODELO";
+    public const string VEHICULO_MARCA_MANUAL = "VEHICULO_MARCA_MANUAL";
+    public const string VEHICULO_MODELO_MANUAL = "VEHICULO_MODELO_MANUAL";
     public const string VEHICULO_COLOR = "VEHICULO_COLOR";
     public const string VEHICULO_CONFIRMACION = "VEHICULO_CONFIRMACION";
 

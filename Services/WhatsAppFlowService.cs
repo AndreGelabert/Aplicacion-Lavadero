@@ -48,7 +48,7 @@ public partial class WhatsAppFlowService
     {
         try
         {
-            _logger.LogInformation("🔄 Procesando mensaje de {PhoneNumber}: {Message}", phoneNumber, messageBody);
+            _logger.LogInformation("🔄 Procesando mensaje entrante (longitud: {MessageLength})", messageBody.Length);
 
             // Obtener o crear sesión
             var session = await _sessionService.GetOrCreateSession(phoneNumber);
@@ -330,6 +330,11 @@ public partial class WhatsAppFlowService
 
                 case WhatsAppFlowStates.VEHICULO_MODELO:
                     await HandleVehiculoModelo(phoneNumber, session, messageBody);
+                    break;
+
+                case WhatsAppFlowStates.VEHICULO_MARCA_MANUAL:
+                case WhatsAppFlowStates.VEHICULO_MODELO_MANUAL:
+                    await HandleVehiculoManualConfirmation(phoneNumber, session, messageBody);
                     break;
 
                 case WhatsAppFlowStates.VEHICULO_COLOR:
