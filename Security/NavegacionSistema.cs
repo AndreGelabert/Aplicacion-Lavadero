@@ -11,6 +11,8 @@ namespace Firebase.Security
         /// Ruta del módulo.
         /// </summary>
         public string Ruta => "/" + Controlador;
+
+        public bool EsVisible(ISet<string> permisos) => permisos.Contains(Permiso);
     }
 
     /// <summary>
@@ -59,7 +61,7 @@ namespace Firebase.Security
                 permisos ?? Array.Empty<string>(),
                 StringComparer.Ordinal);
 
-            return Modulos.FirstOrDefault(modulo => disponibles.Contains(modulo.Permiso));
+            return Modulos.FirstOrDefault(modulo => modulo.EsVisible(disponibles));
         }
 
         /// <summary>
@@ -71,7 +73,7 @@ namespace Firebase.Security
                 permisos ?? Array.Empty<string>(),
                 StringComparer.Ordinal);
 
-            return Modulos.Where(modulo => disponibles.Contains(modulo.Permiso)).ToList();
+            return Modulos.Where(modulo => modulo.EsVisible(disponibles)).ToList();
         }
 
         /// <summary>

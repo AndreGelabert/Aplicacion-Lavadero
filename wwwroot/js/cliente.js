@@ -661,6 +661,7 @@
     };
 
     window.submitClienteAjax = async function (form, event) {
+        const wasEdit = !!form.querySelector('#Id')?.value;
         // Prevenir el comportamiento por defecto
         if (event) {
             event.preventDefault();
@@ -765,6 +766,14 @@
 
                 showFormMessage('success', msg || 'Cliente guardado correctamente. Los vehículos han sido asignados.', 4000);
                 reloadClienteTable(1);
+
+                const formContainer = document.getElementById('cliente-form-container');
+                const accordion = document.getElementById('accordion-flush');
+                if (wasEdit && formContainer?.dataset.canCreate !== 'true') {
+                    formContainer.innerHTML = '<p class="p-4 text-sm text-gray-500 dark:text-gray-400">Edición guardada. No tiene permiso para registrar clientes.</p>';
+                    accordion?.classList.add('hidden');
+                    return false;
+                }
 
                 // Cerrar el acordeón
                 setTimeout(() => {
@@ -1594,7 +1603,7 @@
             if (form) {
                 form.onsubmit = function (e) {
                     e.preventDefault();
-                    submitQuickVehiculo(this);
+                    submitQuickVehiculo(this, e);
                     return false;
                 };
 
@@ -2143,7 +2152,7 @@
         }
     };
 
-    async function submitQuickVehiculo(form) {
+    async function submitQuickVehiculo(form, event) {
         // Prevenir el envío al servidor
         event.preventDefault();
 

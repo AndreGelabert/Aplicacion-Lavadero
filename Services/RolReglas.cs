@@ -69,6 +69,25 @@ public static class RolReglas
             return MensajePermisoInvalido;
         }
 
+        var seleccion = new HashSet<string>(lista, StringComparer.Ordinal);
+        foreach (var modulo in RolCatalogo.Modulos)
+        {
+            var consulta = RolCatalogo.Clave(modulo.Clave, RolCatalogo.Consultar);
+            if ((seleccion.Contains(RolCatalogo.Clave(modulo.Clave, RolCatalogo.Modificar)) ||
+                 seleccion.Contains(RolCatalogo.Clave(modulo.Clave, RolCatalogo.Eliminar))) &&
+                !seleccion.Contains(consulta))
+            {
+                return $"Para modificar o eliminar en {modulo.Nombre} debe seleccionar Consultar.";
+            }
+        }
+
+        if (seleccion.Contains("Clientes.Crear") && !seleccion.Contains("Vehiculos.Crear"))
+            return "Para crear clientes debe seleccionar Crear vehículos.";
+        if (seleccion.Contains("Clientes.Eliminar") && !seleccion.Contains("Vehiculos.Eliminar"))
+            return "Para eliminar clientes debe seleccionar Eliminar vehículos.";
+        if (seleccion.Contains("Vehiculos.Eliminar") && !seleccion.Contains("Clientes.Modificar"))
+            return "Para eliminar vehículos debe seleccionar Modificar clientes.";
+
         return null;
     }
 
@@ -81,6 +100,10 @@ public static class RolReglas
         var errorPermisos = ValidarPermisos(permisosNuevos);
         if (errorPermisos != null)
         {
+            if (errorPermisos != MensajePermisoRequerido && errorPermisos != MensajePermisoInvalido &&
+                string.Equals(NormalizarNombre(rolActual.Nombre), "Administrador", StringComparison.OrdinalIgnoreCase) &&
+                RolCatalogo.PermisosCriticosAdministrador.Any(critico => !RolCatalogo.NormalizarPermisos(permisosNuevos).Contains(critico)))
+                return MensajePermisosCriticos;
             return errorPermisos;
         }
 

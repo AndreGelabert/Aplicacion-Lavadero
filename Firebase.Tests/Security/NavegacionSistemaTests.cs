@@ -49,6 +49,14 @@ namespace Firebase.Tests.Security
         }
 
         [Fact]
+        public void ModulosVisibles_ShouldShowClientsWithReadModifyDeleteButWithoutCreate()
+        {
+            var permisos = new[] { "Clientes.Consultar", "Clientes.Modificar", "Clientes.Eliminar" };
+
+            Assert.Contains(NavegacionSistema.ModulosVisibles(permisos), m => m.Controlador == "Cliente");
+        }
+
+        [Fact]
         public void RutaLanding_ShouldReturnAccessDeniedWhenThereIsNoModulePermission()
         {
             Assert.Equal("/Home/AccessDenied", NavegacionSistema.RutaLanding(Array.Empty<string>()));

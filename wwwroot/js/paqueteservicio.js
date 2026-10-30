@@ -1172,6 +1172,7 @@ if (helpMin) helpMin.textContent = '';
      */
     window.submitPaqueteAjax = function (form, event) {
         if (event) event.preventDefault();
+        const wasEdit = !!form.querySelector('#Id')?.value;
 
         if (serviciosSeleccionados.length < 2) {
             showFormMessage('Debe seleccionar al menos 2 servicios.', 'error');
@@ -1225,6 +1226,11 @@ if (helpMin) helpMin.textContent = '';
                     currentSearchTerm = '';
                     setHiddenValue('pageNumber', '1');
                     reloadPaqueteTable(1);
+
+                    if (wasEdit && cont?.dataset.canCreate !== 'true') {
+                        cont.innerHTML = '<p class="p-4 text-sm text-gray-500 dark:text-gray-400">Edición guardada. No tiene permiso para registrar paquetes.</p>';
+                        document.getElementById('accordion-flush')?.classList.add('hidden');
+                    }
 
                     //setTimeout(() => {
                     //    document.getElementById('accordion-flush-body-1')?.classList.add('hidden');
