@@ -365,3 +365,8 @@ FodyWeavers.xsd
 /Utils/loginmvc.json
 .vscode/launch.json
 .vscode/tasks.json
+
+# Persistent local emulator tooling (not application source)
+/.local/firebase-emulator/
+# Local AI runtime state
+.atl/

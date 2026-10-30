@@ -268,6 +268,8 @@
 
             // Limpiar validación custom
             this.setCustomValidity('');
+            this.dataset.catalogueManual = 'false';
+            this.dataset.marcaId = '';
 
             // Resetear marca válida si se modifica
             if (marcaSeleccionadaValida && marcaSeleccionadaValida.nombre !== valor) {
@@ -328,6 +330,7 @@
 
             // Limpiar validación custom
             this.setCustomValidity('');
+            this.dataset.catalogueManual = 'false';
 
             // Resetear modelo válido si se modifica
             if (modeloSeleccionadoValido !== valor) {
@@ -339,6 +342,9 @@
             } else if (modelosCache) {
                 renderModeloOptions(modelosCache);
                 modeloDropdown.classList.remove('hidden');
+            } else if (isClientQuickVehicleForm()) {
+                filterModelos(valor);
+                modeloDropdown.classList.remove('hidden');
             } else {
                 modeloDropdown.classList.add('hidden');
             }
@@ -348,6 +354,10 @@
         modeloInput.addEventListener('focus', function () {
             if (modelosCache && modelosCache.length > 0) {
                 renderModeloOptions(modelosCache);
+                positionDropdown(modeloInput, modeloDropdown);
+                modeloDropdown.classList.remove('hidden');
+            } else if (isClientQuickVehicleForm()) {
+                filterModelos(modeloInput.value.trim());
                 positionDropdown(modeloInput, modeloDropdown);
                 modeloDropdown.classList.remove('hidden');
             }
@@ -407,6 +417,11 @@
         const modeloInput = document.getElementById('Modelo');
         if (!modeloDropdown) return;
 
+        if (modeloInput && isClientQuickVehicleForm() && (!modelos || modelos.length === 0)) {
+            modeloInput.disabled = false;
+            modeloInput.placeholder = 'Escriba un modelo para buscar o proponer...';
+        }
+
         modeloDropdown.innerHTML = '';
 
         if (!modelos || modelos.length === 0) {
@@ -450,6 +465,7 @@
             modeloInput.value = '';
             modeloInput.disabled = true;
             modeloInput.placeholder = 'Primero seleccione una marca...';
+            modeloInput.dataset.catalogueManual = 'false';
         }
         modeloSeleccionadoValido = null;
         modelosCache = null;
@@ -475,6 +491,8 @@
         if (marcaInput) {
             marcaInput.value = nombre;
             marcaSeleccionadaValida = { id, nombre };
+            marcaInput.dataset.marcaId = id;
+            marcaInput.dataset.catalogueManual = 'false';
         }
 
         if (marcaDropdown) {
@@ -493,6 +511,7 @@
         if (modeloInput) {
             modeloInput.value = nombre;
             modeloSeleccionadoValido = nombre;
+            modeloInput.dataset.catalogueManual = 'false';
         }
 
         if (modeloDropdown) {
@@ -503,18 +522,31 @@
     // ==================== FILTRADO DE MARCA ====================
     function filterMarcas(searchText) {
         const marcaDropdown = document.getElementById('marca-dropdown');
-        if (!marcaDropdown || !marcasCache) return;
+        if (!marcaDropdown) return;
+        const candidates = marcasCache || [];
+        const query = searchText.trim();
+        const clientQuickForm = isClientQuickVehicleForm();
 
-        const filtered = searchText.trim() === ''
-            ? marcasCache
-            : marcasCache.filter(m => {
-                const nombre = (m.nombre || m.Nombre || '').toLowerCase();
-                return nombre.includes(searchText.toLowerCase());
+        const filtered = query === ''
+            ? candidates
+            : candidates.filter(m => {
+                const name = m.nombre || m.Nombre || '';
+                return clientQuickForm
+                    ? catalogueNameKey(name).includes(catalogueNameKey(query))
+                    : name.toLowerCase().includes(query.toLowerCase());
             });
 
         marcaDropdown.innerHTML = '';
 
-        if (filtered.length === 0) {
+        const exactMatch = query && candidates.some(m => {
+            const name = m.nombre || m.Nombre || '';
+            return clientQuickForm ? catalogueNameKey(name) === catalogueNameKey(query) : name === query;
+        });
+        const suggestions = clientQuickForm && filtered.length === 0 && query
+            ? findSimilarCatalogueNames(query, candidates.map(m => ({ id: m.id || m.Id, name: m.nombre || m.Nombre })))
+            : [];
+
+        if (filtered.length === 0 && suggestions.length === 0) {
             marcaDropdown.innerHTML = '<div class="p-2 text-sm text-gray-500 dark:text-gray-400">No se encontraron coincidencias</div>';
         } else {
             filtered.forEach(marca => {
@@ -534,7 +566,10 @@
 
                 marcaDropdown.appendChild(div);
             });
+            suggestions.forEach(marca => appendMarcaOption(marcaDropdown, marca, true));
         }
+        if (query && !exactMatch && clientQuickForm)
+            appendManualCatalogueOption(marcaDropdown, query, 'marca', () => confirmManualMarca(query));
 
         // Posicionar antes de mostrar
         const marcaInput = document.getElementById('Marca');
@@ -546,18 +581,31 @@
     // ==================== FILTRADO DE MODELO ====================
     function filterModelos(searchText) {
         const modeloDropdown = document.getElementById('modelo-dropdown');
-        if (!modeloDropdown || !modelosCache) return;
+        if (!modeloDropdown) return;
+        const candidates = modelosCache || [];
+        const query = searchText.trim();
+        const clientQuickForm = isClientQuickVehicleForm();
 
-        const filtered = searchText.trim() === ''
-            ? modelosCache
-            : modelosCache.filter(m => {
-                const nombre = (m.nombre || m.Nombre || '').toLowerCase();
-                return nombre.includes(searchText.toLowerCase());
+        const filtered = query === ''
+            ? candidates
+            : candidates.filter(m => {
+                const name = m.nombre || m.Nombre || '';
+                return clientQuickForm
+                    ? catalogueNameKey(name).includes(catalogueNameKey(query))
+                    : name.toLowerCase().includes(query.toLowerCase());
             });
 
         modeloDropdown.innerHTML = '';
 
-        if (filtered.length === 0) {
+        const exactMatch = query && candidates.some(m => {
+            const name = m.nombre || m.Nombre || '';
+            return clientQuickForm ? catalogueNameKey(name) === catalogueNameKey(query) : name === query;
+        });
+        const suggestions = clientQuickForm && filtered.length === 0 && query
+            ? findSimilarCatalogueNames(query, candidates.map(m => ({ id: '', name: m.nombre || m.Nombre })))
+            : [];
+
+        if (filtered.length === 0 && suggestions.length === 0) {
             modeloDropdown.innerHTML = '<div class="p-2 text-sm text-gray-500 dark:text-gray-400">No se encontraron coincidencias</div>';
         } else {
             filtered.forEach(modelo => {
@@ -575,7 +623,10 @@
 
                 modeloDropdown.appendChild(div);
             });
+            suggestions.forEach(modelo => appendModeloOption(modeloDropdown, modelo.name, true));
         }
+        if (query && !exactMatch && clientQuickForm)
+            appendManualCatalogueOption(modeloDropdown, query, 'modelo', () => confirmManualModelo(query));
 
         // Posicionar antes de mostrar
         const modeloInput = document.getElementById('Modelo');
@@ -584,12 +635,128 @@
         modeloDropdown.classList.remove('hidden');
     }
 
+    function isClientQuickVehicleForm() {
+        return Boolean(document.querySelector('#quick-create-modal #vehiculo-form'));
+    }
+
+    function appendMarcaOption(dropdown, marca, isSuggestion = false) {
+        const id = marca.id || marca.Id || '';
+        const nombre = marca.name || marca.nombre || marca.Nombre || '';
+        if (!id || !nombre) return;
+        const option = document.createElement('div');
+        option.className = 'px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-white';
+        option.textContent = isSuggestion ? `¿Quisiste decir “${nombre}”?` : nombre;
+        option.addEventListener('click', () => selectMarca(id, nombre));
+        dropdown.appendChild(option);
+    }
+
+    function appendModeloOption(dropdown, nombre, isSuggestion = false) {
+        if (!nombre) return;
+        const option = document.createElement('div');
+        option.className = 'px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-white';
+        option.textContent = isSuggestion ? `¿Quisiste decir “${nombre}”?` : nombre;
+        option.addEventListener('click', () => selectModelo(nombre));
+        dropdown.appendChild(option);
+    }
+
+    function appendCatalogueMessage(dropdown, message) {
+        const item = document.createElement('div');
+        item.className = 'p-2 text-sm text-gray-500 dark:text-gray-400';
+        item.textContent = message;
+        dropdown.appendChild(item);
+    }
+
+    function appendManualCatalogueOption(dropdown, value, kind, onSelect) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'block w-full border-t border-gray-200 dark:border-gray-600 px-3 py-2 text-left text-sm font-medium text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-gray-600';
+        item.textContent = value.length <= 100
+            ? `Ninguna coincide: usar “${value}” como ${kind} nueva`
+            : 'El valor no puede superar los 100 caracteres';
+        item.disabled = value.length > 100;
+        item.addEventListener('click', onSelect);
+        dropdown.appendChild(item);
+    }
+
+    function confirmManualMarca(value) {
+        const input = document.getElementById('Marca');
+        if (!input || input.value.trim() !== value || !value || value.length > 100) return;
+        input.dataset.catalogueManual = 'true';
+        input.dataset.marcaId = '';
+        marcaSeleccionadaValida = null;
+        input.setCustomValidity('');
+        const dropdown = document.getElementById('marca-dropdown');
+        dropdown?.classList.add('hidden');
+
+        resetModeloSelect();
+        modelosCache = [];
+        const modeloInput = document.getElementById('Modelo');
+        if (modeloInput) {
+            modeloInput.disabled = false;
+            modeloInput.placeholder = 'Seleccione o escriba un modelo...';
+        }
+    }
+
+    function confirmManualModelo(value) {
+        const input = document.getElementById('Modelo');
+        if (!input || input.value.trim() !== value || !value || value.length > 100) return;
+        input.dataset.catalogueManual = 'true';
+        input.setCustomValidity('');
+        document.getElementById('modelo-dropdown')?.classList.add('hidden');
+    }
+
+    function catalogueNameKey(value) {
+        return (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]/gi, '').toUpperCase();
+    }
+
+    function findSimilarCatalogueNames(input, candidates) {
+        const left = catalogueNameKey(input);
+        if (left.length < 3) return [];
+        const digits = left.replace(/\D/g, '');
+        const seen = new Set();
+        return candidates.filter(item => item.name && catalogueNameKey(item.name).length >= 3 &&
+                catalogueNameKey(item.name).replace(/\D/g, '') === digits)
+            .map(item => {
+                const right = catalogueNameKey(item.name);
+                return { ...item, distance: catalogueEditDistance(left, right), length: Math.max(left.length, right.length) };
+            })
+            .filter(item => item.distance > 0 && item.distance <= Math.min(3, Math.floor(item.length / 4)))
+            .sort((a, b) => (a.distance / a.length) - (b.distance / b.length) || a.name.localeCompare(b.name))
+            .filter(item => {
+                const key = item.name.toLowerCase();
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            })
+            .slice(0, 5);
+    }
+
+    function catalogueEditDistance(left, right) {
+        const distance = Array.from({ length: left.length + 1 }, () => Array(right.length + 1).fill(0));
+        for (let i = 0; i <= left.length; i++) distance[i][0] = i;
+        for (let j = 0; j <= right.length; j++) distance[0][j] = j;
+        for (let i = 1; i <= left.length; i++) {
+            for (let j = 1; j <= right.length; j++) {
+                const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+                distance[i][j] = Math.min(distance[i - 1][j] + 1, distance[i][j - 1] + 1,
+                    distance[i - 1][j - 1] + cost);
+                if (i > 1 && j > 1 && left[i - 1] === right[j - 2] && left[i - 2] === right[j - 1])
+                    distance[i][j] = Math.min(distance[i][j], distance[i - 2][j - 2] + 1);
+            }
+        }
+        return distance[left.length][right.length];
+    }
+
     // ==================== VALIDACIÓN DE MARCA ====================
     function validateMarca() {
         const marcaInput = document.getElementById('Marca');
         if (!marcaInput) return true;
 
         const valorActual = marcaInput.value.trim();
+
+        if (isClientQuickVehicleForm() && marcaInput.dataset.catalogueManual === 'true' && valorActual.length <= 100)
+            return true;
 
         if (!valorActual) {
             marcaSeleccionadaValida = null;
@@ -603,15 +770,21 @@
 
         // Verificar si existe en el cache
         if (marcasCache) {
-            const marcaEncontrada = marcasCache.find(m =>
-                (m.nombre || m.Nombre) === valorActual
-            );
+            const marcaEncontrada = marcasCache.find(m => {
+                const nombre = m.nombre || m.Nombre || '';
+                return isClientQuickVehicleForm()
+                    ? catalogueNameKey(nombre) === catalogueNameKey(valorActual)
+                    : nombre === valorActual;
+            });
 
             if (marcaEncontrada) {
+                const nombre = marcaEncontrada.nombre || marcaEncontrada.Nombre;
                 marcaSeleccionadaValida = {
                     id: marcaEncontrada.id || marcaEncontrada.Id,
-                    nombre: marcaEncontrada.nombre || marcaEncontrada.Nombre
+                    nombre
                 };
+                marcaInput.value = nombre;
+                marcaInput.dataset.marcaId = marcaSeleccionadaValida.id;
                 return true;
             }
         }
@@ -628,6 +801,9 @@
 
         const valorActual = modeloInput.value.trim();
 
+        if (isClientQuickVehicleForm() && modeloInput.dataset.catalogueManual === 'true' && valorActual.length <= 100)
+            return true;
+
         if (!valorActual) {
             modeloSeleccionadoValido = null;
             return true;
@@ -640,12 +816,16 @@
 
         // Verificar si existe en el cache
         if (modelosCache) {
-            const modeloEncontrado = modelosCache.find(m =>
-                (m.nombre || m.Nombre) === valorActual
-            );
+            const modeloEncontrado = modelosCache.find(m => {
+                const nombre = m.nombre || m.Nombre || '';
+                return isClientQuickVehicleForm()
+                    ? catalogueNameKey(nombre) === catalogueNameKey(valorActual)
+                    : nombre === valorActual;
+            });
 
             if (modeloEncontrado) {
                 modeloSeleccionadoValido = modeloEncontrado.nombre || modeloEncontrado.Nombre;
+                modeloInput.value = modeloSeleccionadoValido;
                 return true;
             }
         }

@@ -40,6 +40,12 @@ public partial class WhatsAppFlowService
     {
         try
         {
+            await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoMarcaManual", "false");
+            await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoModeloManual", "false");
+            await _sessionService.SaveTemporaryData(phoneNumber, "MarcasDisponibles", "");
+            await _sessionService.SaveTemporaryData(phoneNumber, "ModelosDisponibles", "");
+            await _sessionService.SaveTemporaryData(phoneNumber, "MarcaManualCandidata", "");
+            await _sessionService.SaveTemporaryData(phoneNumber, "ModeloManualCandidato", "");
             // Obtener tipos de vehículo disponibles
             var tiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos();
 
@@ -218,7 +224,7 @@ public partial class WhatsAppFlowService
     /// <summary>
     /// Maneja el ingreso de la marca
     /// </summary>
-    private async Task HandleVehiculoMarca(string phoneNumber, WhatsAppSession session, string input)
+    private async Task HandleVehiculoMarca(string phoneNumber, WhatsAppSession session, string input, bool confirmedManual = false)
     {
         var marca = input.Trim();
 
@@ -230,23 +236,34 @@ public partial class WhatsAppFlowService
             return;
         }
 
+        if (!confirmedManual && marca == "usar_marca_manual")
+        {
+            await RequestManualConfirmation(phoneNumber, session.TemporaryData.GetValueOrDefault("MarcaManualCandidata", ""), true);
+            return;
+        }
+
         // Buscar el ID de la marca ingresada en la lista de marcas disponibles
         var marcasDisponibles = session.TemporaryData.GetValueOrDefault("MarcasDisponibles", "");
+        // The displayed menu is limited, but typed input must search the complete catalogue.
+        var tipo = session.TemporaryData.GetValueOrDefault("VehiculoTipo", "Automóvil");
+        var catalogoMarcas = await _carQueryService.GetMarcasPorTipoAsync(tipo);
         var marcaId = "";
         var marcaNombre = "";
         
-        if (!string.IsNullOrEmpty(marcasDisponibles))
+        if (!confirmedManual && (!string.IsNullOrEmpty(marcasDisponibles) || catalogoMarcas is { Count: > 0 }))
         {
             // Usar punto y coma para separar marcas y pipe para separar id|nombre
             var marcasList = marcasDisponibles.Split(';')
                 .Select(m => m.Split('|'))
                 .Where(parts => parts.Length == 2)
                 .ToList();
+            if (catalogoMarcas is { Count: > 0 })
+                marcasList.InsertRange(0, catalogoMarcas.Select(m => new[] { m.Id, m.Nombre }));
 
             // Buscar por ID exacto (cuando el usuario selecciona de la lista) o por nombre
             var marcaEncontrada = marcasList.FirstOrDefault(m => 
                 m[0].Equals(marca, StringComparison.OrdinalIgnoreCase) || // Match por ID
-                m[1].Equals(marca, StringComparison.OrdinalIgnoreCase));  // Match por nombre
+                VehicleNameMatcher.IsExact(marca, m[1]));  // Match normalizado por nombre
 
             if (marcaEncontrada != null)
             {
@@ -255,16 +272,22 @@ public partial class WhatsAppFlowService
             }
             else
             {
-                // No se encontró la marca - mostrar error y volver a pedir
-                var options = marcasList.Take(10).Select(m => (
+                var sugerencias = VehicleNameMatcher.Suggest(marca, marcasList.Select(m => m[1]));
+                var opcionesMarca = sugerencias.Count > 0
+                    ? marcasList.Where(m => sugerencias.Contains(m[1], StringComparer.OrdinalIgnoreCase))
+                    : marcasList;
+                var options = opcionesMarca.DistinctBy(m => m[0]).Take(9).Select(m => (
                     m[0],
                     m[1],
                     "Marca disponible"
                 )).ToList();
+                await _sessionService.SaveTemporaryData(phoneNumber, "MarcaManualCandidata", marca);
+                options.Add(("usar_marca_manual", "Usar lo escrito", "Requiere revisión"));
 
                 await _whatsAppService.SendListMessage(phoneNumber,
-                    "❌ Marca no encontrada.\n\n" +
-                    "Por favor, selecciona una marca de la lista:",
+                    sugerencias.Count > 0
+                        ? "¿Quisiste decir alguna de estas marcas? Selecciona una o escribe otra:"
+                        : "❌ Marca no encontrada. Selecciona una opción o escribe otra marca:",
                     "🏷️ Ver marcas",
                     "Marcas disponibles",
                     options);
@@ -273,13 +296,21 @@ public partial class WhatsAppFlowService
         }
         else
         {
-            // No hay lista de marcas - usar texto libre como fallback
+            if (!confirmedManual)
+            {
+                await _sessionService.SaveTemporaryData(phoneNumber, "MarcaManualCandidata", marca);
+                await RequestManualConfirmation(phoneNumber, marca, true);
+                return;
+            }
             marcaNombre = marca;
         }
 
         // Guardar marca y su ID
         await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoMarca", marcaNombre);
+        await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoMarcaManual", confirmedManual ? "true" : "false");
         await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoMarcaId", marcaId);
+        await _sessionService.SaveTemporaryData(phoneNumber, "ModelosDisponibles", "");
+        await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoModeloManual", "false");
 
         // Si tenemos el ID de la marca, obtener modelos de la API
         if (!string.IsNullOrEmpty(marcaId))
@@ -320,7 +351,7 @@ public partial class WhatsAppFlowService
     /// <summary>
     /// Maneja el ingreso del modelo
     /// </summary>
-    private async Task HandleVehiculoModelo(string phoneNumber, WhatsAppSession session, string input)
+    private async Task HandleVehiculoModelo(string phoneNumber, WhatsAppSession session, string input, bool confirmedManual = false)
     {
         var modelo = input.Trim();
 
@@ -332,18 +363,31 @@ public partial class WhatsAppFlowService
             return;
         }
 
+        if (!confirmedManual && modelo == "usar_modelo_manual")
+        {
+            await RequestManualConfirmation(phoneNumber, session.TemporaryData.GetValueOrDefault("ModeloManualCandidato", ""), false);
+            return;
+        }
+
         // Intentar hacer match con modelos disponibles (usar punto y coma como delimitador)
         var modelosDisponibles = session.TemporaryData.GetValueOrDefault("ModelosDisponibles", "");
+        var marcaId = session.TemporaryData.GetValueOrDefault("VehiculoMarcaId", "");
+        var modelosCatalogo = new List<ModeloSimpleDto>();
+        if (!string.IsNullOrEmpty(marcaId))
+        {
+            modelosCatalogo = await _carQueryService.GetModelosAsync(marcaId) ?? new List<ModeloSimpleDto>();
+        }
         var modeloNombre = "";
         
-        if (!string.IsNullOrEmpty(modelosDisponibles))
+        if (!confirmedManual && (!string.IsNullOrEmpty(modelosDisponibles) || modelosCatalogo.Count > 0))
         {
-            var modelosList = modelosDisponibles.Split(';');
+            var modelosList = modelosCatalogo.Select(m => m.Nombre)
+                .Concat(modelosDisponibles.Split(';', StringSplitOptions.RemoveEmptyEntries)).ToArray();
             
             // Buscar por ID (formato: nombre_en_minusculas) o por nombre exacto
             var modeloEncontrado = modelosList.FirstOrDefault(m => 
                 GenerarListItemId(m) == modelo.ToLowerInvariant() || // Match por ID
-                m.Equals(modelo, StringComparison.OrdinalIgnoreCase));                  // Match por nombre
+                VehicleNameMatcher.IsExact(modelo, m));                  // Match normalizado por nombre
             
             if (modeloEncontrado != null)
             {
@@ -351,17 +395,21 @@ public partial class WhatsAppFlowService
             }
             else
             {
-                // No se encontró el modelo - mostrar error y volver a pedir
                 var marca = session.TemporaryData.GetValueOrDefault("VehiculoMarca", "");
-                var options = modelosList.Take(10).Select(m => (
+                var sugerencias = VehicleNameMatcher.Suggest(modelo, modelosList);
+                var opcionesModelo = sugerencias.Count > 0 ? sugerencias : modelosList.Take(10).ToArray();
+                var options = opcionesModelo.Take(9).Select(m => (
                     GenerarListItemId(m),
                     m,
                     $"Modelo de {marca}"
                 )).ToList();
+                await _sessionService.SaveTemporaryData(phoneNumber, "ModeloManualCandidato", modelo);
+                options.Add(("usar_modelo_manual", "Usar lo escrito", "Requiere revisión"));
 
                 await _whatsAppService.SendListMessage(phoneNumber,
-                    "❌ Modelo no encontrado.\n\n" +
-                    "Por favor, selecciona un modelo de la lista:",
+                    sugerencias.Count > 0
+                        ? "¿Quisiste decir alguno de estos modelos? Selecciona uno o escribe otro:"
+                        : "❌ Modelo no encontrado. Selecciona una opción o escribe otro modelo:",
                     "🚙 Ver modelos",
                     $"Modelos de {marca}",
                     options);
@@ -370,12 +418,18 @@ public partial class WhatsAppFlowService
         }
         else
         {
-            // No hay lista de modelos - usar texto libre como fallback
+            if (!confirmedManual)
+            {
+                await _sessionService.SaveTemporaryData(phoneNumber, "ModeloManualCandidato", modelo);
+                await RequestManualConfirmation(phoneNumber, modelo, false);
+                return;
+            }
             modeloNombre = modelo;
         }
 
         // Guardar modelo
         await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoModelo", modeloNombre);
+        await _sessionService.SaveTemporaryData(phoneNumber, "VehiculoModeloManual", confirmedManual ? "true" : "false");
 
         // Obtener colores comunes de la API
         var colores = await _carQueryService.GetColoresComunes();
@@ -408,6 +462,46 @@ public partial class WhatsAppFlowService
         await _whatsAppService.SendTextMessage(phoneNumber,
             $"✅ Modelo: {modeloNombre}\n\n" +
             $"🎨 ¿De qué *color* es tu vehículo?");
+    }
+
+    private async Task RequestManualConfirmation(string phoneNumber, string candidate, bool isBrand)
+    {
+        var inputState = isBrand ? WhatsAppFlowStates.VEHICULO_MARCA : WhatsAppFlowStates.VEHICULO_MODELO;
+        if (string.IsNullOrWhiteSpace(candidate) || candidate.Length > 100)
+        {
+            await _sessionService.UpdateSessionState(phoneNumber, inputState);
+            await _whatsAppService.SendTextMessage(phoneNumber, "Escribe un nombre de hasta 100 caracteres.");
+            return;
+        }
+        await _sessionService.UpdateSessionState(phoneNumber, isBrand ? WhatsAppFlowStates.VEHICULO_MARCA_MANUAL : WhatsAppFlowStates.VEHICULO_MODELO_MANUAL);
+        await _whatsAppService.SendButtonMessage(phoneNumber,
+            $"¿Querés usar *{candidate}*? El lavadero revisará este dato; no se agregará automáticamente al catálogo.",
+            new List<(string id, string title)> { ("manual_si", "Sí, usar"), ("manual_no", "Escribir otra") });
+    }
+
+    private async Task HandleVehiculoManualConfirmation(string phoneNumber, WhatsAppSession session, string input)
+    {
+        var isBrand = session.CurrentState == WhatsAppFlowStates.VEHICULO_MARCA_MANUAL;
+        var choice = VehicleInputResolver.ParseManualConfirmation(input.Trim());
+        if (choice == null)
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber, "Por favor, usa los botones para confirmar o escribir otra opción.");
+            return;
+        }
+        if (choice == false)
+        {
+            await _sessionService.UpdateSessionState(phoneNumber, isBrand ? WhatsAppFlowStates.VEHICULO_MARCA : WhatsAppFlowStates.VEHICULO_MODELO);
+            await _whatsAppService.SendTextMessage(phoneNumber, isBrand ? "Escribe otra marca:" : "Escribe otro modelo:");
+            return;
+        }
+        var candidate = session.TemporaryData.GetValueOrDefault(isBrand ? "MarcaManualCandidata" : "ModeloManualCandidato", "");
+        if (string.IsNullOrWhiteSpace(candidate) || candidate.Length > 100)
+        {
+            await RequestManualConfirmation(phoneNumber, "", isBrand);
+            return;
+        }
+        if (isBrand) await HandleVehiculoMarca(phoneNumber, session, candidate, true);
+        else await HandleVehiculoModelo(phoneNumber, session, candidate, true);
     }
 
     /// <summary>
@@ -586,7 +680,7 @@ public partial class WhatsAppFlowService
                 Estado = "Activo"
             };
 
-            await _vehiculoService.CrearVehiculo(vehiculo);
+            await _vehiculoService.CrearVehiculoConPropuesta(vehiculo, VehicleCatalogueProposal.FromSession(session.TemporaryData));
 
             // Actualizar lista de vehículos del cliente
             cliente.VehiculosIds.Add(vehiculo.Id);

@@ -1,0 +1,43 @@
+@model IReadOnlyList<Firebase.Services.VehicleCatalogueProposal>
+@{
+    ViewData["Title"] = "Datos de vehículos pendientes";
+}
+<section class="bg-white dark:bg-gray-800 rounded-lg p-4 space-y-4">
+    <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Datos de vehículos pendientes</h1>
+    <p class="text-gray-700 dark:text-gray-300">Los datos escritos por clientes no se incorporan al catálogo hasta su revisión.</p>
+    @if (TempData["ReviewMessage"] is string message) { <p role="status" class="text-green-700 dark:text-green-300">@message</p> }
+    @if (TempData["ReviewError"] is string error) { <p role="alert" class="text-red-700 dark:text-red-300">@error</p> }
+    <a asp-controller="Vehiculo" asp-action="Index" class="text-blue-700 dark:text-blue-300 underline">Volver a vehículos</a>
+    @if (Model.Count == 0)
+    {
+        <p class="text-gray-700 dark:text-gray-300">No hay datos pendientes de revisión.</p>
+    }
+    else
+    {
+        <ul class="space-y-3">
+            @foreach (var proposal in Model)
+            {
+                <li class="border rounded-lg p-4 dark:border-gray-600 text-gray-900 dark:text-white">
+                    <p><strong>Tipo:</strong> @proposal.TipoVehiculo</p>
+                    <p><strong>Marca:</strong> @proposal.Marca @(proposal.MarcaManual ? "(ingresada por el cliente)" : "")</p>
+                    <p><strong>Modelo:</strong> @proposal.Modelo @(proposal.ModeloManual ? "(ingresado por el cliente)" : "")</p>
+                    <form asp-action="Resolve" method="post" class="mt-4 space-y-3">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@proposal.VehiculoId" />
+                        <label class="block">Marca revisada
+                            <input name="brand" value="@proposal.Marca" maxlength="100" class="block w-full rounded border p-2 text-gray-900" />
+                        </label>
+                        <label class="block">Modelo revisado
+                            <input name="model" value="@proposal.Modelo" maxlength="100" class="block w-full rounded border p-2 text-gray-900" />
+                        </label>
+                        <div class="flex flex-wrap gap-2">
+                            <button name="decision" value="link" class="rounded bg-blue-700 text-white px-4 py-2">Vincular existentes</button>
+                            <button name="decision" value="approve" class="rounded bg-green-700 text-white px-4 py-2">Aprobar datos</button>
+                            <button name="decision" value="discard" class="rounded bg-gray-700 text-white px-4 py-2">Descartar propuesta</button>
+                        </div>
+                    </form>
+                </li>
+            }
+        </ul>
+    }
+</section>
