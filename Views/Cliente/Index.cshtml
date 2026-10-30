@@ -49,7 +49,7 @@
                 </h2>
                 <div id="accordion-flush-body-1" class="hidden" aria-labelledby="accordion-flush-heading-1">
                     <div class="py-2 border-b border-gray-200 dark:border-gray-700">
-                        <div id="cliente-form-container">
+                        <div id="cliente-form-container" data-can-create="@puedeCrear.ToString().ToLowerInvariant()">
                             @if (puedeCrear || (puedeModificar && ViewBag.EditCliente != null))
                             {
                                 @await Html.PartialAsync("_ClienteForm", ViewBag.EditCliente as Firebase.Models.Cliente)

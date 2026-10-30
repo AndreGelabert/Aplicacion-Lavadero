@@ -1078,7 +1078,7 @@
                            p-4 mb-4 text-sm rounded-lg border
                            bg-${color.bg} text-${color.text} border-${color.border}
                            dark:bg-gray-800 dark:text-${color.darkText}">
-                    ${msg}
+                    ${escapeHtml(msg)}
                 </div>`;
     }
 
@@ -1343,6 +1343,7 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
      * Envía formulario de servicio via AJAX
      */
     window.submitServicioAjax = function (form) {
+    const wasEdit = !!form.querySelector('#Id')?.value;
     const formData = new FormData(form);
 
     fetch(form.action, {
@@ -1375,6 +1376,12 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
                 if (result.valid) {
                     showServicioMessage('success', result.msg || 'Operación exitosa.', 4000);
                     reloadServicioTable(1);
+                    const formContainer = document.getElementById('servicio-form-container');
+                    const accordion = document.getElementById('accordion-flush');
+                    if (wasEdit && formContainer?.dataset.canCreate !== 'true') {
+                        formContainer.innerHTML = '<p class="p-4 text-sm text-gray-500 dark:text-gray-400">Edición guardada. No tiene permiso para registrar servicios.</p>';
+                        accordion?.classList.add('hidden');
+                    }
                 } else {
                     const summary = document.getElementById('servicio-validation-summary');
                     if (summary && summary.textContent.trim().length > 0) {
