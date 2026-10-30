@@ -106,6 +106,10 @@ namespace Firebase.Services
             // 2. Mapear tipo a categoría de NHTSA
             var vehicleType = MapTipoVehiculoToNHTSA(tipoVehiculo);
 
+            // Unknown local types must not silently inherit passenger-car filtering.
+            if (vehicleType == null)
+                return await GetMarcasAsync();
+
             _logger.LogInformation("?? Consultando marcas para tipo '{Tipo}' (NHTSA: {VehicleType})...", tipoVehiculo, vehicleType);
 
             try
@@ -121,10 +125,6 @@ namespace Firebase.Services
                 }
 
                 var json = await response.Content.ReadAsStringAsync();
-                
-                // DEBUG: Log del JSON para verificar estructura
-                _logger.LogInformation("?? Primeros 500 chars del JSON: {Json}", 
-                    json.Length > 500 ? json.Substring(0, 500) : json);
                 
                 var apiResponse = JsonSerializer.Deserialize<NhtsaMakesResponse>(json, _jsonOptions);
 
@@ -164,7 +164,7 @@ namespace Firebase.Services
         /// <summary>
         /// Mapea el tipo de vehículo local a la categoría de NHTSA
         /// </summary>
-        private string MapTipoVehiculoToNHTSA(string tipoVehiculo)
+        private string? MapTipoVehiculoToNHTSA(string tipoVehiculo)
         {
             return tipoVehiculo?.ToLower() switch
             {
@@ -172,7 +172,7 @@ namespace Firebase.Services
                 "camioneta" => "Truck",
                 "motocicleta" => "Motorcycle",
                 "camión" or "camion" => "Truck",
-                _ => "Passenger Car" // Default
+                _ => null
             };
         }
 
