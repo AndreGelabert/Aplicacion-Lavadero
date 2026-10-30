@@ -706,7 +706,10 @@
                 id: v.esTemporalNuevo ? null : v.id, // null para nuevos, ID para existentes
                 patente: v.patente,
                 marca: v.marca,
+                marcaId: v.marcaId || '',
+                marcaManual: Boolean(v.marcaManual),
                 modelo: v.modelo,
+                modeloManual: Boolean(v.modeloManual),
                 color: v.color,
                 tipoVehiculo: v.tipoVehiculo,
                 esNuevo: v.esTemporalNuevo || false,
@@ -1166,6 +1169,7 @@
                         <div class="flex-1 min-w-0">
                             <div class="font-medium text-gray-900 dark:text-white truncate">${escapeHtml(v.patente)}</div>
                             <div class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(v.marca)} ${escapeHtml(v.modelo)} - ${escapeHtml(v.color)} (${escapeHtml(v.tipoVehiculo)})</div>
+                            ${(v.marcaManual || v.modeloManual) ? '<div class="mt-1 text-xs text-amber-700 dark:text-amber-300">Marca/modelo pendiente de revisión del catálogo</div>' : ''}
                         </div>
 
                         <!-- Botón eliminar -->
@@ -2153,6 +2157,8 @@
         const patente = form.querySelector('#Patente')?.value?.trim().toUpperCase();
         const marca = form.querySelector('#Marca')?.value?.trim();
         const modelo = form.querySelector('#Modelo')?.value?.trim();
+        const marcaInput = form.querySelector('#Marca');
+        const modeloInput = form.querySelector('#Modelo');
         const color = form.querySelector('#Color')?.value?.trim();
         const tipoVehiculo = form.querySelector('#TipoVehiculo')?.value;
 
@@ -2203,7 +2209,10 @@
             id: 'temp_' + Date.now(), // ID temporal único
             patente: patente,
             marca: marca,
+            marcaId: marcaInput?.dataset.marcaId || '',
+            marcaManual: marcaInput?.dataset.catalogueManual === 'true',
             modelo: modelo,
+            modeloManual: modeloInput?.dataset.catalogueManual === 'true',
             color: color,
             tipoVehiculo: tipoVehiculo,
             estado: 'Activo',

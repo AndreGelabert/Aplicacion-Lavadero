@@ -31,4 +31,26 @@ public sealed class VehicleCatalogueProposal
             ModeloManual = modeloManual
         };
     }
+
+    public static VehicleCatalogueProposal? FromClientInput(
+        string tipoVehiculo, string marca, string marcaId, string modelo,
+        bool brandManual, bool modelManual)
+    {
+        if (!brandManual && !modelManual) return null;
+
+        if (string.IsNullOrWhiteSpace(tipoVehiculo) || tipoVehiculo.Trim().Length > 100 ||
+            string.IsNullOrWhiteSpace(marca) || marca.Trim().Length > 100 ||
+            string.IsNullOrWhiteSpace(modelo) || modelo.Trim().Length > 100)
+            throw new ArgumentException("La marca, el modelo y el tipo de vehículo deben tener entre 1 y 100 caracteres.");
+
+        return new VehicleCatalogueProposal
+        {
+            TipoVehiculo = tipoVehiculo.Trim(),
+            Marca = marca.Trim(),
+            MarcaId = marcaId?.Trim() ?? "",
+            Modelo = modelo.Trim(),
+            MarcaManual = brandManual,
+            ModeloManual = modelManual
+        };
+    }
 }

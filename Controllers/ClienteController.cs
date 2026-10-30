@@ -1,7 +1,9 @@
 using Firebase.Models;
 using Firebase.Security;
+using Firebase.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 [Authorize]
@@ -11,17 +13,20 @@ public class ClienteController : Controller
     private readonly TipoDocumentoService _tipoDocumentoService;
     private readonly VehiculoService _vehiculoService;
     private readonly AuditService _auditService;
+    private readonly ILogger<ClienteController> _logger;
 
     public ClienteController(
         ClienteService clienteService,
         TipoDocumentoService tipoDocumentoService,
         VehiculoService vehiculoService,
-        AuditService auditService)
+        AuditService auditService,
+        ILogger<ClienteController> logger)
     {
         _clienteService = clienteService;
         _tipoDocumentoService = tipoDocumentoService;
         _vehiculoService = vehiculoService;
         _auditService = auditService;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -187,6 +192,30 @@ public class ClienteController : Controller
                 return await PrepararRespuestaAjax(false, cliente, null);
             }
 
+            // Reject invalid manual proposals before persisting the client.
+            foreach (var data in vehiculosData.Where(item => item.EsNuevo))
+                _ = VehicleCatalogueProposal.FromClientInput(data.TipoVehiculo, data.Marca, data.MarcaId,
+                    data.Modelo, data.MarcaManual, data.ModeloManual);
+
+            foreach (var data in vehiculosData.Where(item => item.EsAsociacion))
+            {
+                if (await _vehiculoService.ValidarClaveYObtenerVehiculo(data.Patente.Trim().ToUpperInvariant(), data.ClaveAsociacion ?? "") is null)
+                {
+                    ModelState.AddModelError("", "La patente o la clave de asociación no son válidas.");
+                    return await PrepararRespuestaAjax(false, cliente, null);
+                }
+            }
+
+            foreach (var data in vehiculosData.Where(item => !item.EsNuevo && !item.EsAsociacion))
+            {
+                var vehiculo = string.IsNullOrWhiteSpace(data.Id) ? null : await _vehiculoService.ObtenerVehiculo(data.Id);
+                if (vehiculo is null || !PuedeVincularVehiculo(vehiculo, cliente.Id))
+                {
+                    ModelState.AddModelError("", "Uno o más vehículos ya están asociados a otro cliente.");
+                    return await PrepararRespuestaAjax(false, cliente, null);
+                }
+            }
+
             await _clienteService.CrearCliente(cliente);
 
             var vehiculosIds = new List<string>();
@@ -196,8 +225,8 @@ public class ClienteController : Controller
             {
                 if (vehiculoData.EsAsociacion)
                 {
-                    // CASO: Asociación a vehículo existente mediante clave
-                    var vehiculoExistente = await _vehiculoService.ObtenerVehiculoPorPatente(vehiculoData.Patente.ToUpper());
+                    var vehiculoExistente = await _vehiculoService.ValidarClaveYObtenerVehiculo(
+                        vehiculoData.Patente.Trim().ToUpperInvariant(), vehiculoData.ClaveAsociacion ?? "");
                     if (vehiculoExistente != null)
                     {
                         // Agregar cliente a la lista de clientes asociados del vehículo
@@ -237,7 +266,10 @@ public class ClienteController : Controller
                         Estado = "Activo"
                     };
 
-                    await _vehiculoService.CrearVehiculo(nuevoVehiculo);
+                    var propuesta = VehicleCatalogueProposal.FromClientInput(
+                        vehiculoData.TipoVehiculo, vehiculoData.Marca, vehiculoData.MarcaId,
+                        vehiculoData.Modelo, vehiculoData.MarcaManual, vehiculoData.ModeloManual);
+                    await _vehiculoService.CrearVehiculoConPropuesta(nuevoVehiculo, propuesta);
                     vehiculosIds.Add(nuevoVehiculo.Id);
                     
                     // Guardar la clave para mostrarla al usuario
@@ -249,7 +281,7 @@ public class ClienteController : Controller
                 {
                     // CASO: Reasignación de vehículo existente sin dueño
                     var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoData.Id);
-                    if (vehiculo != null)
+                    if (vehiculo != null && PuedeVincularVehiculo(vehiculo, cliente.Id))
                     {
                         // Generar clave de asociación si no tiene
                         if (string.IsNullOrEmpty(vehiculo.ClaveAsociacionHash))
@@ -300,7 +332,8 @@ public class ClienteController : Controller
         }
         catch (Exception ex)
         {
-            ModelState.AddModelError("", ex.Message);
+            _logger.LogError(ex, "Error al crear cliente y asociar sus vehículos.");
+            ModelState.AddModelError("", "No se pudo guardar el cliente. Intente nuevamente.");
             return await PrepararRespuestaAjax(false, cliente, null);
         }
     }
@@ -312,9 +345,12 @@ public class ClienteController : Controller
         public string Patente { get; set; } = "";
         public string Marca { get; set; } = "";
         public string Modelo { get; set; } = "";
+        public string MarcaId { get; set; } = "";
         public string Color { get; set; } = "";
         public string TipoVehiculo { get; set; } = "";
         public bool EsNuevo { get; set; }
+        public bool MarcaManual { get; set; }
+        public bool ModeloManual { get; set; }
         public bool EsReasignacion { get; set; } // Para indicar reasignación de vehículo sin dueño
         public bool EsAsociacion { get; set; } // Para indicar asociación a vehículo existente con clave
         public string? ClaveAsociacion { get; set; } // Clave de asociación para vehículos compartidos
@@ -363,6 +399,29 @@ public class ClienteController : Controller
                 return await PrepararRespuestaAjax(false, cliente, null);
             }
 
+            foreach (var data in vehiculosData.Where(item => item.EsNuevo))
+                _ = VehicleCatalogueProposal.FromClientInput(data.TipoVehiculo, data.Marca, data.MarcaId,
+                    data.Modelo, data.MarcaManual, data.ModeloManual);
+
+            foreach (var data in vehiculosData.Where(item => item.EsAsociacion))
+            {
+                if (await _vehiculoService.ValidarClaveYObtenerVehiculo(data.Patente.Trim().ToUpperInvariant(), data.ClaveAsociacion ?? "") is null)
+                {
+                    ModelState.AddModelError("", "La patente o la clave de asociación no son válidas.");
+                    return await PrepararRespuestaAjax(false, cliente, null);
+                }
+            }
+
+            foreach (var data in vehiculosData.Where(item => !item.EsNuevo && !item.EsAsociacion))
+            {
+                var vehiculo = string.IsNullOrWhiteSpace(data.Id) ? null : await _vehiculoService.ObtenerVehiculo(data.Id);
+                if (vehiculo is null || !PuedeVincularVehiculo(vehiculo, cliente.Id))
+                {
+                    ModelState.AddModelError("", "Uno o más vehículos ya están asociados a otro cliente.");
+                    return await PrepararRespuestaAjax(false, cliente, null);
+                }
+            }
+
             var vehiculosIds = new List<string>();
             var vehiculosAnteriores = clienteActual.VehiculosIds ?? new List<string>();
             var clavesAsociacionGeneradas = new List<string>();
@@ -371,8 +430,8 @@ public class ClienteController : Controller
             {
                 if (vehiculoData.EsAsociacion)
                 {
-                    // CASO: Asociación a vehículo existente mediante clave
-                    var vehiculoExistente = await _vehiculoService.ObtenerVehiculoPorPatente(vehiculoData.Patente.ToUpper());
+                    var vehiculoExistente = await _vehiculoService.ValidarClaveYObtenerVehiculo(
+                        vehiculoData.Patente.Trim().ToUpperInvariant(), vehiculoData.ClaveAsociacion ?? "");
                     if (vehiculoExistente != null)
                     {
                         // Agregar cliente a la lista de clientes asociados del vehículo
@@ -412,7 +471,10 @@ public class ClienteController : Controller
                         Estado = "Activo"
                     };
 
-                    await _vehiculoService.CrearVehiculo(nuevoVehiculo);
+                    var propuesta = VehicleCatalogueProposal.FromClientInput(
+                        vehiculoData.TipoVehiculo, vehiculoData.Marca, vehiculoData.MarcaId,
+                        vehiculoData.Modelo, vehiculoData.MarcaManual, vehiculoData.ModeloManual);
+                    await _vehiculoService.CrearVehiculoConPropuesta(nuevoVehiculo, propuesta);
                     vehiculosIds.Add(nuevoVehiculo.Id);
                     
                     // Guardar la clave para mostrarla al usuario
@@ -424,7 +486,7 @@ public class ClienteController : Controller
                 else if (!string.IsNullOrEmpty(vehiculoData.Id))
                 {
                     var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoData.Id);
-                    if (vehiculo != null)
+                    if (vehiculo != null && PuedeVincularVehiculo(vehiculo, cliente.Id))
                     {
                         // Generar clave de asociación si no tiene
                         if (string.IsNullOrEmpty(vehiculo.ClaveAsociacionHash))
@@ -517,7 +579,8 @@ public class ClienteController : Controller
         }
         catch (Exception ex)
         {
-            ModelState.AddModelError("", ex.Message);
+            _logger.LogError(ex, "Error al actualizar cliente y asociar sus vehículos.");
+            ModelState.AddModelError("", "No se pudo guardar el cliente. Intente nuevamente.");
             return await PrepararRespuestaAjax(false, cliente, null);
         }
     }
@@ -599,7 +662,8 @@ public class ClienteController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = $"Error al desactivar cliente: {ex.Message}" });
+            _logger.LogError(ex, "Error al desactivar el cliente {ClienteId}.", id);
+            return Json(new { success = false, message = "No se pudo desactivar el cliente. Intente nuevamente." });
         }
     }
 
@@ -680,7 +744,8 @@ public class ClienteController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = $"Error al reactivar cliente: {ex.Message}" });
+            _logger.LogError(ex, "Error al reactivar el cliente {ClienteId}.", id);
+            return Json(new { success = false, message = "No se pudo reactivar el cliente. Intente nuevamente." });
         }
     }
 
@@ -752,7 +817,8 @@ public class ClienteController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = ex.Message });
+            _logger.LogError(ex, "Error al obtener vehículos del cliente {ClienteId}.", clienteId);
+            return Json(new { success = false, message = "No se pudieron obtener los vehículos del cliente." });
         }
     }
 
@@ -774,7 +840,8 @@ public class ClienteController : Controller
         }
         catch (Exception ex)
         {
-            return Json(new { success = false, message = $"Error al eliminar cliente: {ex.Message}" });
+            _logger.LogError(ex, "Error al eliminar el cliente {ClienteId}.", id);
+            return Json(new { success = false, message = "No se pudo eliminar el cliente. Intente nuevamente." });
         }
     }
 
@@ -839,5 +906,13 @@ public class ClienteController : Controller
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var userEmail = User.FindFirstValue(ClaimTypes.Email);
         await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad);
+    }
+
+    private static bool PuedeVincularVehiculo(Vehiculo vehiculo, string clienteId)
+    {
+        var asociadoACliente = vehiculo.ClienteId == clienteId || vehiculo.ClientesIds?.Contains(clienteId) == true;
+        var sinPropietario = string.IsNullOrEmpty(vehiculo.ClienteId) &&
+            (vehiculo.ClientesIds == null || vehiculo.ClientesIds.Count == 0);
+        return asociadoACliente || sinPropietario;
     }
 }
