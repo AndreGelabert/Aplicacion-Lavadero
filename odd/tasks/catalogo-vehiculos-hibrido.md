@@ -10,10 +10,10 @@ Branch: feature/catalogo-vehiculos-hibrido. Delivery: ask-on-risk, stacked-to-ma
 - S6: Preservar vehículos existentes y ambos flujos de registro; utilizar permisos y auditoría apropiados y verificar comportamiento y fallos.
 
 ## Tasks
-- T1 [S1,S3] inline: catálogo persistente y consulta híbrida; complete in working tree; commit: S3 baseline 9500d30, remaining feature changes uncommitted.
-- T2 [S2,S4,S6] inline: WhatsApp, coincidencias, confirmación y registro de pendientes; complete in working tree; commit: uncommitted.
-- T3 [S4,S5,S6] inline: revisión autorizada desde vehículos; complete in working tree; commit: uncommitted.
-- T4 [S1-S6] inline: integración y verificación independiente de datos y permisos; complete in working tree; commit: uncommitted.
+- T1 [S1,S3] inline: catálogo persistente y consulta híbrida; complete; commit: 34862a5.
+- T2 [S2,S4,S6] inline: WhatsApp, coincidencias, confirmación y registro de pendientes; complete; commit: 34862a5.
+- T3 [S4,S5,S6] inline: revisión autorizada desde vehículos; complete; commit: 34862a5.
+- T4 [S1-S6] inline: integración y verificación independiente de datos y permisos; complete; commit: 34862a5.
 
 ## Log
 - L1: «Bueno, empeza con el desarrollo de todo lo hablado»
@@ -51,3 +51,4 @@ Branch: feature/catalogo-vehiculos-hibrido. Delivery: ask-on-risk, stacked-to-ma
 - L33: Independent verifier ran both new probes in fresh scratch with the local emulator: 2 passed, 0 failed, 0 skipped; confirmed S1 persisted fallback and S5 successful page-derived antiforgery actions. S3 was not part of this bounded run; earlier independent S3 checks are recorded at L6 and L25 (type handling, truck/motorcycle/unknown inputs and cross-type approved brand). Parent-reported full suite remains 653/653. No baseline comparison. Native RDD capture remains unavailable per L31; feature cannot be declared complete until required native review is resolved.
 - L34: User requested final status and completion after disabling RDD. `gentle-ai review mode status` confirms off (clone-local), global on. The first test attempt showed emulator unavailable (17 Firestore connection failures); started the already-installed local emulator using `.local/firebase-emulator/start-firestore.cmd`, then reran the full suite: 653 passed, 0 failed, 0 skipped. `git diff --check` passed. Independent scoped evidence covers S1-S6 across L6, L25, L30 and L33. Feature is complete in the local working tree only; no commit, PR, publication or deployment was made in this closure. A verifier scratch folder remains due to permission-locked `.vs/.../.wsuo`.
 - L35: Initial commit hook rejected the staged feature because `ProcessMessage` logged full inbound WhatsApp bodies, which can expose association keys. Added `IncomingMessageBodyIsNotWrittenToLogs`; RED reproduced the leak, then changed the log to message length only and observed GREEN. Focused local test 1/1, full emulator suite 654/654, independent scratch verifier 1/1; `git diff --check` passed. The hook's finding was corrected before retrying the commit. No baseline comparison.
+- L36: Commit succeeded with GGA hook review passed: `34862a5 feat(vehicles): add hybrid catalogue and manual review`. RDD is clone-locally disabled, so no native review was started. No push, PR, merge, or deployment was performed. A separate unstaged `.gitignore` addition for `.atl/` appeared during the rejected commit-hook attempt; it is not included in the feature commit and is being preserved as local runtime state.
