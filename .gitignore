@@ -368,3 +368,5 @@ FodyWeavers.xsd
 
 # Persistent local emulator tooling (not application source)
 /.local/firebase-emulator/
+# Local AI runtime state
+.atl/
