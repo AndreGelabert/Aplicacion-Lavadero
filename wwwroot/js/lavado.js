@@ -25,6 +25,7 @@
     function initializeLavadosPage() {
         setupSearchWithDebounce();
         setupFormSubmit();
+        setupRegistroClienteAsociado();
         setupClienteSearch();
         setupFilterFormSubmit();
         initFilterTooltips(); // ✅ NUEVO: Inicializar validación de filtros
@@ -300,6 +301,143 @@
         await cargarServiciosParaVehiculo(id, tipoVehiculo);
     };
 
+    function setupRegistroClienteAsociado() {
+        const modal = document.getElementById('registroClienteLavadoModal');
+        const openButton = document.getElementById('abrirRegistroCliente');
+        if (!modal || !openButton || openButton.dataset.setup === 'true') return;
+
+        const closeModal = () => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('overflow-hidden');
+            modal.querySelectorAll('input').forEach(input => input.value = '');
+            const tipoDocumento = document.getElementById('registroClienteTipoDocumento');
+            if (tipoDocumento) tipoDocumento.value = '';
+            document.getElementById('registroClienteMensaje')?.classList.add('hidden');
+        };
+        const showMessage = (message, success = false) => {
+            const box = document.getElementById('registroClienteMensaje');
+            box.textContent = message;
+            box.className = `mb-3 rounded-lg p-3 text-sm ${success ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'}`;
+        };
+
+        const tipoDocumento = document.getElementById('registroClienteTipoDocumento');
+        const numeroDocumento = document.getElementById('registroClienteNumeroDocumento');
+        const tipoHint = document.getElementById('registroClienteTipoDocumentoHint');
+        const documentoHint = document.getElementById('registroClienteDocumentoHint');
+        const actualizarFormatoDocumento = () => {
+            const option = tipoDocumento.selectedOptions[0];
+            const formato = option?.dataset.formato || '';
+            const regex = option?.dataset.regex || '';
+
+            tipoHint.textContent = 'Seleccione un tipo de documento';
+            documentoHint.textContent = tipoDocumento.value
+                ? (formato ? `Formato: ${formato}` : 'Ingrese el número de documento')
+                : 'Ingrese el número de documento';
+            numeroDocumento.placeholder = formato || 'Ingrese número';
+            if (regex) numeroDocumento.setAttribute('pattern', regex);
+            else numeroDocumento.removeAttribute('pattern');
+            validarNumeroDocumento();
+        };
+        const validarNumeroDocumento = () => {
+            const option = tipoDocumento.selectedOptions[0];
+            const formato = option?.dataset.formato || '';
+            const regex = option?.dataset.regex || '';
+            numeroDocumento.setCustomValidity('');
+            numeroDocumento.classList.remove('border-red-500');
+            documentoHint.classList.remove('text-red-600');
+            if (!tipoDocumento.value || !numeroDocumento.value) return true;
+
+            try {
+                if (!regex || !new RegExp(regex).test(numeroDocumento.value)) {
+                    numeroDocumento.setCustomValidity(`El formato debe ser: ${formato}`);
+                    numeroDocumento.classList.add('border-red-500');
+                    documentoHint.classList.add('text-red-600');
+                    return false;
+                }
+            } catch (error) {
+                console.error('No se pudo validar el formato del documento:', error);
+                numeroDocumento.setCustomValidity('No se pudo validar el formato del documento.');
+                return false;
+            }
+            return true;
+        };
+        tipoDocumento.addEventListener('change', actualizarFormatoDocumento);
+        numeroDocumento.addEventListener('input', validarNumeroDocumento);
+        numeroDocumento.addEventListener('blur', validarNumeroDocumento);
+
+        openButton.addEventListener('click', () => {
+            if (!window.lavadoData?.vehiculoId) return;
+            document.getElementById('registroClientePatente').textContent = window.lavadoData.vehiculoPatente || '';
+            document.getElementById('registroClienteMensaje').classList.add('hidden');
+            actualizarFormatoDocumento();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('overflow-hidden');
+            document.getElementById('registroClienteTipoDocumento')?.focus();
+        });
+        ['cerrarRegistroCliente', 'cancelarRegistroCliente'].forEach(id => document.getElementById(id)?.addEventListener('click', closeModal));
+        modal.addEventListener('click', event => { if (event.target === modal) closeModal(); });
+        document.addEventListener('keydown', event => { if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeModal(); });
+
+        document.getElementById('guardarRegistroCliente')?.addEventListener('click', async () => {
+            const fields = ['registroClienteTipoDocumento', 'registroClienteNumeroDocumento', 'registroClienteNombre', 'registroClienteApellido', 'registroClienteTelefono', 'registroClienteEmail', 'registroClienteClave'];
+            const inputs = fields.map(id => document.getElementById(id));
+            validarNumeroDocumento();
+            const invalid = inputs.find(input => !input.checkValidity());
+            if (invalid) { invalid.reportValidity(); return; }
+
+            const button = document.getElementById('guardarRegistroCliente');
+            const buttonText = document.getElementById('registroClienteButtonText');
+            button.disabled = true;
+            buttonText.textContent = 'Registrando...';
+            try {
+                const token = document.querySelector('#lavado-form input[name="__RequestVerificationToken"]')?.value;
+                const response = await fetch('/Lavados/RegistrarClienteAsociado', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token || '' },
+                    body: JSON.stringify({
+                        vehiculoId: window.lavadoData.vehiculoId,
+                        tipoDocumento: inputs[0].value,
+                        numeroDocumento: inputs[1].value.trim(),
+                        nombre: inputs[2].value.trim(),
+                        apellido: inputs[3].value.trim(),
+                        telefono: inputs[4].value.trim(),
+                        email: inputs[5].value.trim(),
+                        claveAsociacion: inputs[6].value.trim()
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) { showMessage(result.message || 'No se pudo registrar el cliente.'); return; }
+
+                const cliente = result.cliente;
+                window.lavadoData.clientesAsociados.push(cliente);
+                ['clienteTrajoSelect', 'clienteRetiraSelect'].forEach(id => {
+                    const select = document.getElementById(id);
+                    select.add(new Option(`${cliente.nombre} (${cliente.documento})`, cliente.id));
+                    select.value = cliente.id;
+                });
+                const clienteIdInput = document.getElementById('clienteId');
+                if (clienteIdInput) clienteIdInput.value = cliente.id;
+                window.lavadoData.clienteId = cliente.id;
+                window.lavadoData.clienteNombre = cliente.nombre;
+                closeModal();
+                document.getElementById('registroClienteLavadoModal').querySelectorAll('input').forEach(input => input.value = '');
+                document.getElementById('registroClienteTipoDocumento').value = '';
+                showTableMessage('success', result.message);
+            } catch (error) {
+                console.error('Error registrando cliente asociado:', error);
+                showMessage('Ocurrió un error al registrar el cliente. Inténtalo nuevamente.');
+            } finally {
+                button.disabled = false;
+                buttonText.textContent = 'Registrar';
+            }
+        });
+        openButton.dataset.setup = 'true';
+    }
+
     async function cargarClientesVehiculo(vehiculoId) {
         try {
             const response = await fetch(`/Lavados/ObtenerClientesVehiculo?vehiculoId=${vehiculoId}`);
@@ -318,8 +456,8 @@
                 window.lavadoData.clienteId = clientes[0].id;
                 window.lavadoData.clienteNombre = clientes[0].nombre;
 
-                // Si hay más de un cliente, mostrar los desplegables
-                if (clientes.length > 1) {
+                // Mantener disponibles los selectores para que se pueda agregar otra persona.
+                if (clientes.length > 0) {
                     const options = clientes.map(c =>
                         `<option value="${c.id}">${escapeHtml(c.nombre)} (${escapeHtml(c.documento)})</option>`
                     ).join('');
@@ -327,9 +465,12 @@
                     clienteTrajoSelect.innerHTML = options;
                     clienteRetiraSelect.innerHTML = options;
                     clientesSection.style.display = 'block';
+                    const addButton = document.getElementById('abrirRegistroCliente');
+                    if (addButton) addButton.disabled = false;
                 } else {
-                    // Un solo cliente, no se necesitan los desplegables
                     clientesSection.style.display = 'none';
+                    const addButton = document.getElementById('abrirRegistroCliente');
+                    if (addButton) addButton.disabled = true;
                 }
             } else {
                 clientesSection.style.display = 'none';

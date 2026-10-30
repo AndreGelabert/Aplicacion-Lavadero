@@ -15,15 +15,11 @@ public class PaqueteServicioService
     private const string ORDEN_DEFECTO = "Nombre";
     private const string DIRECCION_DEFECTO = "asc";
     
-    // NUEVO: Claves de caché
-    private const string CACHE_KEY_SERVICIOS = "all_servicios_activos";
-    private const int CACHE_DURATION_MINUTES = 10; // Caché por 10 minutos
     #endregion
 
     #region Dependencias
     private readonly FirestoreDb _firestore;
     private readonly ServicioService _servicioService;
-    private readonly IMemoryCache _cache; // NUEVO
 
     /// <summary>
     /// Inicializa una nueva instancia del servicio de paquetes.
@@ -38,7 +34,35 @@ public class PaqueteServicioService
     {
         _firestore = firestore ?? throw new ArgumentNullException(nameof(firestore));
         _servicioService = servicioService ?? throw new ArgumentNullException(nameof(servicioService));
-        _cache = cache ?? throw new ArgumentNullException(nameof(cache)); // NUEVO
+        ArgumentNullException.ThrowIfNull(cache);
+    }
+
+    /// <summary>
+    /// Calculates the discounted price from the selected wash services after confirming
+    /// that each selected service belongs to the package.
+    /// </summary>
+    public static bool TryCalcularPrecioSeleccionado(
+        PaqueteServicio paquete,
+        IEnumerable<ServicioEnLavado> serviciosSeleccionados,
+        out decimal precioFinal)
+    {
+        precioFinal = 0m;
+        if (paquete == null || serviciosSeleccionados == null)
+            return false;
+
+        var seleccionados = serviciosSeleccionados.ToList();
+        var idsPaquete = new HashSet<string>(paquete.ServiciosIds ?? new List<string>(), StringComparer.Ordinal);
+        var idsSeleccionados = seleccionados.Select(servicio => servicio.ServicioId).ToList();
+
+        if (seleccionados.Count == 0 ||
+            idsSeleccionados.Any(string.IsNullOrWhiteSpace) ||
+            idsSeleccionados.Distinct(StringComparer.Ordinal).Count() != idsSeleccionados.Count ||
+            idsSeleccionados.Any(id => !idsPaquete.Contains(id)))
+            return false;
+
+        var subtotal = seleccionados.Sum(servicio => servicio.Precio);
+        precioFinal = subtotal - (subtotal * paquete.PorcentajeDescuento / 100m);
+        return true;
     }
     #endregion
 
@@ -779,14 +803,6 @@ public class PaqueteServicioService
      if (serviciosIds == null || !serviciosIds.Any())
      return new Dictionary<string, Servicio>();
 
-  // Intentar obtener del caché primero
-var cacheKey = $"servicios_batch_{string.Join("_", serviciosIds.OrderBy(x => x))}";
-      
-        if (_cache.TryGetValue<Dictionary<string, Servicio>>(cacheKey, out var cached))
-        {
-        return cached;
-   }
-
       var result = new Dictionary<string, Servicio>();
 
         // Firestore limita WhereIn a 10 elementos, dividir en chunks
@@ -813,12 +829,6 @@ var cacheKey = $"servicios_batch_{string.Join("_", serviciosIds.OrderBy(x => x))
 }
   }
       }
-
-    // Guardar en caché por 10 minutos
-        var cacheOptions = new MemoryCacheEntryOptions()
-     .SetAbsoluteExpiration(TimeSpan.FromMinutes(CACHE_DURATION_MINUTES));
-        
-   _cache.Set(cacheKey, result, cacheOptions);
 
    return result;
     }

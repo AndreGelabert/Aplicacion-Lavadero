@@ -30,6 +30,7 @@ namespace FirebaseLoginCustom.Controllers
         private readonly PersonalService _personalService;
         private readonly ConfiguracionService _configuracionService;
         private readonly TipoVehiculoService _tipoVehiculoService;
+        private readonly TipoDocumentoService _tipoDocumentoService;
 
         /// <summary>
         /// Crea una nueva instancia de <see cref="LavadosController"/>.
@@ -44,7 +45,8 @@ namespace FirebaseLoginCustom.Controllers
             VehiculoService vehiculoService,
             PersonalService personalService,
             ConfiguracionService configuracionService,
-            TipoVehiculoService tipoVehiculoService)
+            TipoVehiculoService tipoVehiculoService,
+            TipoDocumentoService tipoDocumentoService)
         {
             _logger = logger;
             _auditService = auditService;
@@ -56,6 +58,7 @@ namespace FirebaseLoginCustom.Controllers
             _personalService = personalService;
             _configuracionService = configuracionService;
             _tipoVehiculoService = tipoVehiculoService;
+            _tipoDocumentoService = tipoDocumentoService;
         }
         #endregion
 
@@ -81,6 +84,7 @@ namespace FirebaseLoginCustom.Controllers
             string? sortBy = null,
             string? sortOrder = null)
         {
+            ViewBag.TiposDocumento = await _tipoDocumentoService.ObtenerTiposDocumentoCompletos();
             estados = ConfigurarEstadosDefecto(estados);
 
             sortBy ??= "FechaCreacion";
@@ -311,6 +315,30 @@ namespace FirebaseLoginCustom.Controllers
                     return Json(new { success = false, message = "Debe seleccionar al menos un vehículo con servicios." });
                 }
 
+                // Validate package references for the entire request before creating any wash.
+                var paquetesPorId = new Dictionary<string, PaqueteServicio>(StringComparer.Ordinal);
+                var serviciosConPaquete = vehiculosConServicios
+                    .SelectMany(vehiculo => vehiculo.Servicios.Select(servicio => new { Servicio = servicio, servicio.PaqueteId }))
+                    .Where(item => !string.IsNullOrWhiteSpace(item.PaqueteId))
+                    .GroupBy(item => item.PaqueteId!, StringComparer.Ordinal);
+
+                foreach (var grupo in serviciosConPaquete)
+                {
+                    var paquete = await _paqueteServicioService.ObtenerPaquete(grupo.Key);
+                    if (paquete == null)
+                    {
+                        return Json(new { success = false, message = "Uno de los paquetes seleccionados ya no está disponible." });
+                    }
+
+                    var idsPaquete = new HashSet<string>(paquete.ServiciosIds ?? new List<string>(), StringComparer.Ordinal);
+                    if (grupo.Any(item => string.IsNullOrWhiteSpace(item.Servicio.ServicioId) || !idsPaquete.Contains(item.Servicio.ServicioId)))
+                    {
+                        return Json(new { success = false, message = "Los servicios seleccionados no corresponden al paquete indicado." });
+                    }
+
+                    paquetesPorId.Add(grupo.Key, paquete);
+                }
+
                 var lavadosCreados = new List<Lavado>();
 
                 foreach (var vehiculoServicios in vehiculosConServicios)
@@ -325,7 +353,6 @@ namespace FirebaseLoginCustom.Controllers
                     var serviciosEnLavado = new List<ServicioEnLavado>();
                     var tiempoEstimadoTotal = 0;
                     decimal precioTotal = 0;
-                    var paquetesYaContados = new HashSet<string>(); // Para contar precio de cada paquete solo una vez
 
                     var orden = 0;
                     foreach (var servicioItem in vehiculoServicios.Servicios)
@@ -384,24 +411,19 @@ namespace FirebaseLoginCustom.Controllers
                     // Calcular y sumar precio de cada paquete UNA SOLA VEZ
                     foreach (var paqueteId in paquetesUnicos)
                     {
-                        var paquete = await _paqueteServicioService.ObtenerPaquete(paqueteId);
-                        if (paquete != null)
+                        var paquete = paquetesPorId[paqueteId!];
+                        var serviciosSeleccionadosPaquete = serviciosEnLavado
+                            .Where(servicio => string.Equals(servicio.PaqueteId, paqueteId, StringComparison.Ordinal));
+                        if (PaqueteServicioService.TryCalcularPrecioSeleccionado(
+                            paquete,
+                            serviciosSeleccionadosPaquete,
+                            out var precioPaqueteConDescuento))
                         {
-                            // CALCULAR precio del paquete en tiempo real
-                            // Sumar precios de los servicios del paquete
-                            decimal precioServiciosPaquete = 0;
-                            foreach (var servicioId in paquete.ServiciosIds)
-                            {
-                                var servicio = await _servicioService.ObtenerServicio(servicioId);
-                                if (servicio != null)
-                                {
-                                    precioServiciosPaquete += servicio.Precio;
-                                }
-                            }
-
-                            // Aplicar descuento del paquete
-                            var precioPaqueteConDescuento = precioServiciosPaquete - (precioServiciosPaquete * paquete.PorcentajeDescuento / 100);
                             precioTotal += precioPaqueteConDescuento;
+                        }
+                        else
+                        {
+                            return Json(new { success = false, message = "Los servicios seleccionados no corresponden al paquete indicado." });
                         }
                     }
 
@@ -490,14 +512,10 @@ namespace FirebaseLoginCustom.Controllers
                     lavadosIds = lavadosCreados.Select(l => l.Id).ToList()
                 });
             }
-            catch (InvalidOperationException ex)
-            {
-                return Json(new { success = false, message = ex.Message });
-            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al crear lavado");
-                return Json(new { success = false, message = "Error al crear el lavado: " + ex.Message });
+                return Json(new { success = false, message = "No se pudo crear el lavado. Inténtalo nuevamente." });
             }
         }
 
@@ -518,7 +536,8 @@ namespace FirebaseLoginCustom.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "Error al finalizar lavado {LavadoId}", id);
+                return Json(new { success = false, message = "No se pudo finalizar el lavado. Inténtalo nuevamente." });
             }
         }
 
@@ -539,7 +558,8 @@ namespace FirebaseLoginCustom.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "Error al finalizar servicio {ServicioId} del lavado {LavadoId}", servicioId, lavadoId);
+                return Json(new { success = false, message = "No se pudo finalizar el servicio. Inténtalo nuevamente." });
             }
         }
 
@@ -560,7 +580,8 @@ namespace FirebaseLoginCustom.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "Error al finalizar etapa {EtapaId} del servicio {ServicioId} en lavado {LavadoId}", etapaId, servicioId, lavadoId);
+                return Json(new { success = false, message = "No se pudo finalizar la etapa. Inténtalo nuevamente." });
             }
         }
 
@@ -581,7 +602,8 @@ namespace FirebaseLoginCustom.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "Error al iniciar servicio {ServicioId} del lavado {LavadoId}", servicioId, lavadoId);
+                return Json(new { success = false, message = "No se pudo iniciar el servicio. Inténtalo nuevamente." });
             }
         }
 
@@ -602,7 +624,8 @@ namespace FirebaseLoginCustom.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "Error al iniciar etapa {EtapaId} del servicio {ServicioId} en lavado {LavadoId}", etapaId, servicioId, lavadoId);
+                return Json(new { success = false, message = "No se pudo iniciar la etapa. Inténtalo nuevamente." });
             }
         }
 
@@ -623,7 +646,8 @@ namespace FirebaseLoginCustom.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "Error al cancelar lavado {LavadoId}", id);
+                return Json(new { success = false, message = "No se pudo cancelar el lavado. Inténtalo nuevamente." });
             }
         }
 
@@ -644,7 +668,8 @@ namespace FirebaseLoginCustom.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "Error al cancelar servicio {ServicioId} del lavado {LavadoId}", servicioId, lavadoId);
+                return Json(new { success = false, message = "No se pudo cancelar el servicio. Inténtalo nuevamente." });
             }
         }
 
@@ -665,7 +690,8 @@ namespace FirebaseLoginCustom.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "Error al cancelar etapa {EtapaId} del servicio {ServicioId} en lavado {LavadoId}", etapaId, servicioId, lavadoId);
+                return Json(new { success = false, message = "No se pudo cancelar la etapa. Inténtalo nuevamente." });
             }
         }
 
@@ -686,7 +712,8 @@ namespace FirebaseLoginCustom.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "Error al registrar pago del lavado {LavadoId}", lavadoId);
+                return Json(new { success = false, message = "No se pudo registrar el pago. Inténtalo nuevamente." });
             }
         }
 
@@ -733,7 +760,8 @@ namespace FirebaseLoginCustom.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "Error al registrar retiro del lavado {LavadoId}", lavadoId);
+                return Json(new { success = false, message = "No se pudo registrar el retiro. Inténtalo nuevamente." });
             }
         }
 
@@ -851,6 +879,101 @@ namespace FirebaseLoginCustom.Controllers
             }
 
             return Json(clientes);
+        }
+
+        /// <summary>
+        /// Registra un cliente nuevo y lo asocia al vehículo seleccionado en el formulario de lavado.
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Permiso("Clientes.Crear")]
+        public async Task<IActionResult> RegistrarClienteAsociado([FromBody] RegistroClienteAsociadoRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.VehiculoId) ||
+                string.IsNullOrWhiteSpace(request.ClaveAsociacion))
+                return Json(new { success = false, message = "Selecciona un vehículo e ingresa su clave de asociación." });
+
+            if (new[] { request.TipoDocumento, request.NumeroDocumento, request.Nombre, request.Apellido, request.Telefono, request.Email }
+                .Any(string.IsNullOrWhiteSpace))
+                return Json(new { success = false, message = "Completa todos los campos obligatorios." });
+
+            var vehiculo = await _vehiculoService.ObtenerVehiculo(request.VehiculoId);
+            if (vehiculo == null || vehiculo.Estado != "Activo")
+                return Json(new { success = false, message = "El vehículo seleccionado ya no está disponible." });
+
+            if (string.IsNullOrEmpty(vehiculo.ClaveAsociacionHash) ||
+                !VehiculoService.ValidarClaveAsociacion(request.ClaveAsociacion, vehiculo.ClaveAsociacionHash))
+                return Json(new { success = false, message = "La clave de asociación no es válida para este vehículo." });
+
+            var tipoDocumento = await _tipoDocumentoService.ObtenerTipoDocumentoPorNombre(request.TipoDocumento.Trim());
+            if (tipoDocumento == null || string.IsNullOrWhiteSpace(tipoDocumento.Formato))
+                return Json(new { success = false, message = "Selecciona un tipo de documento válido." });
+
+            bool documentoValido;
+            try
+            {
+                documentoValido = System.Text.RegularExpressions.Regex.IsMatch(
+                    request.NumeroDocumento?.Trim() ?? string.Empty,
+                    tipoDocumento.ObtenerRegexPattern());
+            }
+            catch (ArgumentException)
+            {
+                documentoValido = false;
+            }
+            if (!documentoValido)
+                return Json(new { success = false, message = $"El número de documento debe respetar el formato: {tipoDocumento.Formato}." });
+
+            var existente = await _clienteService.ObtenerClientePorDocumento(request.TipoDocumento, request.NumeroDocumento);
+            if (existente != null)
+                return Json(new { success = false, message = "Ya existe un cliente con este documento." });
+
+            var cliente = new Cliente
+            {
+                Id = string.Empty,
+                TipoDocumento = request.TipoDocumento.Trim(),
+                NumeroDocumento = request.NumeroDocumento.Trim(),
+                Nombre = request.Nombre.Trim(),
+                Apellido = request.Apellido.Trim(),
+                Telefono = request.Telefono.Trim(),
+                Email = request.Email.Trim(),
+                Estado = "Activo",
+                VehiculosIds = new List<string> { vehiculo.Id }
+            };
+
+            var validationContext = new System.ComponentModel.DataAnnotations.ValidationContext(cliente);
+            var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+            foreach (var propertyName in new[] { nameof(Cliente.TipoDocumento), nameof(Cliente.Nombre), nameof(Cliente.Apellido), nameof(Cliente.Telefono), nameof(Cliente.Email) })
+            {
+                var value = typeof(Cliente).GetProperty(propertyName)!.GetValue(cliente);
+                var propertyContext = new System.ComponentModel.DataAnnotations.ValidationContext(cliente) { MemberName = propertyName };
+                System.ComponentModel.DataAnnotations.Validator.TryValidateProperty(value, propertyContext, validationResults);
+            }
+            if (validationResults.Count > 0)
+                return Json(new { success = false, message = string.Join(" ", validationResults.Select(result => result.ErrorMessage)) });
+
+            var asociado = await _clienteService.CrearClienteAsociado(cliente, vehiculo.Id, request.ClaveAsociacion);
+            if (!asociado)
+                return Json(new { success = false, message = "No se pudo asociar el cliente al vehículo." });
+
+            await RegistrarEvento("Creacion de cliente y asociacion a vehiculo", cliente.Id, "Cliente");
+            return Json(new
+            {
+                success = true,
+                message = "Cliente registrado y asociado correctamente.",
+                cliente = new { id = cliente.Id, nombre = cliente.NombreCompleto, documento = $"{cliente.TipoDocumento}: {cliente.NumeroDocumento}" }
+            });
+        }
+
+        public class RegistroClienteAsociadoRequest
+        {
+            public string VehiculoId { get; set; } = string.Empty;
+            public string ClaveAsociacion { get; set; } = string.Empty;
+            public string TipoDocumento { get; set; } = string.Empty;
+            public string NumeroDocumento { get; set; } = string.Empty;
+            public string Nombre { get; set; } = string.Empty;
+            public string Apellido { get; set; } = string.Empty;
+            public string Telefono { get; set; } = string.Empty;
+            public string Email { get; set; } = string.Empty;
         }
 
         /// <summary>
@@ -1057,22 +1180,12 @@ namespace FirebaseLoginCustom.Controllers
         /// Cierra la sesión del usuario actual y registra auditoría.
         /// </summary>
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
-
-            if (!string.IsNullOrWhiteSpace(userId))
-            {
-                await _auditService.LogEvent(
-                    userId: userId,
-                    userEmail: email,
-                    action: "Cierre de sesión",
-                    targetId: userId,
-                    targetType: "Empleado");
-            }
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return RedirectToAction("Index", "Login");
+            var loginController = ActivatorUtilities.GetServiceOrCreateInstance<LoginController>(HttpContext.RequestServices);
+            loginController.ControllerContext = ControllerContext;
+            return await loginController.Logout();
         }
         #endregion
 

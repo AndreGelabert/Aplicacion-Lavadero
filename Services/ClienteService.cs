@@ -131,6 +131,31 @@ public class ClienteService
         await docRef.SetAsync(cliente);
     }
 
+    public async Task<bool> CrearClienteAsociado(Cliente cliente, string vehiculoId, string claveAsociacion)
+    {
+        var clienteRef = _firestore.Collection("clientes").Document();
+        var vehiculoRef = _firestore.Collection("vehiculos").Document(vehiculoId);
+        cliente.Id = clienteRef.Id;
+
+        return await _firestore.RunTransactionAsync(async transaction =>
+        {
+            var snapshot = await transaction.GetSnapshotAsync(vehiculoRef);
+            if (!snapshot.Exists) return false;
+
+            var vehiculo = snapshot.ConvertTo<Vehiculo>();
+            if (vehiculo.Estado != "Activo" ||
+                !VehiculoService.ValidarClaveAsociacion(claveAsociacion, vehiculo.ClaveAsociacionHash))
+                return false;
+
+            transaction.Set(clienteRef, cliente);
+            transaction.Update(vehiculoRef, new Dictionary<string, object>
+            {
+                ["ClientesIds"] = FieldValue.ArrayUnion(cliente.Id)
+            });
+            return true;
+        });
+    }
+
     public async Task ActualizarCliente(Cliente cliente)
     {
         var docRef = _firestore.Collection("clientes").Document(cliente.Id);

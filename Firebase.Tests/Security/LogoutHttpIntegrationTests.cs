@@ -19,6 +19,33 @@ namespace Firebase.Tests.Security;
 
 public class LogoutHttpIntegrationTests
 {
+    [Fact]
+    public async Task LavadosLogoutRequiresAntiforgeryToken()
+    {
+        using var host = await StartHost();
+        using var client = Client(host);
+        using var signIn = await client.GetAsync("/test/signin");
+        await client.GetStringAsync("/Login/testtoken");
+
+        foreach (var badToken in new string?[] { null, "invalid" })
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/Lavados/Logout");
+            if (badToken != null) request.Headers.Add("RequestVerificationToken", badToken);
+            using var response = await client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Equal("authenticated:present", await client.GetStringAsync("/test/state"));
+        }
+
+        using var anonymousClient = Client(host);
+        await anonymousClient.GetAsync("/test/signin?noUserId=true");
+        var anonymousToken = await anonymousClient.GetStringAsync("/Login/testtoken");
+        using var valid = new HttpRequestMessage(HttpMethod.Post, "/Lavados/Logout");
+        valid.Headers.Add("RequestVerificationToken", anonymousToken);
+        using var accepted = await anonymousClient.SendAsync(valid);
+        Assert.Equal(HttpStatusCode.Redirect, accepted.StatusCode);
+        Assert.Equal("/Login", accepted.Headers.Location?.OriginalString);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -67,8 +94,10 @@ public class LogoutHttpIntegrationTests
         Assert.Equal("anonymous:absent", await client.GetStringAsync("/test/state"));
     }
 
-    [Fact]
-    public async Task LogoutInvalidatesCopiedAuthenticationAndSessionCookies()
+    [Theory]
+    [InlineData("/Login/Logout")]
+    [InlineData("/Lavados/Logout")]
+    public async Task LogoutInvalidatesCopiedAuthenticationAndSessionCookies(string logoutPath)
     {
         using var host = await StartHost();
         using var client = Client(host);
@@ -101,7 +130,7 @@ public class LogoutHttpIntegrationTests
         Assert.Equal(HttpStatusCode.OK, beforeLogout.StatusCode);
 
         var token = await client.GetStringAsync("/Login/testtoken");
-        using var logout = new HttpRequestMessage(HttpMethod.Post, "/Login/Logout");
+        using var logout = new HttpRequestMessage(HttpMethod.Post, logoutPath);
         logout.Headers.Add("RequestVerificationToken", token);
         logout.Headers.Add("X-Requested-With", "XMLHttpRequest");
         using var logoutResponse = await client.SendAsync(logout);
@@ -126,8 +155,10 @@ public class LogoutHttpIntegrationTests
         Assert.Equal("/Login/Index?expired=true", afterReauthentication.Headers.Location?.OriginalString);
     }
 
-    [Fact]
-    public async Task InFlightSessionWriteAfterLogoutCannotRestoreCopiedCookies()
+    [Theory]
+    [InlineData("/Login/Logout")]
+    [InlineData("/Lavados/Logout")]
+    public async Task InFlightSessionWriteAfterLogoutCannotRestoreCopiedCookies(string logoutPath)
     {
         using var host = await StartHost();
         using var client = Client(host);
@@ -149,7 +180,7 @@ public class LogoutHttpIntegrationTests
         await gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         var token = await client.GetStringAsync("/Login/testtoken");
-        using var logout = new HttpRequestMessage(HttpMethod.Post, "/Login/Logout");
+        using var logout = new HttpRequestMessage(HttpMethod.Post, logoutPath);
         logout.Headers.Add("RequestVerificationToken", token);
         logout.Headers.Add("X-Requested-With", "XMLHttpRequest");
         using var logoutResponse = await client.SendAsync(logout);
@@ -187,10 +218,15 @@ public class LogoutHttpIntegrationTests
                 services.AddAuthorization();
                 services.AddAntiforgery(options => options.HeaderName = "RequestVerificationToken");
                 services.AddControllersWithViews().AddApplicationPart(typeof(LoginController).Assembly).AddControllersAsServices();
-                services.AddTransient(_ => new LoginController(null!, null!, null!, null!, _.GetRequiredService<Firebase.Security.AuthenticationSessionRegistry>(), _.GetRequiredService<ILogger<LoginController>>()));
+                Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions.RemoveAll<LoginController>(services);
+                services.AddTransient(provider => ActivatorUtilities.CreateInstance<LoginController>(provider));
+                services.AddTransient(_ => new FirebaseLoginCustom.Controllers.LavadosController(null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!));
                 // No Firestore instance or network access: these instances deliberately fail on use.
                 services.AddSingleton((AuditService)RuntimeHelpers.GetUninitializedObject(typeof(AuditService)));
                 services.AddSingleton((ConfiguracionService)RuntimeHelpers.GetUninitializedObject(typeof(ConfiguracionService)));
+                services.AddSingleton((Firebase.Services.AuthenticationService)RuntimeHelpers.GetUninitializedObject(typeof(Firebase.Services.AuthenticationService)));
+                services.AddSingleton((PersonalService)RuntimeHelpers.GetUninitializedObject(typeof(PersonalService)));
+                services.AddSingleton((RolService)RuntimeHelpers.GetUninitializedObject(typeof(RolService)));
                 services.AddSingleton<InFlightRequestGate>();
             })
             .Configure(app =>
@@ -208,12 +244,13 @@ public class LogoutHttpIntegrationTests
                         var authenticationSessionId = Guid.NewGuid().ToString("N");
                         context.RequestServices.GetRequiredService<Firebase.Security.AuthenticationSessionRegistry>()
                             .Register(authenticationSessionId, TimeSpan.FromMinutes(1));
-                        var claims = new[]
+                        var claims = new List<Claim>
                         {
-                            new Claim(ClaimTypes.NameIdentifier, uid),
                             new Claim(ClaimTypes.Email, $"{uid}@example.invalid"),
                             new Claim(Firebase.Security.SessionTracking.AuthenticationSessionClaimType, authenticationSessionId)
                         };
+                        if (!context.Request.Query.ContainsKey("noUserId"))
+                            claims.Add(new Claim(ClaimTypes.NameIdentifier, uid));
                         await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)));
                         var expired = context.Request.Query.ContainsKey("expired");
                         context.Session.SetString("LoginTime", DateTimeOffset.UtcNow.AddMinutes(expired ? -10 : 0).ToString("O"));

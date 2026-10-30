@@ -77,6 +77,56 @@ namespace Firebase.Tests.Services
             Assert.Equal(expected, precioFinal);
         }
 
+        [Fact]
+        public void CalculateSelectedPackagePrice_ShouldDiscountOnlySelectedMemberServices()
+        {
+            var paquete = TestFactory.CreatePaquete(
+                porcentajeDescuento: 20,
+                serviciosIds: new List<string> { "serv-1", "serv-2", "serv-3" });
+            var seleccionados = new List<ServicioEnLavado>
+            {
+                new() { ServicioId = "serv-1", Precio = 100m },
+                new() { ServicioId = "serv-2", Precio = 50m }
+            };
+
+            var valido = PaqueteServicioService.TryCalcularPrecioSeleccionado(paquete, seleccionados, out var precio);
+
+            Assert.True(valido);
+            Assert.Equal(120m, precio);
+        }
+
+        [Fact]
+        public void CalculateSelectedPackagePrice_ShouldRejectServiceOutsidePackage()
+        {
+            var paquete = TestFactory.CreatePaquete(serviciosIds: new List<string> { "serv-1", "serv-2" });
+            var seleccionados = new List<ServicioEnLavado>
+            {
+                new() { ServicioId = "serv-1", Precio = 100m },
+                new() { ServicioId = "external-service", Precio = 1000m }
+            };
+
+            var valido = PaqueteServicioService.TryCalcularPrecioSeleccionado(paquete, seleccionados, out var precio);
+
+            Assert.False(valido);
+            Assert.Equal(0m, precio);
+        }
+
+        [Fact]
+        public void CalculateSelectedPackagePrice_ShouldRejectDuplicateSelectedService()
+        {
+            var paquete = TestFactory.CreatePaquete(serviciosIds: new List<string> { "serv-1", "serv-2" });
+            var seleccionados = new List<ServicioEnLavado>
+            {
+                new() { ServicioId = "serv-1", Precio = 100m },
+                new() { ServicioId = "serv-1", Precio = 100m }
+            };
+
+            var valido = PaqueteServicioService.TryCalcularPrecioSeleccionado(paquete, seleccionados, out var precio);
+
+            Assert.False(valido);
+            Assert.Equal(0m, precio);
+        }
+
         #endregion
 
         #region Services Count Validation Tests
