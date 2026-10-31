@@ -68,7 +68,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Página principal de lavados con filtros, orden y paginación.
         /// </summary>
         [HttpGet]
-        [Permiso("Lavados.Consultar")]
+        [Permiso("Lavados.Consultar", "Lavados.Crear")]
         public async Task<IActionResult> Index(
             List<string>? estados,
             string? clienteId,
@@ -85,6 +85,11 @@ namespace FirebaseLoginCustom.Controllers
             string? sortOrder = null)
         {
             ViewBag.TiposDocumento = await _tipoDocumentoService.ObtenerTiposDocumentoCompletos();
+            if (!User.TienePermiso("Lavados.Consultar"))
+            {
+                await CargarDatosFormulario();
+                return View(new List<Lavado>());
+            }
             estados = ConfigurarEstadosDefecto(estados);
 
             sortBy ??= "FechaCreacion";
@@ -235,9 +240,11 @@ namespace FirebaseLoginCustom.Controllers
         /// Devuelve el formulario parcial para crear un nuevo lavado.
         /// </summary>
         [HttpGet]
-        [Permiso("Lavados.Consultar")]
+        [Permiso("Lavados.Consultar", "Lavados.Crear")]
         public async Task<IActionResult> FormPartial(string? id)
         {
+            if (!string.IsNullOrEmpty(id) && !User.TienePermiso("Lavados.Consultar"))
+                return Forbid();
             await CargarDatosFormulario();
 
             if (!string.IsNullOrEmpty(id))
@@ -796,12 +803,20 @@ namespace FirebaseLoginCustom.Controllers
         /// Busca vehículos por patente para el selector.
         /// </summary>
         [HttpGet]
-        [Permiso("Lavados.Consultar")]
+        [Permiso("Lavados.Consultar", "Lavados.Crear")]
         public async Task<IActionResult> BuscarVehiculosPorPatente(string? search)
         {
             if (string.IsNullOrWhiteSpace(search) || search.Length < 2)
             {
                 return Json(new List<object>());
+            }
+
+            if (!User.TienePermiso("Lavados.Consultar"))
+            {
+                var vehiculo = await _vehiculoService.ObtenerVehiculoPorPatente(search.Trim().ToUpperInvariant());
+                if (vehiculo == null || vehiculo.Estado != "Activo")
+                    return Json(new List<object>());
+                return Json(new[] { new { id = vehiculo.Id, patente = vehiculo.Patente, tipoVehiculo = vehiculo.TipoVehiculo, marca = vehiculo.Marca, modelo = vehiculo.Modelo, color = vehiculo.Color } });
             }
 
             var vehiculos = await _vehiculoService.ObtenerVehiculos(
@@ -833,11 +848,16 @@ namespace FirebaseLoginCustom.Controllers
         /// Obtiene los clientes asociados a un vehículo.
         /// </summary>
         [HttpGet]
-        [Permiso("Lavados.Consultar")]
-        public async Task<IActionResult> ObtenerClientesVehiculo(string vehiculoId)
+        [Permiso("Lavados.Consultar", "Lavados.Crear")]
+        public async Task<IActionResult> ObtenerClientesVehiculo(string vehiculoId, string? patente = null)
         {
-            var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
-            if (vehiculo == null)
+            var consultar = User.TienePermiso("Lavados.Consultar");
+            if (!consultar && string.IsNullOrWhiteSpace(patente))
+                return Json(new List<object>());
+            var vehiculo = consultar
+                ? await _vehiculoService.ObtenerVehiculo(vehiculoId)
+                : await _vehiculoService.ObtenerVehiculoPorPatente(patente!.Trim().ToUpperInvariant());
+            if (vehiculo == null || (!consultar && (vehiculo.Id != vehiculoId || vehiculo.Estado != "Activo")))
             {
                 return Json(new List<object>());
             }
@@ -868,7 +888,9 @@ namespace FirebaseLoginCustom.Controllers
                 var cliente = await _clienteService.ObtenerCliente(clienteId);
                 if (cliente != null && cliente.Estado == "Activo")
                 {
-                    clientes.Add(new
+                    if (!consultar)
+                        clientes.Add(new { id = cliente.Id, nombre = cliente.NombreCompleto, documento = $"{cliente.TipoDocumento}: {cliente.NumeroDocumento}" });
+                    else clientes.Add(new
                     {
                         id = cliente.Id,
                         nombre = cliente.NombreCompleto,
@@ -980,7 +1002,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Obtiene la cantidad de empleados requeridos para un tipo de vehículo.
         /// </summary>
         [HttpGet]
-        [Permiso("Lavados.Consultar")]
+        [Permiso("Lavados.Consultar", "Lavados.Crear")]
         public async Task<IActionResult> ObtenerEmpleadosPorTipoVehiculo(string tipoVehiculo)
         {
             var tipo = await _tipoVehiculoService.ObtenerTipoVehiculoPorNombre(tipoVehiculo);
@@ -1017,7 +1039,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Obtiene los servicios disponibles para un tipo de vehículo.
         /// </summary>
         [HttpGet]
-        [Permiso("Lavados.Consultar")]
+        [Permiso("Lavados.Consultar", "Lavados.Crear")]
         public async Task<IActionResult> ObtenerServiciosPorTipoVehiculo(string tipoVehiculo)
         {
             var servicios = await _servicioService.ObtenerServicios(
@@ -1044,7 +1066,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Obtiene los paquetes disponibles para un tipo de vehículo.
         /// </summary>
         [HttpGet]
-        [Permiso("Lavados.Consultar")]
+        [Permiso("Lavados.Consultar", "Lavados.Crear")]
         public async Task<IActionResult> ObtenerPaquetesPorTipoVehiculo(string tipoVehiculo)
         {
             var paquetes = await _paqueteServicioService.ObtenerPaquetes(
@@ -1096,7 +1118,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Obtiene la configuración del sistema.
         /// </summary>
         [HttpGet]
-        [Permiso("Lavados.Consultar")]
+        [Permiso("Lavados.Consultar", "Lavados.Crear")]
         public async Task<IActionResult> ObtenerConfiguracion()
         {
             var config = await _configuracionService.ObtenerConfiguracion();
@@ -1124,7 +1146,7 @@ namespace FirebaseLoginCustom.Controllers
         /// Obtiene información sobre empleados disponibles.
         /// </summary>
         [HttpGet]
-        [Permiso("Lavados.Consultar")]
+        [Permiso("Lavados.Consultar", "Lavados.Crear")]
         public async Task<IActionResult> ObtenerEmpleadosDisponibles()
         {
             try
@@ -1150,6 +1172,9 @@ namespace FirebaseLoginCustom.Controllers
                 }
 
                 var config = await _configuracionService.ObtenerConfiguracion();
+
+                if (!User.TienePermiso("Lavados.Consultar"))
+                    return Json(new { totalActivos = empleadosActivos.Count, totalDisponibles = empleadosDisponibles.Count, empleadosMaximosPorLavado = config.EmpleadosMaximosPorLavado });
 
                 return Json(new
                 {

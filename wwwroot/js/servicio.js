@@ -247,6 +247,7 @@
      * @param {number} page - Número de página
      */
     function reloadServicioTable(page) {
+        if (!document.getElementById('servicio-table-container')) return;
         // Obtener filtros actuales del formulario
         const filterForm = document.getElementById('filterForm');
         const params = new URLSearchParams();

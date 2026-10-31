@@ -440,7 +440,8 @@
 
     async function cargarClientesVehiculo(vehiculoId) {
         try {
-            const response = await fetch(`/Lavados/ObtenerClientesVehiculo?vehiculoId=${vehiculoId}`);
+            const patente = window.lavadoData.vehiculoPatente || '';
+            const response = await fetch(`/Lavados/ObtenerClientesVehiculo?vehiculoId=${encodeURIComponent(vehiculoId)}&patente=${encodeURIComponent(patente)}`);
             const clientes = await response.json();
 
             window.lavadoData.clientesAsociados = clientes;
@@ -1200,7 +1201,7 @@
                 if (result.success) {
                     showTableMessage('success', result.message);
                     limpiarFormularioLavado();
-                    reloadLavadoTable(1);
+                    if (document.getElementById('lavado-table-container')) reloadLavadoTable(1);
 
                     // Cerrar acordeón
                     const accordionBody = document.getElementById('accordion-flush-body-1');

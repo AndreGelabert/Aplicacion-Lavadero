@@ -160,6 +160,8 @@
         </div>
         }
 
+        @if (User.TienePermiso("Clientes.Consultar"))
+        {
         <!-- Encabezado de la tabla y Filtros -->
         <div class="flex flex-col md:flex-row items-center justify-between space-y-3 md:space-y-0 md:space-x-4 p-4">
             <div class="w-full md:w-1/2">
@@ -242,6 +244,7 @@
         <div id="cliente-table-container" data-current-page="@ViewBag.CurrentPage">
             @await Html.PartialAsync("_ClienteTable", Model)
         </div>
+        }
 
         <!-- Modal de Confirmación Unificado -->
         <div id="clienteConfirmModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">

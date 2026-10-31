@@ -163,6 +163,7 @@
      * @param {number} page
      */
     function reloadPaqueteTable(page) {
+        if (!document.getElementById('paquete-table-container')) return;
         const params = buildFilterParams();
         params.set('pageNumber', String(page));
         const { sortBy, sortOrder } = getCurrentSort();

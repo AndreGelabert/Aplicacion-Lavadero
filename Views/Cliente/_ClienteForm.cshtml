@@ -7,8 +7,11 @@
     var puedeCrearTipoDocumento = User.TienePermiso("Clientes.Crear");
     var puedeEliminarTipoDocumento = User.TienePermiso("Clientes.Eliminar");
     var puedeCrearVehiculo = User.TienePermiso("Vehiculos.Crear");
-    var puedeModificarVehiculo = User.TienePermiso("Vehiculos.Modificar");
-    var puedeGestionarVehiculos = puedeCrearVehiculo || puedeModificarVehiculo;
+    var puedeGestionarVehiculos = puedeCrearVehiculo;
+}
+@if (ViewBag.AssociationKeys != null)
+{
+    <span id="association-keys" hidden data-keys="@ViewBag.AssociationKeys"></span>
 }
 <form id="cliente-form" data-validate="true" data-edit="@edit" method="post" action="@formAction" onsubmit="return submitClienteAjax(this, event);">
 @Html.AntiForgeryToken()

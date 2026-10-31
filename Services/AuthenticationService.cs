@@ -34,7 +34,9 @@ namespace Firebase.Services
             _firestore = firestore;
             _auditService = auditService;
             _httpClient = httpClient;
-            _firebaseApiKey = _configuration["Firebase:ApiKey"] ?? throw new InvalidOperationException("Firebase API Key no configurada");
+            _firebaseApiKey = _configuration["LocalEmulators:Enabled"] == "true"
+                ? "local-emulator"
+                : _configuration["Firebase:ApiKey"] ?? throw new InvalidOperationException("Firebase API Key no configurada");
 
             // Aumentar timeout para navegadores con bloqueo de trackers (Brave, Firefox con privacidad estricta)
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
@@ -61,7 +63,7 @@ namespace Firebase.Services
                 };
 
                 var content = new StringContent(JsonConvert.SerializeObject(loginInfo), Encoding.UTF8, "application/json");
-                var uri = $"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={_firebaseApiKey}";
+                var uri = Firebase.Security.LocalEmulatorSettings.IdentityToolkitUrl(_configuration["LocalEmulators:Enabled"] == "true", "signInWithPassword", _firebaseApiKey);
                 var response = await _httpClient.PostAsync(uri, content);
 
                 if (!response.IsSuccessStatusCode)
@@ -232,7 +234,7 @@ namespace Firebase.Services
                     Encoding.UTF8,
                     "application/json");
 
-                var resetUri = $"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={_firebaseApiKey}";
+                var resetUri = Firebase.Security.LocalEmulatorSettings.IdentityToolkitUrl(_configuration["LocalEmulators:Enabled"] == "true", "sendOobCode", _firebaseApiKey);
                 var resetResponse = await _httpClient.PostAsync(resetUri, resetContent);
 
                 if (!resetResponse.IsSuccessStatusCode)
@@ -270,6 +272,8 @@ namespace Firebase.Services
         /// <returns>Resultado de la operación de autenticación.</returns>
         public async Task<AuthenticationResult> AuthenticateWithGoogleAsync(string idToken)
         {
+            if (_configuration["LocalEmulators:Enabled"] == "true")
+                return AuthenticationResult.Failure("El inicio de sesión con Google no está disponible en el entorno local.");
             try
             {
                 var decodedToken = await FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(idToken);
@@ -400,7 +404,7 @@ namespace Firebase.Services
                 Encoding.UTF8,
                 "application/json");
 
-            var signInUri = $"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={_firebaseApiKey}";
+            var signInUri = Firebase.Security.LocalEmulatorSettings.IdentityToolkitUrl(_configuration["LocalEmulators:Enabled"] == "true", "signInWithPassword", _firebaseApiKey);
             var signInResponse = await _httpClient.PostAsync(signInUri, signInContent);
 
             if (!signInResponse.IsSuccessStatusCode)
@@ -427,7 +431,7 @@ namespace Firebase.Services
                 Encoding.UTF8,
                 "application/json");
 
-            var verifyUri = $"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={_firebaseApiKey}";
+            var verifyUri = Firebase.Security.LocalEmulatorSettings.IdentityToolkitUrl(_configuration["LocalEmulators:Enabled"] == "true", "sendOobCode", _firebaseApiKey);
             var verifyResponse = await _httpClient.PostAsync(verifyUri, verifyContent);
 
             if (!verifyResponse.IsSuccessStatusCode)

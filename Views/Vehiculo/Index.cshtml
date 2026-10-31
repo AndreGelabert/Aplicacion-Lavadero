@@ -31,9 +31,9 @@
         </div>
 
         <!-- Formulario de Edición (Oculto por defecto) -->
-        @if (puedeModificar)
+        @if (puedeModificar && ViewBag.EditVehiculo != null)
         {
-        <div id="accordion-flush" data-accordion="collapse" data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white" data-inactive-classes="text-gray-500 dark:text-gray-400" class="@(ViewBag.EditVehiculo == null ? "hidden" : "")">
+        <div id="accordion-flush" data-accordion="collapse" data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white" data-inactive-classes="text-gray-500 dark:text-gray-400" class="@(ViewBag.EditVehiculo == null && !User.TienePermiso("Vehiculos.Crear") ? "hidden" : "")">
             <h2 id="accordion-flush-heading-1">
                 <button type="button" class="flex items-center justify-between w-full p-2 py-5 font-medium rtl:text-right text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400 gap-3" data-accordion-target="#accordion-flush-body-1" aria-expanded="false" aria-controls="accordFlush-body-1">
                     <div class="flex items-center gap-2">
@@ -110,6 +110,8 @@
         </div>
         }
 
+        @if (User.TienePermiso("Vehiculos.Consultar"))
+        {
         <!-- Encabezado de la tabla y Filtros -->
         <div class="flex flex-col md:flex-row items-center justify-between space-y-3 md:space-y-0 md:space-x-4 p-4">
             <div class="w-full md:w-1/2">
@@ -255,6 +257,7 @@
         <div id="vehiculo-table-container" data-current-page="@ViewBag.CurrentPage">
             @await Html.PartialAsync("_VehiculoTable", Model)
         </div>
+        }
 
         <!-- Modal de Información del Cliente -->
         <div id="clienteInfoModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">

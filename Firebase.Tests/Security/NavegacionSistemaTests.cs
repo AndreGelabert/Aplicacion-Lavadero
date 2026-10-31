@@ -1,4 +1,5 @@
 using Firebase.Security;
+using Firebase.Controllers;
 using Xunit;
 
 namespace Firebase.Tests.Security
@@ -60,13 +61,44 @@ namespace Firebase.Tests.Security
         public void RutaLanding_ShouldReturnAccessDeniedWhenThereIsNoModulePermission()
         {
             Assert.Equal("/Home/AccessDenied", NavegacionSistema.RutaLanding(Array.Empty<string>()));
-            Assert.Equal("/Home/AccessDenied", NavegacionSistema.RutaLanding(new[] { "Clientes.Crear" }));
+            Assert.Equal("/Cliente", NavegacionSistema.RutaLanding(new[] { "Clientes.Crear" }));
         }
 
         [Fact]
-        public void ModulosVisibles_ShouldBeEmptyWithoutConsultPermissions()
+        public void ModulosVisibles_ShouldShowClientsWithCreatePermissionOnly()
         {
-            Assert.Empty(NavegacionSistema.ModulosVisibles(new[] { "Clientes.Crear", "Roles.Modificar" }));
+            Assert.Equal(
+                new[] { "Cliente" },
+                NavegacionSistema.ModulosVisibles(new[] { "Clientes.Crear" }).Select(m => m.Controlador));
+        }
+
+        [Theory]
+        [InlineData("Lavados.Crear", "Lavados")]
+        [InlineData("Servicios.Crear", "Servicio")]
+        [InlineData("Paquetes.Crear", "PaqueteServicio")]
+        [InlineData("Roles.Crear", "Rol")]
+        public void ModulosVisibles_ShouldShowModuleWithCreatePermissionOnly(string permission, string controller)
+        {
+            Assert.Contains(NavegacionSistema.ModulosVisibles(new[] { permission }),
+                module => module.Controlador == controller);
+        }
+
+        [Fact]
+        public void VehicleModule_ShouldNotBeVisibleWithCreatePermissionOnly()
+        {
+            Assert.DoesNotContain(NavegacionSistema.ModulosVisibles(new[] { "Vehiculos.Crear" }),
+                module => module.Controlador == "Vehiculo");
+        }
+
+        [Fact]
+        public void ClienteIndex_ShouldAllowConsultOrCreatePermission()
+        {
+            var permiso = typeof(ClienteController).GetMethod(nameof(ClienteController.Index))!
+                .GetCustomAttributes(typeof(PermisoAttribute), inherit: true)
+                .Cast<PermisoAttribute>()
+                .Single();
+
+            Assert.Equal(new[] { "Clientes.Consultar", "Clientes.Crear" }, permiso.Permisos);
         }
 
         [Fact]

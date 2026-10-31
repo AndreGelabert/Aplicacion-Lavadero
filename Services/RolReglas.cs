@@ -83,10 +83,15 @@ public static class RolReglas
 
         if (seleccion.Contains("Clientes.Crear") && !seleccion.Contains("Vehiculos.Crear"))
             return "Para crear clientes debe seleccionar Crear vehículos.";
+        if (seleccion.Contains("Vehiculos.Crear") && !seleccion.Contains("Clientes.Crear"))
+            return "Para crear vehículos debe seleccionar Crear clientes.";
         if (seleccion.Contains("Clientes.Eliminar") && !seleccion.Contains("Vehiculos.Eliminar"))
             return "Para eliminar clientes debe seleccionar Eliminar vehículos.";
         if (seleccion.Contains("Vehiculos.Eliminar") && !seleccion.Contains("Clientes.Modificar"))
             return "Para eliminar vehículos debe seleccionar Modificar clientes.";
+        if ((seleccion.Contains("Paquetes.Crear") || seleccion.Contains("Paquetes.Modificar")) &&
+            !seleccion.Contains("Servicios.Consultar"))
+            return "Para crear o modificar paquetes debe seleccionar Consultar servicios.";
 
         return null;
     }

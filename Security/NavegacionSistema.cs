@@ -12,7 +12,16 @@ namespace Firebase.Security
         /// </summary>
         public string Ruta => "/" + Controlador;
 
-        public bool EsVisible(ISet<string> permisos) => permisos.Contains(Permiso);
+        /// <summary>
+        /// Permiso alternativo que habilita el acceso inicial sin permiso de consulta.
+        /// </summary>
+        public string? PermisoCrear { get; init; }
+
+        public IReadOnlyList<string> PermisosVistaAlternativos { get; init; } = Array.Empty<string>();
+
+        public bool EsVisible(ISet<string> permisos) =>
+            permisos.Contains(Permiso) || (PermisoCrear != null && permisos.Contains(PermisoCrear)) ||
+            PermisosVistaAlternativos.Any(permisos.Contains);
     }
 
     /// <summary>
@@ -36,15 +45,25 @@ namespace Firebase.Security
         /// </summary>
         public static IReadOnlyList<ModuloNavegacion> Modulos { get; } = new[]
         {
-            new ModuloNavegacion("Lavados", "Lavados", RolCatalogo.Clave("Lavados", RolCatalogo.Consultar)),
-            new ModuloNavegacion("Cliente", "Clientes", RolCatalogo.Clave("Clientes", RolCatalogo.Consultar)),
-            new ModuloNavegacion("Vehiculo", "Vehículos", RolCatalogo.Clave("Vehiculos", RolCatalogo.Consultar)),
-            new ModuloNavegacion("Servicio", "Servicios", RolCatalogo.Clave("Servicios", RolCatalogo.Consultar)),
-            new ModuloNavegacion("PaqueteServicio", "Paquetes", RolCatalogo.Clave("Paquetes", RolCatalogo.Consultar)),
+            new ModuloNavegacion("Lavados", "Lavados", RolCatalogo.Clave("Lavados", RolCatalogo.Consultar)) { PermisoCrear = RolCatalogo.Clave("Lavados", RolCatalogo.Crear) },
+            new ModuloNavegacion("Cliente", "Clientes", RolCatalogo.Clave("Clientes", RolCatalogo.Consultar))
+            {
+                PermisoCrear = RolCatalogo.Clave("Clientes", RolCatalogo.Crear)
+            },
+            new ModuloNavegacion("Vehiculo", "Vehículos", RolCatalogo.Clave("Vehiculos", RolCatalogo.Consultar))
+            {
+                PermisosVistaAlternativos = new[]
+                {
+                    RolCatalogo.Clave("Vehiculos", RolCatalogo.Modificar),
+                    RolCatalogo.Clave("Vehiculos", RolCatalogo.Eliminar)
+                }
+            },
+            new ModuloNavegacion("Servicio", "Servicios", RolCatalogo.Clave("Servicios", RolCatalogo.Consultar)) { PermisoCrear = RolCatalogo.Clave("Servicios", RolCatalogo.Crear) },
+            new ModuloNavegacion("PaqueteServicio", "Paquetes", RolCatalogo.Clave("Paquetes", RolCatalogo.Consultar)) { PermisoCrear = RolCatalogo.Clave("Paquetes", RolCatalogo.Crear) },
             new ModuloNavegacion("Personal", "Personal", RolCatalogo.Clave("Personal", RolCatalogo.Consultar)),
             new ModuloNavegacion("Auditoria", "Auditoría", RolCatalogo.Clave("Auditoria", RolCatalogo.Consultar)),
             new ModuloNavegacion("Configuracion", "Configuración", RolCatalogo.Clave("Configuracion", RolCatalogo.Consultar)),
-            new ModuloNavegacion("Rol", "Roles y Permisos", RolCatalogo.Clave("Roles", RolCatalogo.Consultar))
+            new ModuloNavegacion("Rol", "Roles y Permisos", RolCatalogo.Clave("Roles", RolCatalogo.Consultar)) { PermisoCrear = RolCatalogo.Clave("Roles", RolCatalogo.Crear) }
         };
 
         /// <summary>

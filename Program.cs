@@ -2,12 +2,15 @@ using Firebase.Middleware;
 using Firebase.Models;
 using Firebase.Security;
 using FirebaseAdmin;
+using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Localization;
+using Firebase.Services;
+using System.Security.Claims;
 using System.Globalization;
 
 // Las solicitudes AJAX reciben 401/403 en lugar de una redirección HTML.
@@ -15,7 +18,15 @@ static bool EsSolicitudAjax(HttpRequest request) =>
     string.Equals(request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase)
     || request.Headers.Accept.ToString().Contains("application/json", StringComparison.OrdinalIgnoreCase);
 
-var builder = WebApplication.CreateBuilder(args);
+var seedLocalEmulators = args.Contains("--seed-local-emulators", StringComparer.Ordinal);
+var builder = WebApplication.CreateBuilder(args.Where(arg => arg != "--seed-local-emulators").ToArray());
+var localEmulators = LocalEmulatorSettings.Validate(
+    builder.Environment.IsDevelopment(),
+    Environment.GetEnvironmentVariable("FIRESTORE_EMULATOR_HOST"),
+    Environment.GetEnvironmentVariable("FIREBASE_AUTH_EMULATOR_HOST"));
+builder.Configuration["LocalEmulators:Enabled"] = localEmulators ? "true" : "false";
+if (seedLocalEmulators && !localEmulators)
+    throw new InvalidOperationException("The local seed command requires both local emulators in Development.");
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddMemoryCache();
@@ -46,7 +57,24 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
                 {
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return;
                 }
+
+                var identity = context.Principal?.Identities.FirstOrDefault(
+                    current => current.IsAuthenticated && current.AuthenticationType == CookieAuthenticationDefaults.AuthenticationScheme);
+                var role = identity?.FindFirst(ClaimTypes.Role)?.Value;
+                if (identity == null || string.IsNullOrWhiteSpace(role))
+                    return;
+
+                // Refresh role permissions from their source of truth on authenticated requests.
+                // Keep identity and session-tracking claims intact; only reissue the cookie when grants changed.
+                var rolService = context.HttpContext.RequestServices.GetRequiredService<RolService>();
+                var permisosVigentes = await rolService.ObtenerPermisosRolAsync(role);
+                if (!Firebase.Security.PermissionClaims.Refresh(identity, permisosVigentes))
+                    return;
+
+                context.ReplacePrincipal(context.Principal!);
+                context.ShouldRenew = true;
             },
             OnRedirectToLogin = context =>
             {
@@ -101,6 +129,13 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 // NUEVO: Configuración mejorada para FirestoreDb que funciona en local y producción
 builder.Services.AddSingleton(provider =>
 {
+    if (localEmulators)
+        return new FirestoreDbBuilder
+        {
+            ProjectId = LocalEmulatorSettings.ProjectId,
+            EmulatorDetection = EmulatorDetection.EmulatorOnly
+        }.Build();
+
     GoogleCredential credential;
 
     // Verificar si existe variable de entorno con credenciales JSON
@@ -185,7 +220,8 @@ builder.Services.AddScoped<Firebase.Services.WhatsAppSessionService>();
 builder.Services.AddScoped<Firebase.Services.WhatsAppFlowService>();
 
 // Background Service para limpieza automática de sesiones
-builder.Services.AddHostedService<Firebase.BackgroundServices.WhatsAppSessionCleanupService>();
+if (!localEmulators)
+    builder.Services.AddHostedService<Firebase.BackgroundServices.WhatsAppSessionCleanupService>();
 
 var app = builder.Build();
 
@@ -211,6 +247,16 @@ app.MapControllerRoute(
 // NUEVO: Configuracion mejorada de FirebaseApp
 try
 {
+    if (localEmulators)
+    {
+        FirebaseApp.Create(new AppOptions
+        {
+            ProjectId = LocalEmulatorSettings.ProjectId,
+            Credential = GoogleCredential.FromAccessToken("owner")
+        });
+    }
+    else
+    {
     GoogleCredential credential;
     var firebaseCredentialsJson = builder.Configuration["FIREBASE_CREDENTIALS"];
 
@@ -234,12 +280,19 @@ try
     {
         Credential = credential
     });
+    }
 }
 catch (Exception ex)
 {
     // Log del error (considera agregar un logger aqui)
     Console.WriteLine($"Error al inicializar FirebaseApp: {ex.Message}");
     throw;
+}
+
+if (seedLocalEmulators)
+{
+    await LocalEmulatorSeed.RunAsync(app.Services.GetRequiredService<FirestoreDb>(), FirebaseApp.DefaultInstance, app.Environment.IsDevelopment());
+    return;
 }
 
 app.Run();

@@ -208,8 +208,9 @@ namespace Firebase.Tests.Security
             Assert.Equal("/Auditoria", NavegacionSistema.RutaLanding(new[] { "Auditoria.Consultar", "Configuracion.Consultar", "Configuracion.Modificar" }));
             Assert.Equal("/Rol", NavegacionSistema.RutaLanding(new[] { "Roles.Consultar" }));
             Assert.Equal("/Home/AccessDenied", NavegacionSistema.RutaLanding(Array.Empty<string>()));
-            Assert.Equal("/Home/AccessDenied", NavegacionSistema.RutaLanding(new[] { "Clientes.Crear" }));
-            Assert.Empty(NavegacionSistema.ModulosVisibles(new[] { "Clientes.Crear" }));
+            Assert.Equal("/Cliente", NavegacionSistema.RutaLanding(new[] { "Clientes.Crear" }));
+            Assert.Contains(NavegacionSistema.ModulosVisibles(new[] { "Clientes.Crear" }),
+                modulo => modulo.Controlador == "Cliente");
         }
 
         private static AuthenticationService CrearAuthenticationService()

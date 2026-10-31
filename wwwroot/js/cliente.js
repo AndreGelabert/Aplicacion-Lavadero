@@ -522,6 +522,7 @@
     }
 
     function reloadClienteTable(page) {
+        if (!document.getElementById('cliente-table-container')) return;
         if (page) currentPage = page;
 
         const params = buildFilterParams();
@@ -732,10 +733,12 @@
 
             const valid = response.headers.get('X-Form-Valid') === 'true';
             const msg = response.headers.get('X-Form-Message');
-            const associationKeysHeader = response.headers.get('X-Association-Keys');
             const html = await response.text();
 
             document.getElementById('cliente-form-container').innerHTML = html;
+            const keyElement = document.getElementById('association-keys');
+            const associationKeys = keyElement?.dataset.keys;
+            keyElement?.remove();
 
             // CRÍTICO: Esperar setup de vehículos
             await setupVehiculoSelector();
@@ -753,9 +756,9 @@
                 vehiculosDisponibles = [];
 
                 // Verificar si hay claves de asociación generadas
-                if (associationKeysHeader) {
+                if (associationKeys) {
                     try {
-                        const claves = JSON.parse(associationKeysHeader);
+                        const claves = JSON.parse(associationKeys);
                         if (claves && claves.length > 0) {
                             mostrarModalClavesAsociacion(claves);
                         }
@@ -1380,7 +1383,7 @@
             // Primero cargar los formatos
             await loadTiposVehiculoFormatos();
 
-            const response = await fetch('/Vehiculo/FormPartial');
+            const response = await fetch('/Vehiculo/FormPartialCliente');
             const html = await response.text();
 
             // Eliminar modal anterior si existe
