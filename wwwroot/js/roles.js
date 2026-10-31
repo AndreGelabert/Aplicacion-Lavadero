@@ -122,6 +122,7 @@
      * @param {number} page
      */
     function reloadRolTable(page) {
+        if (!document.getElementById('rol-table-container')) return Promise.resolve();
         const params = buildRolParams();
         const searchTerm = params.get('searchTerm');
         params.set('pageNumber', String(page || 1));
@@ -364,13 +365,7 @@
                 }
 
                 if (data.success) {
-                    window.closeRolForm();
-                    showRolToast(data.message || 'Operación exitosa.', 'success');
-
-                    const searchInput = document.getElementById('rol-search');
-                    if (searchInput) searchInput.value = '';
-
-                    reloadRolTable(1);
+                    window.location.reload();
                     return;
                 }
 
@@ -492,6 +487,11 @@
             const target = event.target;
             if (!(target instanceof HTMLInputElement)) return;
             if (target.name !== 'Permisos' || target.disabled) return;
+            if (!target.checked && (target.value === 'Clientes.Crear' || target.value === 'Vehiculos.Crear')) {
+                const paired = target.value === 'Clientes.Crear' ? 'Vehiculos.Crear' : 'Clientes.Crear';
+                const other = document.querySelector(`#rol-form input[name="Permisos"][value="${paired}"]:not(:disabled)`);
+                if (other) other.checked = false;
+            }
             if (target.checked) {
                 const pending = [...getRequiredPermission(target.value)];
                 const checked = new Set();
@@ -515,10 +515,13 @@
      */
     function getRequiredPermission(permission) {
         const [module, action] = permission.split('.');
+        if (permission === 'Paquetes.Modificar') return ['Paquetes.Consultar', 'Servicios.Consultar'];
+        if (permission === 'Paquetes.Crear') return ['Servicios.Consultar'];
         if (action === 'Modificar' || action === 'Eliminar') {
             return [`${module}.Consultar`];
         }
         if (permission === 'Clientes.Crear') return ['Vehiculos.Crear'];
+        if (permission === 'Vehiculos.Crear') return ['Clientes.Crear'];
         if (permission === 'Clientes.Eliminar') return ['Vehiculos.Eliminar'];
         if (permission === 'Vehiculos.Eliminar') return ['Clientes.Modificar'];
         return [];

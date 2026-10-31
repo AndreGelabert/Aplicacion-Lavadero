@@ -23,4 +23,26 @@ public class LocalEmulatorSeedTests
         Assert.Equal("Automóvil", documents[("vehiculos", "local-seed-vehiculo")]["TipoVehiculo"]);
         Assert.Equal("Automóvil", documents[("servicios", "local-seed-servicio")]["TipoVehiculo"]);
     }
+
+    [Fact]
+    public void SeedsAUserWithCreateOnlyPermissionsForAbmFlowChecks()
+    {
+        var documents = LocalEmulatorSeed.Documents();
+        var user = documents[("empleados", LocalEmulatorSeed.CreateOnlyUserId)];
+        var role = documents[("roles", LocalEmulatorSeed.CreateOnlyRoleId)];
+        var permissions = Assert.IsAssignableFrom<IEnumerable<string>>(role["Permisos"]);
+
+        Assert.Equal(LocalEmulatorSeed.CreateOnlyEmail, user["Email"]);
+        Assert.Equal(LocalEmulatorSeed.CreateOnlyRoleName, user["Rol"]);
+        Assert.Equal(new[]
+        {
+            "Clientes.Crear",
+            "Vehiculos.Crear",
+            "Servicios.Crear",
+            "Servicios.Consultar",
+            "Paquetes.Crear",
+            "Lavados.Crear",
+            "Roles.Crear"
+        }, permissions);
+    }
 }

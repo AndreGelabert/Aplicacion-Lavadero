@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Localization;
+using Firebase.Services;
+using System.Security.Claims;
 using System.Globalization;
 
 // Las solicitudes AJAX reciben 401/403 en lugar de una redirección HTML.
@@ -55,7 +57,24 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
                 {
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return;
                 }
+
+                var identity = context.Principal?.Identities.FirstOrDefault(
+                    current => current.IsAuthenticated && current.AuthenticationType == CookieAuthenticationDefaults.AuthenticationScheme);
+                var role = identity?.FindFirst(ClaimTypes.Role)?.Value;
+                if (identity == null || string.IsNullOrWhiteSpace(role))
+                    return;
+
+                // Refresh role permissions from their source of truth on authenticated requests.
+                // Keep identity and session-tracking claims intact; only reissue the cookie when grants changed.
+                var rolService = context.HttpContext.RequestServices.GetRequiredService<RolService>();
+                var permisosVigentes = await rolService.ObtenerPermisosRolAsync(role);
+                if (!Firebase.Security.PermissionClaims.Refresh(identity, permisosVigentes))
+                    return;
+
+                context.ReplacePrincipal(context.Principal!);
+                context.ShouldRenew = true;
             },
             OnRedirectToLogin = context =>
             {

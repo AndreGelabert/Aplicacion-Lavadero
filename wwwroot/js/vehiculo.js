@@ -416,6 +416,7 @@
     }
 
     function reloadVehiculoTable(page) {
+        if (!document.getElementById('vehiculo-table-container')) return;
         if (page) currentPage = page;
 
         const params = buildFilterParams();

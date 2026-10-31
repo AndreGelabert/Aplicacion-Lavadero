@@ -46,7 +46,7 @@ public class ServicioController : Controller
     /// Página principal de servicios con filtros, orden y paginación.
     /// </summary>
     [HttpGet]
-    [Permiso("Servicios.Consultar")]
+    [Permiso("Servicios.Consultar", "Servicios.Crear")]
     public async Task<IActionResult> Index(
         List<string> estados,
         List<string> tipos,
@@ -59,6 +59,12 @@ public class ServicioController : Controller
         string sortBy = null,
         string sortOrder = null)
     {
+        if (!User.TienePermiso("Servicios.Consultar"))
+        {
+            await CargarListasForm();
+            await ConfigurarFormulario(string.Empty);
+            return View(new List<Servicio>());
+        }
         estados = ConfigurarEstadosDefecto(estados);
 
         sortBy ??= "Nombre";

@@ -28,6 +28,14 @@ public class RolDependenciasTests
     }
 
     [Fact]
+    public void ValidarPermisos_ExigeCrearClienteParaCrearVehiculo()
+    {
+        Assert.Equal("Para crear vehículos debe seleccionar Crear clientes.",
+            RolReglas.ValidarPermisos(new[] { "Vehiculos.Crear" }));
+        Assert.Null(RolReglas.ValidarPermisos(new[] { "Clientes.Crear", "Vehiculos.Crear" }));
+    }
+
+    [Fact]
     public void ValidarPermisos_ExigeEliminarVehiculoParaEliminarCliente()
     {
         Assert.Equal("Para eliminar clientes debe seleccionar Eliminar vehículos.",

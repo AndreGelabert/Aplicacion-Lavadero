@@ -32,7 +32,7 @@ public class VehiculoController : Controller
     }
 
     [HttpGet]
-    [Permiso("Vehiculos.Consultar")]
+    [Permiso("Vehiculos.Consultar", "Vehiculos.Modificar", "Vehiculos.Eliminar")]
     public async Task<IActionResult> Index(
         string searchTerm,
         List<string> tiposVehiculo,
@@ -45,6 +45,16 @@ public class VehiculoController : Controller
         string sortOrder = "asc",
         string editId = null)
     {
+        if (!User.TienePermiso("Vehiculos.Consultar"))
+        {
+            if (!string.IsNullOrWhiteSpace(editId) && User.TienePermiso("Vehiculos.Modificar"))
+                await ConfigurarFormulario(editId);
+            else
+                ViewBag.EditVehiculo = null;
+
+            return View(new List<Vehiculo>());
+        }
+
         // Si no se especifican estados, por defecto mostrar solo Activos
         if (estados == null || !estados.Any())
         {
@@ -74,7 +84,7 @@ public class VehiculoController : Controller
         ViewBag.ColoresDisponibles = await _vehiculoService.ObtenerColoresUnicos();
         
         // Solo configurar formulario si se está editando
-        if (!string.IsNullOrEmpty(editId))
+        if (!string.IsNullOrEmpty(editId) && User.TienePermiso("Vehiculos.Modificar"))
         {
             await ConfigurarFormulario(editId);
         }
@@ -139,9 +149,11 @@ public class VehiculoController : Controller
     }
 
     [HttpGet]
-    [Permiso("Vehiculos.Consultar")]
+    [Permiso("Vehiculos.Consultar", "Vehiculos.Modificar")]
     public async Task<IActionResult> FormPartial(string id)
     {
+        if (string.IsNullOrWhiteSpace(id) || !User.TienePermiso("Vehiculos.Modificar"))
+            return Forbid();
         await CargarListasForm();
         Vehiculo vehiculo = null;
         if (!string.IsNullOrEmpty(id))
@@ -149,6 +161,22 @@ public class VehiculoController : Controller
 
         return PartialView("_VehiculoForm", vehiculo);
     }
+
+    [HttpGet]
+    [Permiso("Clientes.Crear", "Clientes.Modificar")]
+    public async Task<IActionResult> FormPartialCliente()
+    {
+        if (!PuedeGestionarVehiculoDesdeCliente(User, "Clientes.Crear") &&
+            !PuedeGestionarVehiculoDesdeCliente(User, "Clientes.Modificar"))
+            return Forbid();
+
+        await CargarListasForm();
+        return PartialView("_VehiculoForm", null);
+    }
+
+    public static bool PuedeGestionarVehiculoDesdeCliente(
+        System.Security.Claims.ClaimsPrincipal user, string permisoCliente) =>
+        user.TienePermiso(permisoCliente) && user.TienePermiso("Vehiculos.Crear");
 
     [HttpGet]
     [Permiso("Vehiculos.Consultar")]
@@ -253,73 +281,6 @@ public class VehiculoController : Controller
         catch (Exception ex)
         {
             return Json(new { existe = false, error = $"Error al verificar vehículo: {ex.Message}" });
-        }
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [Permiso("Vehiculos.Crear")]
-    public async Task<IActionResult> CrearVehiculoAjax(Vehiculo vehiculo)
-    {
-        try
-        {
-            // IMPORTANTE: Remover validaciones de campos generados
-            ModelState.Remove("Id");
-            ModelState.Remove("ClienteNombreCompleto"); // No viene del form
-            
-            // NUEVO: ClienteId es obligatorio ahora
-            if (string.IsNullOrWhiteSpace(vehiculo.ClienteId))
-            {
-                ModelState.AddModelError("ClienteId", "El vehículo debe tener un dueño asignado.");
-            }
-            
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState
-                    .Where(x => x.Value.Errors.Count > 0)
-                    .ToDictionary(
-                        kvp => kvp.Key,
-                        kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()
-                    );
-                
-                Console.WriteLine($"❌ ModelState inválido:");
-                foreach (var error in errors)
-                {
-                    Console.WriteLine($"  Campo: {error.Key}");
-                    foreach (var msg in error.Value)
-                    {
-                        Console.WriteLine($"    - {msg}");
-                    }
-                }
-                
-                return await PrepararRespuestaAjax(false, vehiculo, null);
-            }
-
-            var existente = await _vehiculoService.ObtenerVehiculoPorPatente(vehiculo.Patente);
-            if (existente != null)
-            {
-                ModelState.AddModelError("Patente", "Ya existe un vehículo con esta patente.");
-                return await PrepararRespuestaAjax(false, vehiculo, null);
-            }
-
-            // Obtener nombre completo del cliente
-            var cliente = await _clienteService.ObtenerCliente(vehiculo.ClienteId);
-            if (cliente == null)
-            {
-                ModelState.AddModelError("ClienteId", "El cliente especificado no existe.");
-                return await PrepararRespuestaAjax(false, vehiculo, null);
-            }
-
-            vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
-            vehiculo.Estado = "Activo";
-            
-            await _vehiculoService.CrearVehiculo(vehiculo);
-            return await PrepararRespuestaAjax(true, vehiculo, "Creacion de vehiculo");
-        }
-        catch (Exception ex)
-        {
-            ModelState.AddModelError("", ex.Message);
-            return await PrepararRespuestaAjax(false, vehiculo, null);
         }
     }
 

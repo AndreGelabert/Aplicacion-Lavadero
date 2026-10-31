@@ -30,7 +30,7 @@ public class ClienteController : Controller
     }
 
     [HttpGet]
-    [Permiso("Clientes.Consultar")]
+    [Permiso("Clientes.Consultar", "Clientes.Crear")]
     public async Task<IActionResult> Index(
         string searchTerm,
         List<string> estados,
@@ -40,14 +40,20 @@ public class ClienteController : Controller
         string sortOrder = "asc",
         string editId = null)
     {
+        var puedeConsultar = User.TienePermiso("Clientes.Consultar");
+
         // Si no se especifican estados, por defecto mostrar solo Activos
         if (estados == null || !estados.Any())
         {
             estados = new List<string> { "Activo" };
         }
 
-        var clientes = await _clienteService.ObtenerClientes(searchTerm, pageNumber, pageSize, sortBy, sortOrder, estados);
-        var totalClientes = await _clienteService.ObtenerTotalClientes(searchTerm, estados);
+        var clientes = puedeConsultar
+            ? await _clienteService.ObtenerClientes(searchTerm, pageNumber, pageSize, sortBy, sortOrder, estados)
+            : new List<Cliente>();
+        var totalClientes = puedeConsultar
+            ? await _clienteService.ObtenerTotalClientes(searchTerm, estados)
+            : 0;
         var totalPages = Math.Max((int)Math.Ceiling(totalClientes / (double)pageSize), 1);
 
         ViewBag.CurrentPage = pageNumber;
@@ -60,7 +66,7 @@ public class ClienteController : Controller
         ViewBag.PageSize = pageSize;
 
         await CargarListasForm();
-        await ConfigurarFormulario(editId);
+        await ConfigurarFormulario(puedeConsultar && User.TienePermiso("Clientes.Modificar") ? editId : string.Empty);
 
         return View(clientes);
     }
@@ -111,6 +117,8 @@ public class ClienteController : Controller
     [Permiso("Clientes.Consultar")]
     public async Task<IActionResult> FormPartial(string id)
     {
+        if (!string.IsNullOrEmpty(id) && !User.TienePermiso("Clientes.Modificar"))
+            return Forbid();
         await CargarListasForm();
         Cliente cliente = null;
         if (!string.IsNullOrEmpty(id))
@@ -149,6 +157,9 @@ public class ClienteController : Controller
     [Permiso("Clientes.Crear")]
     public async Task<IActionResult> CrearClienteAjax(Cliente cliente, string? vehiculosDataJson = null)
     {
+        if (!PuedeGestionarVehiculosDesdeCliente(User, "Clientes.Crear"))
+            return Forbid();
+
         try
         {
             ModelState.Remove("Id");
@@ -325,7 +336,8 @@ public class ClienteController : Controller
             if (clavesAsociacionGeneradas.Any())
             {
                 var clavesMsg = string.Join(", ", clavesAsociacionGeneradas);
-                Response.Headers["X-Association-Keys"] = System.Text.Json.JsonSerializer.Serialize(clavesAsociacionGeneradas);
+                ViewBag.AssociationKeys = System.Text.Json.JsonSerializer.Serialize(clavesAsociacionGeneradas);
+                Response.Headers.CacheControl = "no-store";
             }
 
             return await PrepararRespuestaAjax(true, cliente, "Creacion de cliente");
@@ -361,6 +373,9 @@ public class ClienteController : Controller
     [Permiso("Clientes.Modificar")]
     public async Task<IActionResult> ActualizarClienteAjax(Cliente cliente, string? vehiculosDataJson = null)
     {
+        if (!PuedeGestionarVehiculosDesdeCliente(User, "Clientes.Modificar"))
+            return Forbid();
+
         try
         {
             ModelState.Remove("VehiculosDataJson"); // No es parte del modelo Cliente
@@ -566,13 +581,15 @@ public class ClienteController : Controller
                 }
             }
 
+            cliente.Estado = clienteActual.Estado;
             cliente.VehiculosIds = vehiculosIds;
             await _clienteService.ActualizarCliente(cliente);
 
             // Si se generaron claves, incluirlas en el mensaje de respuesta
             if (clavesAsociacionGeneradas.Any())
             {
-                Response.Headers["X-Association-Keys"] = System.Text.Json.JsonSerializer.Serialize(clavesAsociacionGeneradas);
+                ViewBag.AssociationKeys = System.Text.Json.JsonSerializer.Serialize(clavesAsociacionGeneradas);
+                Response.Headers.CacheControl = "no-store";
             }
 
             return await PrepararRespuestaAjax(true, cliente, "Actualizacion de cliente");
@@ -586,6 +603,7 @@ public class ClienteController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     [Permiso("Clientes.Eliminar")]
     public async Task<IActionResult> DeactivateCliente(string id)
     {
@@ -668,6 +686,7 @@ public class ClienteController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     [Permiso("Clientes.Modificar")]
     public async Task<IActionResult> ReactivateCliente(string id)
     {
@@ -753,6 +772,9 @@ public class ClienteController : Controller
     [Permiso("Clientes.Consultar")]
     public async Task<IActionResult> GetVehiculosCliente(string clienteId)
     {
+        if (!PuedeConsultarVehiculosCliente(User))
+            return Forbid();
+
         try
         {
             var cliente = await _clienteService.ObtenerCliente(clienteId);
@@ -821,6 +843,12 @@ public class ClienteController : Controller
             return Json(new { success = false, message = "No se pudieron obtener los vehículos del cliente." });
         }
     }
+
+    public static bool PuedeConsultarVehiculosCliente(ClaimsPrincipal user) =>
+        user.TienePermiso("Clientes.Consultar") && user.TienePermiso("Vehiculos.Consultar");
+
+    public static bool PuedeGestionarVehiculosDesdeCliente(ClaimsPrincipal user, string permisoCliente) =>
+        user.TienePermiso(permisoCliente) && user.TienePermiso("Vehiculos.Crear");
 
     [HttpPost]
     [Permiso("Clientes.Eliminar")]

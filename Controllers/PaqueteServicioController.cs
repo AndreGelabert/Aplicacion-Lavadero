@@ -43,7 +43,7 @@ public class PaqueteServicioController : Controller
     /// OPTIMIZADO: Calcula precios/tiempos una sola vez.
     /// </summary>
     [HttpGet]
-    [Permiso("Paquetes.Consultar")]
+    [Permiso("Paquetes.Consultar", "Paquetes.Crear")]
     public async Task<IActionResult> Index(
         List<string> estados,
         List<string> tiposVehiculo,
@@ -58,6 +58,12 @@ public class PaqueteServicioController : Controller
         decimal? descuentoMax = null,
         int? serviciosCantidad = null)
     {
+        if (!User.TienePermiso("Paquetes.Consultar"))
+        {
+            await CargarListasForm();
+            await ConfigurarFormulario(string.Empty);
+            return View(new List<PaqueteServicio>());
+        }
         estados = ConfigurarEstadosDefecto(estados);
 
         sortBy ??= "Nombre";
@@ -98,6 +104,7 @@ public class PaqueteServicioController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Permiso("Paquetes.Crear")]
+    [Authorize(Policy = "Permiso:Servicios.Consultar")]
     public async Task<IActionResult> CrearPaqueteAjax(PaqueteServicio paquete, string? ServiciosIdsJson)
     {
         try
@@ -122,6 +129,7 @@ public class PaqueteServicioController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Permiso("Paquetes.Modificar")]
+    [Authorize(Policy = "Permiso:Servicios.Consultar")]
     public async Task<IActionResult> ActualizarPaqueteAjax(PaqueteServicio paquete, string? ServiciosIdsJson)
     {
         try
@@ -358,9 +366,11 @@ public class PaqueteServicioController : Controller
     /// Obtiene los servicios activos filtrados por tipo de vehículo.
     /// </summary>
     [HttpGet]
-    [Permiso("Paquetes.Consultar")]
+    [Permiso("Paquetes.Consultar", "Paquetes.Crear", "Paquetes.Modificar")]
     public async Task<IActionResult> ObtenerServiciosPorTipoVehiculo(string tipoVehiculo)
     {
+        if (!User.TienePermiso("Paquetes.Consultar") && !User.TienePermiso("Servicios.Consultar"))
+            return Forbid();
         if (string.IsNullOrWhiteSpace(tipoVehiculo))
         {
             return Json(new { success = false, message = "Debe seleccionar un tipo de vehículo" });

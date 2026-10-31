@@ -38,7 +38,7 @@ public class RolController : Controller
     /// <param name="sortOrder">Dirección del ordenamiento.</param>
     /// <returns>Vista con la lista de roles.</returns>
     [HttpGet]
-    [Permiso("Roles.Consultar")]
+    [Permiso("Roles.Consultar", "Roles.Crear")]
     public async Task<IActionResult> Index(
         string? estado,
         int pageNumber = 1,
@@ -46,6 +46,9 @@ public class RolController : Controller
         string sortBy = "Nombre",
         string sortOrder = "asc")
     {
+        if (!User.TienePermiso("Roles.Consultar"))
+            return View(new List<Rol>());
+
         await _rolService.AsegurarRolesBaseAsync();
 
         if (!Request.Query.ContainsKey("estado")) estado = "Activo";
@@ -134,9 +137,12 @@ public class RolController : Controller
     /// <param name="id">ID del rol a editar; null para creación.</param>
     /// <returns>Vista parcial del formulario.</returns>
     [HttpGet]
-    [Permiso("Roles.Consultar")]
+    [Permiso("Roles.Consultar", "Roles.Crear")]
     public async Task<IActionResult> FormPartial(string? id = null)
     {
+        if (!string.IsNullOrWhiteSpace(id) && !User.TienePermiso("Roles.Consultar"))
+            return Forbid();
+
         if (string.IsNullOrWhiteSpace(id))
         {
             return PartialView("_RolForm", new Rol());

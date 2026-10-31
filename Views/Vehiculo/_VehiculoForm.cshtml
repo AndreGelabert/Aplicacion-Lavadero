@@ -1,17 +1,16 @@
 @model Firebase.Models.Vehiculo
 @{
     var edit = Model != null && !string.IsNullOrWhiteSpace(Model.Id);
-    string formAction = edit ? Url.Action("ActualizarVehiculoAjax", "Vehiculo") : Url.Action("CrearVehiculoAjax", "Vehiculo");
-    string submitText = edit ? "Guardar" : "Registrar";
-    string clearText = edit ? "Cancelar" : "Limpiar Campos";
+    string formAction = Url.Action("ActualizarVehiculoAjax", "Vehiculo");
+    string submitText = "Guardar";
+    string clearText = "Cancelar";
     var puedeCrearTipoVehiculo = User.TieneAlgunPermiso("Vehiculos.Crear", "Servicios.Crear");
     var puedeEliminarTipoVehiculo = User.TieneAlgunPermiso("Vehiculos.Eliminar", "Servicios.Eliminar");
 }
 <form id="vehiculo-form" data-validate="true" data-edit="@edit.ToString().ToLower()" data-color="@(Model?.Color ?? "")" method="post" action="@formAction" onsubmit="return submitVehiculoAjax(this, event);">
     @Html.AntiForgeryToken()
     <input type="hidden" name="Id" id="Id" value="@(Model?.Id)" />
-    <input type="hidden" name="ClienteId" value="@(Model?.ClienteId)" />
-
+<input type="hidden" name="ClienteId" value="@(Model?.ClienteId)" />
     <div class="grid gap-4 m-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         <!-- Tipo de Vehículo (PRIMERO) -->
         <div>
