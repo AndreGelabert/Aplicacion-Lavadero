@@ -1,10 +1,14 @@
-﻿@{
+﻿@inject Microsoft.Extensions.Configuration.IConfiguration AppConfig
+@{
+    var localEmulators = AppConfig["LocalEmulators:Enabled"] == "true";
 
     ViewData["Title"] = "Inicio de sesión";
     Layout = null;
     <link rel="stylesheet" href="~/Firebase.styles.css" asp-append-version="true" />
     <base href="~/" />
     <link href="~/css/app.min.css" rel="stylesheet" asp-append-version="true" />
+    if (!localEmulators)
+    {
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-E7YCZ8WG1H"></script>
     <script>
@@ -14,6 +18,7 @@
 
         gtag('config', 'G-E7YCZ8WG1H');
     </script>
+    }
 
 }
 <section class="relative flex flex-wrap lg:h-screen lg:items-center">
@@ -104,6 +109,8 @@
                 </button>
             </div>
         </form>
+        @if (!localEmulators)
+        {
         <div class="flex flex-col items-center mt-[2vh]">
             <div class="border-t border-gray-200">
                 <span class="mb-2 mt-[2vh] text-gray-500 justify-center text-center block font-semibold sm:text-2xl">O</span>
@@ -112,7 +119,8 @@
                     <span class="text-gray-700 font-medium">Continua con Google</span>
                 </button>
             </div>
-        </div>  
+        </div>
+        }
     </div>
 
     <div class="relative h-64 w-full sm:h-96 lg:h-full lg:w-1/2 mb-0">
@@ -377,7 +385,10 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
 <script src="~/js/site.js" asp-append-version="true"></script>
+@if (!localEmulators)
+{
 <script type="module" src="~/js/googleconnectionmodule.js" asp-append-version="true"></script>
+}
 <script>
     // Abrir modal de registro
     document.querySelector('button.underline')?.addEventListener('click', function () {
