@@ -1381,7 +1381,7 @@ Se establece una lista de los casos de uso al cual se le califica de acuerdo a l
 |  | 3 | 1 segundo |
 | **Frecuencia** | Frecuente |  |
 | **Estabilidad** | Alta |  |
-| **Comentarios** | Puede ejecutarse dentro de CU-026 o de forma autónoma desde el menú principal de WhatsApp. |  |
+| **Comentarios** | Puede ejecutarse dentro de CU-026 o de forma autónoma desde el menú principal de WhatsApp. La regeneración de clave de asociación desde el menú de gestión de vehículo es exclusiva del dueño principal; requiere confirmación explícita antes de rotar el hash (la clave original no se puede recuperar). Las asociaciones (co-propietarios) existentes no se eliminan al rotar la clave. |  |
 
 #### **CU-028 \- Identificar si el número de teléfono está registrado** {#cu-028---identificar-si-el-número-de-teléfono-está-registrado}
 

@@ -1035,7 +1035,7 @@ public partial class WhatsAppFlowService
         // Use exact matches first, then fallback to contains for flexibility
         if (opcion == "generar_clave" || opcion == "generar")
         {
-            await RegenerarClaveAsociacion(phoneNumber, session);
+            await MostrarConfirmacionRegenerarClave(phoneNumber, session);
         }
         else if (opcion == "menu_vehiculos" || opcion == "menu" || opcion == "volver")
         {

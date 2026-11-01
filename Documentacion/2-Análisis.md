@@ -1500,6 +1500,30 @@
 | **Precondiciones** | Cliente seleccionó la opción de vincular existente. |
 | **Postcondiciones** | \- Se agregó el idCliente a Vehiculo.ClientesIds.\- Se agregó el idVehiculo a Cliente.VehiculosIds. |
 
+| Campo | Descripción |
+| :---- | :---- |
+| **Nombre** | solicitarRegeneracionClave(vehiculoId) |
+| **Responsabilidades** | Verificar que el solicitante sea el dueño principal y mostrar la advertencia de confirmación antes de rotar la clave. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | CU-027 Registrar vehículo por WhatsApp |
+| **Notas** | Solo el dueño principal (Vehiculo.ClienteId) puede iniciar este subflujo. El sistema muestra el estado CONFIRMAR_REGENERAR_CLAVE y advierte que la clave anterior deja de funcionar y que la clave original no es recuperable. Las asociaciones existentes (co-propietarios en ClientesIds) se conservan. |
+| **Excepciones** | Si el cliente no es el dueño principal, se rechaza sin rotar. |
+| **Salida** | Mensaje de confirmación con advertencias; no rota el hash hasta recibir respuesta afirmativa. |
+| **Precondiciones** | Cliente autenticado, vehículo activo, cliente igual a Vehiculo.ClienteId. |
+| **Postcondiciones** | WhatsAppSession.CurrentState = CONFIRMAR_REGENERAR_CLAVE. Vehiculo.ClaveAsociacionHash sin cambios hasta confirmación. |
+
+| Campo | Descripción |
+| :---- | :---- |
+| **Nombre** | confirmarRegeneracionClave(confirmacion) |
+| **Responsabilidades** | Revalidar la titularidad principal y rotar el hash SHA-256 de la clave de asociación si el cliente confirmó. |
+| **Tipo** | Sistema |
+| **Referencias cruzadas** | CU-027 Registrar vehículo por WhatsApp |
+| **Notas** | Si la respuesta es negativa o inválida, el hash no se modifica. Si la respuesta es afirmativa, se genera una nueva clave y se entrega en texto claro al cliente (solo esta vez). |
+| **Excepciones** | Respuesta inválida: no rota el hash, permanece en estado CONFIRMAR_REGENERAR_CLAVE. |
+| **Salida** | Nueva clave en texto claro (solo si confirmó), o mensaje de cancelación. |
+| **Precondiciones** | WhatsAppSession.CurrentState = CONFIRMAR_REGENERAR_CLAVE. |
+| **Postcondiciones** | Si confirmó: Vehiculo.ClaveAsociacionHash actualizado con nuevo hash; Vehiculo.ClientesIds sin cambios. |
+
 #### **CU-028 \- Identificar si el número de teléfono está registrado**
 
 | Campo | Descripción |

@@ -927,7 +927,7 @@ A continuación se presenta el modelo de base de datos del sistema.
 | | 15 | 1 segundo |
 | **Frecuencia** | Frecuente | |
 | **Estabilidad** | Alta | |
-| **Comentarios** | La opción de desvinculación o eliminación lógica desde WhatsApp garantiza que los procesos asincrónicos mantengan las mismas restricciones de base de datos que el panel administrativo principal. | |
+| **Comentarios** | La opción de desvinculación o eliminación lógica desde WhatsApp garantiza que los procesos asincrónicos mantengan las mismas restricciones de base de datos que el panel administrativo principal. La regeneración de la clave de asociación es accesible exclusivamente por el dueño principal desde el menú de gestión del vehículo (opción "🔑 Generar clave"). El flujo incluye una confirmación intermedia (estado CONFIRMAR_REGENERAR_CLAVE) donde el sistema advierte que: (a) la clave anterior deja de funcionar; (b) las personas ya asociadas conservan su acceso; (c) la clave original no se puede recuperar. La rotación del hash solo ocurre tras la respuesta afirmativa; cancelar o ingresar texto inválido no altera el hash almacenado. | |
 
 ---
 

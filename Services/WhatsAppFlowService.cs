@@ -413,6 +413,10 @@ public partial class WhatsAppFlowService
                     await HandleMostrarClaveVehiculo(phoneNumber, session, messageBody);
                     break;
 
+                case WhatsAppFlowStates.CONFIRMAR_REGENERAR_CLAVE:
+                    await HandleConfirmarRegenerarClave(phoneNumber, session, messageBody);
+                    break;
+
                 default:
                     _logger.LogWarning("⚠️ Estado desconocido: {State}", state);
                     await _whatsAppService.SendTextMessage(phoneNumber,

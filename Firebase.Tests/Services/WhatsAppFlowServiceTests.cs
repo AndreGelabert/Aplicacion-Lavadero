@@ -218,6 +218,17 @@ namespace Firebase.Tests.Services
         }
 
         /// <summary>
+        /// Verifica que el estado CONFIRMAR_REGENERAR_CLAVE esté definido.
+        /// Es el estado de confirmación antes de rotar la clave de asociación.
+        /// </summary>
+        [Fact]
+        public void FlowStates_ConfirmarRegenerarClave_ShouldBeDefined()
+        {
+            // Assert
+            Assert.Equal("CONFIRMAR_REGENERAR_CLAVE", WhatsAppFlowStates.CONFIRMAR_REGENERAR_CLAVE);
+        }
+
+        /// <summary>
         /// Verifica que el estado INICIO esté definido.
         /// </summary>
         [Fact]

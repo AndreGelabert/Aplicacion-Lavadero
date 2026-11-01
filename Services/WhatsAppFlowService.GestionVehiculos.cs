@@ -176,7 +176,7 @@ public partial class WhatsAppFlowService
         // Solo el dueño principal puede generar clave de asociación
         if (esDuenoPrincipal)
         {
-            options.Add(("generar_clave", "🔑 Generar clave", "Nueva clave de asociación"));
+            options.Add(("generar_clave", "🔑 Nueva clave", "Reemplazar una clave perdida"));
         }
 
         options.Add(("desvincular_vehiculo", "🔗 Desvincular", "Quitar de mi cuenta"));
@@ -206,8 +206,8 @@ public partial class WhatsAppFlowService
         }
         else if (opcion.Contains("clave") || opcion == "generar_clave")
         {
-            // Generar nueva clave de asociación
-            await RegenerarClaveAsociacion(phoneNumber, session);
+            // Mostrar confirmación antes de regenerar la clave
+            await MostrarConfirmacionRegenerarClave(phoneNumber, session);
         }
         else if (opcion.Contains("desvincular") || opcion == "desvincular_vehiculo")
         {
@@ -551,6 +551,89 @@ public partial class WhatsAppFlowService
             _logger.LogError(ex, "Error modificando color de vehículo");
             await _whatsAppService.SendTextMessage(phoneNumber,
                 "❌ Ocurrió un error. Intenta nuevamente.");
+        }
+    }
+
+    /// <summary>
+    /// Muestra la confirmación antes de regenerar la clave de asociación.
+    /// Solo avanza a confirmación si el cliente es el dueño principal.
+    /// </summary>
+    private async Task MostrarConfirmacionRegenerarClave(string phoneNumber, WhatsAppSession session)
+    {
+        try
+        {
+            var vehiculoId = session.TemporaryData.GetValueOrDefault("vehiculo_modificar_id", "");
+
+            if (string.IsNullOrEmpty(vehiculoId))
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "❌ Error: No se encontró información del vehículo.");
+                return;
+            }
+
+            var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
+            if (vehiculo == null)
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "❌ Error: Vehículo no encontrado.");
+                return;
+            }
+
+            // Verificar que el cliente sea el dueño principal
+            if (vehiculo.ClienteId != session.ClienteId)
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "❌ Solo el dueño principal puede generar una nueva clave de asociación.");
+                await MostrarMenuVehiculos(phoneNumber, session);
+                return;
+            }
+
+            await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.CONFIRMAR_REGENERAR_CLAVE);
+
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                $"🔑 *Generar nueva clave de asociación*\n\n" +
+                $"Vehículo: *{vehiculo.Patente}*\n\n" +
+                $"⚠️ *Ten en cuenta que:*\n" +
+                $"• La clave anterior dejará de funcionar\n" +
+                $"• Las personas ya asociadas al vehículo conservan su acceso\n" +
+                $"• La clave original no se puede recuperar\n\n" +
+                $"¿Deseás continuar?\n\n" +
+                $"Responde *SÍ* para generar la nueva clave o *NO* para cancelar.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error mostrando confirmación de regenerar clave");
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "❌ Ocurrió un error. Intenta nuevamente.");
+        }
+    }
+
+    /// <summary>
+    /// Maneja la confirmación del usuario para regenerar la clave de asociación.
+    /// Revalida que el cliente sea el dueño principal antes de rotar el hash.
+    /// </summary>
+    private async Task HandleConfirmarRegenerarClave(string phoneNumber, WhatsAppSession session, string input)
+    {
+        var respuesta = input.Trim().ToUpperInvariant();
+
+        if (respuesta == "SI" || respuesta == "SÍ" || respuesta == "S")
+        {
+            // Revalidar antes de rotar
+            await RegenerarClaveAsociacion(phoneNumber, session);
+        }
+        else if (respuesta == "NO" || respuesta == "N")
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "✅ Generación de clave cancelada.\n\n" +
+                "Volviendo al menú de vehículos...");
+
+            await Task.Delay(500);
+            await MostrarMenuVehiculos(phoneNumber, session);
+        }
+        else
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "⚠️ Por favor, responde *SÍ* para confirmar o *NO* para cancelar.");
         }
     }
 }

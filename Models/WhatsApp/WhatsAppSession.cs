@@ -103,6 +103,9 @@ public static class WhatsAppFlowStates
     // Estado para seleccionar opción de vehículo durante registro inicial
     public const string REGISTRO_VEHICULO_OPCION = "REGISTRO_VEHICULO_OPCION";
 
+    // Estado de confirmación de regeneración de clave de asociación
+    public const string CONFIRMAR_REGENERAR_CLAVE = "CONFIRMAR_REGENERAR_CLAVE";
+
     // Estado inicial
     public const string INICIO = "INICIO";
 }
