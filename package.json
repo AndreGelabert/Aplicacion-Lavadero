@@ -1,4 +1,11 @@
 {
+  "scripts": {
+    "test:e2e": "node scripts/playwright.cjs test",
+    "test:e2e:headed": "node scripts/playwright.cjs headed",
+    "test:e2e:ui": "node scripts/playwright.cjs ui",
+    "test:e2e:install": "node scripts/playwright.cjs install",
+    "test:e2e:report": "node scripts/playwright.cjs report"
+  },
   "dependencies": {
     "autoprefixer": "^10.6.1",
     "flowbite": "^2.5.2",
@@ -7,6 +14,7 @@
     "tailwindcss": "^3.4.19"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "eslint": "^9.39.5"
   }
 }
