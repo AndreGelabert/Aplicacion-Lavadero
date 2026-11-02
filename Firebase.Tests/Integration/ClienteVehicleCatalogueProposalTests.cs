@@ -28,7 +28,9 @@ public class ClienteVehicleCatalogueProposalTests
         context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
             new Claim(ClaimTypes.NameIdentifier, "employee-test"),
-            new Claim(ClaimTypes.Email, "employee@example.invalid")
+            new Claim(ClaimTypes.Email, "employee@example.invalid"),
+            new Claim("permiso", "Clientes.Crear"),
+            new Claim("permiso", "Vehiculos.Crear")
         }, "test"));
         controller.ControllerContext = new ControllerContext { HttpContext = context };
         var client = new Cliente
@@ -80,7 +82,9 @@ public class ClienteVehicleCatalogueProposalTests
         context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
             new Claim(ClaimTypes.NameIdentifier, "employee-test"),
-            new Claim(ClaimTypes.Email, "employee@example.invalid")
+            new Claim(ClaimTypes.Email, "employee@example.invalid"),
+            new Claim("permiso", "Clientes.Modificar"),
+            new Claim("permiso", "Vehiculos.Crear")
         }, "test"));
         var controller = new ClienteController(clients, new TipoDocumentoService(db), new VehiculoService(db), new AuditService(db),
             NullLogger<ClienteController>.Instance)
@@ -129,7 +133,9 @@ public class ClienteVehicleCatalogueProposalTests
         context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
             new Claim(ClaimTypes.NameIdentifier, "employee-test"),
-            new Claim(ClaimTypes.Email, "employee@example.invalid")
+            new Claim(ClaimTypes.Email, "employee@example.invalid"),
+            new Claim("permiso", "Clientes.Crear"),
+            new Claim("permiso", "Vehiculos.Crear")
         }, "test"));
         controller.ControllerContext = new ControllerContext { HttpContext = context };
         var client = new Cliente
@@ -165,7 +171,9 @@ public class ClienteVehicleCatalogueProposalTests
         context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
             new Claim(ClaimTypes.NameIdentifier, "employee-test"),
-            new Claim(ClaimTypes.Email, "employee@example.invalid")
+            new Claim(ClaimTypes.Email, "employee@example.invalid"),
+            new Claim("permiso", "Clientes.Crear"),
+            new Claim("permiso", "Vehiculos.Crear")
         }, "test"));
         controller.ControllerContext = new ControllerContext { HttpContext = context };
         var client = new Cliente
@@ -211,7 +219,9 @@ public class ClienteVehicleCatalogueProposalTests
         context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
             new Claim(ClaimTypes.NameIdentifier, "employee-test"),
-            new Claim(ClaimTypes.Email, "employee@example.invalid")
+            new Claim(ClaimTypes.Email, "employee@example.invalid"),
+            new Claim("permiso", "Clientes.Crear"),
+            new Claim("permiso", "Vehiculos.Crear")
         }, "test"));
         controller.ControllerContext = new ControllerContext { HttpContext = context };
         var client = new Cliente

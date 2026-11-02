@@ -31,4 +31,16 @@ These launchers and the emulator installation reside in `.local`, which Git igno
 
 ## Tests
 
-For Firestore integration tests, set `FIRESTORE_EMULATOR_HOST=127.0.0.1:8189` in the test process and run `dotnet test Firebase.Tests`. Existing integration tests use their own random demo project IDs. Do not point tests at a production Firestore instance.
+Run the suite from the repository root with an isolated, disposable Firestore emulator:
+
+```powershell
+powershell.exe -NoProfile -File .\Firebase.Tests\run-isolated.ps1
+```
+
+The runner requires Node on PATH, the existing project-local Java and Firestore jar, and `.local/firebase-emulator/npm/node_modules/firebase-tools` including its Auth emulator. It starts disposable Firestore on `127.0.0.1:8190` and Auth on `127.0.0.1:9199`, without import/export, runs the full `dotnet test` suite, restores environment variables and stops only its own processes. It refuses occupied ports. Optional `-JavaPath` and `-EmulatorJar` arguments select an existing installation relative to the repository root. It never installs dependencies or deletes snapshots.
+
+Do not run empty-database integration tests against the application's persistent emulator on port 8189: imported seed data can appear even under random demo project IDs. Random IDs alone do not isolate tests from imported snapshots. The application's emulator and data remain untouched by the runner.
+
+The runner opts into the disposable seed and email/password login smoke test. It creates a random password in test memory, seeds twice, checks preservation, and exercises successful and incorrect-password authentication. The test temporarily sets the application's guard values while its Firestore client is already bound to 8190 and its fail-closed Auth transport routes only 9099 requests to 9199. Outside the runner it is skipped; an opted-in run with incorrect endpoints fails. Never use production credentials or point tests at production Firestore.
+
+For future authentication features, reuse the runner, isolated xUnit collection and test-only transport; add tests against the disposable services and keep credentials transient. Do not route requests to the application's persistent emulators. This exercises emulated email authentication, not a real Google OAuth flow; Google sign-in remains disabled in local mode.
