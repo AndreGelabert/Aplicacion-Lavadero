@@ -111,6 +111,28 @@ public class TipoVehiculoService
         }
     }
 
+    /// <summary>Lee tipos para auditoría sin ocultar errores de Firestore.</summary>
+    public async Task<List<TipoVehiculo>> ObtenerParaAuditoriaPorNombre(string nombre)
+    {
+        var snapshot = await _firestore.Collection("tiposVehiculos").WhereEqualTo("Nombre", nombre).GetSnapshotAsync();
+        return snapshot.Documents.Select(MapearParaAuditoria).ToList();
+    }
+
+    /// <summary>Lee el tipo persistido por ID sin ocultar errores de Firestore.</summary>
+    public async Task<TipoVehiculo?> ObtenerParaAuditoriaPorId(string id)
+    {
+        var doc = await _firestore.Collection("tiposVehiculos").Document(id).GetSnapshotAsync();
+        return doc.Exists ? MapearParaAuditoria(doc) : null;
+    }
+
+    private static TipoVehiculo MapearParaAuditoria(DocumentSnapshot doc) => new()
+    {
+        Id = doc.Id,
+        Nombre = doc.GetValue<string>("Nombre"),
+        FormatoPatente = doc.ContainsField("FormatoPatente") ? doc.GetValue<string>("FormatoPatente") : null,
+        CantidadEmpleadosRequeridos = doc.ContainsField("CantidadEmpleadosRequeridos") ? doc.GetValue<int>("CantidadEmpleadosRequeridos") : 1
+    };
+
     /// <summary>
     /// Obtiene el nombre de un tipo de vehículo por su ID.
     /// </summary>
@@ -173,11 +195,14 @@ public class TipoVehiculoService
     /// </summary>
     /// <param name="nombre">Nombre del tipo de vehículo a eliminar.</param>
     /// <returns>Lista de IDs de los documentos eliminados.</returns>
-    public async Task<List<string>> EliminarTipoVehiculo(string nombre)
+    public async Task<List<string>> EliminarTipoVehiculo(string nombre, IReadOnlySet<string>? idsCapturados = null)
     {
         var tiposRef = _firestore.Collection("tiposVehiculos");
         var query = tiposRef.WhereEqualTo("Nombre", nombre);
         var snapshot = await query.GetSnapshotAsync();
+
+        if (idsCapturados != null && !idsCapturados.SetEquals(snapshot.Documents.Select(doc => doc.Id)))
+            throw new InvalidOperationException("Los tipos de vehículo cambiaron desde la captura para auditoría.");
 
         var eliminados = new List<string>();
         foreach (var documento in snapshot.Documents)

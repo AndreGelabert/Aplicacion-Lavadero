@@ -66,7 +66,8 @@ public class TipoDocumentoController : Controller
                 }
 
                 var docId = await _tipoDocumentoService.CrearTipoDocumento(nombreTipo, formato);
-                await RegistrarEvento("Creacion de tipo de documento", docId, "TipoDocumento");
+                var creado = await _tipoDocumentoService.ObtenerParaAuditoriaPorId(docId);
+                await RegistrarEvento("Creacion de tipo de documento", docId, "TipoDocumento", new(), AuditCampos.CapturarTipoDocumento(creado), creado?.Nombre);
 
                 var tiposActualizados = await _tipoDocumentoService.ObtenerTiposDocumentoCompletos();
 
@@ -152,10 +153,12 @@ public class TipoDocumentoController : Controller
                     });
                 }
 
-                var idsEliminados = await _tipoDocumentoService.EliminarTipoDocumento(nombreTipo);
+                var anteriores = (await _tipoDocumentoService.ObtenerParaAuditoria(nombreTipo)).ToDictionary(t => t.Id);
+                var idsEliminados = await _tipoDocumentoService.EliminarTipoDocumento(nombreTipo, anteriores.Keys.ToHashSet());
                 foreach (var id in idsEliminados)
                 {
-                    await RegistrarEvento("Eliminacion de tipo de documento", id, "TipoDocumento");
+                    var anterior = anteriores[id];
+                    await RegistrarEvento("Eliminacion de tipo de documento", id, "TipoDocumento", AuditCampos.CapturarTipoDocumento(anterior), new(), anterior?.Nombre);
                 }
 
                 var tiposActualizados = await _tipoDocumentoService.ObtenerTiposDocumento();
@@ -175,10 +178,10 @@ public class TipoDocumentoController : Controller
         return BadRequest();
     }
 
-    private async Task RegistrarEvento(string accion, string targetId, string entidad)
+    private async Task RegistrarEvento(string accion, string targetId, string entidad, Dictionary<string, string> antes, Dictionary<string, string> despues, string nombre)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var userEmail = User.FindFirstValue(ClaimTypes.Email);
-        await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad);
+        await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad, antes, despues, nombre);
     }
 }

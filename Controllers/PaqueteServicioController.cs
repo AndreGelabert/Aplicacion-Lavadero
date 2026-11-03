@@ -139,8 +139,8 @@ public class PaqueteServicioController : Controller
                 paquete.ServiciosIds = System.Text.Json.JsonSerializer.Deserialize<List<string>>(ServiciosIdsJson) ?? new List<string>();
             }
 
-            var resultado = await ProcesarActualizacionPaquete(paquete);
-            return await PrepararRespuestaAjax(resultado, paquete, "Actualizacion de paquete de servicios");
+            var (resultado, antes) = await ProcesarActualizacionPaquete(paquete);
+            return await PrepararRespuestaAjax(resultado, paquete, "Actualizacion de paquete de servicios", antes);
         }
         catch (Exception ex)
         {
@@ -511,38 +511,39 @@ public class PaqueteServicioController : Controller
     /// <summary>
     /// Procesa la actualización de un paquete aplicando validaciones y verificación de duplicados.
     /// </summary>
-    private async Task<ResultadoOperacion> ProcesarActualizacionPaquete(PaqueteServicio paquete)
+    private async Task<(ResultadoOperacion resultado, Dictionary<string, string> antes)> ProcesarActualizacionPaquete(PaqueteServicio paquete)
     {
         await ValidatePaqueteAsync(paquete);
         if (!ModelState.IsValid)
         {
-            return ResultadoOperacion.CrearError("Por favor, complete todos los campos obligatorios correctamente.");
+            return (ResultadoOperacion.CrearError("Por favor, complete todos los campos obligatorios correctamente."), null);
         }
 
         var paqueteActual = await _paqueteServicioService.ObtenerPaquete(paquete.Id);
         if (paqueteActual == null)
         {
             ModelState.AddModelError("", "No se pudo encontrar el paquete a actualizar.");
-            return ResultadoOperacion.CrearError("No se pudo encontrar el paquete a actualizar.");
+            return (ResultadoOperacion.CrearError("No se pudo encontrar el paquete a actualizar."), null);
         }
 
         // VALIDACIÓN: Prevenir cambio de tipo de vehículo
         if (!string.Equals(paqueteActual.TipoVehiculo, paquete.TipoVehiculo, StringComparison.OrdinalIgnoreCase))
         {
             ModelState.AddModelError("TipoVehiculo", "No se puede cambiar el tipo de vehículo de un paquete existente.");
-            return ResultadoOperacion.CrearError("No se puede cambiar el tipo de vehículo de un paquete existente. Si necesita cambiar el tipo de vehículo, debe crear un nuevo paquete.");
+            return (ResultadoOperacion.CrearError("No se puede cambiar el tipo de vehículo de un paquete existente. Si necesita cambiar el tipo de vehículo, debe crear un nuevo paquete."), null);
         }
 
         if (await _paqueteServicioService.ExistePaqueteConNombre(paquete.Nombre, paquete.Id))
         {
             var mensaje = $"Ya existe un paquete con el nombre '{paquete.Nombre}'.";
             ModelState.AddModelError("Nombre", "Ya existe un paquete con este nombre.");
-            return ResultadoOperacion.CrearError(mensaje);
+            return (ResultadoOperacion.CrearError(mensaje), null);
         }
 
+        var antes = await CapturarPaquete(paqueteActual);
         paquete.Estado = paqueteActual.Estado;
         await _paqueteServicioService.ActualizarPaquete(paquete);
-        return ResultadoOperacion.CrearExito("Paquete de servicios actualizado correctamente.");
+        return (ResultadoOperacion.CrearExito("Paquete de servicios actualizado correctamente."), antes);
     }
 
     /// <summary>
@@ -550,10 +551,12 @@ public class PaqueteServicioController : Controller
     /// </summary>
     private async Task<IActionResult> CambiarEstadoPaquete(string id, string nuevoEstado, string accionAuditoria)
     {
+        var antes = await CapturarPaquete(await _paqueteServicioService.ObtenerPaquete(id));
         await _paqueteServicioService.CambiarEstadoPaquete(id, nuevoEstado);
         TempData["StateChangeEvent_UserId"] = id;
         TempData["StateChangeEvent_NewState"] = nuevoEstado;
-        await RegistrarEvento(accionAuditoria, id, "PaqueteServicio");
+        var actual = await _paqueteServicioService.ObtenerPaquete(id);
+        await RegistrarEvento(accionAuditoria, id, "PaqueteServicio", antes, await CapturarPaquete(actual), actual?.Nombre);
         return RedirectToAction("Index");
     }
     #endregion
@@ -563,7 +566,7 @@ public class PaqueteServicioController : Controller
     /// <summary>
     /// Prepara la respuesta de un envío AJAX de formulario.
     /// </summary>
-    private async Task<IActionResult> PrepararRespuestaAjax(ResultadoOperacion resultado, PaqueteServicio paquete, string accionAuditoria)
+    private async Task<IActionResult> PrepararRespuestaAjax(ResultadoOperacion resultado, PaqueteServicio paquete, string accionAuditoria, Dictionary<string, string> antes = null)
     {
         if (!resultado.EsExitoso)
         {
@@ -582,7 +585,8 @@ public class PaqueteServicioController : Controller
             return PartialView("_PaqueteServicioForm", paquete);
         }
 
-        await RegistrarEvento(accionAuditoria, paquete.Id, "PaqueteServicio");
+        var actual = await _paqueteServicioService.ObtenerPaquete(paquete.Id);
+        await RegistrarEvento(accionAuditoria, paquete.Id, "PaqueteServicio", antes ?? new(), await CapturarPaquete(actual), actual?.Nombre);
 
         Response.Headers["X-Form-Valid"] = "true";
         Response.Headers["X-Form-Message"] = resultado.MensajeExito;
@@ -680,11 +684,22 @@ public class PaqueteServicioController : Controller
     /// <summary>
     /// Registra un evento de auditoría asociado al usuario actual.
     /// </summary>
-    private async Task RegistrarEvento(string accion, string targetId, string entidad)
+    private async Task<Dictionary<string, string>> CapturarPaquete(PaqueteServicio paquete)
+    {
+        if (paquete == null) return new();
+        var campos = AuditCampos.CapturarPaquete(paquete);
+        var precios = await _paqueteServicioService.CalcularPreciosAsync(new[] { paquete });
+        var tiempos = await _paqueteServicioService.CalcularTiemposAsync(new[] { paquete });
+        campos["Precio"] = precios[paquete.Id].ToString();
+        campos["TiempoEstimado"] = tiempos[paquete.Id].ToString();
+        return campos;
+    }
+
+    private async Task RegistrarEvento(string accion, string targetId, string entidad, Dictionary<string, string> antes, Dictionary<string, string> despues, string nombre)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var userEmail = User.FindFirstValue(ClaimTypes.Email);
-        await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad);
+        await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad, antes, despues, nombre);
     }
 
     /// <summary>

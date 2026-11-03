@@ -121,14 +121,37 @@ public class TipoDocumentoService
         return tipoRef.Id;
     }
 
+    /// <summary>Lee los documentos que coinciden exactamente, propagando errores para auditoría.</summary>
+    public async Task<List<TipoDocumento>> ObtenerParaAuditoria(string nombre)
+    {
+        var snapshot = await _firestore.Collection("tiposDocumento").WhereEqualTo("Nombre", nombre).GetSnapshotAsync();
+        return snapshot.Documents.Select(doc => new TipoDocumento
+        {
+            Id = doc.Id,
+            Nombre = doc.GetValue<string>("Nombre") ?? "",
+            Formato = doc.ContainsField("Formato") ? doc.GetValue<string>("Formato") : null
+        }).ToList();
+    }
+
+    /// <summary>Obtiene el documento recién creado sin ocultar fallos de lectura.</summary>
+    public async Task<TipoDocumento> ObtenerParaAuditoriaPorId(string id)
+    {
+        var doc = await _firestore.Collection("tiposDocumento").Document(id).GetSnapshotAsync();
+        if (!doc.Exists) throw new InvalidOperationException("No se encontró el tipo de documento creado.");
+        return new TipoDocumento { Id = doc.Id, Nombre = doc.GetValue<string>("Nombre") ?? "", Formato = doc.ContainsField("Formato") ? doc.GetValue<string>("Formato") : null };
+    }
+
     /// <summary>
     /// Elimina un tipo de documento por nombre.
     /// </summary>
-    public async Task<List<string>> EliminarTipoDocumento(string nombre)
+    public async Task<List<string>> EliminarTipoDocumento(string nombre, IReadOnlySet<string>? idsCapturados = null)
     {
         var tiposRef = _firestore.Collection("tiposDocumento");
         var query = tiposRef.WhereEqualTo("Nombre", nombre);
         var snapshot = await query.GetSnapshotAsync();
+
+        if (idsCapturados != null && snapshot.Documents.Any(doc => !idsCapturados.Contains(doc.Id)))
+            throw new InvalidOperationException("No se capturaron todos los tipos de documento a eliminar.");
 
         var eliminados = new List<string>();
         foreach (var documento in snapshot.Documents)
