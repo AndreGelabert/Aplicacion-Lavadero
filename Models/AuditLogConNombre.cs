@@ -13,6 +13,11 @@
     public class AuditLogConNombre
     {
         /// <summary>
+        /// ID del documento Firestore. Necesario para la llamada al endpoint de detalle.
+        /// </summary>
+        public string DocId { get; set; }
+
+        /// <summary>
         /// ID único del usuario que realizó la acción.
         /// Corresponde al UID de Firebase Authentication.
         /// </summary>
@@ -52,6 +57,23 @@
         /// Facilita la identificación sin necesidad de buscar por ID.
         /// </summary>
         public string TargetName { get; set; }
+
+        /// <summary>
+        /// Nombre histórico del objeto capturado al momento de la operación.
+        /// </summary>
+        public string NombreHistorico { get; set; }
+
+        /// <summary>
+        /// Estado de los campos auditados ANTES de la operación.
+        /// null indica registro legado sin historial.
+        /// </summary>
+        public Dictionary<string, string> Antes { get; set; }
+
+        /// <summary>
+        /// Estado de los campos auditados DESPUÉS de la operación.
+        /// null indica registro legado sin historial.
+        /// </summary>
+        public Dictionary<string, string> Despues { get; set; }
 
         /// <summary>
         /// Fecha y hora en que se realizó la acción.
