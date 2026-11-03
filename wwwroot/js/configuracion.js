@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ================================================
  * CONFIGURACION.JS - FUNCIONALIDAD DE HORARIOS DEL LAVADERO
  * ================================================
@@ -667,7 +667,7 @@
             const diaInicio = document.getElementById('dia-inicio')?.value;
             const diaFin = document.getElementById('dia-fin')?.value;
             if (!diaInicio || !diaFin) {
-                alert('Por favor, seleccione el rango de días.');
+                window.Notificaciones.aviso('Por favor, seleccione el rango de días.');
                 return;
             }
             diasAActualizar = obtenerDiasEnRango(diaInicio, diaFin);
@@ -676,7 +676,7 @@
         }
 
         if (diasAActualizar.length === 0) {
-            alert('Por favor, seleccione al menos un día.');
+            window.Notificaciones.aviso('Por favor, seleccione al menos un día.');
             return;
         }
 
@@ -699,7 +699,7 @@
                 if (apertura && cierre) {
                     // Validar que cierre sea después de apertura
                     if (cierre <= apertura) {
-                        alert('La hora de cierre debe ser posterior a la hora de apertura.');
+                        window.Notificaciones.aviso('La hora de cierre debe ser posterior a la hora de apertura.');
                         errorValidacion = true;
                         return;
                     }
@@ -710,7 +710,7 @@
             if (errorValidacion) return;
 
             if (rangos.length === 0) {
-                alert('Por favor, configure al menos un horario.');
+                window.Notificaciones.aviso('Por favor, configure al menos un horario.');
                 return;
             }
 

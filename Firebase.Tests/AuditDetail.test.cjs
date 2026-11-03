@@ -17,8 +17,13 @@ function harness(fetch) {
     const ids = {};
     for (const id of ['audit-detail-dialog', 'audit-detail-status', 'audit-detail-meta', 'audit-detail-rows', 'audit-detail-close', 'auditoria-table-container']) ids[id] = new Element();
     const document = { addEventListener(type, fn) { (listeners[type] ||= []).push(fn); }, getElementById(id) { return ids[id] || null; }, createElement() { return new Element(); } };
-    const window = {};
-    vm.runInNewContext(fs.readFileSync('wwwroot/js/auditoria.js', 'utf8'), { window, document, fetch, AbortController, URLSearchParams, console, setTimeout, clearTimeout });
+    const Peticiones = {
+        enviar: fetch,
+        texto: async (...args) => { const r = await fetch(...args); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); },
+        filtrar: async (_, apply) => { try { await apply(); return true; } catch { return false; } }
+    };
+    const window = { Peticiones, Notificaciones: { mostrar() {} } };
+    vm.runInNewContext(fs.readFileSync('wwwroot/js/auditoria.js', 'utf8'), { window, Peticiones, document, fetch, AbortController, URLSearchParams, console, setTimeout, clearTimeout });
     listeners.DOMContentLoaded.forEach(fn => fn());
     return { ids, window, click(id) { const button = new Element(); button.dataset.auditDetailId = id; button.closest = () => button; listeners.click[0]({ target: button }); return button; } };
 }
@@ -76,7 +81,7 @@ test('close (including native Escape) returns focus and ignores stale response; 
 
 test('existing pagination and sort still request the same table endpoint and update page', async () => {
     const urls = [];
-    const h = harness(async url => { urls.push(url); return { text: async () => 'table result' }; });
+    const h = harness(async url => { urls.push(url); return { ok: true, text: async () => 'table result' }; });
     h.window.reloadAuditoriaTable(2); await tick();
     assert.match(urls[0], /^\/Auditoria\/TablePartial\?/);
     assert.match(urls[0], /pageNumber=2/);

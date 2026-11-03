@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ================================================
  * SERVICIO.JS - FUNCIONALIDAD DE LA PÁGINA DE SERVICIOS
  * ================================================
@@ -6,6 +6,7 @@
 
 (function () {
     'use strict';
+    let tableSequence = 0;
 
     let servicioMsgTimeout = null;
     let tableMsgTimeout = null;
@@ -159,41 +160,8 @@
      * Realiza búsqueda en el servidor
      */
     function performServerSearch(searchTerm = '') {
-        // Persistir búsqueda activa
         currentSearchTerm = searchTerm;
-
-        // Obtener filtros actuales
-        const filterForm = document.getElementById('filterForm');
-        const params = new URLSearchParams();
-
-        if (filterForm) {
-            const formData = new FormData(filterForm);
-            for (const [key, value] of formData.entries()) {
-                params.append(key, value);
-            }
-        }
-
-        // Agregar término de búsqueda y ordenamiento
-        const currentSort = getCurrentSort();
-        params.set('searchTerm', searchTerm);
-        params.set('pageNumber', '1');
-        params.set('sortBy', currentSort.sortBy);
-        params.set('sortOrder', currentSort.sortOrder);
-
-        const url = `/Servicio/SearchPartial?${params.toString()}`;
-
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(r => r.text())
-            .then(html => {
-                const cont = document.getElementById('servicio-table-container');
-                cont.innerHTML = html;
-                const cp = document.getElementById('current-page-value')?.value;
-                if (cp) cont.dataset.currentPage = cp;
-            })
-            .catch(e => {
-                console.error('Error en búsqueda:', e);
-                showTableMessage('error', 'Error al realizar la búsqueda.');
-            });
+        return reloadServicioTable(1);
     }
 
     // =====================================
@@ -274,9 +242,11 @@
             url = `/Servicio/TablePartial?${params.toString()}`;
         }
 
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(r => r.text())
+        const sequence = ++tableSequence;
+        return window.Peticiones.filtrar('servicio', () => window.Peticiones.enviar(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
             .then(html => {
+                if (sequence !== tableSequence) throw new DOMException('Obsolete', 'AbortError');
                 const cont = document.getElementById('servicio-table-container');
                 cont.innerHTML = html;
                 const cp = document.getElementById('current-page-value')?.value;
@@ -287,9 +257,7 @@
                 if (typeof initModals === 'function') { initModals(); }
                 if (typeof initDropdowns === 'function') { initDropdowns(); }
             })
-            .catch(e => {
-                showTableMessage('error', 'Error cargando la tabla.');
-            });
+        );
     }
 
     /**
@@ -728,7 +696,7 @@
 
         try {
             const formData = new FormData(form);
-            const response = await fetch(form.action, {
+            const response = await window.Peticiones.enviar(form.action, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 body: formData
@@ -796,7 +764,7 @@
 
         try {
             const formData = new FormData(form);
-            const response = await fetch(form.action, {
+            const response = await window.Peticiones.enviar(form.action, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 body: formData
@@ -835,7 +803,7 @@
 
         try {
             const formData = new FormData(form);
-            const response = await fetch(form.action, {
+            const response = await window.Peticiones.enviar(form.action, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 body: formData
@@ -873,7 +841,7 @@
 
         try {
             const formData = new FormData(form);
-            const response = await fetch(form.action, {
+            const response = await window.Peticiones.enviar(form.action, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 body: formData
@@ -1025,39 +993,7 @@
     * Muestra un mensaje dentro del modal de tipo vehículo
     */
     function showTipoVehiculoModalMessage(type, message, disappearMs = 5000) {
-        const container = document.getElementById('tipo-vehiculo-modal-messages');
-        if (!container) {
-            showTableMessage(type, message, disappearMs);
-            return;
-        }
-
-        const color = type === 'success'
-            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z' }
-            : type === 'info'
-                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z' }
-                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z' };
-
-        container.innerHTML = `
-        <div class="flex items-center p-4 mb-4 text-sm rounded-lg border bg-${color.bg} text-${color.text} border-${color.border} dark:bg-gray-800 dark:text-${color.darkText}" role="alert">
-            <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                <path d="${color.icon}"/>
-            </svg>
-            <span class="sr-only">${type === 'error' ? 'Error' : type === 'success' ? 'Success' : 'Info'}</span>
-            <div class="flex-1">${escapeHtml(message)}</div>
-        </div>
-    `;
-
-        if (disappearMs > 0) {
-            setTimeout(() => {
-                const alertEl = container.firstElementChild;
-                if (alertEl) {
-                    alertEl.classList.add('opacity-0', 'transition-opacity', 'duration-700');
-                    setTimeout(() => {
-                        try { container.innerHTML = ''; } catch { }
-                    }, 700);
-                }
-            }, disappearMs);
-        }
+        return window.Notificaciones.mostrar(message, type);
     }
     // =====================================
     // AJAX Y MENSAJES
@@ -1087,26 +1023,7 @@
      * Muestra un mensaje en el formulario con auto-ocultado
      */
     function showServicioMessage(type, msg, disappearMs = 5000) {
-        const container = document.getElementById('ajax-form-messages');
-        if (!container) return;
-
-        // Cancelar timeout previo
-        if (servicioMsgTimeout) {
-            clearTimeout(servicioMsgTimeout);
-            servicioMsgTimeout = null;
-        }
-
-        container.innerHTML = buildServicioAlert(type, msg);
-        const alertEl = document.getElementById('servicio-inline-alert');
-        if (!alertEl) return;
-
-        // Programar auto-ocultado
-        servicioMsgTimeout = setTimeout(() => {
-            alertEl.classList.add('opacity-0');
-            setTimeout(() => {
-                if (alertEl.parentElement) alertEl.remove();
-            }, 750);
-        }, disappearMs);
+        return window.Notificaciones.mostrar(msg, type);
     }
 
     /**
@@ -1130,56 +1047,7 @@
      * Muestra mensaje relacionado con la tabla
      */
     function showTableMessage(type, msg, disappearMs = 5000) {
-        let container = document.getElementById('table-messages-container');
-
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'table-messages-container';
-            container.className = 'mb-4';
-
-            const tableContainer = document.getElementById('servicio-table-container');
-            tableContainer.parentNode.insertBefore(container, tableContainer);
-        }
-
-        // Si quedó oculto por un mensaje anterior, volver a mostrarlo
-        container.style.display = 'block';
-
-        if (tableMsgTimeout) {
-            clearTimeout(tableMsgTimeout);
-            tableMsgTimeout = null;
-        }
-
-        const color = type === 'success'
-            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300' }
-            : type === 'info'
-                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300' }
-                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300' };
-
-        container.innerHTML = `<div id="table-inline-alert"
-        class="table-inline-alert opacity-100 transition-opacity duration-700
-               p-4 mb-4 text-sm rounded-lg border
-               bg-${color.bg} text-${color.text} border-${color.border}
-               dark:bg-gray-800 dark:text-${color.darkText}">
-        ${msg}
-    </div>`;
-
-        const alertEl = document.getElementById('table-inline-alert');
-        if (!alertEl) return;
-
-        // Asegurar visibilidad para el usuario
-        try { alertEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { }
-
-        tableMsgTimeout = setTimeout(() => {
-            alertEl.classList.add('opacity-0');
-            setTimeout(() => {
-                if (alertEl.parentElement) {
-                    alertEl.remove();
-                    if (container.children.length === 0) {
-                        container.style.display = 'none';
-                    }
-                }
-            }, 750);
-        }, disappearMs);
+        return window.Notificaciones.mostrar(msg, type);
     }
 
     // =====================================
@@ -1299,7 +1167,7 @@
     window.loadServicioForm = function (id) {
         const url = '/Servicio/FormPartial' + (id ? ('?id=' + encodeURIComponent(id)) : '');
 
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        window.Peticiones.enviar(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
     .then(r => r.text())
         .then(html => {
     document.getElementById('servicio-form-container').innerHTML = html;
@@ -1347,7 +1215,7 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
     const wasEdit = !!form.querySelector('#Id')?.value;
     const formData = new FormData(form);
 
-    fetch(form.action, {
+    window.Peticiones.enviar(form.action, {
         method: 'POST',
         body: formData,
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -1436,7 +1304,7 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
     window.submitServicioEstado = function (form) {
         const formData = new FormData(form);
 
-        fetch(form.action, {
+        window.Peticiones.enviar(form.action, {
             method: 'POST',
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -1961,7 +1829,6 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
             if (history.replaceState) history.replaceState(null, '', window.location.pathname);
 
             // Mensaje informativo
-            showTableMessage('info', 'Filtros aplicados.');
             if (typeof schedulePriceHintsRefresh === 'function') {
                 schedulePriceHintsRefresh();
             }

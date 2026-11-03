@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ================================================
  * LAVADO.JS - FUNCIONALIDAD DE LA PÁGINA DE LAVADOS
  * ================================================
@@ -6,6 +6,7 @@
 
 (function () {
     'use strict';
+    let tableSequence = 0;
 
     let searchTimeout = null;
     let currentSearchTerm = '';
@@ -71,37 +72,7 @@
 
     function performServerSearch(searchTerm = '') {
         currentSearchTerm = searchTerm;
-
-        const filterForm = document.getElementById('filterForm');
-        const params = new URLSearchParams();
-
-        if (filterForm) {
-            const formData = new FormData(filterForm);
-            for (const [key, value] of formData.entries()) {
-                params.append(key, value);
-            }
-        }
-
-        const currentSort = getCurrentSort();
-        params.set('searchTerm', searchTerm);
-        params.set('pageNumber', '1');
-        params.set('sortBy', currentSort.sortBy);
-        params.set('sortOrder', currentSort.sortOrder);
-
-        const url = `/Lavados/SearchPartial?${params.toString()}`;
-
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(r => r.text())
-            .then(html => {
-                const cont = document.getElementById('lavado-table-container');
-                cont.innerHTML = html;
-                const cp = document.getElementById('current-page-value')?.value;
-                if (cp) cont.dataset.currentPage = cp;
-            })
-            .catch(e => {
-                console.error('Error en búsqueda:', e);
-                showTableMessage('error', 'Error al realizar la búsqueda.');
-            });
+        return reloadLavadoTable(1);
     }
 
     // =====================================
@@ -159,9 +130,11 @@
             url = `/Lavados/TablePartial?${params.toString()}`;
         }
 
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(r => r.text())
+        const sequence = ++tableSequence;
+        return window.Peticiones.filtrar('lavado', () => window.Peticiones.enviar(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
             .then(html => {
+                if (sequence !== tableSequence) throw new DOMException('Obsolete', 'AbortError');
                 const cont = document.getElementById('lavado-table-container');
                 cont.innerHTML = html;
                 const cp = document.getElementById('current-page-value')?.value;
@@ -170,9 +143,7 @@
                 if (typeof initModals === 'function') { initModals(); }
                 if (typeof initDropdowns === 'function') { initDropdowns(); }
             })
-            .catch(e => {
-                showTableMessage('error', 'Error cargando la tabla.');
-            });
+        );
     };
 
     // =====================================
@@ -222,7 +193,7 @@
         const resultadosDiv = document.getElementById('patenteResultados');
 
         try {
-            const response = await fetch(`/Lavados/BuscarVehiculosPorPatente?search=${encodeURIComponent(term)}`);
+            const response = await window.Peticiones.enviar(`/Lavados/BuscarVehiculosPorPatente?search=${encodeURIComponent(term)}`);
             const vehiculos = await response.json();
 
             if (vehiculos.length === 0) {
@@ -317,9 +288,7 @@
             document.getElementById('registroClienteMensaje')?.classList.add('hidden');
         };
         const showMessage = (message, success = false) => {
-            const box = document.getElementById('registroClienteMensaje');
-            box.textContent = message;
-            box.className = `mb-3 rounded-lg p-3 text-sm ${success ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'}`;
+            window.Notificaciones.mostrar(message, success ? 'success' : 'error');
         };
 
         const tipoDocumento = document.getElementById('registroClienteTipoDocumento');
@@ -395,7 +364,7 @@
             buttonText.textContent = 'Registrando...';
             try {
                 const token = document.querySelector('#lavado-form input[name="__RequestVerificationToken"]')?.value;
-                const response = await fetch('/Lavados/RegistrarClienteAsociado', {
+                const response = await window.Peticiones.enviar('/Lavados/RegistrarClienteAsociado', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token || '' },
                     body: JSON.stringify({
@@ -441,7 +410,7 @@
     async function cargarClientesVehiculo(vehiculoId) {
         try {
             const patente = window.lavadoData.vehiculoPatente || '';
-            const response = await fetch(`/Lavados/ObtenerClientesVehiculo?vehiculoId=${encodeURIComponent(vehiculoId)}&patente=${encodeURIComponent(patente)}`);
+            const response = await window.Peticiones.enviar(`/Lavados/ObtenerClientesVehiculo?vehiculoId=${encodeURIComponent(vehiculoId)}&patente=${encodeURIComponent(patente)}`);
             const clientes = await response.json();
 
             window.lavadoData.clientesAsociados = clientes;
@@ -486,13 +455,13 @@
     async function cargarEmpleadosPorTipoVehiculo(tipoVehiculo) {
         try {
             // Obtener la cantidad de empleados requeridos para este tipo de vehículo
-            const response = await fetch(`/Lavados/ObtenerEmpleadosPorTipoVehiculo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`);
+            const response = await window.Peticiones.enviar(`/Lavados/ObtenerEmpleadosPorTipoVehiculo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`);
             const data = await response.json();
 
             window.lavadoData.cantidadEmpleadosPorTipo = data.cantidadEmpleadosRequeridos || 1;
 
             // Obtener información general de empleados disponibles
-            const empleadosResponse = await fetch('/Lavados/ObtenerEmpleadosDisponibles');
+            const empleadosResponse = await window.Peticiones.enviar('/Lavados/ObtenerEmpleadosDisponibles');
             const empleadosData = await empleadosResponse.json();
 
             window.lavadoData.empleadosInfo = {
@@ -536,7 +505,7 @@
 
     async function cargarInfoEmpleados() {
         try {
-            const response = await fetch('/Lavados/ObtenerEmpleadosDisponibles');
+            const response = await window.Peticiones.enviar('/Lavados/ObtenerEmpleadosDisponibles');
             const data = await response.json();
 
             window.lavadoData.empleadosInfo = {
@@ -605,7 +574,7 @@
         const vehiculosList = document.getElementById('vehiculosList');
 
         try {
-            const response = await fetch(`/Lavados/ObtenerVehiculosCliente?clienteId=${clienteId}`);
+            const response = await window.Peticiones.enviar(`/Lavados/ObtenerVehiculosCliente?clienteId=${clienteId}`);
             const vehiculos = await response.json();
 
             window.lavadoData.vehiculos = vehiculos;
@@ -678,8 +647,8 @@
 
         try {
             const [serviciosResp, paquetesResp] = await Promise.all([
-                fetch(`/Lavados/ObtenerServiciosPorTipoVehiculo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`),
-                fetch(`/Lavados/ObtenerPaquetesPorTipoVehiculo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`)
+                window.Peticiones.enviar(`/Lavados/ObtenerServiciosPorTipoVehiculo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`),
+                window.Peticiones.enviar(`/Lavados/ObtenerPaquetesPorTipoVehiculo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`)
             ]);
 
             const servicios = await serviciosResp.json();
@@ -1186,7 +1155,7 @@
             try {
                 const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
 
-                const response = await fetch('/Lavados/CrearLavadoAjax', {
+                const response = await window.Peticiones.enviar('/Lavados/CrearLavadoAjax', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1363,7 +1332,7 @@
             formData.append('lavadoId', lavadoId);
             formData.append('servicioId', servicioId);
 
-            const response = await fetch('/Lavados/IniciarServicio', {
+            const response = await window.Peticiones.enviar('/Lavados/IniciarServicio', {
                 method: 'POST',
                 headers: { 'RequestVerificationToken': token },
                 body: formData
@@ -1390,7 +1359,7 @@
             formData.append('servicioId', servicioId);
             formData.append('etapaId', etapaId);
 
-            const response = await fetch('/Lavados/IniciarEtapa', {
+            const response = await window.Peticiones.enviar('/Lavados/IniciarEtapa', {
                 method: 'POST',
                 headers: { 'RequestVerificationToken': token },
                 body: formData
@@ -1422,7 +1391,7 @@
                 const formData = new FormData(this);
 
                 try {
-                    const response = await fetch('/Lavados/RegistrarPago', {
+                    const response = await window.Peticiones.enviar('/Lavados/RegistrarPago', {
                         method: 'POST',
                         body: formData
                     });
@@ -1491,7 +1460,7 @@
                 }
 
                 try {
-                    const response = await fetch(url, {
+                    const response = await window.Peticiones.enviar(url, {
                         method: 'POST',
                         body: formData
                     });
@@ -1542,7 +1511,7 @@
                 }
 
                 try {
-                    const response = await fetch(url, {
+                    const response = await window.Peticiones.enviar(url, {
                         method: 'POST',
                         body: formData
                     });
@@ -1649,7 +1618,6 @@
             const dd = document.getElementById('filterDropdown');
             if (dd) dd.classList.add('hidden');
 
-            showTableMessage('info', 'Filtros aplicados.');
         });
 
         form.dataset.submitSetup = 'true';
@@ -1696,52 +1664,7 @@
     }
 
     function showTableMessage(type, msg, disappearMs = 5000) {
-        let container = document.getElementById('table-messages-container');
-
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'table-messages-container';
-            container.className = 'mb-4';
-
-            const tableContainer = document.getElementById('lavado-table-container');
-            tableContainer.parentNode.insertBefore(container, tableContainer);
-        }
-
-        container.style.display = 'block';
-
-        if (tableMsgTimeout) {
-            clearTimeout(tableMsgTimeout);
-            tableMsgTimeout = null;
-        }
-
-        const color = type === 'success'
-            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300' }
-            : type === 'info'
-                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300' }
-                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300' };
-
-        container.innerHTML = `<div id="table-inline-alert"
-            class="table-inline-alert opacity-100 transition-opacity duration-700
-                   p-4 mb-4 text-sm rounded-lg border
-                   bg-${color.bg} text-${color.text} border-${color.border}
-                   dark:bg-gray-800 dark:text-${color.darkText}">
-            ${msg}
-        </div>`;
-
-        const alertEl = document.getElementById('table-inline-alert');
-        if (!alertEl) return;
-
-        tableMsgTimeout = setTimeout(() => {
-            alertEl.classList.add('opacity-0');
-            setTimeout(() => {
-                if (alertEl.parentElement) {
-                    alertEl.remove();
-                    if (container.children.length === 0) {
-                        container.style.display = 'none';
-                    }
-                }
-            }, 750);
-        }, disappearMs);
+        return window.Notificaciones.mostrar(msg, type);
     }
 
     function actualizarSelectServicios(vehiculoId) {
@@ -1865,7 +1788,7 @@
 
     async function cargarConfiguracionTiempos() {
         try {
-            const response = await fetch('/Lavados/ObtenerConfiguracion');
+            const response = await window.Peticiones.enviar('/Lavados/ObtenerConfiguracion');
             configTiempos = await response.json();
         } catch {
             configTiempos = {

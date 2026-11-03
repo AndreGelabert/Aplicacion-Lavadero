@@ -1,10 +1,17 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // This is a local DOM fixture, not an authenticated or Razor integration test.
 test.beforeEach(async ({ page }) => {
   await page.route('**/*', async route => {
     const url = new URL(route.request().url());
     if (url.origin !== 'http://127.0.0.1:41783') return route.abort();
+    if (url.pathname === '/js/auditoria.js') {
+      const source = ['notifications.js', 'requests.js', 'auditoria.js']
+        .map(file => fs.readFileSync(path.resolve('wwwroot/js', file), 'utf8')).join('\n');
+      return route.fulfill({ contentType: 'application/javascript', body: source });
+    }
     if (url.pathname !== '/Auditoria/Detalle') return route.continue();
     const id = url.searchParams.get('id');
     if (id === 'error') return route.fulfill({ status: 500, body: 'unavailable' });

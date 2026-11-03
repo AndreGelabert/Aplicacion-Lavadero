@@ -5,8 +5,6 @@
 <section class="bg-white dark:bg-gray-800 rounded-lg p-4 space-y-4">
     <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Datos de vehículos pendientes</h1>
     <p class="text-gray-700 dark:text-gray-300">Los datos escritos por clientes no se incorporan al catálogo hasta su revisión.</p>
-    @if (TempData["ReviewMessage"] is string message) { <p role="status" class="text-green-700 dark:text-green-300">@message</p> }
-    @if (TempData["ReviewError"] is string error) { <p role="alert" class="text-red-700 dark:text-red-300">@error</p> }
     <a asp-controller="Vehiculo" asp-action="Index" class="text-blue-700 dark:text-blue-300 underline">Volver a vehículos</a>
     @if (Model.Count == 0)
     {

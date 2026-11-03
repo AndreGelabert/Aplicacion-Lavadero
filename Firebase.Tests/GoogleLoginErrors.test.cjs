@@ -19,7 +19,15 @@ async function login({ firebaseError, fetchError, response, brave = false } = {}
         querySelector: () => errorContainer,
         createElement: () => ({ style: {} })
     };
-    const window = { location: { href: '' } };
+    const window = {
+        location: { href: '' },
+        Notificaciones: { error: text => { errorContainer = { textContent: text }; } },
+        Peticiones: { enviar: async () => {
+            fetchCalls++;
+            if (fetchError) throw fetchError;
+            return response;
+        } }
+    };
     const source = fs.readFileSync(path.join(__dirname, '../wwwroot/js/GoogleConnectionModule.js'), 'utf8')
         .replace(/^import .*;\s*$/gm, '');
     vm.runInNewContext(source, {

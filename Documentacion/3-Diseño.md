@@ -12,6 +12,18 @@
 
 ---
 
+## Diseño transversal de avisos y peticiones
+
+Los resultados generales de las operaciones se presentan mediante un componente compartido (`Notificaciones`) en la esquina superior derecha, adaptable a pantallas pequeñas. Éxito e información se cierran a los cinco segundos y pausan el tiempo al recibir foco o puntero. Advertencias y errores requieren cierre manual. Los mensajes se muestran como texto, sin interpretar HTML ni mover el foco. La validación de campos permanece junto al campo y las confirmaciones conservan sus diálogos.
+
+El helper `Peticiones` centraliza el transporte HTTP sin acoplar los servicios a la interfaz. Conserva método, cuerpo, tokens antifalsificación, señal de cancelación y opciones; agrega la cabecera AJAX únicamente a solicitudes del mismo origen. Cada consumidor interpreta el resultado de negocio; los errores HTTP no se convierten en éxito ni se insertan como contenido de tabla. No se reintentan automáticamente operaciones de escritura.
+
+Los filtros de Auditoría, Clientes, Vehículos, Personal, Servicios, Paquetes, Lavados y Roles comparten el ciclo «Aplicando filtros…», «Filtros aplicados.» o «No se pudieron aplicar los filtros.». El éxito se anuncia después de actualizar el contenido. Las respuestas obsoletas no sustituyen resultados más recientes. La búsqueda y limpieza reutilizan la carga de tabla.
+
+Los controladores pueden conservar mensajes de resultado en `TempData`; el parcial compartido `_NotificationMessages` los consume una sola vez en el layout o en Login. No consume los eventos de auditoría/analítica. Crear o actualizar un rol conserva la recarga completa para regenerar el menú con los permisos vigentes. Si el usuario se quita el acceso a Roles, el servidor muestra acceso denegado; no redirige a otro módulo permitido. Las solicitudes AJAX sin permisos reciben HTTP 403.
+
+La verificación combina pruebas de interfaz con respuestas simuladas y un escenario autenticado contra Firebase Auth y Firestore desechables. Este último comprueba guardado de rol, recarga, regeneración del menú, consumo único de mensajes y autorrevocación con HTTP 403 (`scripts/test-authenticated-notifications.ps1`). No utiliza datos de producción ni importa o exporta snapshots del desarrollador. Los avisos especializados de expiración y cierre de sesión entre pestañas conservan su lógica de seguridad.
+
 ## **Diagrama de clases**
 
 A continuación se presenta el modelo de clases del sistema.

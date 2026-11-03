@@ -35,6 +35,7 @@
     <base href="~/" />
     <link href="~/css/app.min.css" rel="stylesheet" asp-append-version="true" />
     <link rel="stylesheet" href="~/Firebase.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/notifications.css" asp-append-version="true" />
     <link href="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.css" rel="stylesheet" />
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-E7YCZ8WG1H"></script>
@@ -47,6 +48,7 @@
     </script>
 </head>
 <body>
+    @await Html.PartialAsync("_NotificationMessages")
     <div class="antialiased bg-gray-50 dark:bg-gray-900">
         <!-- Barra de navegación -->
         <nav class="bg-white border-b border-gray-200 px-4 py-2.5 dark:bg-gray-800 dark:border-gray-700 fixed left-0 right-0 top-0 z-50">
@@ -178,6 +180,8 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/notifications.js" asp-append-version="true"></script>
+    <script src="~/js/requests.js" asp-append-version="true"></script>
     <script src="~/js/session-logout.js" asp-append-version="true"></script>
     <script src="~/js/session-warning.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)

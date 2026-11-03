@@ -135,33 +135,6 @@
     </div>
 </div>
 
-<!-- Modal de bloqueo -->
-<div id="rol-block-modal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50 p-4" aria-hidden="true">
-    <div class="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-5 text-center">
-        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 p-2 flex items-center justify-center mx-auto mb-3.5">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-8 h-8 text-yellow-500 dark:text-yellow-400" viewBox="0 0 24 24">
-                <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-.75 4.5a.75.75 0 0 1 1.5 0v6a.75.75 0 0 1-1.5 0v-6Zm0 9a.75.75 0 0 1 1.5 0v1.5a.75.75 0 0 1-1.5 0V15.75Z" clip-rule="evenodd" />
-            </svg>
-        </div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Acción no permitida</h3>
-        <p id="rol-block-message" class="text-sm text-gray-600 dark:text-gray-300 mb-4"></p>
-        <button type="button" onclick="closeRolBlockModal()"
-                class="py-2 px-3 text-sm font-medium text-center text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-900">
-            Entendido
-        </button>
-    </div>
-</div>
-
-<!-- Contenedor de notificaciones -->
-<div id="rol-toast-container" class="fixed flex flex-col items-end gap-2"
-     style="top: 5rem; right: 1rem; z-index: 60;"
-     aria-live="polite" aria-atomic="true"></div>
-<template id="rol-toast-template">
-    <div class="flex items-center w-full max-w-sm p-4 text-sm rounded-lg shadow-lg" role="status">
-        <span data-toast-text></span>
-    </div>
-</template>
-
 @section Scripts {
     <script src="~/js/roles.js" asp-append-version="true"></script>
 }

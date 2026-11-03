@@ -9,6 +9,7 @@
 
     let searchTimeout = null;
     let currentSearchTerm = '';
+    let tableSequence = 0;
     let detailRequest = null;
     let detailSequence = 0;
     let detailTrigger = null;
@@ -38,7 +39,7 @@
             rows.replaceChildren();
             if (!dialog.open) dialog.showModal();
             try {
-                const response = await fetch(`/Auditoria/Detalle?id=${encodeURIComponent(button.dataset.auditDetailId)}`, { signal: detailRequest.signal, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                const response = await Peticiones.enviar(`/Auditoria/Detalle?id=${encodeURIComponent(button.dataset.auditDetailId)}`, { signal: detailRequest.signal, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
                 if (!response.ok) throw new Error('detail unavailable');
                 const detail = await response.json();
                 if (sequence !== detailSequence || !dialog.open) return;
@@ -167,18 +168,7 @@
 
         const url = `/Auditoria/SearchPartial?${params.toString()}`;
 
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(r => r.text())
-            .then(html => {
-                const cont = document.getElementById('auditoria-table-container');
-                cont.innerHTML = html;
-                const cp = document.getElementById('current-page-value')?.value;
-                if (cp) cont.dataset.currentPage = cp;
-            })
-            .catch(e => {
-                console.error('Error en b�squeda:', e);
-                showMessage('error', 'Error al realizar la b�squeda.');
-            });
+        applyAuditoriaTable(url, false);
     }
 
     // =====================================
@@ -258,21 +248,23 @@
             url = `/Auditoria/TablePartial?${params.toString()}`;
         }
 
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(r => r.text())
-            .then(html => {
-                const cont = document.getElementById('auditoria-table-container');
-                cont.innerHTML = html;
-                const cp = document.getElementById('current-page-value')?.value;
-                if (cp) cont.dataset.currentPage = cp;
-                // Re-inicializar filtros/dropdowns tras reemplazo din�mico
+        return applyAuditoriaTable(url, true);
+    }
+
+    function applyAuditoriaTable(url, initialize) {
+        const sequence = ++tableSequence;
+        return Peticiones.filtrar('auditoria', async () => {
+            const html = await Peticiones.texto(url);
+            if (sequence !== tableSequence) throw new DOMException('Obsolete', 'AbortError');
+            const cont = document.getElementById('auditoria-table-container');
+            cont.innerHTML = html;
+            const cp = document.getElementById('current-page-value')?.value;
+            if (cp) cont.dataset.currentPage = cp;
+            if (initialize) {
                 window.CommonUtils?.setupDefaultFilterForm?.();
-                if (typeof initDropdowns === 'function') { initDropdowns(); }
-            })
-            .catch(e => {
-                console.error('Error cargando la tabla:', e);
-                showMessage('error', 'Error cargando la tabla.');
-            });
+                if (typeof initDropdowns === 'function') initDropdowns();
+            }
+        });
     }
 
     /**
@@ -292,51 +284,7 @@
      * @param {number} disappearMs - Milisegundos para auto-ocultar
      */
     function showMessage(type, msg, disappearMs = 5000) {
-        let container = document.getElementById('table-messages-container');
-
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'table-messages-container';
-            container.className = 'mb-4';
-
-            const tableContainer = document.getElementById('auditoria-table-container');
-            tableContainer.parentNode.insertBefore(container, tableContainer);
-        }
-
-        container.style.display = 'block';
-
-        const color = type === 'success'
-            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300' }
-            : type === 'info'
-                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300' }
-                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300' };
-
-        container.innerHTML = `<div id="table-inline-alert"
-            class="table-inline-alert opacity-100 transition-opacity duration-700
-                   p-4 mb-4 text-sm rounded-lg border
-                   bg-${color.bg} text-${color.text} border-${color.border}
-                   dark:bg-gray-800 dark:text-${color.darkText}">
-            ${msg}
-        </div>`;
-
-        const alertEl = document.getElementById('table-inline-alert');
-        if (!alertEl) return;
-
-        try { 
-            alertEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); 
-        } catch {}
-
-        setTimeout(() => {
-            alertEl.classList.add('opacity-0');
-            setTimeout(() => {
-                if (alertEl.parentElement) {
-                    alertEl.remove();
-                    if (container.children.length === 0) {
-                        container.style.display = 'none';
-                    }
-                }
-            }, 750);
-        }, disappearMs);
+        return window.Notificaciones.mostrar(msg, type);
     }
 
     // =====================================
@@ -369,8 +317,7 @@
 
             // Recargar tabla con filtros aplicados (y b�squeda/orden actuales)
             reloadAuditoriaTable(1);
-            // Mensaje informativo
-            showMessage('info', 'Filtros aplicados.');
+
         });
 
         form.dataset.submitSetup = 'true';
@@ -474,8 +421,7 @@
         // Recargar tabla p�gina1
         reloadAuditoriaTable(1);
 
-        // Mensaje informativo
-        showMessage('info', 'Filtros restablecidos.');
+
     };
 
 })();
