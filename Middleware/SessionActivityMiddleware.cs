@@ -90,7 +90,7 @@ namespace Firebase.Middleware
                             {
                                 try
                                 {
-                                    await auditService.LogEvent(
+                                    await auditService.LogSessionEvent(
                                         userId,
                                         userEmail,
                                         "Cerrar Sesi�n por Duraci�n M�xima",
@@ -146,7 +146,7 @@ namespace Firebase.Middleware
                             {
                                 try
                                 {
-                                    await auditService.LogEvent(
+                                    await auditService.LogSessionEvent(
                                         userId,
                                         userEmail,
                                         "Cerrar Sesi�n por Inactividad",

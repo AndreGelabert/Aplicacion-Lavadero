@@ -193,12 +193,16 @@ public class PersonalController : Controller
                 return RedirectToAction("Index");
             }
 
+            var empleadoAntes = await _personalService.ObtenerEmpleado(id);
+            var antesRol = AuditCampos.CapturarEmpleado(empleadoAntes);
             await _personalService.ActualizarRol(id, newRole);
 
             // Auditoría
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var userEmail = User.FindFirstValue(ClaimTypes.Email);
-            await _auditService.LogEvent(userId, userEmail, "Modificación de rol", id, "Empleado");
+            var despuesRol = AuditCampos.CapturarEmpleado(await _personalService.ObtenerEmpleado(id) ?? throw new InvalidOperationException("Empleado no encontrado después de actualizar."));
+            await _auditService.LogEvent(userId, userEmail, "Modificación de rol", id, "Empleado",
+                antesRol, despuesRol, empleadoAntes?.NombreCompleto);
 
             //  Si es petición AJAX, devolver JSON sin tocar TempData
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
@@ -236,12 +240,16 @@ public class PersonalController : Controller
     {
         try
         {
+            var empDesactivar = await _personalService.ObtenerEmpleado(id);
+            var antesDesactivar = AuditCampos.CapturarEmpleado(empDesactivar);
             await _personalService.CambiarEstadoEmpleado(id, "Inactivo");
 
             // Auditoría
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var userEmail = User.FindFirstValue(ClaimTypes.Email);
-            await _auditService.LogEvent(userId, userEmail, "Desactivación de empleado", id, "Empleado");
+            var despuesDesactivar = AuditCampos.CapturarEmpleado(await _personalService.ObtenerEmpleado(id) ?? throw new InvalidOperationException("Empleado no encontrado después de actualizar."));
+            await _auditService.LogEvent(userId, userEmail, "Desactivación de empleado", id, "Empleado",
+                antesDesactivar, despuesDesactivar, empDesactivar?.NombreCompleto);
 
             //  Si es petición AJAX, devolver JSON sin tocar TempData
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
@@ -279,12 +287,16 @@ public class PersonalController : Controller
     {
         try
         {
+            var empReactivar = await _personalService.ObtenerEmpleado(id);
+            var antesReactivar = AuditCampos.CapturarEmpleado(empReactivar);
             await _personalService.CambiarEstadoEmpleado(id, "Activo");
 
             // Auditoría
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var userEmail = User.FindFirstValue(ClaimTypes.Email);
-            await _auditService.LogEvent(userId, userEmail, "Reactivación de empleado", id, "Empleado");
+            var despuesReactivar = AuditCampos.CapturarEmpleado(await _personalService.ObtenerEmpleado(id) ?? throw new InvalidOperationException("Empleado no encontrado después de actualizar."));
+            await _auditService.LogEvent(userId, userEmail, "Reactivación de empleado", id, "Empleado",
+                antesReactivar, despuesReactivar, empReactivar?.NombreCompleto);
 
             //  Si es petición AJAX, devolver JSON sin tocar TempData
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
