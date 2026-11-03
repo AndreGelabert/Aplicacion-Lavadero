@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ================================================
  * CLIENTE.JS - FUNCIONALIDAD DE LA PÁGINA DE CLIENTES
  * ================================================
@@ -20,6 +20,7 @@
     let currentSortBy = "Nombre";
     let currentSortOrder = "asc";
     let searchTimeout;
+    let tableSequence = 0;
     let clienteMsgTimeout = null;
     let tableMsgTimeout = null;
 
@@ -205,7 +206,7 @@
      */
     async function loadTiposDocumentoFormatos() {
         try {
-            const response = await fetch('/TipoDocumento/ObtenerTiposConFormatos');
+            const response = await window.Peticiones.enviar('/TipoDocumento/ObtenerTiposConFormatos');
             const tipos = await response.json();
 
             tiposDocumentoFormatos = {};
@@ -224,7 +225,7 @@
     */
     async function loadTiposVehiculoFormatos() {
         try {
-            const response = await fetch('/TipoVehiculo/ObtenerTiposConFormatos');
+            const response = await window.Peticiones.enviar('/TipoVehiculo/ObtenerTiposConFormatos');
             const tipos = await response.json();
 
             tiposVehiculoFormatos = {};
@@ -533,22 +534,19 @@
 
         const url = `/Cliente/SearchPartial?${params.toString()}`;
 
-        fetch(url, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Cache-Control': 'no-cache' },
-            cache: 'no-store'
-        })
-            .then(r => r.text())
-            .then(html => {
-                const container = document.getElementById("cliente-table-container");
-                if (container) container.innerHTML = html;
+        return applyClienteTable(url);
+    }
 
-                const cp = document.getElementById('current-page-value')?.value;
-                if (cp && container) container.dataset.currentPage = cp;
-            })
-            .catch(error => {
-                console.error('Error al cargar la tabla:', error);
-                showTableMessage('error', 'Error al cargar los datos.');
-            });
+    function applyClienteTable(url) {
+        const sequence = ++tableSequence;
+        return Peticiones.filtrar('cliente', async () => {
+            const html = await Peticiones.texto(url, { headers: { 'Cache-Control': 'no-cache' }, cache: 'no-store' });
+            if (sequence !== tableSequence) throw new DOMException('Obsolete', 'AbortError');
+            const container = document.getElementById('cliente-table-container');
+            container.innerHTML = html;
+            const cp = document.getElementById('current-page-value')?.value;
+            if (cp) container.dataset.currentPage = cp;
+        });
     }
 
     function setupFilterFormSubmit() {
@@ -575,7 +573,7 @@
 
             if (history.replaceState) history.replaceState(null, '', window.location.pathname);
 
-            showTableMessage('info', 'Filtros aplicados.');
+
         });
 
         form.dataset.submitSetup = 'true';
@@ -613,7 +611,7 @@
         //window.CommonUtils?.setupDefaultFilterForm?.();
 
         reloadClienteTable(1);
-        showTableMessage('info', 'Filtros restablecidos.');
+
     };
 
     // ===================== Formulario =====================
@@ -625,7 +623,7 @@
         const url = id ? `/Cliente/FormPartial?id=${id}` : "/Cliente/FormPartial";
 
         try {
-            const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const response = await window.Peticiones.enviar(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             const html = await response.text();
 
             document.getElementById("cliente-form-container").innerHTML = html;
@@ -725,7 +723,7 @@
             const vehiculosJson = JSON.stringify(vehiculosData);
             formData.set('VehiculosDataJson', vehiculosJson);
 
-            const response = await fetch(form.action, {
+            const response = await window.Peticiones.enviar(form.action, {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -975,7 +973,7 @@
             const clienteId = document.getElementById('Id')?.value;
 
             if (clienteId) {
-                const respCliente = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${clienteId}`);
+                const respCliente = await window.Peticiones.enviar(`/Cliente/GetVehiculosCliente?clienteId=${clienteId}`);
                 const dataCliente = await respCliente.json();
 
                 const vehiculosCliente = dataCliente.success ? (dataCliente.vehiculos || []) : [];
@@ -1383,7 +1381,7 @@
             // Primero cargar los formatos
             await loadTiposVehiculoFormatos();
 
-            const response = await fetch('/Vehiculo/FormPartialCliente');
+            const response = await window.Peticiones.enviar('/Vehiculo/FormPartialCliente');
             const html = await response.text();
 
             // Eliminar modal anterior si existe
@@ -1756,7 +1754,7 @@
         input.placeholder = 'Cargando vehículos...';
         
         try {
-            const response = await fetch('/Vehiculo/GetVehiculosParaAsociacion');
+            const response = await window.Peticiones.enviar('/Vehiculo/GetVehiculosParaAsociacion');
             const vehiculos = await response.json();
             
             if (!vehiculos || vehiculos.length === 0) {
@@ -2095,7 +2093,7 @@
         }
         
         try {
-            const response = await fetch('/Vehiculo/ValidarClaveAsociacion', {
+            const response = await window.Peticiones.enviar('/Vehiculo/ValidarClaveAsociacion', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2197,7 +2195,7 @@
         // NUEVO: Verificar si existe un vehículo con esta patente
         try {
             const verificarUrl = `/Vehiculo/VerificarVehiculoSinDueno?patente=${encodeURIComponent(patente)}&marca=${encodeURIComponent(marca)}&modelo=${encodeURIComponent(modelo)}`;
-            const respuesta = await fetch(verificarUrl);
+            const respuesta = await window.Peticiones.enviar(verificarUrl);
             const data = await respuesta.json();
 
             if (data.existe && data.vehiculo) {
@@ -2357,14 +2355,14 @@
     window.confirmarReasignacion = async function (vehiculoId, nuevoColor, nuevoTipo) {
         try {
             // Obtener el vehículo completo del servidor
-            const respuesta = await fetch(`/Vehiculo/FormPartial?id=${vehiculoId}`);
+            const respuesta = await window.Peticiones.enviar(`/Vehiculo/FormPartial?id=${vehiculoId}`);
             const vehiculoHTML = await respuesta.text();
 
             // Parsear para extraer datos (alternativa: hacer un endpoint específico)
-            const respVehiculo = await fetch(`/Vehiculo/VerificarVehiculoSinDueno?patente=${encodeURIComponent('')}&marca=&modelo=`);
+            const respVehiculo = await window.Peticiones.enviar(`/Vehiculo/VerificarVehiculoSinDueno?patente=${encodeURIComponent('')}&marca=&modelo=`);
 
             // En su lugar, vamos a usar los datos que ya tenemos y hacer la petición correcta
-            const vehiculoData = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${vehiculoId}`);
+            const vehiculoData = await window.Peticiones.enviar(`/Cliente/GetVehiculosCliente?clienteId=${vehiculoId}`);
 
             // Método más directo: agregar el vehículo existente con los nuevos datos
             const vehiculoReasignado = {
@@ -2445,7 +2443,7 @@
 
         try {
             // Verificar si está en uso
-            const checkResponse = await fetch(`/TipoDocumento/VerificarEnUso?nombre=${encodeURIComponent(tipoSeleccionado)}`);
+            const checkResponse = await window.Peticiones.enviar(`/TipoDocumento/VerificarEnUso?nombre=${encodeURIComponent(tipoSeleccionado)}`);
             const checkData = await checkResponse.json();
 
             if (checkData.enUso) {
@@ -2462,7 +2460,7 @@
                 formData.append('__RequestVerificationToken', tokenInput.value);
             }
 
-            const response = await fetch('/TipoDocumento/EliminarTipoDocumento', {
+            const response = await window.Peticiones.enviar('/TipoDocumento/EliminarTipoDocumento', {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 body: formData
@@ -2510,7 +2508,7 @@
 
         try {
             const formData = new FormData(form);
-            const response = await fetch(form.action, {
+            const response = await window.Peticiones.enviar(form.action, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 body: formData
@@ -2564,7 +2562,7 @@
 
             const formData = new FormData(this);
 
-            fetch(this.action, {
+            window.Peticiones.enviar(this.action, {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -2608,7 +2606,7 @@
             if (esDesactivar) {
                 // Obtener vehículos del cliente para mostrar advertencia
                 try {
-                    const resp = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${id}`);
+                    const resp = await window.Peticiones.enviar(`/Cliente/GetVehiculosCliente?clienteId=${id}`);
                     const data = await resp.json();
 
                     let mensajeVehiculos = '';
@@ -2662,7 +2660,7 @@
             } else {
                 // Reactivación: mostrar advertencia de vehículos que se reactivarán
                 try {
-                    const resp = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${id}`);
+                    const resp = await window.Peticiones.enviar(`/Cliente/GetVehiculosCliente?clienteId=${id}`);
                     const data = await resp.json();
 
                     let mensajeVehiculos = '';
@@ -2749,7 +2747,7 @@
 
     window.submitClienteEstado = function (form) {
         const fd = new FormData(form);
-        fetch(form.action, {
+        window.Peticiones.enviar(form.action, {
             method: 'POST',
             body: fd,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -2779,7 +2777,7 @@
     // Ver vehículos del cliente
     window.verVehiculos = async function (clienteId) {
         try {
-            const resp = await fetch(`/Cliente/GetVehiculosCliente?clienteId=${clienteId}`);
+            const resp = await window.Peticiones.enviar(`/Cliente/GetVehiculosCliente?clienteId=${clienteId}`);
             const data = await resp.json();
 
             if (data.success && data.vehiculos) {
@@ -2907,88 +2905,11 @@
     // ===================== Mensajería =====================
 
     function showFormMessage(type, message, disappearMs = 5000) {
-        const container = document.getElementById('ajax-form-messages');
-        if (!container) return;
-
-        if (clienteMsgTimeout) {
-            clearTimeout(clienteMsgTimeout);
-            clienteMsgTimeout = null;
-        }
-
-        const color = type === 'success'
-            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300' }
-            : type === 'info'
-                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300' }
-                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300' };
-
-        container.innerHTML = `<div class="opacity-100 transition-opacity duration-700
-            p-4 mb-4 text-sm rounded-lg border
-            bg-${color.bg} text-${color.text} border-${color.border}
-            dark:bg-gray-800 dark:text-${color.darkText}">
-            ${escapeHtml(message)}
-        </div>`;
-
-        clienteMsgTimeout = setTimeout(() => {
-            const alertEl = container.firstElementChild;
-            if (alertEl) {
-                alertEl.classList.add('opacity-0');
-                setTimeout(() => { try { alertEl.remove(); } catch { } }, 700);
-            }
-        }, disappearMs);
+        return window.Notificaciones.mostrar(message, type);
     }
 
     function showTableMessage(type, msg, disappearMs = 5000) {
-        let container = document.getElementById('table-messages-container');
-
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'table-messages-container';
-            container.className = 'mb-4';
-
-            const tableContainer = document.getElementById('cliente-table-container');
-            if (tableContainer?.parentNode) {
-                tableContainer.parentNode.insertBefore(container, tableContainer);
-            } else {
-                document.body.prepend(container);
-            }
-        }
-
-        container.style.display = 'block';
-
-        if (tableMsgTimeout) {
-            clearTimeout(tableMsgTimeout);
-            tableMsgTimeout = null;
-        }
-
-        const color = type === 'success'
-            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300' }
-            : type === 'info'
-                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300' }
-                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300' };
-
-        container.innerHTML = `<div class="opacity-100 transition-opacity duration-700
-            p-4 mb-4 text-sm rounded-lg border
-            bg-${color.bg} text-${color.text} border-${color.border}
-            dark:bg-gray-800 dark:text-${color.darkText}">
-            ${escapeHtml(msg)}
-        </div>`;
-
-        try { container.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { }
-
-        tableMsgTimeout = setTimeout(() => {
-            const alertEl = container.firstElementChild;
-            if (alertEl) {
-                alertEl.classList.add('opacity-0');
-                setTimeout(() => {
-                    try {
-                        alertEl.remove();
-                        if (container.children.length === 0) {
-                            container.style.display = 'none';
-                        }
-                    } catch { }
-                }, 750);
-            }
-        }, disappearMs);
+        return window.Notificaciones.mostrar(msg, type);
     }
 
     // ===================== Búsqueda en servidor =====================
@@ -3016,23 +2937,7 @@
 
         const url = `/Cliente/SearchPartial?${params.toString()}`;
 
-        fetch(url, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Cache-Control': 'no-cache' },
-            cache: 'no-store'
-        })
-            .then(r => r.text())
-            .then(html => {
-                const cont = document.getElementById('cliente-table-container');
-                if (cont) {
-                    cont.innerHTML = html;
-                    const cp = document.getElementById('current-page-value')?.value;
-                    if (cp) cont.dataset.currentPage = cp;
-                }
-            })
-            .catch(e => {
-                console.error('Error en búsqueda:', e);
-                showTableMessage('error', 'Error al realizar la búsqueda.');
-            });
+        return applyClienteTable(url);
     }
 
     // ===================== Utilidades =====================
@@ -3041,81 +2946,13 @@
      * Muestra un mensaje dentro del modal de creación rápida de vehículo
      */
     function showQuickVehiculoMessage(type, message, disappearMs = 5000) {
-        const container = document.getElementById('quick-vehiculo-messages');
-        if (!container) {
-            // Si no existe el contenedor, usar la notificación estándar
-            showFormMessage(type, message, disappearMs);
-            return;
-        }
-
-        const color = type === 'success'
-            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z' }
-            : type === 'info'
-                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z' }
-                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z' };
-
-        container.innerHTML = `
-            <div class="flex items-center p-4 mb-4 text-sm rounded-lg border bg-${color.bg} text-${color.text} border-${color.border} dark:bg-gray-800 dark:text-${color.darkText}" role="alert">
-                <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="${color.icon}"/>
-                </svg>
-                <span class="sr-only">${type === 'error' ? 'Error' : type === 'success' ? 'Success' : 'Info'}</span>
-                <div class="flex-1">${escapeHtml(message)}</div>
-            </div>
-        `;
-
-        // Auto-ocultar después del tiempo especificado
-        if (disappearMs > 0) {
-            setTimeout(() => {
-                const alertEl = container.firstElementChild;
-                if (alertEl) {
-                    alertEl.classList.add('opacity-0', 'transition-opacity', 'duration-700');
-                    setTimeout(() => {
-                        try {
-                            container.innerHTML = '';
-                        } catch { }
-                    }, 700);
-                }
-            }, disappearMs);
-        }
+        return window.Notificaciones.mostrar(message, type);
     }
     /**
  * Muestra un mensaje dentro del modal de tipo documento
  */
     function showTipoDocumentoModalMessage(type, message, disappearMs = 5000) {
-        const container = document.getElementById('tipo-documento-modal-messages');
-        if (!container) {
-            showTableMessage(type, message, disappearMs);
-            return;
-        }
-
-        const color = type === 'success'
-            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z' }
-            : type === 'info'
-                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z' }
-                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300', icon: 'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z' };
-
-        container.innerHTML = `
-        <div class="flex items-center p-4 mb-4 text-sm rounded-lg border bg-${color.bg} text-${color.text} border-${color.border} dark:bg-gray-800 dark:text-${color.darkText}" role="alert">
-            <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                <path d="${color.icon}"/>
-            </svg>
-            <span class="sr-only">${type === 'error' ? 'Error' : type === 'success' ? 'Success' : 'Info'}</span>
-            <div class="flex-1">${escapeHtml(message)}</div>
-        </div>
-    `;
-
-        if (disappearMs > 0) {
-            setTimeout(() => {
-                const alertEl = container.firstElementChild;
-                if (alertEl) {
-                    alertEl.classList.add('opacity-0', 'transition-opacity', 'duration-700');
-                    setTimeout(() => {
-                        try { container.innerHTML = ''; } catch { }
-                    }, 700);
-                }
-            }, disappearMs);
-        }
+        return window.Notificaciones.mostrar(message, type);
     }
     function escapeHtml(text) {
         if (!text) return '';

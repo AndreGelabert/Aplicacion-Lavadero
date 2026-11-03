@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ================================================
  * VEHICULO.JS - FUNCIONALIDAD DE LA PÁGINA DE VEHÍCULOS
  * ================================================
@@ -20,6 +20,7 @@
     let currentSortBy = "Patente";
     let currentSortOrder = "asc";
     let searchTimeout;
+    let tableSequence = 0;
     let vehiculoMsgTimeout = null;
     let tableMsgTimeout = null;
     
@@ -269,7 +270,7 @@
      */
     async function loadTiposVehiculoFormatos() {
         try {
-            const response = await fetch('/Servicio/ObtenerTiposConFormatos');
+            const response = await window.Peticiones.enviar('/Servicio/ObtenerTiposConFormatos');
             const tipos = await response.json();
             
             tiposVehiculoFormatos = {};
@@ -427,22 +428,19 @@
 
         const url = `/Vehiculo/TablePartial?${params.toString()}`;
 
-        fetch(url, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Cache-Control': 'no-cache' },
-            cache: 'no-store'
-        })
-            .then(r => r.text())
-            .then(html => {
-                const container = document.getElementById("vehiculo-table-container");
-                if (container) container.innerHTML = html;
+        return applyVehiculoTable(url, { headers: { 'Cache-Control': 'no-cache' }, cache: 'no-store' });
+    }
 
-                const cp = document.getElementById('current-page-value')?.value;
-                if (cp && container) container.dataset.currentPage = cp;
-            })
-            .catch(error => {
-                console.error('Error al cargar la tabla:', error);
-                showTableMessage('error', 'Error al cargar los datos.');
-            });
+    function applyVehiculoTable(url, options) {
+        const sequence = ++tableSequence;
+        return Peticiones.filtrar('vehiculo', async () => {
+            const html = await Peticiones.texto(url, options);
+            if (sequence !== tableSequence) throw new DOMException('Obsolete', 'AbortError');
+            const container = document.getElementById('vehiculo-table-container');
+            container.innerHTML = html;
+            const cp = document.getElementById('current-page-value')?.value;
+            if (cp) container.dataset.currentPage = cp;
+        });
     }
 
     window.reloadVehiculoTable = reloadVehiculoTable;
@@ -497,7 +495,7 @@
 
             if (history.replaceState) history.replaceState(null, '', window.location.pathname);
 
-            showTableMessage('info', 'Filtros aplicados.');
+
         });
 
         form.dataset.submitSetup = 'true';
@@ -574,7 +572,7 @@
 
             if (!marcasElement || !coloresElement) return;
 
-            const response = await fetch('/Vehiculo/GetMarcasYColores');
+            const response = await window.Peticiones.enviar('/Vehiculo/GetMarcasYColores');
             const data = await response.json();
             
             marcasDisponibles = data.marcas || [];
@@ -841,7 +839,7 @@
         // Recargar la tabla con página 1 y mostrar mensaje
         currentPage = 1;
         reloadVehiculoTable(1);
-        showTableMessage('info', 'Filtros restablecidos.');
+
     };
 
     // ===================== Formulario (solo para edición) =====================
@@ -854,7 +852,7 @@
 
         const url = `/Vehiculo/FormPartial?id=${id}`;
 
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        window.Peticiones.enviar(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(response => response.text())
             .then(html => {
                 document.getElementById("vehiculo-form-container").innerHTML = html;
@@ -950,7 +948,7 @@
         }
         const formData = new FormData(form);
 
-        fetch(form.action, {
+        window.Peticiones.enviar(form.action, {
             method: 'POST',
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -1048,7 +1046,7 @@
 
             const formData = new FormData(this);
 
-            fetch(this.action, {
+            window.Peticiones.enviar(this.action, {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -1132,7 +1130,7 @@
 
     window.submitVehiculoEstado = function (form) {
         const fd = new FormData(form);
-        fetch(form.action, {
+        window.Peticiones.enviar(form.action, {
             method: 'POST',
             body: fd,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -1162,88 +1160,11 @@
     // ===================== Mensajería =====================
 
     function showFormMessage(type, message, disappearMs = 5000) {
-        const container = document.getElementById('ajax-form-messages');
-        if (!container) return;
-
-        if (vehiculoMsgTimeout) {
-            clearTimeout(vehiculoMsgTimeout);
-            vehiculoMsgTimeout = null;
-        }
-
-        const color = type === 'success'
-            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300' }
-            : type === 'info'
-                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300' }
-                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300' };
-
-        container.innerHTML = `<div class="opacity-100 transition-opacity duration-700
-            p-4 mb-4 text-sm rounded-lg border
-            bg-${color.bg} text-${color.text} border-${color.border}
-            dark:bg-gray-800 dark:text-${color.darkText}">
-            ${escapeHtml(message)}
-        </div>`;
-
-        vehiculoMsgTimeout = setTimeout(() => {
-            const alertEl = container.firstElementChild;
-            if (alertEl) {
-                alertEl.classList.add('opacity-0');
-                setTimeout(() => { try { alertEl.remove(); } catch { } }, 700);
-            }
-        }, disappearMs);
+        return window.Notificaciones.mostrar(message, type);
     }
 
     function showTableMessage(type, msg, disappearMs = 5000) {
-        let container = document.getElementById('table-messages-container');
-
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'table-messages-container';
-            container.className = 'mb-4';
-
-            const tableContainer = document.getElementById('vehiculo-table-container');
-            if (tableContainer?.parentNode) {
-                tableContainer.parentNode.insertBefore(container, tableContainer);
-            } else {
-                document.body.prepend(container);
-            }
-        }
-
-        container.style.display = 'block';
-
-        if (tableMsgTimeout) {
-            clearTimeout(tableMsgTimeout);
-            tableMsgTimeout = null;
-        }
-
-        const color = type === 'success'
-            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300' }
-            : type === 'info'
-                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300' }
-                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300' };
-
-        container.innerHTML = `<div class="opacity-100 transition-opacity duration-700
-            p-4 mb-4 text-sm rounded-lg border
-            bg-${color.bg} text-${color.text} border-${color.border}
-            dark:bg-gray-800 dark:text-${color.darkText}">
-            ${escapeHtml(msg)}
-        </div>`;
-
-        try { container.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { }
-
-        tableMsgTimeout = setTimeout(() => {
-            const alertEl = container.firstElementChild;
-            if (alertEl) {
-                alertEl.classList.add('opacity-0');
-                setTimeout(() => {
-                    try {
-                        alertEl.remove();
-                        if (container.children.length === 0) {
-                            container.style.display = 'none';
-                        }
-                    } catch { }
-                }, 750);
-            }
-        }, disappearMs);
+        return window.Notificaciones.mostrar(msg, type);
     }
 
     // ===================== Utilidades =====================
@@ -1317,7 +1238,7 @@
 
         try {
             // Obtener detalles del cliente
-            const response = await fetch(`/Cliente/DetailPartial?id=${clienteId}`, {
+            const response = await window.Peticiones.enviar(`/Cliente/DetailPartial?id=${clienteId}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
 
@@ -1442,18 +1363,7 @@
 
         const url = `/Vehiculo/SearchPartial?${params.toString()}`;
 
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(r => r.text())
-        .then(html => {
-            const cont = document.getElementById('vehiculo-table-container');
-            cont.innerHTML = html;
-            const cp = document.getElementById('current-page-value')?.value;
-            if (cp) cont.dataset.currentPage = cp;
-        })
-        .catch(e => {
-            console.error('Error en búsqueda:', e);
-            showTableMessage('error', 'Error al realizar la búsqueda.');
-        });
+        return applyVehiculoTable(url);
     }
 
 })();

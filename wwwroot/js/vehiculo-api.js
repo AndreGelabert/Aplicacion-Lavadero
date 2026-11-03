@@ -1,4 +1,4 @@
-﻿/**
+/**
  * VEHICULO-API.JS - INTEGRACIÓN CON CARQUERY API
  * Soporta carga dinámica (modales AJAX) con dropdowns personalizados
  */
@@ -161,7 +161,7 @@
             const url = `/Vehiculo/GetMarcasPorTipo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`;
 
 
-            const response = await fetch(url, {
+            const response = await window.Peticiones.enviar(url, {
                 cache: 'no-cache',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
@@ -201,7 +201,7 @@
         try {
 
 
-            const response = await fetch('/Vehiculo/GetMarcas', { cache: 'no-cache' });
+            const response = await window.Peticiones.enviar('/Vehiculo/GetMarcas', { cache: 'no-cache' });
             if (!response.ok) throw new Error('Error marcas');
 
             const marcas = await response.json();
@@ -397,7 +397,7 @@
             const url = `/Vehiculo/GetModelos?marcaId=${encodeURIComponent(marcaId)}`;
 
 
-            const response = await fetch(url, { cache: 'no-cache' });
+            const response = await window.Peticiones.enviar(url, { cache: 'no-cache' });
             if (!response.ok) throw new Error('Error modelos');
 
             const modelos = await response.json();
@@ -840,7 +840,7 @@
 
 
         try {
-            const response = await fetch('/Vehiculo/GetColores', { cache: 'no-cache' });
+            const response = await window.Peticiones.enviar('/Vehiculo/GetColores', { cache: 'no-cache' });
             if (!response.ok) throw new Error('Error colores');
 
             const colores = await response.json();
