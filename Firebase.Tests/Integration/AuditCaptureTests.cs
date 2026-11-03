@@ -5,6 +5,8 @@ using Google.Api.Gax;
 using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Moq;
 using Microsoft.Extensions.Caching.Memory;
 using Xunit;
 
@@ -22,10 +24,14 @@ public class AuditCaptureTests
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(new[] {
             new Claim(ClaimTypes.NameIdentifier, "actor"), new Claim(ClaimTypes.Email, "actor@example.invalid")
         }, "test")) };
-        var controller = new RolController(roles, audit) { ControllerContext = new ControllerContext { HttpContext = context } };
+        var controller = new RolController(roles, audit) {
+            ControllerContext = new ControllerContext { HttpContext = context },
+            TempData = new TempDataDictionary(context, Mock.Of<ITempDataProvider>())
+        };
         var role = new Rol { Nombre = "Operador", Descripcion = "Turno inicial", Permisos = new() { "Clientes.Consultar" } };
 
         AssertSuccess(await controller.CrearRolAjax(role));
+        Assert.Equal("Rol creado exitosamente", controller.TempData["Success"]);
         var created = (await roles.ObtenerRol(role.Id))!;
         var createdMap = Expected(created, "Operador", "Turno inicial", "Activo", "[\"Clientes.Consultar\"]");
         await AssertEvents(db, ("Alta Rol", new(), createdMap, "Operador"));
@@ -34,6 +40,7 @@ public class AuditCaptureTests
         role.Descripcion = "Turno nuevo";
         role.Permisos = new() { "Vehiculos.Consultar", "Clientes.Consultar" };
         AssertSuccess(await controller.ActualizarRolAjax(role));
+        Assert.Equal("Rol actualizado exitosamente", controller.TempData["Success"]);
         var updated = (await roles.ObtenerRol(role.Id))!;
         var updatedMap = Expected(updated, "Supervisor", "Turno nuevo", "Activo", "[\"Clientes.Consultar\",\"Vehiculos.Consultar\"]");
         await AssertEvents(db, ("Alta Rol", new(), createdMap, "Operador"), ("Modificacion Rol", createdMap, updatedMap, "Supervisor"));

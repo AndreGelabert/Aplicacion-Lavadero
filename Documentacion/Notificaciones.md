@@ -53,4 +53,12 @@ Roles conserva la recarga completa al crear/editar. El controlador deja el aviso
 
 El aviso especializado de expiración y el cierre de sesión entre pestañas conservan su lógica de seguridad; no se reemplaza su mecanismo por el componente de resultados de operaciones. No se agregaron mensajes espontáneos del servidor ni infraestructura de tiempo real.
 
-Ejecutar `npm run test:e2e` y `node --test Firebase.Tests/*.test.cjs`. Las pruebas de navegador usan Chromium y respuestas simuladas: no autentican usuarios ni modifican Firebase. La prueba de refresco de navegación verifica la recarga; las reglas de acceso siguen cubiertas por las pruebas del servidor. Compilar con `dotnet build Firebase.csproj --no-restore`.
+Ejecutar `npm run test:e2e` y `node --test Firebase.Tests/*.test.cjs`. Estas suites de navegador usan Chromium y respuestas simuladas: no autentican usuarios ni modifican Firebase. Compilar con `dotnet build Firebase.csproj --no-restore`.
+
+### Prueba autenticada desechable
+
+En Windows, ejecutar `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-authenticated-notifications.ps1` después de compilar. Requiere las instalaciones locales existentes de Java 21 y Firebase Tools bajo `.local/firebase-emulator`, Chromium de `node scripts/playwright.cjs install` y las dependencias de `npm install`. El runner falla sin cambiar instalaciones si faltan Java o Firebase Tools; informa la ruta requerida. Descarga y cachea Flowbite 2.5.2 en `.local/notification-proof` para abrir el acordeón real sin acceso externo desde el navegador.
+
+El runner exige puertos libres 8189, 9099 y 5200, inicia Auth y Firestore sin importar ni exportar snapshots, genera un usuario sintético con contraseña aleatoria y usa la aplicación real en Development. Comprueba guardado de rol, recarga, regeneración del menú, consumo único de TempData y autorrevocación con acceso denegado/HTTP 403. Solo se permite tráfico de navegador a loopback; Flowbite se sirve desde la copia local. Los datos se descartan al detener los procesos y se restauran las variables del proceso. No ejecutar contra una instancia de desarrollo ya iniciada ni reutilizar sus datos. Los logs quedan en `.local/notification-proof`.
+
+Para toda la suite .NET con datos desechables: `powershell -NoProfile -ExecutionPolicy Bypass -File Firebase.Tests/run-isolated.ps1`; usa los puertos independientes 8190/9199 y no el snapshot del desarrollador.
