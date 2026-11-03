@@ -62,7 +62,7 @@ async function handleGoogleLogin() {
         // Enviar token al servidor para verificación
         let response;
         try {
-            response = await fetch('/Login/LoginWithGoogle', {
+            response = await window.Peticiones.enviar('/Login/LoginWithGoogle', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -132,31 +132,7 @@ async function handleGoogleLogin() {
  * @param {string} message - El mensaje de error a mostrar
  */
 function showErrorMessage(message) {
-    // Buscar si ya existe un contenedor de error
-    let errorContainer = document.querySelector('.google-auth-error');
-
-    if (!errorContainer) {
-        // Crear un nuevo contenedor de error si no existe
-        errorContainer = document.createElement('div');
-        errorContainer.className = 'google-auth-error text-center text-red-600 bg-red-100 border border-red-400 rounded p-4 mt-4';
-
-        // Insertar el contenedor después del botón de Google
-        const googleButton = document.getElementById('google-login-button');
-        if (googleButton && googleButton.parentNode) {
-            googleButton.parentNode.insertBefore(errorContainer, googleButton.nextSibling);
-        }
-    }
-
-    // Establecer el mensaje de error
-    errorContainer.textContent = message;
-    errorContainer.style.display = 'block';
-
-    // Ocultar el mensaje después de 5 segundos
-    setTimeout(() => {
-        if (errorContainer) {
-            errorContainer.style.display = 'none';
-        }
-    }, 5000);
+    window.Notificaciones.error(message);
 }
 
 // Configurar el event listener cuando el DOM esté listo

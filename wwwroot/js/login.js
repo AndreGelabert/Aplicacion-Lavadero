@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Módulo para la página de login
  * Maneja validaciones y comportamiento específico del formulario de autenticación
  */
@@ -279,14 +279,9 @@ async function sendPasswordResetEmail() {
         return;
     }
     
-    if (feedback) {
-        feedback.className = 'mt-4 text-sm text-gray-600 dark:text-gray-300 text-center';
-        feedback.textContent = 'Enviando...';
-        feedback.classList.remove('hidden');
-    }
-    
+    const dismissProgress = window.Notificaciones.cargando('Enviando correo…');
     try {
-        const resp = await fetch('/Login/ForgotPassword', {
+        const resp = await window.Peticiones.enviar('/Login/ForgotPassword', {
             method: 'POST',
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: email })
@@ -298,20 +293,16 @@ async function sendPasswordResetEmail() {
             throw new Error(data.error || 'Error al enviar el correo');
         }
         
-        if (feedback) {
-            feedback.textContent = 'Correo de recuperación enviado. Revise su bandeja de entrada.';
-            feedback.className = 'mt-4 text-sm text-green-600 dark:text-green-400 text-center';
-        }
-        
+        window.Notificaciones.exito('Correo de recuperación enviado. Revise su bandeja de entrada.');
+
         // Cerrar modal después de 3 segundos
         setTimeout(() => {
             closeForgotPasswordModal();
         }, 3000);
     } catch (error) {
-        if (feedback) {
-            feedback.textContent = error.message || 'No se pudo enviar el correo de recuperación.';
-            feedback.className = 'mt-4 text-sm text-red-600 dark:text-red-400 text-center';
-        }
+        window.Notificaciones.error(error.message || 'No se pudo enviar el correo de recuperación.');
+    } finally {
+        dismissProgress();
     }
 }
 
@@ -319,27 +310,18 @@ async function sendPasswordResetEmail() {
  * Reenvía el correo de verificación
  */
 async function resendVerificationEmail() {
-    const feedback = document.getElementById('verificationFeedback');
-    if (feedback) {
-        feedback.className = 'mt-4 text-sm text-gray-600 dark:text-gray-300';
-        feedback.textContent = 'Reenviando...';
-        feedback.classList.remove('hidden');
-    }
+    const dismissProgress = window.Notificaciones.cargando('Reenviando correo…');
     try {
-        const resp = await fetch('/Login/ResendVerification', { 
-            method: 'POST', 
-            headers: { "Content-Type": "application/json" } 
+        const resp = await window.Peticiones.enviar('/Login/ResendVerification', {
+            method: 'POST',
+            headers: { "Content-Type": "application/json" }
         });
         if (!resp.ok) throw new Error();
-        if (feedback) {
-            feedback.textContent = 'Correo de verificación reenviado.';
-            feedback.className = 'mt-4 text-sm text-green-600 dark:text-green-400';
-        }
+        window.Notificaciones.exito('Correo de verificación reenviado.');
     } catch {
-        if (feedback) {
-            feedback.textContent = 'No se pudo reenviar el correo.';
-            feedback.className = 'mt-4 text-sm text-red-600 dark:text-red-400';
-        }
+        window.Notificaciones.error('No se pudo reenviar el correo.');
+    } finally {
+        dismissProgress();
     }
 }
 
