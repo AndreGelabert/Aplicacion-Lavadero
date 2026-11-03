@@ -1,6 +1,6 @@
 /**
  * ================================================
- * AUDITORIA.JS - FUNCIONALIDAD DE LA PÁGINA DE AUDITORÍA
+ * AUDITORIA.JS - FUNCIONALIDAD DE LA Pï¿½GINA DE AUDITORï¿½A
  * ================================================
  */
 
@@ -9,9 +9,76 @@
 
     let searchTimeout = null;
     let currentSearchTerm = '';
+    let detailRequest = null;
+    let detailSequence = 0;
+    let detailTrigger = null;
+
+    function setupAuditDetail() {
+        const dialog = document.getElementById('audit-detail-dialog');
+        if (!dialog || dialog.dataset.initialized) return;
+        dialog.dataset.initialized = 'true';
+        const status = document.getElementById('audit-detail-status');
+        const meta = document.getElementById('audit-detail-meta');
+        const rows = document.getElementById('audit-detail-rows');
+        document.getElementById('audit-detail-close').addEventListener('click', () => dialog.close());
+        dialog.addEventListener('close', () => {
+            detailSequence++;
+            detailRequest?.abort();
+            detailTrigger?.focus();
+        });
+        document.addEventListener('click', async event => {
+            const button = event.target.closest('[data-audit-detail-id]');
+            if (!button) return;
+            detailTrigger = button;
+            detailRequest?.abort();
+            detailRequest = new AbortController();
+            const sequence = ++detailSequence;
+            status.textContent = 'Cargando detalleâ€¦';
+            meta.replaceChildren();
+            rows.replaceChildren();
+            if (!dialog.open) dialog.showModal();
+            try {
+                const response = await fetch(`/Auditoria/Detalle?id=${encodeURIComponent(button.dataset.auditDetailId)}`, { signal: detailRequest.signal, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!response.ok) throw new Error('detail unavailable');
+                const detail = await response.json();
+                if (sequence !== detailSequence || !dialog.open) return;
+                for (const [label, value] of [['Fecha', detail.timestamp], ['Usuario', detail.userEmail || detail.userId], ['AcciÃ³n', detail.action], ['Tipo de objeto', detail.targetType], ['Objeto histÃ³rico', detail.nombreHistorico], ['ID del objeto', detail.targetId]]) {
+                    if (!value) continue;
+                    const dt = document.createElement('dt');
+                    const dd = document.createElement('dd');
+                    dt.textContent = `${label}:`;
+                    dd.textContent = value;
+                    meta.appendChild(dt);
+                    meta.appendChild(dd);
+                }
+                if (detail.antes == null || detail.despues == null) {
+                    status.textContent = 'Detalle histÃ³rico no disponible para este registro.';
+                } else if (detail.comparacionNoAplica === true) {
+                    status.textContent = 'La comparaciÃ³n no aplica a eventos de sesiÃ³n.';
+                } else {
+                    const fields = new Set([...Object.keys(detail.antes), ...Object.keys(detail.despues)]);
+                    for (const field of fields) {
+                        const before = Object.hasOwn(detail.antes, field) ? detail.antes[field] : null;
+                        const after = Object.hasOwn(detail.despues, field) ? detail.despues[field] : null;
+                        if (before === after) continue;
+                        const row = document.createElement('tr');
+                        for (const value of [field, before, after]) {
+                            const cell = document.createElement('td');
+                            cell.textContent = value == null ? 'â€”' : value;
+                            row.appendChild(cell);
+                        }
+                        rows.appendChild(row);
+                    }
+                    status.textContent = rows.children.length ? '' : 'No hay cambios registrados.';
+                }
+            } catch (error) {
+                if (sequence === detailSequence && dialog.open && error.name !== 'AbortError') status.textContent = 'No se pudo cargar el detalle de auditorÃ­a.';
+            }
+        });
+    }
 
     // =====================================
-    // INICIALIZACIÓN DEL MÓDULO
+    // INICIALIZACIï¿½N DEL Mï¿½DULO
     // =====================================
     window.PageModules = window.PageModules || {};
     window.PageModules.auditoria = {
@@ -19,9 +86,10 @@
     };
 
     /**
-     * Inicializa la funcionalidad específica de la página de Auditoría
+     * Inicializa la funcionalidad especï¿½fica de la pï¿½gina de Auditorï¿½a
      */
     function initializeAuditoriaPage() {
+        setupAuditDetail();
         setupSearchWithDebounce();
         setupFilterFormSubmit();
         window.CommonUtils?.setupDefaultFilterForm();
@@ -37,10 +105,10 @@
     });
 
     // =====================================
-    // BÚSQUEDA DE LA TABLA
+    // Bï¿½SQUEDA DE LA TABLA
     // =====================================
     /**
-     * Configura la búsqueda con debouncing
+     * Configura la bï¿½squeda con debouncing
      */
     function setupSearchWithDebounce() {
         const searchInput = document.getElementById('simple-search');
@@ -72,11 +140,11 @@
     }
 
     /**
-     * Realiza búsqueda en el servidor
-     * @param {string} searchTerm - Término de búsqueda
+     * Realiza bï¿½squeda en el servidor
+     * @param {string} searchTerm - Tï¿½rmino de bï¿½squeda
      */
     function performServerSearch(searchTerm) {
-        // Persistir búsqueda activa
+        // Persistir bï¿½squeda activa
         currentSearchTerm = searchTerm;
 
         // Obtener filtros actuales
@@ -90,7 +158,7 @@
             }
         }
 
-        // Agregar término de búsqueda y ordenamiento
+        // Agregar tï¿½rmino de bï¿½squeda y ordenamiento
         const currentSort = getCurrentSort();
         params.set('searchTerm', searchTerm);
         params.set('pageNumber', '1');
@@ -108,8 +176,8 @@
                 if (cp) cont.dataset.currentPage = cp;
             })
             .catch(e => {
-                console.error('Error en búsqueda:', e);
-                showMessage('error', 'Error al realizar la búsqueda.');
+                console.error('Error en bï¿½squeda:', e);
+                showMessage('error', 'Error al realizar la bï¿½squeda.');
             });
     }
 
@@ -127,7 +195,7 @@
 
         let newSortOrder = 'asc';
 
-        // Si es la misma columna, cambiar dirección
+        // Si es la misma columna, cambiar direcciï¿½n
         if (currentSortBy === sortBy) {
             newSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
         }
@@ -144,7 +212,7 @@
     }
 
     /**
-     * Obtiene los parámetros de ordenamiento actuales
+     * Obtiene los parï¿½metros de ordenamiento actuales
      */
     function getCurrentSort() {
         const sortByInput = document.getElementById('current-sort-by');
@@ -160,8 +228,8 @@
     // RECARGA DE TABLA CON ORDENAMIENTO
     // =====================================
     /**
-     * Recarga la tabla de auditoría con filtros y ordenamiento actuales
-     * @param {number} page - Número de página
+     * Recarga la tabla de auditorï¿½a con filtros y ordenamiento actuales
+     * @param {number} page - Nï¿½mero de pï¿½gina
      */
     function reloadAuditoriaTable(page) {
         // Obtener filtros actuales del formulario
@@ -181,7 +249,7 @@
         params.set('sortBy', currentSort.sortBy);
         params.set('sortOrder', currentSort.sortOrder);
 
-        // Si hay búsqueda activa, mantener paginación y ordenamiento dentro del contexto de búsqueda
+        // Si hay bï¿½squeda activa, mantener paginaciï¿½n y ordenamiento dentro del contexto de bï¿½squeda
         let url;
         if (currentSearchTerm && currentSearchTerm.trim().length > 0) {
             params.set('searchTerm', currentSearchTerm.trim());
@@ -197,7 +265,7 @@
                 cont.innerHTML = html;
                 const cp = document.getElementById('current-page-value')?.value;
                 if (cp) cont.dataset.currentPage = cp;
-                // Re-inicializar filtros/dropdowns tras reemplazo dinámico
+                // Re-inicializar filtros/dropdowns tras reemplazo dinï¿½mico
                 window.CommonUtils?.setupDefaultFilterForm?.();
                 if (typeof initDropdowns === 'function') { initDropdowns(); }
             })
@@ -208,7 +276,7 @@
     }
 
     /**
-     * Obtiene la página currentTablePage de la tabla
+     * Obtiene la pï¿½gina currentTablePage de la tabla
      */
     function getCurrentTablePage() {
         return parseInt(document.getElementById('auditoria-table-container')?.dataset.currentPage || '1');
@@ -275,7 +343,7 @@
     // FILTROS
     // =====================================
     /**
-     * Configura el envío del formulario de filtros
+     * Configura el envï¿½o del formulario de filtros
      */
     function setupFilterFormSubmit() {
         const form = document.getElementById('filterForm');
@@ -285,21 +353,21 @@
             e.preventDefault();
             e.stopPropagation();
 
-            // Asegurar que la paginación inicie en 1
+            // Asegurar que la paginaciï¿½n inicie en 1
             const pg = form.querySelector('input[name="pageNumber"]');
             if (pg) pg.value = '1';
 
-            // Persistir término de búsqueda actual (si hay)
+            // Persistir tï¿½rmino de bï¿½squeda actual (si hay)
             const searchInput = document.getElementById('simple-search');
             if (searchInput) {
                 currentSearchTerm = searchInput.value.trim();
             }
 
-            // Cerrar el dropdown de filtros (si está abierto)
+            // Cerrar el dropdown de filtros (si estï¿½ abierto)
             const dd = document.getElementById('filterDropdown');
             if (dd) dd.classList.add('hidden');
 
-            // Recargar tabla con filtros aplicados (y búsqueda/orden actuales)
+            // Recargar tabla con filtros aplicados (y bï¿½squeda/orden actuales)
             reloadAuditoriaTable(1);
             // Mensaje informativo
             showMessage('info', 'Filtros aplicados.');
@@ -321,7 +389,7 @@
                 dropdown.style.height = 'fit-content';
                 dropdown.style.overflowY = 'visible';
 
-                // Si Flowbite creó una instancia Popper, recalcular posición
+                // Si Flowbite creï¿½ una instancia Popper, recalcular posiciï¿½n
                 try {
                     const instance = window.Flowbite?.Dropdown?.getInstance(dropdown);
                     if (instance?.popper) {
@@ -330,7 +398,7 @@
                 } catch (e) {
                     console.warn('No se pudo actualizar el dropdown:', e);
                 }
-            }, 50); // pequeño delay para dejar que Popper mida antes de ajustar
+            }, 50); // pequeï¿½o delay para dejar que Popper mida antes de ajustar
         });
     });
 
@@ -350,11 +418,11 @@
     };
 
     /**
-     * Limpia filtros de la vista Auditoría y recarga la tabla
-     * - Delegamos limpieza de checkboxes de estados al clearAllFilters global (no marca "Activo" en auditoría)
+     * Limpia filtros de la vista Auditorï¿½a y recarga la tabla
+     * - Delegamos limpieza de checkboxes de estados al clearAllFilters global (no marca "Activo" en auditorï¿½a)
      * - Limpiamos otros campos (texto, number, date, search) excluyendo estados
-     * - Reseteamos término de búsqueda interno
-     * - Cerramos dropdown de filtros si está abierto
+     * - Reseteamos tï¿½rmino de bï¿½squeda interno
+     * - Cerramos dropdown de filtros si estï¿½ abierto
      * - Limpiamos query string de la URL
      */
     window.clearAuditoriaFilters = function () {
@@ -380,30 +448,30 @@
             });
         }
 
-        // Restaurar estados según lógica global (en auditoría no fuerza "Activo")
+        // Restaurar estados segï¿½n lï¿½gica global (en auditorï¿½a no fuerza "Activo")
         if (typeof window.clearAllFilters === 'function') {
             window.clearAllFilters();
         }
 
-        // Limpiar búsqueda y estado interno
+        // Limpiar bï¿½squeda y estado interno
         const searchInput = document.getElementById('simple-search');
         if (searchInput) searchInput.value = '';
         currentSearchTerm = '';
 
-        // Cerrar dropdown de filtros si está abierto
+        // Cerrar dropdown de filtros si estï¿½ abierto
         const filterDropdown = document.getElementById('filterDropdown');
         if (filterDropdown && !filterDropdown.classList.contains('hidden')) {
             filterDropdown.classList.add('hidden');
         }
 
-        // Limpiar parámetros de la URL
+        // Limpiar parï¿½metros de la URL
         if (window.history && typeof window.history.replaceState === 'function') {
             window.history.replaceState(null, '', window.location.pathname);
         }
-        // Re-inicializar lógica de filtros tras limpieza (evita el primer clic perdido)
+        // Re-inicializar lï¿½gica de filtros tras limpieza (evita el primer clic perdido)
         window.CommonUtils?.setupDefaultFilterForm?.();
         if (typeof initDropdowns === 'function') { initDropdowns(); }
-        // Recargar tabla página1
+        // Recargar tabla pï¿½gina1
         reloadAuditoriaTable(1);
 
         // Mensaje informativo

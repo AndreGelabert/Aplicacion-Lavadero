@@ -10,12 +10,8 @@ if (process.argv[2] === 'serve') {
     <input id="simple-search" aria-label="Buscar">
     <form id="filterForm"><input name="pageNumber" value="1"><button>Aplicar Filtros</button></form>
     <div id="auditoria-table-container" data-current-page="1"><button type="button" data-audit-detail-id="change">Ver detalle</button></div>
-    <dialog id="audit-detail-dialog" aria-labelledby="audit-detail-title">
-      <h2 id="audit-detail-title">Detalle de auditoría</h2>
-      <p id="audit-detail-status" role="status" aria-live="polite"></p><dl id="audit-detail-meta"></dl>
-      <table><thead><tr><th>Campo</th><th>Antes</th><th>Después</th></tr></thead><tbody id="audit-detail-rows"></tbody></table>
-      <button id="audit-detail-close" type="button">Cerrar</button>
-    </dialog><script src="/js/auditoria.js"></script></body></html>`;
+    ${fs.readFileSync(path.join(root, "Views", "Auditoria", "_AuditoriaDetalle.cshtml"), "utf8")}
+    <script src="/js/auditoria.js"></script></body></html>`;
   http.createServer((req, res) => {
     const url = new URL(req.url, 'http://127.0.0.1');
     if (url.pathname === '/fixture') {
