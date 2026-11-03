@@ -366,6 +366,9 @@ FodyWeavers.xsd
 .vscode/launch.json
 .vscode/tasks.json
 
+# Project-local tooling, caches and disposable verification artifacts
+/.local/
+
 # Persistent local emulator tooling (not application source)
 /.local/firebase-emulator/
 # Project-local Playwright browser and generated artifacts
