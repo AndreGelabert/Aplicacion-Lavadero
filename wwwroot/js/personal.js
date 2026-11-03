@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ================================================
  * PERSONAL.JS - FUNCIONALIDAD PÁGINA PERSONAL
  * ================================================
@@ -6,6 +6,7 @@
 
 (function () {
     'use strict';
+    let tableSequence = 0;
 
     // ===================== Estado interno =====================
     let tableMsgTimeout = null;
@@ -212,7 +213,7 @@
             url = '/Personal/TablePartial?' + params.toString();
         }
 
-        loadTablePartial(url, callback);
+        return loadTablePartial(url, callback);
     }
 
     /**
@@ -223,15 +224,17 @@
     function loadTablePartial(url, callback) {
         const antiCache = (url.includes('?') ? '&' : '?') + '_=' + Date.now();
 
-        fetch(url + antiCache, {
+        const sequence = ++tableSequence;
+        return window.Peticiones.filtrar('personal', () => window.Peticiones.enviar(url + antiCache, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Cache-Control': 'no-cache'
             },
             cache: 'no-store'
         })
-            .then(r => r.text())
+            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
             .then(html => {
+                if (sequence !== tableSequence) throw new DOMException('Obsolete', 'AbortError');
                 const container = document.getElementById('personal-table-container');
                 if (container) container.innerHTML = html;
 
@@ -243,10 +246,7 @@
 
                 if (typeof callback === 'function') callback();
             })
-            .catch(err => {
-                console.error('loadTablePartial error:', err);
-                showTableMessage('error', 'Error al cargar los datos.');
-            });
+        );
     }
 
     /**
@@ -296,10 +296,7 @@
             const dropdown = document.getElementById('filterDropdown');
             if (dropdown) dropdown.classList.add('hidden');
 
-            reloadPersonalTable(1, () => {
-                showTableMessage('info', 'Filtros aplicados.');
-                form.dataset.submitting = 'false'; // Permitir nuevos filtros
-            });
+            reloadPersonalTable(1).finally(() => { form.dataset.submitting = 'false'; });
 
             if (history.replaceState) history.replaceState(null, '', window.location.pathname);
         });
@@ -379,10 +376,7 @@
         window.CommonUtils?.setupDefaultFilterForm?.();
         if (typeof initDropdowns === 'function') initDropdowns();
 
-        reloadPersonalTable(1, () => {
-            showTableMessage('info', 'Filtros restablecidos.');
-            form.dataset.clearing = 'false'; // Permitir nueva limpieza
-        });
+        reloadPersonalTable(1).finally(() => { form.dataset.clearing = 'false'; });
     };
 
     /**
@@ -470,7 +464,7 @@
 
         showTableMessage('info', 'Actualizando rol...', 3000);
 
-        fetch(form.action, {
+        window.Peticiones.enviar(form.action, {
             method: 'POST',
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -628,7 +622,7 @@
 
         const formData = new FormData(form);
 
-        fetch(form.action, {
+        window.Peticiones.enviar(form.action, {
             method: 'POST',
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -709,19 +703,7 @@
      * @param {number} disappearMs - Milisegundos para auto-ocultar
      */
     function showTableMessage(type, msg, disappearMs = 5000) {
-        console.log('[Personal] showTableMessage called:', type, msg);
-
-        const lastClean = sessionStorage.getItem('personal-notifications-cleaned');
-        if (lastClean) {
-            const timeSinceClean = Date.now() - parseInt(lastClean);
-            if (timeSinceClean < 100) {
-                console.log('[Personal] Limpieza reciente detectada, esperando...');
-                setTimeout(() => showTableMessageInternal(type, msg, disappearMs), 150);
-                return;
-            }
-        }
-
-        showTableMessageInternal(type, msg, disappearMs);
+        return window.Notificaciones.mostrar(msg, type);
     }
 
     /**
@@ -731,85 +713,7 @@
      * @param {number} disappearMs - Tiempo de auto-ocultado
      */
     function showTableMessageInternal(type, msg, disappearMs) {
-        console.log('[Personal] showTableMessageInternal:', type, msg);
-
-        let container = document.getElementById('personal-messages-container');
-
-        if (!container) {
-            console.log('[Personal] Creando contenedor de mensajes');
-
-            container = document.createElement('div');
-            container.id = 'personal-messages-container';
-            container.className = 'mb-4 px-4';
-
-            const tableWrapper = document.getElementById('personal-table-container');
-
-            if (tableWrapper?.parentNode) {
-                tableWrapper.parentNode.insertBefore(container, tableWrapper);
-            } else {
-                const section = document.querySelector('section');
-                if (section) {
-                    const header = section.querySelector('.p-2.flex.justify-between');
-                    if (header && header.nextSibling) {
-                        section.insertBefore(container, header.nextSibling);
-                    } else {
-                        section.insertBefore(container, section.firstChild);
-                    }
-                } else {
-                    document.body.prepend(container);
-                }
-            }
-        }
-
-        container.style.display = 'block';
-
-        if (tableMsgTimeout) {
-            clearTimeout(tableMsgTimeout);
-            tableMsgTimeout = null;
-        }
-
-        const color =
-            type === 'success'
-                ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300' }
-                : type === 'info'
-                    ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300' }
-                    : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300' };
-
-        container.innerHTML = `
-            <div id="personal-inline-alert"
-                class="personal-inline-alert opacity-100 transition-opacity duration-700
-                    p-4 mb-4 text-sm rounded-lg border
-                    bg-${color.bg} text-${color.text} border-${color.border}
-                    dark:bg-gray-800 dark:text-${color.darkText}">
-                ${escapeHtml(msg)}
-            </div>`;
-
-        const alertEl = document.getElementById('personal-inline-alert');
-        if (!alertEl) return;
-
-        try {
-            alertEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        } catch { }
-
-        tableMsgTimeout = setTimeout(() => {
-            alertEl.classList.add('opacity-0');
-            setTimeout(() => {
-                if (alertEl && alertEl.parentElement) {
-                    alertEl.remove();
-
-                    const cont = document.getElementById('personal-messages-container');
-                    if (cont && cont.children.length === 0) {
-                        cont.remove();
-                    }
-                }
-            }, 750);
-        }, disappearMs);
-
-        sessionStorage.setItem('personal-notification-active', 'true');
-
-        setTimeout(() => {
-            sessionStorage.removeItem('personal-notification-active');
-        }, disappearMs + 800);
+        return window.Notificaciones.mostrar(msg, type);
     }
 
     /**

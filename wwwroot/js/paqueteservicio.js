@@ -18,6 +18,7 @@
 
 (function () {
     'use strict';
+    let tableSequence = 0;
 
     // ===================== Estado interno =====================
     let formMsgTimeout = null;
@@ -177,7 +178,7 @@
         } else {
             url = '/PaqueteServicio/TablePartial?' + params.toString();
         }
-        loadTablePartial(url);
+        return loadTablePartial(url);
     }
 
     /**
@@ -186,12 +187,14 @@
      */
     function loadTablePartial(url) {
         const antiCache = (url.includes('?') ? '&' : '?') + '_=' + Date.now();
-        fetch(url + antiCache, {
+        const sequence = ++tableSequence;
+        return window.Peticiones.filtrar('paqueteservicio', () => window.Peticiones.enviar(url + antiCache, {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Cache-Control': 'no-cache' },
             cache: 'no-store'
         })
-            .then(r => r.text())
+            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
             .then(html => {
+                if (sequence !== tableSequence) throw new DOMException('Obsolete', 'AbortError');
                 const container = document.getElementById('paquete-table-container');
                 if (container) container.innerHTML = html;
                 const cp = document.getElementById('current-page-value')?.value;
@@ -202,10 +205,7 @@
                 if (typeof initDropdowns === 'function') initDropdowns();
                 schedulePriceHintsRefresh();
             })
-            .catch(err => {
-                console.error('loadTablePartial error:', err);
-                showTableMessage('error', 'Error al cargar los datos.');
-            });
+        );
     }
 
     /**
@@ -238,7 +238,6 @@
       document.getElementById('filterDropdown')?.classList.add('hidden');
             reloadPaqueteTable(1);
   if (history.replaceState) history.replaceState(null, '', window.location.pathname);
-    showTableMessage('info', 'Filtros aplicados.');
             schedulePriceHintsRefresh();
         });
  form.dataset.submitSetup = 'true';
@@ -306,7 +305,7 @@
     // Opción: función semántica para botón "Cancelar"
     window.cancelarEdicionPaquete = async function () {
         try {
-            const resp = await fetch('/PaqueteServicio/FormPartial', {
+            const resp = await window.Peticiones.enviar('/PaqueteServicio/FormPartial', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             const srvTitle = resp.headers.get('X-Form-Title');
@@ -470,7 +469,7 @@ params.append(k, v);
         }
           if (currentSearchTerm) params.append('searchTerm', currentSearchTerm);
 
-   const resp = await fetch('/PaqueteServicio/PriceRange?' + params.toString(), {
+   const resp = await window.Peticiones.enviar('/PaqueteServicio/PriceRange?' + params.toString(), {
      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
      });
 
@@ -578,7 +577,7 @@ params.append(k, v);
             }
   if (currentSearchTerm) params.append('searchTerm', currentSearchTerm);
 
-    const resp = await fetch('/PaqueteServicio/DiscountRange?' + params.toString(), {
+    const resp = await window.Peticiones.enviar('/PaqueteServicio/DiscountRange?' + params.toString(), {
                     headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
       });
 
@@ -722,7 +721,7 @@ if (helpMin) helpMin.textContent = '';
 
         // Cargar servicios del nuevo tipo
         try {
-            const resp = await fetch(`/PaqueteServicio/ObtenerServiciosPorTipoVehiculo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`);
+            const resp = await window.Peticiones.enviar(`/PaqueteServicio/ObtenerServiciosPorTipoVehiculo?tipoVehiculo=${encodeURIComponent(tipoVehiculo)}`);
             const data = await resp.json();
 
             if (data.success) {
@@ -1186,7 +1185,7 @@ if (helpMin) helpMin.textContent = '';
         if (serviciosIdsJson) serviciosIdsJson.value = JSON.stringify(serviciosSeleccionados.map(s => s.id));
 
         const formData = new FormData(form);
-        fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        window.Peticiones.enviar(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(resp => {
                 const isValid = resp.headers.get('X-Form-Valid') === 'true';
                 const msg = resp.headers.get('X-Form-Message');
@@ -1256,7 +1255,7 @@ if (helpMin) helpMin.textContent = '';
      */
     window.editPaquete = function (id) {
         const url = '/PaqueteServicio/FormPartial?id=' + encodeURIComponent(id);
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        window.Peticiones.enviar(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
           .then(async r => {
 const srvTitle = r.headers.get('X-Form-Title');
        const html = await r.text();
@@ -1394,7 +1393,7 @@ setupTipoVehiculoChangeHandler();
      */
     window.submitPaqueteEstado = function (form) {
         const fd = new FormData(form);
-        fetch(form.action, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        window.Peticiones.enviar(form.action, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => {
                 if (!r.ok) throw new Error('Estado HTTP ' + r.status);
                 const accion = form.action.includes('Deactivate') ? 'desactivado' : 'reactivado';
@@ -1516,32 +1515,7 @@ if (!el) return;
      * @param {string} message
      */
     function showFormMessage(message, type) {
-        const existing = document.getElementById('form-message-container');
-        let container = existing;
-        let textEl;
-        if (!existing) {
-            container = document.createElement('div');
-            container.id = 'form-message-container';
-            container.className = 'm-4';
-            textEl = document.createElement('div');
-            textEl.id = 'form-message-text';
-            container.appendChild(textEl);
-            (document.getElementById('paquete-form-container') || document.body).prepend(container);
-        } else {
-            textEl = document.getElementById('form-message-text');
-        }
-
-        textEl.textContent = message;
-        container.className = `m-4 p-4 mb-4 text-sm rounded-lg ${type === 'success'
-            ? 'text-green-800 bg-green-50 dark:bg-gray-800 dark:text-green-400'
-            : type === 'info'
-                ? 'text-blue-800 bg-blue-50 dark:bg-gray-800 dark:text-blue-400'
-                : 'text-red-800 bg-red-50 dark:bg-gray-800 dark:text-red-400'
-            }`;
-
-        container.classList.remove('hidden');
-        if (formMsgTimeout) clearTimeout(formMsgTimeout);
-        formMsgTimeout = setTimeout(() => container.classList.add('hidden'), 5000);
+        return window.Notificaciones.mostrar(message, type);
     }
 
     /**
@@ -1558,41 +1532,7 @@ if (!el) return;
      * @param {number} disappearMs
      */
     function showTableMessage(type, msg, disappearMs = 5000) {
-        let container = document.getElementById('paquete-table-messages');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'paquete-table-messages';
-            container.className = 'mb-4';
-            const tableWrapper = document.getElementById('paquete-table-container');
-            if (tableWrapper?.parentNode) {
-                tableWrapper.parentNode.insertBefore(container, tableWrapper);
-            } else {
-                document.body.prepend(container);
-            }
-        }
-        if (tableMsgTimeout) { clearTimeout(tableMsgTimeout); tableMsgTimeout = null; }
-
-        const color =
-            type === 'success' ? { bg: 'green-50', text: 'green-800', dark: 'green-400', border: 'green-300' } :
-                type === 'info' ? { bg: 'blue-50', text: 'blue-800', dark: 'blue-400', border: 'blue-300' } :
-                    { bg: 'red-50', text: 'red-800', dark: 'red-400', border: 'red-300' };
-
-        container.innerHTML = `<div class="opacity-100 transition-opacity duration-700
-            p-4 mb-4 text-sm rounded-lg border
-            bg-${color.bg} text-${color.text} border-${color.border}
-            dark:bg-gray-800 dark:text-${color.dark}">
-            ${escapeHtml(msg)}
-        </div>`;
-
-        try { container.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { }
-
-        tableMsgTimeout = setTimeout(() => {
-            const alertEl = container.firstElementChild;
-            if (alertEl) {
-                alertEl.classList.add('opacity-0');
-                setTimeout(() => { try { alertEl.remove(); } catch { } }, 700);
-            }
-        }, disappearMs);
+        return window.Notificaciones.mostrar(msg, type);
     }
 
     /**

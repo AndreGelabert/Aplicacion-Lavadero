@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ================================================
  * LAVADO-DETALLE.JS - FUNCIONALIDAD PÁGINA DETALLE LAVADO
  * ================================================
@@ -114,7 +114,7 @@
             formData.append('lavadoId', lavadoId);
             formData.append('servicioId', servicioId);
 
-            const response = await fetch('/Lavados/IniciarServicio', {
+            const response = await window.Peticiones.enviar('/Lavados/IniciarServicio', {
                 method: 'POST',
                 headers: { 'RequestVerificationToken': token },
                 body: formData
@@ -141,7 +141,7 @@
             formData.append('servicioId', servicioId);
             formData.append('etapaId', etapaId);
 
-            const response = await fetch('/Lavados/IniciarEtapa', {
+            const response = await window.Peticiones.enviar('/Lavados/IniciarEtapa', {
                 method: 'POST',
                 headers: { 'RequestVerificationToken': token },
                 body: formData
@@ -171,7 +171,7 @@
             const formData = new FormData();
             formData.append('lavadoId', lavadoId);
 
-            const response = await fetch('/Lavados/RegistrarRetiro', {
+            const response = await window.Peticiones.enviar('/Lavados/RegistrarRetiro', {
                 method: 'POST',
                 headers: { 'RequestVerificationToken': token },
                 body: formData
@@ -202,7 +202,7 @@
                 const formData = new FormData(this);
 
                 try {
-                    const response = await fetch(this.action, {
+                    const response = await window.Peticiones.enviar(this.action, {
                         method: 'POST',
                         body: formData
                     });
@@ -238,7 +238,7 @@
                 const formData = new FormData(this);
 
                 try {
-                    const response = await fetch(this.action, {
+                    const response = await window.Peticiones.enviar(this.action, {
                         method: 'POST',
                         body: formData
                     });
@@ -278,7 +278,7 @@
                 const formData = new FormData(this);
 
                 try {
-                    const response = await fetch(this.action, {
+                    const response = await window.Peticiones.enviar(this.action, {
                         method: 'POST',
                         body: formData
                     });
@@ -363,60 +363,9 @@
     }
 
     function showMessage(type, msg) {
-        let container = document.getElementById('messages-container');
-
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'messages-container';
-            container.className = 'mb-4';
-
-            // Buscar el contenedor principal (max-w-7xl mx-auto) que envuelve todo el contenido
-            const mainContainer = document.querySelector('.max-w-7xl.mx-auto') ||
-                document.querySelector('section') ||
-                document.body;
-
-            // Buscar el header (mb-6 flex items-center)
-            const header = mainContainer.querySelector('.mb-6.flex.items-center');
-
-            if (header && header.nextSibling) {
-                // Insertar después del header
-                mainContainer.insertBefore(container, header.nextSibling);
-            } else if (mainContainer.firstChild) {
-                // Si no hay header, insertar al principio
-                mainContainer.insertBefore(container, mainContainer.firstChild);
-            } else {
-                mainContainer.appendChild(container);
-            }
-        }
-
-        const color = type === 'success'
-            ? { bg: 'green-50', text: 'green-800', darkText: 'green-400', border: 'green-300' }
-            : type === 'info'
-                ? { bg: 'blue-50', text: 'blue-800', darkText: 'blue-400', border: 'blue-300' }
-                : { bg: 'red-50', text: 'red-800', darkText: 'red-400', border: 'red-300' };
-
-        const alert = document.createElement('div');
-        alert.className = `opacity-100 transition-opacity duration-700 p-4 mb-4 text-sm rounded-lg border bg-${color.bg} text-${color.text} border-${color.border} dark:bg-gray-800 dark:text-${color.darkText}`;
-        alert.textContent = msg;
-
-        container.appendChild(alert);
-
-        // Hacer scroll suave hacia el título de la página
-        const pageTitle = document.querySelector('h1') ||
-            document.querySelector('.mb-6.flex.items-center') ||
-            document.querySelector('section > div > div:first-child');
-
-        if (pageTitle) {
-            pageTitle.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } else {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        setTimeout(() => {
-            alert.classList.add('opacity-0');
-            setTimeout(() => alert.remove(), 750);
-        }, 5000);
+        window.Notificaciones.mostrar(msg, type);
     }
+
 
     function formatCurrency(value) {
         return new Intl.NumberFormat('es-AR', {
