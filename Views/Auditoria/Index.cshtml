@@ -1,6 +1,6 @@
 @model List<Firebase.Models.AuditLogConNombre>
 @{
-    ViewData["Title"] = "Registros de Auditor韆";
+    ViewData["Title"] = "Registros de Auditor铆a";
 }
 
 <section class="bg-gray-50 dark:bg-gray-900">
@@ -8,9 +8,9 @@
         <!-- Encabezado -->
         <div class="p-2 flex justify-between items-center rounded-t border-b dark:border-gray-600">
             <h1 class="text-2xl md:block font-semibold text-gray-900 dark:text-white">
-                Registros de Auditor韆
+                Registros de Auditor铆a
             </h1>
-            <!-- Bot髇 de ayuda -->
+            <!-- Bot贸n de ayuda -->
             <button data-popover-target="popover-auditoria" data-popover-trigger="click" type="button" 
                     class="text-white ml-auto inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-2 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -23,7 +23,7 @@
                     <h3 class="font-semibold text-gray-900 dark:text-white">Ayuda</h3>
                 </div>
                 <div class="px-3 py-2">
-                    <p>En esta p醙ina puedes consultar todos los registros de auditor韆 del sistema, incluyendo acciones de usuarios, cambios en servicios, empleados y m醩.</p>
+                    <p>En esta p谩gina puedes consultar todos los registros de auditor铆a del sistema, incluyendo acciones de usuarios, cambios en servicios, empleados y m谩s.</p>
                 </div>
                 <div data-popper-arrow></div>
             </div>
@@ -42,13 +42,13 @@
                         </div>
                         <input type="text" id="simple-search" value="@(ViewBag.SearchTerm ?? "")" 
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
-                               placeholder="Buscar por fecha, usuario, acci髇, tipo...">
+                               placeholder="Buscar por fecha, usuario, acci贸n, tipo...">
                     </div>
                 </form>
             </div>
             <div class="w-full md:w-auto flex flex-col md:flex-row space-y-2 md:space-y-0 items-stretch md:items-center justify-end md:space-x-3 flex-shrink-0">
                 <div class="flex items-center space-x-3 w-full md:w-auto">
-                    <!-- Bot髇 de Filtro -->
+                    <!-- Bot贸n de Filtro -->
                     <button id="filterDropdownButton" data-dropdown-toggle="filterDropdown" 
                             class="w-full md:w-auto flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700" 
                             type="button">
@@ -94,7 +94,7 @@
                                 <!-- Columna 2: Acciones -->
                                 <div>
                                     <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
-                                        Tipo de Acci髇
+                                        Tipo de Acci贸n
                                     </h6>
                                     <div class="space-y-2 max-h-40 overflow-y-auto text-sm">
                                         @if (ViewBag.TodasLasAcciones != null)
@@ -134,7 +134,7 @@
                                 </div>
                             </div>
 
-                            <!-- Botones de acci髇 -->
+                            <!-- Botones de acci贸n -->
                             <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
                                 <button type="button" onclick="clearAuditoriaFilters()"
                                         class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
@@ -157,4 +157,5 @@
         </div>
     </div>
 </section>
+@await Html.PartialAsync("_AuditoriaDetalle")
 <script src="~/js/auditoria.js" asp-append-version="true"></script>

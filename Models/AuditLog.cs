@@ -5,19 +5,24 @@ using Google.Cloud.Firestore;
 /// Se utiliza para rastrear todas las acciones importantes realizadas por los usuarios en el sistema.
 /// </summary>
 /// <remarks>
-/// Este modelo se almacena en la colección "audit_logs" de Firestore.
+/// Este modelo se almacena en la colección "registros_auditoria" de Firestore.
 /// Se utiliza en AuditService.LogEvent() para crear registros de auditoría
 /// de acciones como login, logout, creación/edición/eliminación de servicios, etc.
-/// 
-/// Ejemplos de uso:
-/// - Registro de inicio de sesión con Google
-/// - Migración de cuentas a Google Auth
-/// - Creación, actualización o eliminación de servicios
-/// - Cambios en roles de empleados
+///
+/// Campos de comparación (S1-S4):
+/// - Antes/Despues: diccionarios clave→valor de los campos auditados antes y después de la operación.
+///   null indica registro legado sin historial; diccionarios vacíos pueden representar una captura sin cambios.
+/// - NombreHistorico: nombre descriptivo del objeto al momento de la operación (para identificación histórica).
+/// - DocId: ID del documento Firestore, mapeado en lectura (no persistido en el payload).
 /// </remarks>
 [FirestoreData]
 public class AuditLog
 {
+    /// <summary>
+    /// ID del documento Firestore. No es un campo persistido; se asigna en el mapeo de lectura.
+    /// </summary>
+    public string DocId { get; set; }
+
     /// <summary>
     /// ID único del usuario que realizó la acción.
     /// Corresponde al UID de Firebase Authentication.
@@ -54,6 +59,33 @@ public class AuditLog
     /// </summary>
     [FirestoreProperty]
     public string TargetType { get; set; }
+
+    /// <summary>
+    /// Nombre descriptivo del objeto al momento de la operación.
+    /// Permite identificación histórica aunque el objeto sea modificado o eliminado después.
+    /// </summary>
+    [FirestoreProperty]
+    public string NombreHistorico { get; set; }
+
+    /// <summary>
+    /// Estado de los campos auditados ANTES de la operación.
+    /// null → registro legado sin historial de comparación.
+    /// diccionario vacío + Despues vacío → captura sin campos cambiados.
+    /// diccionario vacío + Despues con valores → creación (sin estado previo).
+    /// </summary>
+    [FirestoreProperty]
+    public Dictionary<string, string> Antes { get; set; }
+
+    /// <summary>
+    /// Estado de los campos auditados DESPUÉS de la operación.
+    /// null → registro legado sin historial.
+    /// </summary>
+    [FirestoreProperty]
+    public Dictionary<string, string> Despues { get; set; }
+
+    /// <summary>Indica explícitamente que el evento capturado no admite comparación.</summary>
+    [FirestoreProperty]
+    public bool ComparacionNoAplica { get; set; }
 
     /// <summary>
     /// Fecha y hora en que se realizó la acción.

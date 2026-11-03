@@ -210,7 +210,8 @@ public class RolController : Controller
         rol.FechaCreacion = DateTime.UtcNow;
 
         var id = await _rolService.CrearRol(rol);
-        await RegistrarEvento("Alta Rol", id);
+        var creado = await _rolService.ObtenerRol(id) ?? throw new InvalidOperationException("No se encontró el rol creado.");
+        await RegistrarEvento("Alta Rol", id, new(), AuditCampos.CapturarRol(creado), creado.Nombre);
 
         return Json(new { success = true, message = "Rol creado exitosamente" });
     }
@@ -290,8 +291,10 @@ public class RolController : Controller
         rol.Estado = rolActual.Estado;
         rol.FechaCreacion = rolActual.FechaCreacion;
 
+        var antes = AuditCampos.CapturarRol(rolActual);
         await _rolService.ActualizarRolConReasignacion(rol, rolActual.Nombre);
-        await RegistrarEvento("Modificacion Rol", rol.Id);
+        var actualizado = await _rolService.ObtenerRol(rol.Id) ?? throw new InvalidOperationException("No se encontró el rol actualizado.");
+        await RegistrarEvento("Modificacion Rol", rol.Id, antes, AuditCampos.CapturarRol(actualizado), actualizado.Nombre);
 
         return Json(new { success = true, message = "Rol actualizado exitosamente" });
     }
@@ -323,8 +326,10 @@ public class RolController : Controller
             return Json(new { success = false, message = errorEliminacion });
         }
 
+        var antes = AuditCampos.CapturarRol(rol);
         await _rolService.DesactivarRol(rol.Id);
-        await RegistrarEvento("Desactivacion Rol", rol.Id);
+        var actualizado = await _rolService.ObtenerRol(rol.Id) ?? throw new InvalidOperationException("No se encontró el rol desactivado.");
+        await RegistrarEvento("Desactivacion Rol", rol.Id, antes, AuditCampos.CapturarRol(actualizado), rol.Nombre);
 
         return Json(new { success = true, message = "Rol desactivado exitosamente" });
     }
@@ -338,8 +343,10 @@ public class RolController : Controller
         if (rol == null)
             return Json(new { success = false, message = "No se encontró el rol a reactivar." });
 
+        var antes = AuditCampos.CapturarRol(rol);
         await _rolService.ReactivarRol(rol.Id);
-        await RegistrarEvento("Reactivacion Rol", rol.Id);
+        var actualizado = await _rolService.ObtenerRol(rol.Id) ?? throw new InvalidOperationException("No se encontró el rol reactivado.");
+        await RegistrarEvento("Reactivacion Rol", rol.Id, antes, AuditCampos.CapturarRol(actualizado), rol.Nombre);
         return Json(new { success = true, message = "Rol reactivado exitosamente" });
     }
     #endregion
@@ -381,11 +388,11 @@ public class RolController : Controller
     /// <summary>
     /// Registra un evento de auditoría asociado al usuario actual.
     /// </summary>
-    private async Task RegistrarEvento(string accion, string targetId)
+    private async Task RegistrarEvento(string accion, string targetId, Dictionary<string, string> antes, Dictionary<string, string> despues, string nombreHistorico)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var userEmail = User.FindFirstValue(ClaimTypes.Email);
-        await _auditService.LogEvent(userId, userEmail, accion, targetId, "Rol");
+        await _auditService.LogEvent(userId, userEmail, accion, targetId, "Rol", antes, despues, nombreHistorico);
     }
     #endregion
 }

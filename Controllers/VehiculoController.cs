@@ -309,8 +309,10 @@ public class VehiculoController : Controller
             ModelState.Remove("ClienteNombreCompleto");
             if (!ModelState.IsValid) return await PrepararRespuestaAjax(false, vehiculo, null);
 
+            var antes = AuditCampos.CapturarVehiculo(original);
             await _vehiculoService.ActualizarVehiculo(vehiculo);
-            return await PrepararRespuestaAjax(true, vehiculo, "Actualizacion de vehiculo");
+            var despues = await _vehiculoService.ObtenerVehiculo(vehiculo.Id);
+            return await PrepararRespuestaAjax(true, vehiculo, "Actualizacion de vehiculo", antes, despues);
         }
         catch (Exception ex)
         {
@@ -340,8 +342,10 @@ public class VehiculoController : Controller
                 });
             }
 
+            var antes = AuditCampos.CapturarVehiculo(vehiculo);
             await _vehiculoService.CambiarEstadoVehiculo(id, "Inactivo");
-            await RegistrarEvento("Desactivacion de vehiculo", id, "Vehiculo");
+            var despues = await _vehiculoService.ObtenerVehiculo(id);
+            await RegistrarEvento("Desactivacion de vehiculo", id, "Vehiculo", antes, AuditCampos.CapturarVehiculo(despues), despues?.Patente ?? vehiculo.Patente);
             return Json(new { success = true, message = "Vehículo desactivado correctamente." });
         }
         catch (Exception ex)
@@ -362,8 +366,10 @@ public class VehiculoController : Controller
         try
         {
             // Borrado físico - solo si realmente es necesario
+            var vehiculo = await _vehiculoService.ObtenerVehiculo(id);
+            var antes = AuditCampos.CapturarVehiculo(vehiculo);
             await _vehiculoService.EliminarVehiculo(id);
-            await RegistrarEvento("Eliminacion fisica de vehiculo", id, "Vehiculo");
+            await RegistrarEvento("Eliminacion fisica de vehiculo", id, "Vehiculo", antes, new(), vehiculo?.Patente);
             return Json(new { success = true, message = "Vehículo eliminado correctamente." });
         }
         catch (Exception ex)
@@ -397,7 +403,7 @@ public class VehiculoController : Controller
         }
     }
 
-    private async Task<IActionResult> PrepararRespuestaAjax(bool success, Vehiculo vehiculo, string accionAuditoria)
+    private async Task<IActionResult> PrepararRespuestaAjax(bool success, Vehiculo vehiculo, string accionAuditoria, Dictionary<string, string> antes = null, Vehiculo despues = null)
     {
         if (!success)
         {
@@ -406,7 +412,7 @@ public class VehiculoController : Controller
             return PartialView("_VehiculoForm", vehiculo);
         }
 
-        await RegistrarEvento(accionAuditoria, vehiculo.Id, "Vehiculo");
+        await RegistrarEvento(accionAuditoria, vehiculo.Id, "Vehiculo", antes, AuditCampos.CapturarVehiculo(despues), despues?.Patente ?? vehiculo.Patente);
         Response.Headers["X-Form-Valid"] = "true";
         
         // Usar solo caracteres ASCII en headers HTTP
@@ -426,11 +432,11 @@ public class VehiculoController : Controller
         return Enumerable.Range(start, end - start + 1).ToList();
     }
 
-    private async Task RegistrarEvento(string accion, string targetId, string entidad)
+    private async Task RegistrarEvento(string accion, string targetId, string entidad, Dictionary<string, string> antes, Dictionary<string, string> despues, string nombreHistorico)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var userEmail = User.FindFirstValue(ClaimTypes.Email);
-        await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad);
+        await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad, antes, despues, nombreHistorico);
     }
 
     /// <summary>

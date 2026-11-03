@@ -1,4 +1,4 @@
-using Firebase.Models;
+﻿using Firebase.Models;
 using Firebase.Security;
 using Firebase.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -240,6 +240,7 @@ public class ClienteController : Controller
                         vehiculoData.Patente.Trim().ToUpperInvariant(), vehiculoData.ClaveAsociacion ?? "");
                     if (vehiculoExistente != null)
                     {
+                        var antesVehiculo = AuditCampos.CapturarVehiculo(vehiculoExistente);
                         // Agregar cliente a la lista de clientes asociados del vehículo
                         if (vehiculoExistente.ClientesIds == null)
                         {
@@ -253,7 +254,7 @@ public class ClienteController : Controller
                         }
                         
                         vehiculosIds.Add(vehiculoExistente.Id);
-                        await RegistrarEvento("Asociacion de cliente a vehiculo compartido", vehiculoExistente.Id, "Vehiculo");
+                        await RegistrarVehiculo("Asociacion de cliente a vehiculo compartido", vehiculoExistente.Id, antesVehiculo);
                     }
                 }
                 else if (vehiculoData.EsNuevo)
@@ -286,7 +287,7 @@ public class ClienteController : Controller
                     // Guardar la clave para mostrarla al usuario
                     clavesAsociacionGeneradas.Add($"{nuevoVehiculo.Patente}: {claveTextoPlano}");
                     
-                    await RegistrarEvento("Creacion de vehiculo", nuevoVehiculo.Id, "Vehiculo");
+                    await RegistrarVehiculo("Creacion de vehiculo", nuevoVehiculo.Id, new());
                 }
                 else if (!string.IsNullOrEmpty(vehiculoData.Id))
                 {
@@ -294,6 +295,7 @@ public class ClienteController : Controller
                     var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoData.Id);
                     if (vehiculo != null && PuedeVincularVehiculo(vehiculo, cliente.Id))
                     {
+                        var antesVehiculo = AuditCampos.CapturarVehiculo(vehiculo);
                         // Generar clave de asociación si no tiene
                         if (string.IsNullOrEmpty(vehiculo.ClaveAsociacionHash))
                         {
@@ -323,7 +325,7 @@ public class ClienteController : Controller
                         
                         if (vehiculoData.EsReasignacion)
                         {
-                            await RegistrarEvento("Reasignacion de vehiculo sin dueno a nuevo cliente", vehiculo.Id, "Vehiculo");
+                            await RegistrarVehiculo("Reasignacion de vehiculo sin dueno a nuevo cliente", vehiculo.Id, antesVehiculo);
                         }
                     }
                 }
@@ -340,7 +342,7 @@ public class ClienteController : Controller
                 Response.Headers.CacheControl = "no-store";
             }
 
-            return await PrepararRespuestaAjax(true, cliente, "Creacion de cliente");
+            return await PrepararRespuestaAjax(true, cliente, "Creacion de cliente", new());
         }
         catch (Exception ex)
         {
@@ -437,6 +439,7 @@ public class ClienteController : Controller
                 }
             }
 
+            var antesCliente = AuditCampos.CapturarCliente(clienteActual);
             var vehiculosIds = new List<string>();
             var vehiculosAnteriores = clienteActual.VehiculosIds ?? new List<string>();
             var clavesAsociacionGeneradas = new List<string>();
@@ -449,6 +452,7 @@ public class ClienteController : Controller
                         vehiculoData.Patente.Trim().ToUpperInvariant(), vehiculoData.ClaveAsociacion ?? "");
                     if (vehiculoExistente != null)
                     {
+                        var antesVehiculo = AuditCampos.CapturarVehiculo(vehiculoExistente);
                         // Agregar cliente a la lista de clientes asociados del vehículo
                         if (vehiculoExistente.ClientesIds == null)
                         {
@@ -462,7 +466,7 @@ public class ClienteController : Controller
                         }
                         
                         vehiculosIds.Add(vehiculoExistente.Id);
-                        await RegistrarEvento("Asociacion de cliente a vehiculo compartido", vehiculoExistente.Id, "Vehiculo");
+                        await RegistrarVehiculo("Asociacion de cliente a vehiculo compartido", vehiculoExistente.Id, antesVehiculo);
                     }
                 }
                 else if (vehiculoData.EsNuevo)
@@ -496,13 +500,14 @@ public class ClienteController : Controller
                     clavesAsociacionGeneradas.Add($"{nuevoVehiculo.Patente}: {claveTextoPlano}");
                     
                     // Registrar evento de creación de vehículo
-                    await RegistrarEvento("Creacion de vehiculo", nuevoVehiculo.Id, "Vehiculo");
+                    await RegistrarVehiculo("Creacion de vehiculo", nuevoVehiculo.Id, new());
                 }
                 else if (!string.IsNullOrEmpty(vehiculoData.Id))
                 {
                     var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoData.Id);
                     if (vehiculo != null && PuedeVincularVehiculo(vehiculo, cliente.Id))
                     {
+                        var antesVehiculo = AuditCampos.CapturarVehiculo(vehiculo);
                         // Generar clave de asociación si no tiene
                         if (string.IsNullOrEmpty(vehiculo.ClaveAsociacionHash))
                         {
@@ -539,7 +544,7 @@ public class ClienteController : Controller
                         // Registrar evento de reasignación si corresponde
                         if (vehiculoData.EsReasignacion)
                         {
-                            await RegistrarEvento("Reasignacion de vehiculo sin dueno a cliente existente", vehiculo.Id, "Vehiculo");
+                            await RegistrarVehiculo("Reasignacion de vehiculo sin dueno a cliente existente", vehiculo.Id, antesVehiculo);
                         }
                     }
                 }
@@ -554,6 +559,7 @@ public class ClienteController : Controller
                 var vehiculoRemovido = await _vehiculoService.ObtenerVehiculo(vehiculoRemovidoId);
                 if (vehiculoRemovido != null)
                 {
+                    var antesVehiculo = AuditCampos.CapturarVehiculo(vehiculoRemovido);
                     // Remover de ClientesIds
                     if (vehiculoRemovido.ClientesIds != null && vehiculoRemovido.ClientesIds.Contains(cliente.Id))
                     {
@@ -577,7 +583,7 @@ public class ClienteController : Controller
                     }
                     
                     await _vehiculoService.ActualizarVehiculo(vehiculoRemovido);
-                    await RegistrarEvento("Vehiculo desvinculado de cliente", vehiculoRemovidoId, "Vehiculo");
+                    await RegistrarVehiculo("Vehiculo desvinculado de cliente", vehiculoRemovidoId, antesVehiculo);
                 }
             }
 
@@ -592,7 +598,7 @@ public class ClienteController : Controller
                 Response.Headers.CacheControl = "no-store";
             }
 
-            return await PrepararRespuestaAjax(true, cliente, "Actualizacion de cliente");
+            return await PrepararRespuestaAjax(true, cliente, "Actualizacion de cliente", antesCliente);
         }
         catch (Exception ex)
         {
@@ -653,15 +659,17 @@ public class ClienteController : Controller
                 else
                 {
                     // Desactivar el vehículo porque es exclusivo de este cliente (o compartido solo con clientes inactivos)
+                    var antesVehiculo = AuditCampos.CapturarVehiculo(vehiculo);
                     await _vehiculoService.CambiarEstadoVehiculo(vehiculo.Id, "Inactivo");
-                    await RegistrarEvento("Desactivacion de vehiculo (por desactivacion de cliente)", vehiculo.Id, "Vehiculo");
+                    await RegistrarVehiculo("Desactivacion de vehiculo (por desactivacion de cliente)", vehiculo.Id, antesVehiculo);
                     vehiculosDesactivados++;
                 }
             }
             
             // Desactivar el cliente
+            var antesCliente = AuditCampos.CapturarCliente(await _clienteService.ObtenerCliente(id));
             await _clienteService.CambiarEstadoCliente(id, "Inactivo");
-            await RegistrarEvento("Desactivacion de cliente", id, "Cliente");
+            await RegistrarCliente("Desactivacion de cliente", id, antesCliente);
             
             // Construir mensaje informativo
             var mensajeParts = new List<string> { "Cliente desactivado correctamente." };
@@ -733,8 +741,9 @@ public class ClienteController : Controller
                     }
                     
                     // Reactivar el vehículo (ya sea porque es exclusivo de este cliente o compartido)
+                    var antesVehiculo = AuditCampos.CapturarVehiculo(vehiculo);
                     await _vehiculoService.CambiarEstadoVehiculo(vehiculo.Id, "Activo");
-                    await RegistrarEvento("Reactivacion de vehiculo (por reactivacion de cliente)", vehiculo.Id, "Vehiculo");
+                    await RegistrarVehiculo("Reactivacion de vehiculo (por reactivacion de cliente)", vehiculo.Id, antesVehiculo);
                     vehiculosReactivados++;
                 }
             }
@@ -743,8 +752,9 @@ public class ClienteController : Controller
             vehiculosYaActivos = vehiculos.Count(v => v.Estado == "Activo");
             
             // Reactivar el cliente
+            var antesCliente = AuditCampos.CapturarCliente(await _clienteService.ObtenerCliente(id));
             await _clienteService.CambiarEstadoCliente(id, "Activo");
-            await RegistrarEvento("Reactivacion de cliente", id, "Cliente");
+            await RegistrarCliente("Reactivacion de cliente", id, antesCliente);
             
             // Construir mensaje informativo
             var mensajeParts = new List<string> { "Cliente reactivado correctamente." };
@@ -862,8 +872,9 @@ public class ClienteController : Controller
                 return Json(new { success = false, message = "No se puede eliminar el cliente porque tiene vehículos asociados." });
             }
 
+            var antes = cliente == null ? null : AuditCampos.CapturarCliente(cliente);
             await _clienteService.EliminarCliente(id);
-            await RegistrarEvento("Eliminacion fisica de cliente", id, "Cliente");
+            await RegistrarEvento("Eliminacion fisica de cliente", id, "Cliente", antes, new(), cliente?.NombreCompleto);
             return Json(new { success = true, message = "Cliente eliminado correctamente." });
         }
         catch (Exception ex)
@@ -906,7 +917,7 @@ public class ClienteController : Controller
         }
     }
 
-    private async Task<IActionResult> PrepararRespuestaAjax(bool success, Cliente cliente, string accionAuditoria)
+    private async Task<IActionResult> PrepararRespuestaAjax(bool success, Cliente cliente, string accionAuditoria, Dictionary<string, string> antes = null)
     {
         if (!success)
         {
@@ -915,7 +926,7 @@ public class ClienteController : Controller
             return PartialView("_ClienteForm", cliente);
         }
 
-        await RegistrarEvento(accionAuditoria, cliente.Id, "Cliente");
+        await RegistrarCliente(accionAuditoria, cliente.Id, antes ?? new());
         Response.Headers["X-Form-Valid"] = "true";
         Response.Headers["X-Form-Message"] = accionAuditoria.Contains("Creacion") ? "Cliente creado correctamente." : "Cliente actualizado correctamente.";
         await CargarListasForm();
@@ -927,6 +938,25 @@ public class ClienteController : Controller
         var start = Math.Max(1, currentPage - range);
         var end = Math.Min(totalPages, currentPage + range);
         return Enumerable.Range(start, end - start + 1).ToList();
+    }
+
+    private async Task RegistrarCliente(string accion, string id, Dictionary<string, string> antes)
+    {
+        var cliente = await _clienteService.ObtenerCliente(id) ?? throw new InvalidOperationException("Cliente no encontrado después de guardar.");
+        await RegistrarEvento(accion, id, "Cliente", antes, AuditCampos.CapturarCliente(cliente), cliente.NombreCompleto);
+    }
+
+    private async Task RegistrarVehiculo(string accion, string id, Dictionary<string, string> antes)
+    {
+        var vehiculo = await _vehiculoService.ObtenerVehiculo(id) ?? throw new InvalidOperationException("Vehículo no encontrado después de guardar.");
+        await RegistrarEvento(accion, id, "Vehiculo", antes, AuditCampos.CapturarVehiculo(vehiculo), vehiculo.Patente);
+    }
+
+    private async Task RegistrarEvento(string accion, string targetId, string entidad, Dictionary<string, string> antes, Dictionary<string, string> despues, string nombre)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userEmail = User.FindFirstValue(ClaimTypes.Email);
+        await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad, antes, despues, nombre);
     }
 
     private async Task RegistrarEvento(string accion, string targetId, string entidad)

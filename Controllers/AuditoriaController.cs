@@ -267,11 +267,15 @@ public class AuditoriaController : Controller
             .Where(r => !string.IsNullOrWhiteSpace(r.TargetName) && CoincideTexto(r.TargetName, searchTerm))
             .Select(r => new AuditLog
             {
+                DocId = r.DocId,
                 UserId = r.UserId,
                 UserEmail = r.UserEmail,
                 Action = r.Action,
                 TargetId = r.TargetId,
                 TargetType = r.TargetType,
+                NombreHistorico = r.NombreHistorico,
+                Antes = r.Antes,
+                Despues = r.Despues,
                 Timestamp = r.Timestamp
             })
             .ToList();
@@ -340,7 +344,49 @@ public class AuditoriaController : Controller
     }
     #endregion
 
-    #region Métodos Privados
+    #region Detalle de Registro
+
+    /// <summary>
+    /// Devuelve el detalle (antes/después) de un registro de auditoría por su ID de documento.
+    /// Requiere permiso Auditoria.Consultar. Retorna 404 si no existe.
+    /// </summary>
+    [HttpGet]
+    [Permiso("Auditoria.Consultar")]
+    public async Task<IActionResult> Detalle(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id) || id.Contains('/') || id == "." || id == ".." || System.Text.Encoding.UTF8.GetByteCount(id) > 1500)
+            return NotFound();
+
+        try
+        {
+        var registro = await _auditService.ObtenerDetalle(id);
+        if (registro == null)
+            return NotFound();
+
+        return Json(new
+        {
+            docId = registro.DocId ?? "",
+            action = registro.Action ?? "",
+            targetType = registro.TargetType ?? "",
+            targetId = registro.TargetId ?? "",
+            nombreHistorico = registro.NombreHistorico ?? "",
+            userEmail = registro.UserEmail ?? "",
+            userId = registro.UserId ?? "",
+            antes = registro.Antes,
+            despues = registro.Despues,
+            comparacionNoAplica = registro.ComparacionNoAplica,
+            timestamp = registro.Timestamp.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
+        });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "No se pudo cargar el detalle de auditoría.");
+        }
+    }
+
+    #endregion
+
+        #region Métodos Privados
 
     /// <summary>
     /// Obtiene los datos de auditoría con paginación.
@@ -526,13 +572,17 @@ public class AuditoriaController : Controller
 
             return new AuditLogConNombre
             {
+                DocId = r.DocId,
                 UserId = r.UserId,
                 UserEmail = r.UserEmail,
                 UserName = userName,
                 Action = r.Action,
                 TargetId = r.TargetId,
                 TargetType = r.TargetType,
-                TargetName = targetName,
+                TargetName = string.IsNullOrWhiteSpace(r.NombreHistorico) ? targetName : r.NombreHistorico,
+                NombreHistorico = r.NombreHistorico,
+                Antes = r.Antes,
+                Despues = r.Despues,
                 Timestamp = r.Timestamp
             };
         }).ToList();

@@ -102,7 +102,9 @@ public class ServicioController : Controller
             }
 
             var resultado = await ProcesarCreacionServicio(servicio);
-            return await PrepararRespuestaAjax(resultado, servicio, "Creacion de servicio");
+            var despuesCaptura = resultado.EsExitoso ? AuditCampos.CapturarServicio(await ObtenerServicioParaAuditoria(servicio.Id)) : null;
+            return await PrepararRespuestaAjax(resultado, servicio, "Creacion de servicio",
+                antes: new Dictionary<string, string>(), despues: despuesCaptura, nombreHistorico: servicio.Nombre);
         }
         catch (Exception ex)
         {
@@ -125,8 +127,12 @@ public class ServicioController : Controller
                 servicio.Etapas = System.Text.Json.JsonSerializer.Deserialize<List<Etapa>>(EtapasJson) ?? new List<Etapa>();
             }
 
+            var servicioAntes = await _servicioService.ObtenerServicio(servicio.Id);
+            var antesCaptura = AuditCampos.CapturarServicio(servicioAntes);
             var resultado = await ProcesarActualizacionServicio(servicio);
-            return await PrepararRespuestaAjax(resultado, servicio, "Actualizacion de servicio");
+            var despuesActualizar = resultado.EsExitoso ? AuditCampos.CapturarServicio(await ObtenerServicioParaAuditoria(servicio.Id)) : null;
+            return await PrepararRespuestaAjax(resultado, servicio, "Actualizacion de servicio",
+                antes: antesCaptura, despues: despuesActualizar, nombreHistorico: servicioAntes?.Nombre ?? servicio.Nombre);
         }
         catch (Exception ex)
         {
@@ -267,7 +273,7 @@ public class ServicioController : Controller
                 }
 
                 var docId = await _tipoServicioService.CrearTipoServicio(nombreTipo);
-                await RegistrarEvento("Creacion de tipo de servicio", docId, "TipoServicio");
+                await RegistrarCreacionTipo("Creacion de tipo de servicio", docId, "TipoServicio");
 
                 var tiposActualizados = await _tipoServicioService.ObtenerTiposServicio();
 
@@ -324,7 +330,7 @@ public class ServicioController : Controller
                 var idsEliminados = await _tipoServicioService.EliminarTipoServicio(nombreTipo);
                 foreach (var id in idsEliminados)
                 {
-                    await RegistrarEvento("Eliminacion de tipo de servicio", id, "TipoServicio");
+                    await RegistrarEvento("Eliminacion de tipo de servicio", id, "TipoServicio", new() { ["Nombre"] = nombreTipo }, new(), nombreTipo);
                 }
 
                 var tiposActualizados = await _tipoServicioService.ObtenerTiposServicio();
@@ -346,7 +352,7 @@ public class ServicioController : Controller
         return await EliminarTipoConIds(
             nombreTipo,
             () => _servicioService.ObtenerServiciosPorTipo(nombreTipo),
-            () => _tipoServicioService.EliminarTipoServicio(nombreTipo),
+            _ => _tipoServicioService.EliminarTipoServicio(nombreTipo),
             "TipoServicio",
             "Eliminacion de tipo de servicio"
         );
@@ -402,7 +408,7 @@ public class ServicioController : Controller
                 }
 
                 var vehDocId = await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos);
-                await RegistrarEvento("Creacion de tipo de vehiculo", vehDocId, "TipoVehiculo");
+                await RegistrarCreacionTipo("Creacion de tipo de vehiculo", vehDocId, "TipoVehiculo");
 
                 var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculosCompletos();
 
@@ -517,10 +523,11 @@ public class ServicioController : Controller
                     });
                 }
 
-                var vehIdsEliminados = await _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo);
+                var capturas = await CapturarTiposVehiculo(nombreTipo);
+                var vehIdsEliminados = await _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo, capturas.Keys.ToHashSet());
                 foreach (var id in vehIdsEliminados)
                 {
-                    await RegistrarEvento("Eliminacion de tipo de vehiculo", id, "TipoVehiculo");
+                    await RegistrarEliminacionTipoVehiculo(id, capturas);
                 }
 
                 var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculos();
@@ -542,7 +549,7 @@ public class ServicioController : Controller
         return await EliminarTipoConIds(
             nombreTipo,
             () => _servicioService.ObtenerServiciosPorTipoVehiculo(nombreTipo),
-            () => _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo),
+            ids => _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo, ids),
             "TipoVehiculo",
             "Eliminacion de tipo de vehiculo"
         );
@@ -745,10 +752,13 @@ public class ServicioController : Controller
                 }
             }
 
+            var servicioAntesCambio = await ObtenerServicioParaAuditoria(id);
+            var antesCambio = AuditCampos.CapturarServicio(servicioAntesCambio);
             await _servicioService.CambiarEstadoServicio(id, nuevoEstado);
             TempData["StateChangeEvent_UserId"] = id;
             TempData["StateChangeEvent_NewState"] = nuevoEstado;
-            await RegistrarEvento(accionAuditoria, id, "Servicio");
+            var despuesCambio = AuditCampos.CapturarServicio(await ObtenerServicioParaAuditoria(id));
+            await RegistrarEvento(accionAuditoria, id, "Servicio", antesCambio, despuesCambio, servicioAntesCambio?.Nombre);
             return Json(new { success = true, message = nuevoEstado == "Inactivo" ? "Servicio desactivado correctamente." : "Servicio reactivado correctamente." });
         }
         catch (Exception ex)
@@ -772,7 +782,8 @@ public class ServicioController : Controller
     /// - X-Form-Valid: "true" o "false"
     /// - X-Form-Message: mensaje de éxito cuando corresponde
     /// </remarks>
-    private async Task<IActionResult> PrepararRespuestaAjax(ResultadoOperacion resultado, Servicio servicio, string accionAuditoria)
+    private async Task<IActionResult> PrepararRespuestaAjax(ResultadoOperacion resultado, Servicio servicio, string accionAuditoria,
+        Dictionary<string, string> antes = null, Dictionary<string, string> despues = null, string nombreHistorico = null)
     {
         if (!resultado.EsExitoso)
         {
@@ -781,7 +792,7 @@ public class ServicioController : Controller
             return PartialView("_ServicioForm", servicio);
         }
 
-        await RegistrarEvento(accionAuditoria, servicio.Id, "Servicio");
+        await RegistrarEvento(accionAuditoria, servicio.Id, "Servicio", antes, despues, nombreHistorico);
         Response.Headers["X-Form-Valid"] = "true";
         Response.Headers["X-Form-Message"] = resultado.MensajeExito;
         await CargarListasForm();
@@ -923,11 +934,46 @@ public class ServicioController : Controller
     /// <param name="accion">Nombre de la acción ejecutada (por ejemplo, "Creacion de servicio").</param>
     /// <param name="targetId">ID de la entidad objetivo sobre la que se actuó.</param>
     /// <param name="entidad">Tipo de entidad (por ejemplo, "Servicio").</param>
-    private async Task RegistrarEvento(string accion, string targetId, string entidad)
+    private async Task<Servicio> ObtenerServicioParaAuditoria(string id) =>
+        await _servicioService.ObtenerServicio(id) ?? throw new InvalidOperationException("No se encontró el servicio para auditoría.");
+
+    private async Task RegistrarCreacionTipo(string accion, string id, string entidad)
+    {
+        Dictionary<string, string> despues;
+        string nombre;
+        if (entidad == "TipoServicio")
+        {
+            nombre = await _tipoServicioService.ObtenerNombrePorId(id) ?? throw new InvalidOperationException("No se encontró el tipo de servicio para auditoría.");
+            despues = new() { ["Nombre"] = nombre };
+        }
+        else
+        {
+            var tipo = await _tipoVehiculoService.ObtenerParaAuditoriaPorId(id) ?? throw new InvalidOperationException("No se encontró el tipo de vehículo para auditoría.");
+            nombre = tipo.Nombre;
+            despues = AuditCampos.CapturarTipoVehiculo(tipo);
+        }
+        await RegistrarEvento(accion, id, entidad, new(), despues, nombre);
+    }
+
+    private async Task<Dictionary<string, TipoVehiculo>> CapturarTiposVehiculo(string nombre) =>
+        (await _tipoVehiculoService.ObtenerParaAuditoriaPorNombre(nombre)).ToDictionary(t => t.Id);
+
+    private async Task RegistrarEliminacionTipoVehiculo(string id, Dictionary<string, TipoVehiculo> capturas)
+    {
+        if (!capturas.TryGetValue(id, out var tipo))
+            throw new InvalidOperationException("No se encontró el tipo de vehículo eliminado para auditoría.");
+        await RegistrarEvento("Eliminacion de tipo de vehiculo", id, "TipoVehiculo", AuditCampos.CapturarTipoVehiculo(tipo), new(), tipo.Nombre);
+    }
+
+    private async Task RegistrarEvento(string accion, string targetId, string entidad,
+        Dictionary<string, string> antes = null, Dictionary<string, string> despues = null, string nombreHistorico = null)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var userEmail = User.FindFirstValue(ClaimTypes.Email);
-        await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad);
+        if (antes != null || despues != null)
+            await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad, antes, despues, nombreHistorico);
+        else
+            await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad);
     }
 
     /// <summary>
@@ -964,7 +1010,7 @@ public class ServicioController : Controller
             else
             {
                 var id = await crearConId();
-                await RegistrarEvento(accionAuditoria, id, entidad);
+                await RegistrarCreacionTipo(accionAuditoria, id, entidad);
                 TempData["Success"] = $"{entidad} creado correctamente.";
             }
         }
@@ -983,7 +1029,7 @@ public class ServicioController : Controller
     private async Task<IActionResult> EliminarTipoConIds(
         string nombreTipo,
         Func<Task<List<Servicio>>> obtenerServiciosUsandoTipo,
-        Func<Task<List<string>>> eliminarConIds,
+        Func<IReadOnlySet<string>, Task<List<string>>> eliminarConIds,
         string entidad,
         string accionAuditoria)
     {
@@ -996,10 +1042,14 @@ public class ServicioController : Controller
             }
             else
             {
-                var ids = await eliminarConIds();
+                var capturas = entidad == "TipoVehiculo" ? await CapturarTiposVehiculo(nombreTipo) : null;
+                var ids = await eliminarConIds(capturas?.Keys.ToHashSet());
                 foreach (var id in ids)
                 {
-                    await RegistrarEvento(accionAuditoria, id, entidad);
+                    if (entidad == "TipoVehiculo")
+                        await RegistrarEliminacionTipoVehiculo(id, capturas);
+                    else
+                        await RegistrarEvento(accionAuditoria, id, entidad, new() { ["Nombre"] = nombreTipo }, new(), nombreTipo);
                 }
                 TempData["Success"] = $"{entidad} eliminado correctamente.";
             }

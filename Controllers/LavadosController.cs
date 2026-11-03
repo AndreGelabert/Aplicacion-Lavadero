@@ -507,7 +507,7 @@ namespace FirebaseLoginCustom.Controllers
                         }
                     }
 
-                    await RegistrarEvento("Creación de lavado", lavadoCreado.Id, "Lavado");
+                    await RegistrarLavado("Creación de lavado", lavadoCreado.Id, new());
                 }
 
                 return Json(new
@@ -536,8 +536,9 @@ namespace FirebaseLoginCustom.Controllers
         {
             try
             {
+                var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(id))!);
                 await _lavadoService.FinalizarLavado(id);
-                await RegistrarEvento("Finalización de lavado", id, "Lavado");
+                await RegistrarLavado("Finalización de lavado", id, antes);
 
                 return Json(new { success = true, message = "Lavado finalizado correctamente." });
             }
@@ -558,8 +559,9 @@ namespace FirebaseLoginCustom.Controllers
         {
             try
             {
+                var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
                 await _lavadoService.FinalizarServicio(lavadoId, servicioId);
-                await RegistrarEvento("Finalización de servicio en lavado", lavadoId, "Lavado");
+                await RegistrarLavado("Finalización de servicio en lavado", lavadoId, antes);
 
                 return Json(new { success = true, message = "Servicio finalizado correctamente." });
             }
@@ -580,8 +582,9 @@ namespace FirebaseLoginCustom.Controllers
         {
             try
             {
+                var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
                 await _lavadoService.FinalizarEtapa(lavadoId, servicioId, etapaId);
-                await RegistrarEvento("Finalización de etapa en lavado", lavadoId, "Lavado");
+                await RegistrarLavado("Finalización de etapa en lavado", lavadoId, antes);
 
                 return Json(new { success = true, message = "Etapa finalizada correctamente." });
             }
@@ -602,8 +605,9 @@ namespace FirebaseLoginCustom.Controllers
         {
             try
             {
+                var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
                 await _lavadoService.IniciarServicio(lavadoId, servicioId);
-                await RegistrarEvento("Inicio de servicio en lavado", lavadoId, "Lavado");
+                await RegistrarLavado("Inicio de servicio en lavado", lavadoId, antes);
 
                 return Json(new { success = true, message = "Servicio iniciado correctamente." });
             }
@@ -624,8 +628,9 @@ namespace FirebaseLoginCustom.Controllers
         {
             try
             {
+                var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
                 await _lavadoService.IniciarEtapa(lavadoId, servicioId, etapaId);
-                await RegistrarEvento("Inicio de etapa en lavado", lavadoId, "Lavado");
+                await RegistrarLavado("Inicio de etapa en lavado", lavadoId, antes);
 
                 return Json(new { success = true, message = "Etapa iniciada correctamente." });
             }
@@ -646,8 +651,9 @@ namespace FirebaseLoginCustom.Controllers
         {
             try
             {
+                var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(id))!);
                 await _lavadoService.CancelarLavado(id, motivo);
-                await RegistrarEvento("Cancelación de lavado", id, "Lavado");
+                await RegistrarLavado("Cancelación de lavado", id, antes);
 
                 return Json(new { success = true, message = "Lavado cancelado correctamente." });
             }
@@ -668,8 +674,9 @@ namespace FirebaseLoginCustom.Controllers
         {
             try
             {
+                var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
                 await _lavadoService.CancelarServicio(lavadoId, servicioId, motivo);
-                await RegistrarEvento("Cancelación de servicio en lavado", lavadoId, "Lavado");
+                await RegistrarLavado("Cancelación de servicio en lavado", lavadoId, antes);
 
                 return Json(new { success = true, message = "Servicio cancelado correctamente." });
             }
@@ -690,8 +697,9 @@ namespace FirebaseLoginCustom.Controllers
         {
             try
             {
+                var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
                 await _lavadoService.CancelarEtapa(lavadoId, servicioId, etapaId, motivo);
-                await RegistrarEvento("Cancelación de etapa en lavado", lavadoId, "Lavado");
+                await RegistrarLavado("Cancelación de etapa en lavado", lavadoId, antes);
 
                 return Json(new { success = true, message = "Etapa cancelada correctamente." });
             }
@@ -712,8 +720,9 @@ namespace FirebaseLoginCustom.Controllers
         {
             try
             {
+                var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
                 await _lavadoService.RegistrarPago(lavadoId, monto, medioPago, notas);
-                await RegistrarEvento("Registro de pago en lavado", lavadoId, "Lavado");
+                await RegistrarLavado("Registro de pago en lavado", lavadoId, antes);
 
                 return Json(new { success = true, message = "Pago registrado correctamente." });
             }
@@ -756,12 +765,13 @@ namespace FirebaseLoginCustom.Controllers
                     return Json(new { success = false, message = "El lavado debe estar pagado antes de permitir el retiro del vehículo." });
                 }
 
+                var antes = AuditCampos.CapturarLavado(lavado);
                 // Registrar el retiro
                 lavado.EstadoRetiro = Lavado.EstadosRetiro.Retirado;
                 lavado.FechaRetiro = DateTime.UtcNow;
 
                 await _lavadoService.ActualizarLavado(lavado);
-                await RegistrarEvento("Retiro de vehículo", lavadoId, "Lavado");
+                await RegistrarLavado("Retiro de vehículo", lavadoId, antes);
 
                 return Json(new { success = true, message = "Retiro registrado correctamente." });
             }
@@ -977,7 +987,8 @@ namespace FirebaseLoginCustom.Controllers
             if (!asociado)
                 return Json(new { success = false, message = "No se pudo asociar el cliente al vehículo." });
 
-            await RegistrarEvento("Creacion de cliente y asociacion a vehiculo", cliente.Id, "Cliente");
+            var clientePersistido = await _clienteService.ObtenerCliente(cliente.Id) ?? throw new InvalidOperationException("Cliente no encontrado después de crear.");
+            await RegistrarEvento("Creacion de cliente y asociacion a vehiculo", cliente.Id, "Cliente", new(), AuditCampos.CapturarCliente(clientePersistido), clientePersistido.NombreCompleto);
             return Json(new
             {
                 success = true,
@@ -1296,13 +1307,19 @@ namespace FirebaseLoginCustom.Controllers
             return Enumerable.Range(start, end - start + 1).ToList();
         }
 
-        private async Task RegistrarEvento(string accion, string targetId, string entidad)
+        private async Task RegistrarLavado(string accion, string id, Dictionary<string, string> antes)
+        {
+            var lavado = await _lavadoService.ObtenerLavado(id) ?? throw new InvalidOperationException("Lavado no encontrado después de modificar.");
+            await RegistrarEvento(accion, id, "Lavado", antes, AuditCampos.CapturarLavado(lavado), lavado.VehiculoPatente ?? id);
+        }
+
+        private async Task RegistrarEvento(string accion, string targetId, string entidad, Dictionary<string, string> antes, Dictionary<string, string> despues, string nombre)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var userEmail = User.FindFirstValue(ClaimTypes.Email);
             if (userId != null && userEmail != null)
             {
-                await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad);
+                await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad, antes, despues, nombre);
             }
         }
 

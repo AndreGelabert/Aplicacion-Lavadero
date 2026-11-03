@@ -1,0 +1,42 @@
+<style>
+    html:has(#audit-detail-dialog[open]), body:has(#audit-detail-dialog[open]) { overflow: hidden; }
+    #audit-detail-dialog { overscroll-behavior: contain; }
+    #audit-detail-dialog { width: min(48rem, calc(100% - 2rem)); max-height: calc(100vh - 2rem); margin: auto; padding: 1.5rem; border: 0; border-radius: .5rem; background: white; color: #111827; overflow-y: auto; box-shadow: 0 20px 25px -5px rgb(0 0 0 / .2); }
+    #audit-detail-dialog::backdrop { background: rgb(17 24 39 / .5); }
+    #audit-detail-dialog .audit-detail-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+    #audit-detail-title { margin: 0; font-size: 1.25rem; font-weight: 600; }
+    #audit-detail-close { display: inline-flex; flex-shrink: 0; padding: .375rem; border: 0; border-radius: .5rem; background: transparent; color: #6b7280; cursor: pointer; }
+    #audit-detail-close:hover { background: #e5e7eb; color: #111827; }
+    #audit-detail-close:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+    #audit-detail-close svg { width: 1.25rem; height: 1.25rem; }
+    #audit-detail-meta { margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
+    #audit-detail-meta dt { display: inline; font-weight: 700; }
+    #audit-detail-meta dd { display: inline; margin: 0 0 0 .35rem; }
+    #audit-detail-meta dd::after { content: ""; display: block; }
+    #audit-detail-status:empty { display: none; }
+    #audit-detail-dialog .audit-detail-table-wrapper { overflow-x: auto; margin-top: 1rem; }
+    #audit-detail-dialog table { width: 100%; border-collapse: collapse; text-align: left; }
+    #audit-detail-dialog th, #audit-detail-dialog td { border: 1px solid #9ca3af; padding: .625rem .75rem; vertical-align: top; overflow-wrap: anywhere; }
+    #audit-detail-dialog th { background: #f3f4f6; font-weight: 700; }
+    .dark #audit-detail-dialog { background: #1f2937; color: #f9fafb; }
+    .dark #audit-detail-dialog th { background: #374151; }
+    .dark #audit-detail-dialog th, .dark #audit-detail-dialog td { border-color: #6b7280; }
+    .dark #audit-detail-close { color: #9ca3af; }
+    .dark #audit-detail-close:hover { background: #4b5563; color: white; }
+</style>
+<dialog id="audit-detail-dialog" aria-labelledby="audit-detail-title">
+    <div class="audit-detail-header">
+        <h2 id="audit-detail-title">Detalle de auditoría</h2>
+        <button id="audit-detail-close" type="button" aria-label="Cerrar modal">
+            <svg aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+        </button>
+    </div>
+    <p id="audit-detail-status" role="status" aria-live="polite"></p>
+    <dl id="audit-detail-meta"></dl>
+    <div class="audit-detail-table-wrapper">
+        <table>
+            <thead><tr><th scope="col">Campo</th><th scope="col">Antes</th><th scope="col">Después</th></tr></thead>
+            <tbody id="audit-detail-rows"></tbody>
+        </table>
+    </div>
+</dialog>

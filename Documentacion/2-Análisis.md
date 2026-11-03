@@ -173,7 +173,7 @@
 | **Turno** | Id, FechaHora, ClienteId, ClienteNombre, Telefono, VehiculoId, VehiculoPatente, ServiciosIds, DuracionEstimada, Estado, MotivoCancelacion, Origen, FechaCreacion |
 | **Configuracion** | Id, HorariosOperacion, CapacidadMaximaConcurrente, EmpleadosMaximosPorLavado, TiempoNotificacionMinutos, TiempoToleranciaMinutos, IntervaloPreguntas, SesionDuracionHoras, SesionInactividadMinutos, NombreLavadero, Ubicacion, PaquetesDescuentoStep, FechaActualizacion, ActualizadoPor, RequiereAprobacionHumanaOrdenes, PlantillaEmailAsunto, PlantillaEmailEncabezado, PlantillaEmailNotas |
 | **WhatsAppSession** | Id, PhoneNumber, ClienteId, CurrentState, TemporaryData, LastInteraction, CreatedAt |
-| **AuditLog** | Id, UserId, UserEmail, Action, TargetId, TargetType, Timestamp, Detalles |
+| **AuditLog** | DocId (identificador en lectura), UserId, UserEmail, Action, TargetId, TargetType, Timestamp, NombreHistorico, Antes, Despues, ComparacionNoAplica |
 | **Insumo** | Id, Nombre, TipoInsumo, UnidadMedida, StockActual, StockMinimo, CantidadReabastecimiento, PermiteReabastecimientoAutomatico, CostoUnitarioCompra, ProveedoresIds, Estado |
 | **Proveedor** | Id, RazonSocial, CUIT, Telefono, Direccion, Email, Estado, FechaCreacion |
 | **OrdenCompra** | Id, SolicitudCotizacionId, ModalidadOrigen (Cotizacion / Directa), ProveedorId, ProveedorRazonSocial, ProveedorEmail, FechaEmision, FechaEntregaPactada, MontoTotal, Estado, Notas, MotivoCancelacion |
@@ -3342,15 +3342,15 @@
 
 | Campo | Descripción |
 | :---- | :---- |
-| **Nombre** | registrarEventoAuditoria(userId, userEmail, accion, targetId, targetType, detallesValores) |
-| **Responsabilidades** | Persistir de forma inmutable y asíncrona la entrada de auditoría para operaciones transaccionales, ajustes de inventario y órdenes de compra. |
+| **Nombre** | LogEvent(userId, userEmail, accion, targetId, targetType, antes, despues, nombreHistorico); LogSessionEvent para sesiones |
+| **Responsabilidades** | Persistir el contexto y los campos auditables capturados antes/después de las operaciones implementadas. Proyectar explícitamente campos seguros, incluidos valores anidados relevantes, sin serializar entidades completas. |
 | **Tipo** | Sistema |
 | **Referencias cruzadas** | CU-088 Registrar todas las acciones para auditoría |
-| **Notas** | Proceso transversal en segundo plano. |
+| **Notas** | Escritura esperada con await, no desacoplada; errores propagados al flujo llamador. Sin garantía atómica con el cambio de negocio; no ofrece restauración. Sesiones nuevas usan indicador explícito y mapas vacíos; eventos anteriores sin mapas conservan ausencia de historial. |
 | **Excepciones** | Error de persistencia en log de base de datos. |
 | **Salida** | Confirmación interna de log persistido. |
 | **Precondiciones** | Se ejecutó una acción transaccional en el sistema. |
-| **Postcondiciones** | \- Se creó una instancia inmutable de AuditLog (UserId=userId, UserEmail=userEmail, Action=accion, TargetId=targetId, TargetType=targetType, Timestamp=ahora, Detalles=detallesValores). |
+| **Postcondiciones** | \- Se creó una instancia inmutable de AuditLog (UserId=userId, UserEmail=userEmail, Action=accion, TargetId=targetId, TargetType=targetType, Timestamp=ahora, NombreHistorico=nombreHistorico, Antes=antes, Despues=despues, ComparacionNoAplica=false). |
 
 ### **Módulo: Gestión de Roles**
 

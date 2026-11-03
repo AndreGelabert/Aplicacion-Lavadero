@@ -2,8 +2,8 @@ using Firebase.Models;
 using Google.Cloud.Firestore;
 
 /// <summary>
-/// Servicio para la gestión de registros de auditoría en Firestore.
-/// Proporciona operaciones de registro, consulta, filtrado y paginación.
+/// Servicio para la gestiï¿½n de registros de auditorï¿½a en Firestore.
+/// Proporciona operaciones de registro, consulta, filtrado y paginaciï¿½n.
 /// </summary>
 public class AuditService
 {
@@ -17,7 +17,7 @@ public class AuditService
     private readonly FirestoreDb _firestore;
 
     /// <summary>
-    /// Inicializa una nueva instancia del servicio de auditoría.
+    /// Inicializa una nueva instancia del servicio de auditorï¿½a.
     /// </summary>
     /// <param name="firestore">Instancia de la base de datos Firestore.</param>
     public AuditService(FirestoreDb firestore)
@@ -29,13 +29,8 @@ public class AuditService
     #region Operaciones de Registro
 
     /// <summary>
-    /// Registra un evento de auditoría en la base de datos.
+    /// Registra un evento de auditorÃ­a sin captura de antes/despuÃ©s (compatibilidad legada y eventos externos).
     /// </summary>
-    /// <param name="userId">ID del usuario que realizó la acción.</param>
-    /// <param name="userEmail">Email del usuario que realizó la acción.</param>
-    /// <param name="action">Acción realizada.</param>
-    /// <param name="targetId">ID del objeto objetivo.</param>
-    /// <param name="targetType">Tipo del objeto objetivo.</param>
     public async Task LogEvent(string userId, string userEmail, string action, string targetId, string targetType)
     {
         var auditLog = new AuditLog
@@ -45,6 +40,53 @@ public class AuditService
             Action = action,
             TargetId = targetId,
             TargetType = targetType,
+            NombreHistorico = null,
+            Antes = null,
+            Despues = null,
+            Timestamp = DateTime.UtcNow
+        };
+
+        await _firestore.Collection(COLLECTION_NAME).AddAsync(auditLog);
+    }
+
+    /// <summary>Registra un evento de sesiÃ³n sin comparaciÃ³n de datos.</summary>
+    public async Task LogSessionEvent(string userId, string userEmail, string action, string targetId, string targetType)
+    {
+        var auditLog = new AuditLog
+        {
+            UserId = userId, UserEmail = userEmail, Action = action, TargetId = targetId,
+            TargetType = targetType, Antes = new(), Despues = new(),
+            ComparacionNoAplica = true, Timestamp = DateTime.UtcNow
+        };
+        await _firestore.Collection(COLLECTION_NAME).AddAsync(auditLog);
+    }
+
+    /// <summary>
+    /// Registra un evento de auditorÃ­a con captura de antes/despuÃ©s para comparaciÃ³n histÃ³rica (S1-S4).
+    /// </summary>
+    /// <param name="antes">Campos auditables ANTES de la operaciÃ³n (diccionario vacÃ­o para CreaciÃ³n).</param>
+    /// <param name="despues">Campos auditables DESPUÃ‰S de la operaciÃ³n.</param>
+    /// <param name="nombreHistorico">Nombre descriptivo del objeto al momento de la operaciÃ³n.</param>
+    public async Task LogEvent(
+        string userId,
+        string userEmail,
+        string action,
+        string targetId,
+        string targetType,
+        Dictionary<string, string> antes,
+        Dictionary<string, string> despues,
+        string nombreHistorico = null)
+    {
+        var auditLog = new AuditLog
+        {
+            UserId = userId,
+            UserEmail = userEmail,
+            Action = action,
+            TargetId = targetId,
+            TargetType = targetType,
+            NombreHistorico = nombreHistorico,
+            Antes = antes,
+            Despues = despues,
             Timestamp = DateTime.UtcNow
         };
 
@@ -52,22 +94,23 @@ public class AuditService
     }
     #endregion
 
+
     #region Operaciones de Consulta
 
     /// <summary>
-    /// Obtiene una lista paginada de registros de auditoría con filtros.
-    /// - Si sortBy == "Timestamp" (por defecto): usa paginación física (Limit/Offset) en Firestore.
-    /// - Para otros sortBy: mantiene lógica previa (orden/paginación en memoria).
+    /// Obtiene una lista paginada de registros de auditorï¿½a con filtros.
+    /// - Si sortBy == "Timestamp" (por defecto): usa paginaciï¿½n fï¿½sica (Limit/Offset) en Firestore.
+    /// - Para otros sortBy: mantiene lï¿½gica previa (orden/paginaciï¿½n en memoria).
     /// </summary>
     /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
     /// <param name="fechaFin">Fecha de fin del filtro.</param>
     /// <param name="acciones">Lista de acciones a filtrar.</param>
     /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
-    /// <param name="pageNumber">Número de página actual.</param>
-    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="pageNumber">Nï¿½mero de pï¿½gina actual.</param>
+    /// <param name="pageSize">Tamaï¿½o de pï¿½gina.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
-    /// <param name="sortOrder">Dirección del ordenamiento.</param>
-    /// <returns>Lista de registros de auditoría filtrados y paginados.</returns>
+    /// <param name="sortOrder">Direcciï¿½n del ordenamiento.</param>
+    /// <returns>Lista de registros de auditorï¿½a filtrados y paginados.</returns>
     public async Task<List<AuditLog>> ObtenerRegistros(
         DateTime? fechaInicio = null,
         DateTime? fechaFin = null,
@@ -83,7 +126,7 @@ public class AuditService
         sortBy ??= ORDEN_DEFECTO;
         sortOrder ??= DIRECCION_DEFECTO;
 
-        // Paginación física soportada cuando ordenamos por Timestamp (caso por defecto y más común)
+        // Paginaciï¿½n fï¿½sica soportada cuando ordenamos por Timestamp (caso por defecto y mï¿½s comï¿½n)
         var ordenEsTimestamp = string.Equals(sortBy, "Timestamp", StringComparison.OrdinalIgnoreCase);
 
         if (ordenEsTimestamp)
@@ -91,7 +134,7 @@ public class AuditService
             // Query en Firestore con filtros y orden por fecha
             var query = ConstruirQueryAuditoria(fechaInicio, fechaFin, acciones, tiposObjetivo, sortBy, sortOrder, forCounting: false);
 
-            // Paginación física (Limit/Offset)
+            // Paginaciï¿½n fï¿½sica (Limit/Offset)
             var offset = (pageNumber - 1) * pageSize;
             if (offset > 0)
                 query = query.Offset(offset);
@@ -112,18 +155,18 @@ public class AuditService
     }
 
     /// <summary>
-    /// Busca registros por término (misma lógica previa). Mantiene paginación en memoria.
+    /// Busca registros por tï¿½rmino (misma lï¿½gica previa). Mantiene paginaciï¿½n en memoria.
     /// </summary>
-    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <param name="searchTerm">Tï¿½rmino de bï¿½squeda.</param>
     /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
     /// <param name="fechaFin">Fecha de fin del filtro.</param>
     /// <param name="acciones">Lista de acciones a filtrar.</param>
     /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
-    /// <param name="pageNumber">Número de página actual.</param>
-    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="pageNumber">Nï¿½mero de pï¿½gina actual.</param>
+    /// <param name="pageSize">Tamaï¿½o de pï¿½gina.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
-    /// <param name="sortOrder">Dirección del ordenamiento.</param>
-    /// <returns>Lista de registros de auditoría que coinciden con la búsqueda.</returns>
+    /// <param name="sortOrder">Direcciï¿½n del ordenamiento.</param>
+    /// <returns>Lista de registros de auditorï¿½a que coinciden con la bï¿½squeda.</returns>
     public async Task<List<AuditLog>> BuscarRegistros(
         string searchTerm,
         DateTime? fechaInicio = null,
@@ -163,15 +206,15 @@ public class AuditService
     }
 
     /// <summary>
-    /// Obtiene el total de páginas para los registros filtrados.
-    /// Intenta usar agregación Count(); fallback a contar snapshot si no está disponible.
+    /// Obtiene el total de pï¿½ginas para los registros filtrados.
+    /// Intenta usar agregaciï¿½n Count(); fallback a contar snapshot si no estï¿½ disponible.
     /// </summary>
     /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
     /// <param name="fechaFin">Fecha de fin del filtro.</param>
     /// <param name="acciones">Lista de acciones a filtrar.</param>
     /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
-    /// <param name="pageSize">Tamaño de página.</param>
-    /// <returns>Número total de páginas.</returns>
+    /// <param name="pageSize">Tamaï¿½o de pï¿½gina.</param>
+    /// <returns>Nï¿½mero total de pï¿½ginas.</returns>
     public async Task<int> ObtenerTotalPaginas(
         DateTime? fechaInicio,
         DateTime? fechaFin,
@@ -180,21 +223,21 @@ public class AuditService
         int pageSize)
     {
         if (pageSize <= 0)
-            throw new ArgumentException("El tamaño de página debe ser mayor a 0", nameof(pageSize));
+            throw new ArgumentException("El tamaï¿½o de pï¿½gina debe ser mayor a 0", nameof(pageSize));
 
         var totalRegistros = await ObtenerTotalRegistrosLigero(fechaInicio, fechaFin, acciones, tiposObjetivo);
         return (int)Math.Ceiling(totalRegistros / (double)pageSize);
     }
 
     /// <summary>
-    /// Total de registros que coinciden con la búsqueda (mantiene enfoque previo).
+    /// Total de registros que coinciden con la bï¿½squeda (mantiene enfoque previo).
     /// </summary>
-    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <param name="searchTerm">Tï¿½rmino de bï¿½squeda.</param>
     /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
     /// <param name="fechaFin">Fecha de fin del filtro.</param>
     /// <param name="acciones">Lista de acciones a filtrar.</param>
     /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
-    /// <returns>Número total de registros que coinciden.</returns>
+    /// <returns>Nï¿½mero total de registros que coinciden.</returns>
     public async Task<int> ObtenerTotalRegistrosBusqueda(
         string searchTerm,
         DateTime? fechaInicio,
@@ -223,9 +266,9 @@ public class AuditService
     }
 
     /// <summary>
-    /// Obtiene todas las acciones únicas registradas.
+    /// Obtiene todas las acciones ï¿½nicas registradas.
     /// </summary>
-    /// <returns>Lista de acciones únicas.</returns>
+    /// <returns>Lista de acciones ï¿½nicas.</returns>
     public async Task<List<string>> ObtenerAccionesUnicas()
     {
         var snapshot = await _firestore.Collection(COLLECTION_NAME).GetSnapshotAsync();
@@ -239,9 +282,9 @@ public class AuditService
     }
 
     /// <summary>
-    /// Obtiene todos los tipos de objetivo únicos registrados.
+    /// Obtiene todos los tipos de objetivo ï¿½nicos registrados.
     /// </summary>
-    /// <returns>Lista de tipos objetivo únicos.</returns>
+    /// <returns>Lista de tipos objetivo ï¿½nicos.</returns>
     public async Task<List<string>> ObtenerTiposObjetivoUnicos()
     {
         var snapshot = await _firestore.Collection(COLLECTION_NAME).GetSnapshotAsync();
@@ -255,21 +298,21 @@ public class AuditService
     }
     #endregion
 
-    #region Métodos Privados
+    #region Mï¿½todos Privados
 
     /// <summary>
     /// Construye un query de Firestore aplicando filtros y orden.
     /// - Si hay filtros por rango de fecha, el primer OrderBy debe ser por "Timestamp" (requisito de Firestore).
     /// - Para orden por Timestamp, se agrega tie-breaker por DocumentId para orden estable.
-    /// - Para WhereIn (acciones, tipos), Firestore limita a 10 elementos; si hay más, filtra cliente.
-    /// - Si forCounting=true, evita aplicar OrderBy para reducir requisitos de índice.
+    /// - Para WhereIn (acciones, tipos), Firestore limita a 10 elementos; si hay mï¿½s, filtra cliente.
+    /// - Si forCounting=true, evita aplicar OrderBy para reducir requisitos de ï¿½ndice.
     /// </summary>
     /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
     /// <param name="fechaFin">Fecha de fin del filtro.</param>
     /// <param name="acciones">Lista de acciones a filtrar.</param>
     /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
-    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <param name="sortOrder">Direcciï¿½n del ordenamiento.</param>
     /// <param name="forCounting">Indica si el query es para contar registros.</param>
     /// <returns>Query de Firestore configurado.</returns>
     private Query ConstruirQueryAuditoria(
@@ -292,7 +335,7 @@ public class AuditService
 
         if (fechaFin.HasValue)
         {
-            // Fin de día inclusivo
+            // Fin de dï¿½a inclusivo
             var ffUtc = ToUtc(EndOfDay(fechaFin.Value));
             query = query.WhereLessThanOrEqualTo("Timestamp", ffUtc);
         }
@@ -304,7 +347,7 @@ public class AuditService
                 query = query.WhereEqualTo("Action", acciones[0]);
             else if (acciones.Count <= 10)
                 query = query.WhereIn("Action", acciones);
-            // Si > 10, no se aplica filtro aquí; se filtrará en memoria cuando corresponda.
+            // Si > 10, no se aplica filtro aquï¿½; se filtrarï¿½ en memoria cuando corresponda.
         }
 
         // Tipos objetivo
@@ -314,7 +357,7 @@ public class AuditService
                 query = query.WhereEqualTo("TargetType", tiposObjetivo[0]);
             else if (tiposObjetivo.Count <= 10)
                 query = query.WhereIn("TargetType", tiposObjetivo);
-            // Si > 10, no se aplica filtro aquí; se filtrará en memoria cuando corresponda.
+            // Si > 10, no se aplica filtro aquï¿½; se filtrarï¿½ en memoria cuando corresponda.
         }
 
         // Para conteo, evitar orden innecesario
@@ -332,7 +375,7 @@ public class AuditService
         if (rangoFechaActivo && sortLower != "timestamp")
         {
             query = descending ? query.OrderByDescending("Timestamp") : query.OrderBy("Timestamp");
-            // Segundo orden por el campo solicitado (puede requerir índice compuesto)
+            // Segundo orden por el campo solicitado (puede requerir ï¿½ndice compuesto)
             query = descending ? query.OrderByDescending(sortBy) : query.OrderBy(sortBy);
         }
         else
@@ -360,7 +403,7 @@ public class AuditService
     /// <param name="acciones">Lista de acciones a filtrar.</param>
     /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
-    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <param name="sortOrder">Direcciï¿½n del ordenamiento.</param>
     /// <returns>Lista de registros filtrados y ordenados.</returns>
     private async Task<List<AuditLog>> ObtenerRegistrosFiltrados(
         DateTime? fechaInicio,
@@ -400,20 +443,20 @@ public class AuditService
     }
 
     /// <summary>
-    /// Intenta contar registros usando agregación Count(); fallback a contar snapshot si no está disponible.
+    /// Intenta contar registros usando agregaciï¿½n Count(); fallback a contar snapshot si no estï¿½ disponible.
     /// </summary>
     /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
     /// <param name="fechaFin">Fecha de fin del filtro.</param>
     /// <param name="acciones">Lista de acciones a filtrar.</param>
     /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
-    /// <returns>Número total de registros.</returns>
+    /// <returns>Nï¿½mero total de registros.</returns>
     private async Task<long> ObtenerTotalRegistrosLigero(
         DateTime? fechaInicio,
         DateTime? fechaFin,
         List<string> acciones,
         List<string> tiposObjetivo)
     {
-        // Construir query sin orden para minimizar requisitos de índice
+        // Construir query sin orden para minimizar requisitos de ï¿½ndice
         var query = ConstruirQueryAuditoria(fechaInicio, fechaFin, acciones, tiposObjetivo, ORDEN_DEFECTO, DIRECCION_DEFECTO, forCounting: true);
 
         try
@@ -451,7 +494,7 @@ public class AuditService
     /// </summary>
     /// <param name="registros">Lista de registros a ordenar.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
-    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <param name="sortOrder">Direcciï¿½n del ordenamiento.</param>
     /// <returns>Lista ordenada.</returns>
     private static List<AuditLog> AplicarOrdenamiento(List<AuditLog> registros, string sortBy, string sortOrder)
     {
@@ -486,13 +529,30 @@ public class AuditService
     /// <returns>Objeto AuditLog mapeado.</returns>
     private static AuditLog MapearDocumentoAAuditLog(DocumentSnapshot documento)
     {
+        static Dictionary<string, string> LeerDiccionario(DocumentSnapshot doc, string campo)
+        {
+            if (!doc.ContainsField(campo)) return null;
+            try
+            {
+                var raw = doc.GetValue<Dictionary<string, object>>(campo);
+                if (raw == null) return null;
+                return raw.ToDictionary(kv => kv.Key, kv => kv.Value?.ToString() ?? "");
+            }
+            catch { return null; }
+        }
+
         return new AuditLog
         {
+            DocId = documento.Id,
             UserId = documento.ContainsField("UserId") ? documento.GetValue<string>("UserId") : null,
             UserEmail = documento.ContainsField("UserEmail") ? documento.GetValue<string>("UserEmail") : null,
             Action = documento.ContainsField("Action") ? documento.GetValue<string>("Action") : null,
             TargetId = documento.ContainsField("TargetId") ? documento.GetValue<string>("TargetId") : null,
             TargetType = documento.ContainsField("TargetType") ? documento.GetValue<string>("TargetType") : null,
+            NombreHistorico = documento.ContainsField("NombreHistorico") ? documento.GetValue<string>("NombreHistorico") : null,
+            Antes = LeerDiccionario(documento, "Antes"),
+            Despues = LeerDiccionario(documento, "Despues"),
+            ComparacionNoAplica = documento.ContainsField("ComparacionNoAplica") && documento.GetValue<bool>("ComparacionNoAplica"),
             Timestamp = documento.ContainsField("Timestamp")
                 ? documento.GetValue<Timestamp>("Timestamp").ToDateTime()
                 : DateTime.MinValue
@@ -500,27 +560,45 @@ public class AuditService
     }
 
     /// <summary>
-    /// Valida los parámetros de paginación.
+    /// Obtiene un registro de auditorÃ­a por su ID de documento Firestore.
+    /// Retorna null si no existe.
     /// </summary>
-    /// <param name="pageNumber">Número de página.</param>
-    /// <param name="pageSize">Tamaño de página.</param>
+    public async Task<AuditLog> ObtenerDetalle(string docId)
+    {
+        if (string.IsNullOrWhiteSpace(docId))
+            return null;
+
+        var docRef = _firestore.Collection(COLLECTION_NAME).Document(docId);
+        var snapshot = await docRef.GetSnapshotAsync();
+
+        if (!snapshot.Exists)
+            return null;
+
+        return MapearDocumentoAAuditLog(snapshot);
+    }
+
+    /// <summary>
+    /// Valida los parï¿½metros de paginaciï¿½n.
+    /// </summary>
+    /// <param name="pageNumber">Nï¿½mero de pï¿½gina.</param>
+    /// <param name="pageSize">Tamaï¿½o de pï¿½gina.</param>
     private static void ValidarParametrosPaginacion(int pageNumber, int pageSize)
     {
         if (pageNumber <= 0)
-            throw new ArgumentException("El número de página debe ser mayor a 0", nameof(pageNumber));
+            throw new ArgumentException("El nï¿½mero de pï¿½gina debe ser mayor a 0", nameof(pageNumber));
 
         if (pageSize <= 0)
-            throw new ArgumentException("El tamaño de página debe ser mayor a 0", nameof(pageSize));
+            throw new ArgumentException("El tamaï¿½o de pï¿½gina debe ser mayor a 0", nameof(pageSize));
     }
     #endregion
 
-    #region Métodos Auxiliares de Búsqueda
+    #region Mï¿½todos Auxiliares de Bï¿½squeda
 
     /// <summary>
-    /// Busca si el término está contenido en el texto.
+    /// Busca si el tï¿½rmino estï¿½ contenido en el texto.
     /// </summary>
     /// <param name="texto">Texto a buscar.</param>
-    /// <param name="termino">Término de búsqueda.</param>
+    /// <param name="termino">Tï¿½rmino de bï¿½squeda.</param>
     /// <returns>True si coincide.</returns>
     private static bool BuscarEnTexto(string texto, string termino)
     {
@@ -554,7 +632,7 @@ public class AuditService
     }
 
     /// <summary>
-    /// Normaliza el texto para búsqueda.
+    /// Normaliza el texto para bï¿½squeda.
     /// </summary>
     /// <param name="texto">Texto a normalizar.</param>
     /// <returns>Texto normalizado.</returns>
@@ -578,10 +656,10 @@ public class AuditService
     }
 
     /// <summary>
-    /// Busca si el término está contenido en la fecha.
+    /// Busca si el tï¿½rmino estï¿½ contenido en la fecha.
     /// </summary>
     /// <param name="fecha">Fecha a buscar.</param>
-    /// <param name="termino">Término de búsqueda.</param>
+    /// <param name="termino">Tï¿½rmino de bï¿½squeda.</param>
     /// <returns>True si coincide.</returns>
     private static bool BuscarEnFecha(DateTime fecha, string termino)
     {
@@ -608,7 +686,7 @@ public class AuditService
     }
 
     /// <summary>
-    /// Intenta parsear una fecha del término de búsqueda.
+    /// Intenta parsear una fecha del tï¿½rmino de bï¿½squeda.
     /// </summary>
     /// <param name="texto">Texto a parsear.</param>
     /// <param name="fecha">Fecha parseada.</param>
@@ -655,10 +733,10 @@ public class AuditService
     }
 
     /// <summary>
-    /// Obtiene el fin del día para una fecha.
+    /// Obtiene el fin del dï¿½a para una fecha.
     /// </summary>
     /// <param name="dt">Fecha.</param>
-    /// <returns>Fin del día.</returns>
+    /// <returns>Fin del dï¿½a.</returns>
     private static DateTime EndOfDay(DateTime dt)
     {
         var d = dt.Date.AddDays(1).AddTicks(-1);

@@ -565,7 +565,7 @@ Se establece una lista de los casos de uso al cual se le califica de acuerdo a l
 | **IRQ–07** | **Información sobre Paquetes de Servicios** | Paquetes que agrupan servicios con descuento. | Id, Nombre, Estado, Precio, PorcentajeDescuento, TiempoEstimado, ServiciosIds. |
 | **IRQ–08** | **Información sobre Lavados** | Historial de lavados, servicios, pagos y tiempos. | Id, Estado, ClienteId, VehiculoId, ServiciosDetalles, EmpleadosAsignados, Tiempos, Precio, Pago. |
 | **IRQ–09** | **Información sobre Turnos** | Agenda de turnos asignados. | Id, FechaHora, ClienteId, VehiculoId, ServiciosIds, DuracionEstimada, Estado. |
-| **IRQ–10** | **Información de Auditoría** | Registro inmutable de acciones. | UserId, UserEmail, Action, TargetId, TargetType, Timestamp. |
+| **IRQ–10** | **Información de Auditoría** | Registro de acciones y comparación histórica de campos auditables; consulta de solo lectura. | UserId, UserEmail, Action, TargetId, TargetType, Timestamp, NombreHistorico, Antes, Despues, ComparacionNoAplica; identificador documental DocId en lectura. |
 | **IRQ–11** | **Información de Configuración** | Parámetros globales del sistema. | Horarios, Capacidad, TiemposTolerancia, InfoLavadero, Descuentos. |
 | **IRQ–12** | **Información de Sesiones WhatsApp** | Estado de conversaciones con bots. | PhoneNumber, ClienteId, CurrentState, TemporaryData, LastActivity. |
 | **IRQ–13** | **Información sobre Insumos y Proveedores** | Almacenar datos de insumos (químicos, consumibles y herramientas), proveedores asociados, órdenes de compra emitidas y el historial cronológico inmutable de movimientos de stock (Kardex). | **Insumos:** Id, Nombre, TipoInsumo (QuimicoMedible, ConsumibleFisico, ActivoHerramienta), UnidadMedida, StockActual, StockMinimo, CantidadReabastecimiento, PermiteReabastecimientoAutomatico, ProveedoresIds, Estado.\<br\>**Proveedores:** Id, RazonSocial, CUIT, Telefono, Direccion, EmailOrdenes, Estado.\<br\>**Órdenes de Compra:** Id, GrupoSolicitudId, ProveedorId, ProveedorRazonSocial, FechaEmision, Estado (PendienteAprobacion, Enviada, Confirmada, Recibida, Cancelada), Detalles (InsumoId, InsumoNombre, CantidadPedida, PrecioUnitarioEstimado), Notas, MotivoCancelacion.\<br\>**Kardex (Movimientos):** Id, FechaHora, InsumoId, InsumoNombre, TipoMovimiento (IngresoManual, EgresoManual, ConsumoEtapa, RecepcionOrden, MermaCancelacion), Cantidad, SaldoResultante, UserId, JustificacionDesvio.\<br\>**Directivas de Configuración:** ModoEmisionAutomatica (EnvioDirecto, RequiereAprobacion), AsuntoEmail, EncabezadoEmail, NotasPredeterminadas. |
@@ -2975,10 +2975,10 @@ Se establece una lista de los casos de uso al cual se le califica de acuerdo a l
 |  | 1 | Se ejecuta el caso de uso CU-085 Consultar historial de auditoría. |
 |  | 2 | El administrador selecciona un registro de la lista. |
 |  | 3 | El sistema presenta el detalle completo del registro de auditoría. |
-|  | 4 | El sistema ofrece enlaces contextuales para navegar a la entidad afectada si continúa existiendo. |
+|  | 4 | El sistema abre un modal de solo lectura con contexto del evento y tabla Campo, Antes y Después, mostrando únicamente diferencias capturadas. No consulta el objeto actual para reconstruir el pasado. |
 | **Postcondición** | El administrador visualiza los detalles del evento. |  |
 | **Excepciones** | **Paso** | **Acción** |
-|  | 4a | Si la entidad vinculada fue eliminada, el sistema indica que la navegación no está disponible. |
+|  | 4a | Los registros anteriores sin captura informan que no hay información histórica; las sesiones nuevas indican que la comparación no aplica y los estados iguales informan que no hay cambios. La consulta no permite restaurar datos. |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
 |  | 3 | 500ms |
 | **Frecuencia** | Ocasional |  |
@@ -2997,16 +2997,16 @@ Se establece una lista de los casos de uso al cual se le califica de acuerdo a l
 |  | 1 | Se produce un evento relevante en el sistema. |
 |  | 2 | El sistema captura el contexto de la sesión, usuario y marca temporal. |
 |  | 3 | El sistema determina el tipo de acción y la entidad involucrada (incluyendo insumos, kardex y órdenes de compra). |
-|  | 4 | El sistema genera el registro de auditoría con la información del evento, usuario y entidad afectada. |
+|  | 4 | El sistema genera el evento con identificación histórica y valores auditables capturados antes de modificar y después del guardado. Excluye credenciales, tokens y claves secretas de asociación, pero permite IDs de relaciones y permisos. |
 |  | 5 | El sistema almacena el registro en el almacenamiento inmutable de auditoría. |
 | **Postcondición** | El evento queda asentado en la bitácora del sistema. |  |
 | **Excepciones** | **Paso** | **Acción** |
-|  | 5a | Si ocurre un fallo en el guardado, se asienta en los logs técnicos sin interrumpir la operación del usuario. |
+|  | 5a | El error de escritura se propaga al llamador y se procesa según el flujo existente. El cambio de negocio puede haberse guardado; esta versión no garantiza atomicidad ni revierte la operación. |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
 |  | 5 | \< 500ms (asíncrono) |
 | **Frecuencia** | Muy frecuente |  |
 | **Estabilidad** | Alta |  |
-| **Comentarios** | Se ejecuta de forma automática y asíncrona para no penalizar el rendimiento del sistema. |  |
+| **Comentarios** | La escritura se espera con await; no es una tarea desacoplada. La persistencia atómica entre negocio y auditoría queda para una entrega posterior. |  |
 
 #### **CU-089 \- Crear rol** {#cu-089---crear-rol}
 

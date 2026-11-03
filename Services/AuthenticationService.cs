@@ -124,7 +124,7 @@ namespace Firebase.Services
                     Role = employeeDoc.GetValue<string>("Rol")
                 };
 
-                await _auditService.LogEvent(
+                await _auditService.LogSessionEvent(
                 userId: userInfo.Uid,
                 userEmail: userInfo.Email,
                 action: "Inicio de sesión tradicional",
@@ -192,7 +192,8 @@ namespace Firebase.Services
                     request.Email,
                     "Registro de usuario (pendiente verificación)",
                     userRecord.Uid,
-                    "Empleado");
+                    "Empleado", new(),
+                    AuditCampos.CapturarEmpleado(await new PersonalService(_firestore).ObtenerEmpleado(userRecord.Uid) ?? throw new InvalidOperationException("Empleado no encontrado después de registrar.")));
 
                 // 5. Devolver éxito sin autenticar
                 return AuthenticationResult.Success(new UserInfo
@@ -305,6 +306,7 @@ namespace Firebase.Services
                             return AuthenticationResult.Failure("Su cuenta está inactiva. Por favor, contacte al administrador.");
                         }
 
+                        var antesMigracion = AuditCampos.CapturarEmpleado(await new PersonalService(_firestore).ObtenerEmpleado(existingEmployee.Id));
                         // Migrar: eliminar documento viejo y crear con UID correcto
                         await existingEmployee.Reference.DeleteAsync();
 
@@ -318,7 +320,8 @@ namespace Firebase.Services
                         };
                         await employeesCollection.Document(uid).SetAsync(migratedEmployee);
 
-                        await _auditService.LogEvent(uid, email, "Migración a Google Auth", uid, "Empleado");
+                        await _auditService.LogEvent(uid, email, "Migración a Google Auth", uid, "Empleado", antesMigracion,
+                            AuditCampos.CapturarEmpleado(await new PersonalService(_firestore).ObtenerEmpleado(uid) ?? throw new InvalidOperationException("Empleado no encontrado después de migrar.")));
                     }
                     else
                     {
@@ -336,7 +339,8 @@ namespace Firebase.Services
                         };
                         await employeesCollection.Document(uid).SetAsync(newEmployee);
 
-                        await _auditService.LogEvent(uid, email, "Registro con Google", uid, "Empleado");
+                        await _auditService.LogEvent(uid, email, "Registro con Google", uid, "Empleado", new(),
+                            AuditCampos.CapturarEmpleado(await new PersonalService(_firestore).ObtenerEmpleado(uid) ?? throw new InvalidOperationException("Empleado no encontrado después de registrar.")));
                     }
                 }
                 else
@@ -360,7 +364,7 @@ namespace Firebase.Services
                 };
 
                 // Registrar evento de auditoría
-                await _auditService.LogEvent(
+                await _auditService.LogSessionEvent(
                 userId: uid,
                 userEmail: email,
                 action: "Inicio de sesión con Google",

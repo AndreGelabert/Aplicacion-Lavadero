@@ -368,5 +368,13 @@ FodyWeavers.xsd
 
 # Persistent local emulator tooling (not application source)
 /.local/firebase-emulator/
+# Project-local Playwright browser and generated artifacts
+/.local/playwright-browsers/
+/.local/pnpm-store/
+/.local/npm-cache/
+/playwright-report/
+/test-results/
+/playwright/.auth/
+
 # Local AI runtime state
 .atl/

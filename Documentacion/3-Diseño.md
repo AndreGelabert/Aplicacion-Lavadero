@@ -2686,7 +2686,7 @@ A continuación se presenta el modelo de base de datos del sistema.
 | :---- | :---- | :---- |
 | **Objetivos asociados** | OBJ–07 Registro de Auditoría | |
 | **Requisitos asociados** | IRQ–10 Información de Auditoría | |
-| **Descripción** | El administrador visualiza el detalle completo de un registro de auditoría específico, incluyendo navegación a la entidad afectada. | |
+| **Descripción** | El administrador visualiza el detalle completo de un registro de auditoría específico, incluyendo comparación histórica en un modal de solo lectura. | |
 | **Precondición** | Se está consultando el historial de auditoría (dentro de CU-085). | |
 | **Secuencia normal** | **Paso** | **Acción** |
 | | 1 | Se ejecuta el caso de uso CU-085 Consultar historial de auditoría. |
@@ -2697,11 +2697,11 @@ A continuación se presenta el modelo de base de datos del sistema.
 | | 3c | Acción realizada (descripción completa). |
 | | 3d | Tipo de entidad afectada. |
 | | 3e | ID de la entidad afectada. |
-| | 4 | El sistema ofrece enlace para navegar a la entidad afectada (si existe). |
-| | 5 | El administrador puede hacer clic en el enlace para ver la entidad. |
+| | 4 | El modal muestra Campo, Antes y Después para las diferencias capturadas, junto con NombreHistorico y contexto del evento. Los valores se renderizan como texto, nunca como HTML. |
+| | 5 | El administrador cierra con el control de cierre o Escape; el foco vuelve al control de detalle. No se ofrecen acciones de restauración. |
 | **Postcondición** | El administrador visualiza el detalle del registro de auditoría. | |
 | **Excepciones** | **Paso** | **Acción** |
-| | 4a | Si la entidad fue eliminada, el sistema informa que no está disponible. |
+| | 4a | Sin mapas históricos se informa ausencia de datos; ComparacionNoAplica identifica sesiones nuevas; estados iguales indican ausencia de diferencias. Un identificador inexistente devuelve 404. |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
 | | 3 | 500ms |
 | **Frecuencia** | Ocasional | |
@@ -2729,15 +2729,17 @@ A continuación se presenta el modelo de base de datos del sistema.
 | | 4d | TargetId: ID de la entidad afectada. |
 | | 4e | TargetType: tipo de entidad. |
 | | 4f | Timestamp: fecha y hora actual. |
+| | 4g | NombreHistorico, Antes y Despues: proyecciones explícitas de los campos permitidos, capturadas en la operación y conservadas aunque cambie o desaparezca el objeto. |
+| | 4h | ComparacionNoAplica: indicador explícito para sesiones nuevas, con ambos mapas vacíos. Los eventos anteriores mantienen mapas ausentes, sin reconstrucción ficticia. |
 | | 5 | El sistema almacena el registro en la colección de auditoría. |
 | **Postcondición** | La acción ha sido registrada en el historial de auditoría. | |
 | **Excepciones** | **Paso** | **Acción** |
-| | 5a | Si hay un error al guardar, se registra en logs pero no se interrumpe la operación principal. |
+| | 5a | La escritura con await propaga el error al flujo llamador. Puede fallar después del guardado de negocio: no hay atomicidad ni reversión en esta entrega. |
 | **Rendimiento** | **Paso** | **Cota de tiempo** |
 | | 5 | < 500ms (asíncrono) |
 | **Frecuencia** | Muy frecuente | |
 | **Estabilidad** | Alta | |
-| **Comentarios** | El registro de auditoría no debe afectar el rendimiento de las operaciones principales. | |
+| **Comentarios** | Detalle protegido por autenticación y Auditoria.Consultar. Excluye secretos y conserva IDs de relación; escritura no desacoplada. Persistencia atómica pendiente de otra entrega. | |
 
 ---
 

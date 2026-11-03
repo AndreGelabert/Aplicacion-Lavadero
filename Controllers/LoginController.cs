@@ -315,7 +315,7 @@ public class LoginController : Controller
             if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(userEmail))
             {
                 var auditService = HttpContext.RequestServices.GetRequiredService<AuditService>();
-                await auditService.LogEvent(
+                await auditService.LogSessionEvent(
                     userId,
                     userEmail,
                     "Cerrar Sesión",
