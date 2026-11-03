@@ -82,13 +82,13 @@
             }
 
             if (term === '') {
-                reloadRolTable(1);
+                applyRolFilters();
                 return;
             }
 
             searchTimeout = setTimeout(() => {
                 searchTimeout = null;
-                reloadRolTable(1);
+                applyRolFilters();
             }, 400);
         });
     }
@@ -99,7 +99,7 @@
      * Configura los selectores de estado y ordenamiento.
      */
     function setupFilters() {
-        document.getElementById('rol-estado')?.addEventListener('change', () => reloadRolTable(1));
+        document.getElementById('rol-estado')?.addEventListener('change', () => applyRolFilters());
     }
 
     /**
@@ -121,7 +121,11 @@
      * Recarga la tabla de roles considerando búsqueda, filtros, orden y página.
      * @param {number} page
      */
-    function reloadRolTable(page) {
+    function applyRolFilters() {
+        window.Peticiones.filtrar('roles', () => reloadRolTable(1, true));
+    }
+
+    function reloadRolTable(page, filtering = false) {
         if (!document.getElementById('rol-table-container')) return Promise.resolve();
         const params = buildRolParams();
         const searchTerm = params.get('searchTerm');
@@ -129,18 +133,18 @@
         params.set('pageSize', '10');
 
         const url = (searchTerm ? '/Rol/SearchPartial?' : '/Rol/TablePartial?') + params.toString();
-        return loadTablePartial(url);
+        return loadTablePartial(url, filtering);
     }
 
     /**
      * Carga la tabla parcial vía fetch y reemplaza el contenedor.
      * @param {string} url
      */
-    function loadTablePartial(url) {
+    function loadTablePartial(url, filtering = false) {
         const requestSeq = ++tableRequestSeq;
         const antiCache = (url.includes('?') ? '&' : '?') + '_=' + Date.now();
 
-        return fetch(url + antiCache, {
+        return window.Peticiones.enviar(url + antiCache, {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Cache-Control': 'no-cache' },
             cache: 'no-store'
         })
@@ -149,7 +153,7 @@
                 return response.text();
             })
             .then(html => {
-                if (requestSeq !== tableRequestSeq) return;
+                if (requestSeq !== tableRequestSeq) throw new DOMException('Superseded', 'AbortError');
 
                 const container = document.getElementById('rol-table-container');
                 if (!container) return;
@@ -159,6 +163,7 @@
                 if (currentPage) container.dataset.currentPage = currentPage;
             })
             .catch(error => {
+                if (filtering) throw error;
                 if (requestSeq !== tableRequestSeq) return;
                 console.error('loadTablePartial error:', error);
                 showRolToast('Error al cargar los roles.', 'error');
@@ -254,7 +259,7 @@
             ? '/Rol/FormPartial?id=' + encodeURIComponent(id)
             : '/Rol/FormPartial';
 
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        window.Peticiones.enviar(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(response => {
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.text();
@@ -348,7 +353,7 @@
         const submitButton = form.querySelector('[type="submit"]');
         if (submitButton) submitButton.disabled = true;
 
-        fetch(form.action, {
+        window.Peticiones.enviar(form.action, {
             method: 'POST',
             body: new FormData(form),
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -398,31 +403,11 @@
             element.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
         });
 
-        const message = document.getElementById('rol-form-message');
-        if (message) {
-            message.textContent = '';
-            message.classList.add('hidden');
-            message.classList.remove('bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
-        }
     }
 
-    /**
-     * Muestra el mensaje global del formulario.
-     * @param {string} text
-     * @param {string} type
-     */
+    /** Routes form-level results through the shared notification component. */
     function showFormMessage(text, type) {
-        const message = document.getElementById('rol-form-message');
-        if (!message) return;
-
-        message.textContent = text;
-        message.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
-
-        if (type === 'success') {
-            message.classList.add('bg-green-100', 'text-green-800');
-        } else {
-            message.classList.add('bg-red-100', 'text-red-800');
-        }
+        window.Notificaciones.mostrar(text, type);
     }
 
     /**
@@ -535,22 +520,7 @@
      * @param {string} type "success" | "error"
      */
     function showRolToast(message, type) {
-        const container = document.getElementById('rol-toast-container');
-        const template = document.getElementById('rol-toast-template');
-        if (!container || !template) return;
-
-        const toast = template.content.firstElementChild.cloneNode(true);
-        const text = toast.querySelector('[data-toast-text]');
-        if (text) text.textContent = message;
-
-        if (type === 'success') {
-            toast.classList.add('text-green-800', 'bg-green-100', 'dark:bg-green-800', 'dark:text-green-200');
-        } else {
-            toast.classList.add('text-red-800', 'bg-red-100', 'dark:bg-red-800', 'dark:text-red-200');
-        }
-
-        container.appendChild(toast);
-        setTimeout(() => toast.remove(), 4000);
+        window.Notificaciones.mostrar(message, type);
     }
 
     window.showRolToast = showRolToast;
@@ -645,19 +615,7 @@
      * @param {string} mensaje
      */
     window.showRolBlockModal = function (mensaje) {
-        const text = document.getElementById('rol-block-message');
-        const modal = document.getElementById('rol-block-modal');
-
-        if (text) text.textContent = mensaje || '';
-        if (modal) showModal(modal);
-    };
-
-    /**
-     * Cierra el modal de bloqueo.
-     */
-    window.closeRolBlockModal = function () {
-        const modal = document.getElementById('rol-block-modal');
-        if (modal) hideModal(modal);
+        window.Notificaciones.aviso(mensaje || 'Acción no permitida.');
     };
 
     /**
@@ -680,7 +638,7 @@
             confirmButton.disabled = true;
 
             const reactivate = document.getElementById('rol-delete-modal')?.dataset.action === 'reactivar';
-            fetch(reactivate ? '/Rol/ReactivarRolAjax' : '/Rol/EliminarRolAjax', {
+            window.Peticiones.enviar(reactivate ? '/Rol/ReactivarRolAjax' : '/Rol/EliminarRolAjax', {
                 method: 'POST',
                 body: new FormData(form),
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },

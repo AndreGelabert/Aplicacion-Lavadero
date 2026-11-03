@@ -14,7 +14,11 @@ for (const action of ['CrearRolAjax', 'ActualizarRolAjax']) {
             getElementById: () => null,
             body: { contains: () => true }
         };
-        const window = { location: { reload: () => reloads++ } };
+        const window = {
+            location: { reload: () => reloads++ },
+            Notificaciones: { mostrar() {} },
+            Peticiones: { enviar: (...args) => context.fetch(...args) }
+        };
         const context = { window, document, console, FormData: class {}, fetch: async () => ({
             ok: true, json: async () => ({ success })
         }) };

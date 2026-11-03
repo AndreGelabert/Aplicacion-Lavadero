@@ -1,0 +1,17 @@
+@{
+    var messageKeys = new (string Key, string Type)[]
+    {
+        ("Success", "success"), ("SuccessMessage", "success"), ("ReviewMessage", "success"),
+        ("Error", "error"), ("ErrorMessage", "error"), ("ReviewError", "error"),
+        ("Warning", "warning"), ("Info", "info")
+    };
+}
+<div hidden id="server-notifications">
+    @foreach (var item in messageKeys)
+    {
+        if (TempData[item.Key] is string message && !string.IsNullOrWhiteSpace(message))
+        {
+            <span data-notification-type="@item.Type">@message</span>
+        }
+    }
+</div>

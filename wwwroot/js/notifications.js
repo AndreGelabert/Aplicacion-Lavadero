@@ -76,6 +76,15 @@
         return dismiss;
     }
 
+    function fromServer() {
+        document.querySelectorAll('#server-notifications [data-notification-type]').forEach(element => {
+            show(element.textContent, element.dataset.notificationType);
+            element.remove();
+        });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fromServer, { once: true });
+    else fromServer();
+
     window.Notificaciones = Object.freeze({
         mostrar: show,
         exito: message => show(message, 'success'),

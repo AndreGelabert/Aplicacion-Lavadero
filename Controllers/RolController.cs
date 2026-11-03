@@ -213,6 +213,7 @@ public class RolController : Controller
         var creado = await _rolService.ObtenerRol(id) ?? throw new InvalidOperationException("No se encontró el rol creado.");
         await RegistrarEvento("Alta Rol", id, new(), AuditCampos.CapturarRol(creado), creado.Nombre);
 
+        TempData["Success"] = "Rol creado exitosamente";
         return Json(new { success = true, message = "Rol creado exitosamente" });
     }
 
@@ -296,6 +297,7 @@ public class RolController : Controller
         var actualizado = await _rolService.ObtenerRol(rol.Id) ?? throw new InvalidOperationException("No se encontró el rol actualizado.");
         await RegistrarEvento("Modificacion Rol", rol.Id, antes, AuditCampos.CapturarRol(actualizado), actualizado.Nombre);
 
+        TempData["Success"] = "Rol actualizado exitosamente";
         return Json(new { success = true, message = "Rol actualizado exitosamente" });
     }
 

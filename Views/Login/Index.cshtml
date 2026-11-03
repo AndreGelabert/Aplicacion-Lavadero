@@ -1,4 +1,4 @@
-﻿@inject Microsoft.Extensions.Configuration.IConfiguration AppConfig
+@inject Microsoft.Extensions.Configuration.IConfiguration AppConfig
 @{
     var localEmulators = AppConfig["LocalEmulators:Enabled"] == "true";
 
@@ -78,21 +78,9 @@
                 </div>
                 <span id="password-validation-error" class="text-red-600 text-xs hidden"></span>
             </div>
-            @if (TempData["Error"] != null || ViewBag.Error != null)
+            @if (ViewBag.Error is string loginError)
             {
-                <div id="errorMessage" class="text-center text-red-600 bg-red-100 border border-red-400 rounded p-4 mt-4 transition-opacity duration-500">
-                    @(TempData["Error"] ?? ViewBag.Error)
-                </div>
-                <script>
-                    // Hacer que el mensaje desaparezca después de 5 segundos
-                    setTimeout(() => {
-                        const errorMsg = document.getElementById('errorMessage');
-                        if (errorMsg) {
-                            errorMsg.style.opacity = '0';
-                            setTimeout(() => errorMsg.remove(), 500);
-                        }
-                    }, 5000);
-                </script>
+                <div hidden id="login-server-error" data-login-error>@loginError</div>
             }
             
             <div class="flex items-center justify-between">
@@ -384,6 +372,17 @@
 </section>
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
+@await Html.PartialAsync("_NotificationMessages")
+<link rel="stylesheet" href="~/css/notifications.css" asp-append-version="true" />
+<script src="~/js/notifications.js" asp-append-version="true"></script>
+<script src="~/js/requests.js" asp-append-version="true"></script>
+<script>
+    const loginServerError = document.querySelector('[data-login-error]');
+    if (loginServerError) {
+        Notificaciones.error(loginServerError.textContent);
+        loginServerError.remove();
+    }
+</script>
 <script src="~/js/site.js" asp-append-version="true"></script>
 @if (!localEmulators)
 {
