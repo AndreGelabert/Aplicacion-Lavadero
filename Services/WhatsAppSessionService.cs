@@ -33,7 +33,7 @@ public class WhatsAppSessionService
             if (snapshot.Exists)
             {
                 var session = snapshot.ConvertTo<WhatsAppSession>();
-                _logger.LogInformation("📱 Sesión existente encontrada para {PhoneNumber}", phoneNumber);
+                _logger.LogInformation("WhatsApp session found");
                 return session;
             }
 
@@ -49,12 +49,12 @@ public class WhatsAppSessionService
             };
 
             await docRef.SetAsync(newSession);
-            _logger.LogInformation("✨ Nueva sesión creada para {PhoneNumber}", phoneNumber);
+            _logger.LogInformation("WhatsApp session created");
             return newSession;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al obtener/crear sesión para {PhoneNumber}", phoneNumber);
+            _logger.LogError("WhatsApp session lookup failed: {ExceptionType}", ex.GetType().Name);
             throw;
         }
     }
@@ -73,11 +73,11 @@ public class WhatsAppSessionService
                 { "LastInteraction", DateTime.UtcNow }
             });
 
-            _logger.LogInformation("🔄 Estado actualizado para {PhoneNumber}: {NewState}", phoneNumber, newState);
+            _logger.LogInformation("WhatsApp session state updated");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al actualizar estado de sesión para {PhoneNumber}", phoneNumber);
+            _logger.LogError("WhatsApp session update failed: {ExceptionType}", ex.GetType().Name);
             throw;
         }
     }
@@ -96,11 +96,11 @@ public class WhatsAppSessionService
             var docRef = _firestore.Collection(SESSIONS_COLLECTION).Document(phoneNumber);
             await docRef.SetAsync(session, SetOptions.Overwrite);
 
-            _logger.LogInformation("💾 Dato guardado en sesión {PhoneNumber}: {Key} = {Value}", phoneNumber, key, value);
+            _logger.LogInformation("WhatsApp session data saved");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al guardar dato temporal en sesión para {PhoneNumber}", phoneNumber);
+            _logger.LogError("WhatsApp session data save failed: {ExceptionType}", ex.GetType().Name);
             throw;
         }
     }
@@ -120,11 +120,11 @@ public class WhatsAppSessionService
                 { "LastInteraction", DateTime.UtcNow }
             });
 
-            _logger.LogInformation("🔐 Cliente {ClienteId} asociado a sesión {PhoneNumber}", clienteId, phoneNumber);
+            _logger.LogInformation("Client associated with WhatsApp session");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al asociar cliente a sesión para {PhoneNumber}", phoneNumber);
+            _logger.LogError("WhatsApp session association failed: {ExceptionType}", ex.GetType().Name);
             throw;
         }
     }
@@ -139,11 +139,11 @@ public class WhatsAppSessionService
             var docRef = _firestore.Collection(SESSIONS_COLLECTION).Document(phoneNumber);
             await docRef.DeleteAsync();
 
-            _logger.LogInformation("🗑️ Sesión eliminada para {PhoneNumber}", phoneNumber);
+            _logger.LogInformation("WhatsApp session deleted");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al eliminar sesión para {PhoneNumber}", phoneNumber);
+            _logger.LogError("WhatsApp session deletion failed: {ExceptionType}", ex.GetType().Name);
             throw;
         }
     }
@@ -164,13 +164,14 @@ public class WhatsAppSessionService
                 if (session.LastInteraction < thirtyMinutesAgo)
                 {
                     await doc.Reference.DeleteAsync();
-                    _logger.LogInformation("🧹 Sesión inactiva eliminada: {PhoneNumber}", session.Id);
+                    _logger.LogInformation("Inactive WhatsApp session deleted");
                 }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al limpiar sesiones inactivas");
+            _logger.LogError("WhatsApp session cleanup failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 }
