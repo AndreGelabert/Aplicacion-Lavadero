@@ -87,9 +87,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error editando nombre");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Intenta nuevamente.");
+            _logger.LogError("Client edit failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -134,9 +133,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error editando apellido");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Intenta nuevamente.");
+            _logger.LogError("Client edit failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -181,9 +179,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error editando email");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Intenta nuevamente.");
+            _logger.LogError("Client edit failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -270,8 +267,7 @@ public partial class WhatsAppFlowService
             // Guardar cambios en la base de datos
             await _clienteService.ActualizarCliente(cliente);
 
-            _logger.LogInformation("✏️ {Campo} de cliente {ClienteId} actualizado: {Anterior} → {Nuevo}",
-                campoEditado, session.ClienteId, valorAnterior, valorNuevo);
+            _logger.LogInformation("Client data updated");
 
             await _whatsAppService.SendTextMessage(phoneNumber,
                 $"✅ *{campoEditado} actualizado correctamente*\n\n" +
@@ -296,9 +292,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error aplicando cambios al cliente");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error al guardar los cambios. Intenta nuevamente.");
+            _logger.LogError("Client update failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 

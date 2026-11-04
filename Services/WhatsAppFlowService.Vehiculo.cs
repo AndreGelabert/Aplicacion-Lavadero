@@ -86,7 +86,7 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error iniciando registro de vehículo");
+            _logger.LogError("Vehicle registration failed: {ExceptionType}", ex.GetType().Name);
             throw;
         }
     }
@@ -686,8 +686,7 @@ public partial class WhatsAppFlowService
             cliente.VehiculosIds.Add(vehiculo.Id);
             await _clienteService.ActualizarCliente(cliente);
 
-            _logger.LogInformation("✅ Vehículo creado exitosamente: {VehiculoId} para cliente {ClienteId}",
-                vehiculo.Id, cliente.Id);
+            _logger.LogInformation("Vehicle created");
 
             // Limpiar datos temporales del vehículo
             session.TemporaryData.Remove("VehiculoPatente");
@@ -723,9 +722,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creando vehículo desde sesión");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error al registrar el vehículo. Por favor, intenta nuevamente más tarde.");
+            _logger.LogError("Vehicle creation failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -993,8 +991,7 @@ public partial class WhatsAppFlowService
                 await _clienteService.ActualizarCliente(cliente);
             }
 
-            _logger.LogInformation("🔗 Cliente {ClienteId} asociado al vehículo {VehiculoId} ({Patente})",
-                session.ClienteId, vehiculoId, vehiculoPatente);
+            _logger.LogInformation("Vehicle associated");
 
             // Limpiar datos temporales
             session.TemporaryData.Remove("AsociarVehiculoId");
@@ -1019,9 +1016,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error asociando vehículo a cliente");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Por favor, intenta nuevamente.");
+            _logger.LogError("Vehicle association failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -1088,8 +1084,7 @@ public partial class WhatsAppFlowService
             vehiculo.ClaveAsociacionHash = nuevoHash;
             await _vehiculoService.ActualizarVehiculo(vehiculo);
 
-            _logger.LogInformation("🔑 Nueva clave de asociación generada para vehículo {Patente} por cliente {ClienteId}",
-                vehiculo.Patente, session.ClienteId);
+            _logger.LogInformation("Vehicle association key rotated");
 
             await _whatsAppService.SendTextMessage(phoneNumber,
                 $"✅ *Nueva clave de asociación generada*\n\n" +
@@ -1106,9 +1101,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error regenerando clave de asociación");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Por favor, intenta nuevamente.");
+            _logger.LogError("Vehicle key rotation failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 }

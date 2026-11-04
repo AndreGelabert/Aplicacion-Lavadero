@@ -53,8 +53,7 @@ public partial class WhatsAppFlowService
             // Obtener o crear sesión
             var session = await _sessionService.GetOrCreateSession(phoneNumber);
 
-            _logger.LogInformation("📊 Estado de sesión: {State} | Cliente: {ClienteId}", 
-                session.CurrentState, session.ClienteId ?? "NULL");
+            _logger.LogInformation("WhatsApp session loaded");
 
             // Si es el PRIMER mensaje (estado INICIO), verificar si el cliente ya existe
             if (session.CurrentState == WhatsAppFlowStates.INICIO)
@@ -84,9 +83,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error procesando mensaje de {PhoneNumber}", phoneNumber);
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error al procesar tu mensaje. Por favor, intenta nuevamente o escribe REINICIAR.");
+            _logger.LogError("WhatsApp flow failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -97,7 +95,7 @@ public partial class WhatsAppFlowService
     {
         try
         {
-            _logger.LogInformation("🔵 Iniciando contacto para {PhoneNumber}", phoneNumber);
+            _logger.LogInformation("WhatsApp initial contact");
             
             // Buscar si ya existe un cliente con este teléfono
             var clienteExistente = await BuscarClientePorTelefono(phoneNumber);
@@ -105,8 +103,7 @@ public partial class WhatsAppFlowService
             if (clienteExistente != null)
             {
                 // ✅ CLIENTE REGISTRADO → Iniciar sesión automáticamente
-                _logger.LogInformation("✅ Cliente existente encontrado: {ClienteId} - {Nombre}", 
-                    clienteExistente.Id, clienteExistente.NombreCompleto);
+                _logger.LogInformation("Existing client found");
 
                 await _sessionService.AssociateClienteToSession(phoneNumber, clienteExistente.Id);
 
@@ -141,7 +138,7 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en HandleInitialContact para {PhoneNumber}", phoneNumber);
+            _logger.LogError("Initial contact failed: {ExceptionType}", ex.GetType().Name);
             throw;
         }
     }
@@ -159,9 +156,7 @@ public partial class WhatsAppFlowService
             var telefonoNormalizado = PhoneNumberHelper.NormalizePhoneNumber(phoneNumber);
             var telefonoSinCodigo = PhoneNumberHelper.RemoveCountryCode(telefonoNormalizado);
             
-            _logger.LogInformation("🔍 Buscando cliente:");
-            _logger.LogInformation("   📱 Número de WhatsApp: {WhatsAppPhone}", telefonoNormalizado);
-            _logger.LogInformation("   📱 Número sin código/9: {LocalPhone}", telefonoSinCodigo);
+            _logger.LogInformation("Looking up WhatsApp client");
 
             // Obtener todos los clientes activos
             var clientes = await _clienteService.ObtenerClientes("", 1, 1000, "Nombre", "asc", new List<string> { "Activo" });
@@ -173,8 +168,7 @@ public partial class WhatsAppFlowService
                 
                 if (esIgual)
                 {
-                    _logger.LogInformation("✅ Cliente encontrado: {ClienteId} - {Nombre} - Tel DB: {TelDB}", 
-                        c.Id, c.NombreCompleto, c.Telefono);
+                    _logger.LogInformation("WhatsApp client found");
                 }
                 
                 return esIgual;
@@ -182,18 +176,15 @@ public partial class WhatsAppFlowService
 
             if (cliente == null)
             {
-                _logger.LogInformation("❌ No se encontró cliente con el teléfono: {Phone}", phoneNumber);
-                _logger.LogInformation("   Clientes revisados: {Count}", clientes.Count);
-                _logger.LogInformation("   Primeros 3 teléfonos en DB: {Phones}", 
-                    string.Join(", ", clientes.Take(3).Select(c => c.Telefono)));
+                _logger.LogInformation("WhatsApp client not found");
             }
 
             return cliente;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error buscando cliente por teléfono");
-            return null;
+            _logger.LogError("Client lookup failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -265,7 +256,7 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error iniciando registro de cliente");
+            _logger.LogError("Client registration failed: {ExceptionType}", ex.GetType().Name);
             throw;
         }
     }
@@ -418,7 +409,7 @@ public partial class WhatsAppFlowService
                     break;
 
                 default:
-                    _logger.LogWarning("⚠️ Estado desconocido: {State}", state);
+                    _logger.LogWarning("Unknown WhatsApp session state");
                     await _whatsAppService.SendTextMessage(phoneNumber,
                         "⚠️ Parece que algo salió mal.\n\n" +
                         "Escribe *REINICIAR* para volver al inicio.");
@@ -427,9 +418,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error procesando estado {State} para {PhoneNumber}", state, phoneNumber);
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Por favor, intenta nuevamente o escribe 'MENÚ' para reiniciar.");
+            _logger.LogError("WhatsApp state processing failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 

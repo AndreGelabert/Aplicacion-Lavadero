@@ -53,9 +53,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error mostrando vehículos para modificar");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Intenta nuevamente.");
+            _logger.LogError("Vehicle operation failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -109,9 +108,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error procesando selección de vehículo");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Intenta nuevamente.");
+            _logger.LogError("Vehicle selection failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -301,9 +299,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error verificando desvinculación de vehículo");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Intenta nuevamente.");
+            _logger.LogError("Vehicle unlink validation failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -352,9 +349,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error verificando eliminación de vehículo");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Intenta nuevamente.");
+            _logger.LogError("Vehicle deletion validation failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -422,8 +418,7 @@ public partial class WhatsAppFlowService
                 await _clienteService.ActualizarCliente(cliente);
             }
 
-            _logger.LogInformation("🔗 Cliente {ClienteId} desvinculado del vehículo {Patente}",
-                session.ClienteId, patente);
+            _logger.LogInformation("Vehicle unlinked");
 
             await _whatsAppService.SendTextMessage(phoneNumber,
                 $"✅ *Vehículo desvinculado correctamente*\n\n" +
@@ -435,9 +430,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error desvinculando vehículo");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error al desvincular el vehículo. Intenta nuevamente.");
+            _logger.LogError("Vehicle unlink failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -481,8 +475,7 @@ public partial class WhatsAppFlowService
 
             await _vehiculoService.ActualizarVehiculo(vehiculo);
 
-            _logger.LogInformation("✏️ Modelo de vehículo {Patente} actualizado: {Anterior} → {Nuevo}",
-                vehiculo.Patente, modeloAnterior, nuevoModelo);
+            _logger.LogInformation("Vehicle model updated");
 
             await _whatsAppService.SendTextMessage(phoneNumber,
                 $"✅ *Modelo actualizado correctamente*\n\n" +
@@ -496,9 +489,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error modificando modelo de vehículo");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Intenta nuevamente.");
+            _logger.LogError("Vehicle model update failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -533,8 +525,7 @@ public partial class WhatsAppFlowService
 
             await _vehiculoService.ActualizarVehiculo(vehiculo);
 
-            _logger.LogInformation("🎨 Color de vehículo {Patente} actualizado: {Anterior} → {Nuevo}",
-                vehiculo.Patente, colorAnterior, nuevoColor);
+            _logger.LogInformation("Vehicle color updated");
 
             await _whatsAppService.SendTextMessage(phoneNumber,
                 $"✅ *Color actualizado correctamente*\n\n" +
@@ -548,9 +539,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error modificando color de vehículo");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Intenta nuevamente.");
+            _logger.LogError("Vehicle color update failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -602,9 +592,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error mostrando confirmación de regenerar clave");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Intenta nuevamente.");
+            _logger.LogError("Vehicle key confirmation failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 

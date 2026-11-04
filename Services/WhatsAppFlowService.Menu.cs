@@ -115,9 +115,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error mostrando menú de vehículos");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Por favor, intenta nuevamente.");
+            _logger.LogError("Vehicle menu failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -212,9 +211,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error mostrando datos del cliente");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error al cargar tus datos. Por favor, intenta nuevamente.");
+            _logger.LogError("Client data display failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -253,9 +251,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error mostrando menú de edición");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error. Intenta nuevamente.");
+            _logger.LogError("Client edit menu failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 

@@ -42,14 +42,11 @@ public class WhatsAppWebhookController : ControllerBase
         [FromQuery(Name = "hub.verify_token")] string token,
         [FromQuery(Name = "hub.challenge")] string challenge)
     {
-        _logger.LogInformation("🔍 Verificación de webhook recibida");
-        _logger.LogInformation("   Mode: {Mode}", mode);
-        _logger.LogInformation("   Token recibido: {Token}", token);
-        _logger.LogInformation("   Token esperado: {ExpectedToken}", _settings.VerifyToken);
+        _logger.LogInformation("WhatsApp webhook verification received");
 
         if (mode == "subscribe" && token == _settings.VerifyToken)
         {
-            _logger.LogInformation("✅ Verificación exitosa. Challenge: {Challenge}", challenge);
+            _logger.LogInformation("WhatsApp webhook verification succeeded");
             return Ok(challenge); // Devolver el challenge tal cual (sin JSON)
         }
 
@@ -63,64 +60,102 @@ public class WhatsAppWebhookController : ControllerBase
     [HttpPost("webhook")]
     public async Task<IActionResult> ReceiveMessage([FromBody] JsonElement body)
     {
+        using var requestScope = _logger.BeginScope(new Dictionary<string, object> { ["WhatsAppRequestId"] = Guid.NewGuid().ToString("N") });
         try
         {
-            var bodyJson = body.GetRawText();
-            _logger.LogInformation("📨 Webhook recibido:");
-            _logger.LogInformation(bodyJson);
-
-            // Deserializar el payload
             var options = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             };
 
-            var payload = JsonSerializer.Deserialize<WhatsAppWebhookPayload>(bodyJson, options);
+            var messageValues = new List<WhatsAppValue>();
 
-            if (payload?.Entry == null || !payload.Entry.Any())
+            // Validate the entire batch before performing any message side effects.
+            if (body.ValueKind != JsonValueKind.Object ||
+                !body.TryGetProperty("entry", out var entries) ||
+                entries.ValueKind != JsonValueKind.Array)
             {
-                _logger.LogWarning("⚠️ Payload vacío o sin entries");
-                return Ok();
+                _logger.LogWarning("Invalid WhatsApp webhook envelope: expected an entry array");
+                return BadRequest();
             }
 
             // Procesar cada entrada
-            foreach (var entry in payload.Entry)
+            foreach (var entry in entries.EnumerateArray())
             {
-                foreach (var change in entry.Changes ?? new List<WhatsAppChange>())
+                if (entry.ValueKind != JsonValueKind.Object ||
+                    !entry.TryGetProperty("changes", out var changes) ||
+                    changes.ValueKind != JsonValueKind.Array)
                 {
-                    if (change.Field != "messages") continue;
+                    _logger.LogWarning("Invalid WhatsApp webhook entry: expected a changes array");
+                    return BadRequest();
+                }
 
-                    var value = change.Value;
-
-                    // Procesar mensajes entrantes
-                    if (value.Messages != null && value.Messages.Any())
+                foreach (var change in changes.EnumerateArray())
+                {
+                    if (change.ValueKind != JsonValueKind.Object ||
+                        !change.TryGetProperty("field", out var field) ||
+                        field.ValueKind != JsonValueKind.String)
                     {
-                        foreach (var message in value.Messages)
-                        {
-                            await ProcessIncomingMessage(message);
-                        }
+                        _logger.LogWarning("Invalid WhatsApp webhook change: expected a field name");
+                        return BadRequest();
                     }
 
-                    // Procesar cambios de estado (opcional: logging)
-                    if (value.Statuses != null && value.Statuses.Any())
+                    if (field.GetString() != "messages")
                     {
-                        foreach (var status in value.Statuses)
+                        _logger.LogDebug("Ignoring non-message WhatsApp webhook event");
+                        continue;
+                    }
+
+                    WhatsAppValue? value;
+                    try
+                    {
+                        if (!change.TryGetProperty("value", out var rawValue) ||
+                            rawValue.ValueKind != JsonValueKind.Object)
                         {
-                            _logger.LogInformation(
-                                "📊 Estado de mensaje {MessageId}: {Status}",
-                                status.Id,
-                                status.Status);
+                            _logger.LogWarning("Invalid WhatsApp messages event: expected a value object");
+                            return BadRequest();
                         }
+
+                        value = rawValue.Deserialize<WhatsAppValue>(options);
+                    }
+                    catch (JsonException)
+                    {
+                        _logger.LogWarning("Invalid WhatsApp messages event: message schema validation failed");
+                        return BadRequest();
+                    }
+
+                    if (value == null) return BadRequest();
+                    messageValues.Add(value);
+                }
+            }
+
+            foreach (var value in messageValues)
+            {
+                // Procesar mensajes entrantes
+                if (value.Messages != null && value.Messages.Any())
+                {
+                    foreach (var message in value.Messages)
+                    {
+                        await ProcessIncomingMessage(message);
+                    }
+                }
+
+                // Procesar cambios de estado (opcional: logging)
+                if (value.Statuses != null && value.Statuses.Any())
+                {
+                    foreach (var status in value.Statuses)
+                    {
+                        _logger.LogInformation("WhatsApp message status event received");
                     }
                 }
             }
 
-            return Ok(); // SIEMPRE responder 200 OK
+            return Ok();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error procesando webhook");
-            return Ok(); // Aún con error, responder 200 para evitar reintentos de Meta
+            _logger.LogError("Error procesando webhook: {ExceptionType}", ex.GetType().Name);
+            return StatusCode(500);
         }
     }
 
@@ -129,6 +164,10 @@ public class WhatsAppWebhookController : ControllerBase
     /// </summary>
     private async Task ProcessIncomingMessage(WhatsAppIncomingMessage message)
     {
+        var correlationId = string.IsNullOrEmpty(message.Id)
+            ? Guid.NewGuid().ToString("N")
+            : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(message.Id)));
+        using var messageScope = _logger.BeginScope(new Dictionary<string, object> { ["WhatsAppMessageId"] = correlationId });
         try
         {
             var phoneNumber = message.From;
@@ -146,46 +185,44 @@ public class WhatsAppWebhookController : ControllerBase
                 {
                     // Usar el ID del botón como contenido del mensaje
                     messageBody = message.Interactive.ButtonReply.Id;
-                    _logger.LogInformation("🔘 Botón presionado: {ButtonId} - {ButtonTitle}", 
-                        message.Interactive.ButtonReply.Id, 
-                        message.Interactive.ButtonReply.Title);
                 }
                 else if (message.Interactive.Type == "list_reply" && message.Interactive.ListReply != null)
                 {
                     // Usuario seleccionó una opción de lista
                     messageBody = message.Interactive.ListReply.Id;
-                    _logger.LogInformation("📋 Opción de lista seleccionada: {ListId} - {ListTitle}",
-                        message.Interactive.ListReply.Id,
-                        message.Interactive.ListReply.Title);
                 }
             }
             else if (message.Type == "button" && message.Button != null)
             {
                 // Formato alternativo de botones
                 messageBody = message.Button.Payload ?? message.Button.Text;
-                _logger.LogInformation("🔘 Botón presionado (formato alternativo): {Payload}", messageBody);
             }
 
             if (string.IsNullOrEmpty(messageBody))
             {
-                _logger.LogInformation("⏭️ Mensaje de tipo {Type} no soportado o sin contenido", message.Type);
+                _logger.LogInformation("WhatsApp message unsupported or empty");
                 return;
             }
 
-            _logger.LogInformation("💬 Mensaje recibido:");
-            _logger.LogInformation("   📱 Número original: {PhoneNumber}", phoneNumber);
-            _logger.LogInformation("   📝 Tipo: {Type}", message.Type);
-            _logger.LogInformation("   💬 Contenido: {Message}", messageBody);
+            _logger.LogInformation("WhatsApp message received");
 
-            // Marcar como leído (mejora UX)
-            await _whatsAppService.MarkMessageAsRead(message.Id);
+            // A failed read receipt must not prevent the reply flow.
+            try
+            {
+                await _whatsAppService.MarkMessageAsRead(message.Id);
+            }
+            catch (WhatsAppOperationException ex)
+            {
+                _logger.LogWarning("WhatsApp read receipt failed: {Classification} {StatusCode}", ex.Classification, ex.StatusCode);
+            }
 
             // Procesar el mensaje con el servicio de flujos
             await _flowService.ProcessMessage(phoneNumber, messageBody);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error procesando mensaje individual");
+            _logger.LogError("WhatsApp message processing failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 }

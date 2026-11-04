@@ -279,8 +279,6 @@ public partial class WhatsAppFlowService
             var telefonoParaDB = PhoneNumberHelper.RemoveCountryCode(phoneNumber);
             
             _logger.LogInformation("💾 Creando cliente y vehículo:");
-            _logger.LogInformation("   📱 Teléfono WhatsApp: {WhatsAppPhone}", phoneNumber);
-            _logger.LogInformation("   📱 Teléfono para DB: {DBPhone}", telefonoParaDB);
             
             // 1. Crear cliente primero
             var cliente = new Cliente
@@ -297,7 +295,7 @@ public partial class WhatsAppFlowService
             };
 
             await _clienteService.CrearCliente(cliente);
-            _logger.LogInformation("✅ Cliente creado exitosamente: {ClienteId}", cliente.Id);
+            _logger.LogInformation("Client created");
 
             // 2. Asociar cliente a la sesión
             await _sessionService.AssociateClienteToSession(phoneNumber, cliente.Id);
@@ -327,8 +325,7 @@ public partial class WhatsAppFlowService
             cliente.VehiculosIds.Add(vehiculo.Id);
             await _clienteService.ActualizarCliente(cliente);
 
-            _logger.LogInformation("✅ Vehículo creado exitosamente: {VehiculoId} para cliente {ClienteId}",
-                vehiculo.Id, cliente.Id);
+            _logger.LogInformation("Vehicle created");
 
             // 5. Limpiar datos temporales
             LimpiarDatosTemporalesRegistro(session);
@@ -363,11 +360,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creando cliente y vehículo desde sesión");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error al crear tu registro. Por favor, intenta nuevamente más tarde.");
-
-            await _sessionService.ClearSession(phoneNumber);
+            _logger.LogError("Client and vehicle registration failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
@@ -406,7 +400,7 @@ public partial class WhatsAppFlowService
             };
 
             await _clienteService.CrearCliente(cliente);
-            _logger.LogInformation("✅ Cliente creado exitosamente: {ClienteId}", cliente.Id);
+            _logger.LogInformation("Client created");
 
             // 2. Asociar cliente a la sesión
             await _sessionService.AssociateClienteToSession(phoneNumber, cliente.Id);
@@ -428,8 +422,7 @@ public partial class WhatsAppFlowService
                 ? $"{vehiculo.Marca} {vehiculo.Modelo} - {vehiculo.Patente}" 
                 : "Vehículo asociado";
 
-            _logger.LogInformation("🔗 Cliente {ClienteId} asociado al vehículo {VehiculoId}",
-                cliente.Id, vehiculoId);
+            _logger.LogInformation("Client linked to vehicle");
 
             // 5. Limpiar datos temporales
             LimpiarDatosTemporalesRegistro(session);
@@ -450,11 +443,8 @@ public partial class WhatsAppFlowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creando cliente y asociando vehículo");
-            await _whatsAppService.SendTextMessage(phoneNumber,
-                "❌ Ocurrió un error al crear tu registro. Por favor, intenta nuevamente más tarde.");
-
-            await _sessionService.ClearSession(phoneNumber);
+            _logger.LogError("Client and vehicle association failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 
