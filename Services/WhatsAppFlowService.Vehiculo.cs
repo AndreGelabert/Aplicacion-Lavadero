@@ -84,7 +84,7 @@ public partial class WhatsAppFlowService
                     options);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Vehicle registration failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -720,7 +720,7 @@ public partial class WhatsAppFlowService
             await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO);
             await ShowClienteMenu(phoneNumber, cliente.Nombre);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Vehicle creation failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -1014,7 +1014,7 @@ public partial class WhatsAppFlowService
                 await ShowClienteMenu(phoneNumber, cliente.Nombre);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Vehicle association failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -1099,7 +1099,7 @@ public partial class WhatsAppFlowService
             await Task.Delay(1000);
             await MostrarMenuVehiculos(phoneNumber, session);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Vehicle key rotation failed: {ExceptionType}", ex.GetType().Name);
             throw;

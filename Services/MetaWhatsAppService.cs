@@ -69,20 +69,51 @@ public class MetaWhatsAppService
             {
                 var status = (int)response.StatusCode;
                 var classification = status is 401 or 403 ? "auth" : status == 429 || status >= 500 ? "transient" : "permanent";
-                throw new WhatsAppOperationException(operation, classification, status);
+                var (code, subcode) = await ReadDiagnostics(response.Content);
+                throw new WhatsAppOperationException(operation, classification, status, code, subcode);
             }
             _logger.LogInformation("WhatsApp operation {Operation} succeeded", operation);
             return true;
         }
-        catch (WhatsAppOperationException ex)
+        catch (WhatsAppOperationException)
         {
-            _logger.LogWarning("WhatsApp operation {Operation} failed: {Classification} {StatusCode}", ex.Operation, ex.Classification, ex.StatusCode);
             throw;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
             _logger.LogWarning("WhatsApp operation {Operation} failed: uncertain transport ({ExceptionType})", operation, ex.GetType().Name);
             throw new WhatsAppOperationException(operation, "uncertain transport");
+        }
+    }
+
+    private static async Task<(int? Code, int? Subcode)> ReadDiagnostics(HttpContent content)
+    {
+        const int limit = 16384;
+        try
+        {
+            if (content.Headers.ContentLength > limit) return (null, null);
+            await using var stream = await content.ReadAsStreamAsync();
+            var buffer = new byte[limit + 1];
+            var count = 0;
+            while (count < buffer.Length)
+            {
+                var read = await stream.ReadAsync(buffer.AsMemory(count));
+                if (read == 0) break;
+                count += read;
+            }
+            if (count > limit) return (null, null);
+            using var json = JsonDocument.Parse(buffer.AsMemory(0, count));
+            if (json.RootElement.ValueKind != JsonValueKind.Object ||
+                !json.RootElement.TryGetProperty("error", out var error) || error.ValueKind != JsonValueKind.Object)
+                return (null, null);
+            static int? Number(JsonElement element, string name) =>
+                element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number) ? number : null;
+            return (Number(error, "code"), Number(error, "error_subcode"));
+        }
+        catch (Exception)
+        {
+            // Diagnostics must never replace the classified HTTP failure.
+            return (null, null);
         }
     }
 }

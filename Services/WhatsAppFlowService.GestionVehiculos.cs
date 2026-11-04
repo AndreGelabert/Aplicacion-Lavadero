@@ -51,7 +51,7 @@ public partial class WhatsAppFlowService
             
             await _whatsAppService.SendTextMessage(phoneNumber, mensaje);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Vehicle operation failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -106,7 +106,7 @@ public partial class WhatsAppFlowService
             // Mostrar menú de opciones para este vehículo
             await MostrarMenuModificarVehiculo(phoneNumber, vehiculo);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Vehicle selection failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -297,7 +297,7 @@ public partial class WhatsAppFlowService
             await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.CONFIRMAR_ELIMINAR_VEHICULO);
             await _whatsAppService.SendTextMessage(phoneNumber, mensaje);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Vehicle unlink validation failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -347,7 +347,7 @@ public partial class WhatsAppFlowService
             await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.CONFIRMAR_ELIMINAR_VEHICULO);
             await _whatsAppService.SendTextMessage(phoneNumber, mensaje);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Vehicle deletion validation failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -428,7 +428,7 @@ public partial class WhatsAppFlowService
             await Task.Delay(1000);
             await MostrarMenuVehiculos(phoneNumber, session);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Vehicle unlink failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -487,7 +487,7 @@ public partial class WhatsAppFlowService
             await Task.Delay(1000);
             await MostrarMenuVehiculos(phoneNumber, session);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Vehicle model update failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -537,7 +537,7 @@ public partial class WhatsAppFlowService
             await Task.Delay(1000);
             await MostrarMenuVehiculos(phoneNumber, session);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Vehicle color update failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -590,7 +590,7 @@ public partial class WhatsAppFlowService
                 $"¿Deseás continuar?\n\n" +
                 $"Responde *SÍ* para generar la nueva clave o *NO* para cancelar.");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Vehicle key confirmation failed: {ExceptionType}", ex.GetType().Name);
             throw;

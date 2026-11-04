@@ -152,6 +152,11 @@ public class WhatsAppWebhookController : ControllerBase
 
             return Ok();
         }
+        catch (WhatsAppOperationException ex)
+        {
+            _logger.LogError("WhatsApp webhook failed: {Operation} {Classification} {StatusCode} {MetaErrorCode} {MetaErrorSubcode}", ex.Operation, ex.Classification, ex.StatusCode, ex.MetaErrorCode, ex.MetaErrorSubcode);
+            return StatusCode(500, new { message = "WhatsApp processing failed", operation = ex.Operation, classification = ex.Classification, upstreamStatus = ex.StatusCode, metaErrorCode = ex.MetaErrorCode, metaErrorSubcode = ex.MetaErrorSubcode });
+        }
         catch (Exception ex)
         {
             _logger.LogError("Error procesando webhook: {ExceptionType}", ex.GetType().Name);
@@ -213,12 +218,13 @@ public class WhatsAppWebhookController : ControllerBase
             }
             catch (WhatsAppOperationException ex)
             {
-                _logger.LogWarning("WhatsApp read receipt failed: {Classification} {StatusCode}", ex.Classification, ex.StatusCode);
+                _logger.LogWarning("WhatsApp read receipt failed: {Classification} {StatusCode} {MetaErrorCode} {MetaErrorSubcode}", ex.Classification, ex.StatusCode, ex.MetaErrorCode, ex.MetaErrorSubcode);
             }
 
             // Procesar el mensaje con el servicio de flujos
             await _flowService.ProcessMessage(phoneNumber, messageBody);
         }
+        catch (WhatsAppOperationException) { throw; }
         catch (Exception ex)
         {
             _logger.LogError("WhatsApp message processing failed: {ExceptionType}", ex.GetType().Name);

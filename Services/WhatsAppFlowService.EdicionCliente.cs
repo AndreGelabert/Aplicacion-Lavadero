@@ -85,7 +85,7 @@ public partial class WhatsAppFlowService
             await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.CONFIRMAR_EDICION);
             await _whatsAppService.SendTextMessage(phoneNumber, mensaje);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Client edit failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -131,7 +131,7 @@ public partial class WhatsAppFlowService
             await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.CONFIRMAR_EDICION);
             await _whatsAppService.SendTextMessage(phoneNumber, mensaje);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Client edit failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -177,7 +177,7 @@ public partial class WhatsAppFlowService
             await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.CONFIRMAR_EDICION);
             await _whatsAppService.SendTextMessage(phoneNumber, mensaje);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Client edit failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -290,7 +290,7 @@ public partial class WhatsAppFlowService
             await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO);
             await ShowClienteMenu(phoneNumber, cliente.Nombre);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Client update failed: {ExceptionType}", ex.GetType().Name);
             throw;

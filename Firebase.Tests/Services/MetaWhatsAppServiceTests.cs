@@ -10,14 +10,14 @@ namespace Firebase.Tests.Services;
 
 public class MetaWhatsAppServiceTests
 {
-    private sealed class Handler(HttpStatusCode status, bool transport = false) : HttpMessageHandler
+    private sealed class Handler(HttpStatusCode status, bool transport = false, string responseBody = "secret response") : HttpMessageHandler
     {
         public string Body = "";
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Body = await request.Content!.ReadAsStringAsync(cancellationToken);
             if (transport) throw new HttpRequestException("secret token secret message");
-            return new HttpResponseMessage(status) { Content = new StringContent("secret response") };
+            return new HttpResponseMessage(status) { Content = new StringContent(responseBody) };
         }
     }
 
@@ -68,6 +68,29 @@ public class MetaWhatsAppServiceTests
         Assert.Equal(status, exception.StatusCode);
         Assert.DoesNotContain("secret", exception.ToString());
         Assert.DoesNotContain(logger.Invocations, i => i.Method.Name == "Log" && i.Arguments[2].ToString()!.Contains("secret"));
+    }
+
+    [Fact]
+    public async Task HttpFailure_ExtractsOnlyNumericMetadata()
+    {
+        var logger = new Mock<ILogger<MetaWhatsAppService>>();
+        var handler = new Handler(HttpStatusCode.Unauthorized, responseBody: "{\"error\":{\"code\":190,\"error_subcode\":463,\"message\":\"secret token\"}}");
+        var ex = await Assert.ThrowsAsync<WhatsAppOperationException>(() => Invoke(Create(handler, logger), "text"));
+        Assert.Equal(190, ex.MetaErrorCode);
+        Assert.Equal(463, ex.MetaErrorSubcode);
+        Assert.DoesNotContain("secret", ex.ToString());
+        Assert.DoesNotContain(logger.Invocations, i => i.Method.Name == "Log" && i.Arguments[2].ToString()!.Contains("secret"));
+    }
+
+    [Theory]
+    [InlineData("")][InlineData("not json")][InlineData("{\"error\":{\"code\":\"190\"}}")]
+    public async Task InvalidDiagnostics_PreserveHttpFailure(string body)
+    {
+        var ex = await Assert.ThrowsAsync<WhatsAppOperationException>(() => Invoke(Create(new Handler(HttpStatusCode.Unauthorized, responseBody: body), new()), "text"));
+        Assert.Equal(401, ex.StatusCode);
+        Assert.Equal("auth", ex.Classification);
+        Assert.Null(ex.MetaErrorCode);
+        Assert.Null(ex.MetaErrorSubcode);
     }
 
     [Theory]

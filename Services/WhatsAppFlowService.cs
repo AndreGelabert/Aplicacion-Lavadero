@@ -81,7 +81,7 @@ public partial class WhatsAppFlowService
             // Procesar según el estado actual
             await ProcessByState(phoneNumber, session, messageBody);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("WhatsApp flow failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -136,7 +136,7 @@ public partial class WhatsAppFlowService
                 await IniciarRegistroCliente(phoneNumber);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Initial contact failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -181,7 +181,7 @@ public partial class WhatsAppFlowService
 
             return cliente;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Client lookup failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -254,7 +254,7 @@ public partial class WhatsAppFlowService
                     options);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Client registration failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -416,7 +416,7 @@ public partial class WhatsAppFlowService
                     break;
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("WhatsApp state processing failed: {ExceptionType}", ex.GetType().Name);
             throw;

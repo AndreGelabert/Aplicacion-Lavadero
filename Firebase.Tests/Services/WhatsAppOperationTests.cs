@@ -37,6 +37,19 @@ public class WhatsAppOperationTests
         }
     }
 
+    // Injects a typed failure at the public flow boundary; this is not a real reply or persistence test.
+    private sealed class InjectingFlowLogger : ILogger<WhatsAppFlowService>
+    {
+        public int Errors { get; private set; }
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel level) => true;
+        public void Log<TState>(LogLevel level, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (level == LogLevel.Information) throw new WhatsAppOperationException("text", "auth", 401, 190, 463);
+            if (level == LogLevel.Error) Errors++;
+        }
+    }
+
     private sealed class Handler(HttpStatusCode status) : HttpMessageHandler
     {
         public List<string> Requests { get; } = new();
@@ -98,6 +111,41 @@ public class WhatsAppOperationTests
         AssertSafeLogs(controllerLog);
         AssertSafeLogs(flowLog);
         AssertSafeLogs(metaLog);
+    }
+
+    [Fact]
+    public async Task InjectedTypedFlowFailure_ReturnsSafeStructured500_AndOneFatalLog()
+    {
+        var handler = new Handler(HttpStatusCode.OK);
+        var meta = new MetaWhatsAppService(new HttpClient(handler), Settings, new Mock<ILogger<MetaWhatsAppService>>().Object);
+        var flowLog = new InjectingFlowLogger();
+        var controllerLog = new Mock<ILogger<WhatsAppWebhookController>>();
+        var controller = new WhatsAppWebhookController(Settings, Flow(meta, flowLog), meta, controllerLog.Object);
+        using var body = JsonDocument.Parse("""
+            {"entry":[{"changes":[{"field":"messages","value":{"messaging_product":"whatsapp",
+            "messages":[{"from":"private-phone","id":"private-id","timestamp":"123","type":"text",
+            "text":{"body":"private-body"}}]}}]}]}
+            """);
+
+        var result = Assert.IsType<ObjectResult>(await controller.ReceiveMessage(body.RootElement));
+        Assert.Equal(500, result.StatusCode);
+        var json = JsonSerializer.Serialize(result.Value);
+        Assert.DoesNotContain("private-", json);
+        using var response = JsonDocument.Parse(json);
+        var root = response.RootElement;
+        Assert.Equal(6, root.EnumerateObject().Count());
+        Assert.Equal("WhatsApp processing failed", root.GetProperty("message").GetString());
+        Assert.Equal("text", root.GetProperty("operation").GetString());
+        Assert.Equal("auth", root.GetProperty("classification").GetString());
+        Assert.Equal(401, root.GetProperty("upstreamStatus").GetInt32());
+        Assert.Equal(190, root.GetProperty("metaErrorCode").GetInt32());
+        Assert.Equal(463, root.GetProperty("metaErrorSubcode").GetInt32());
+        Assert.Equal(0, flowLog.Errors);
+        var fatal = Assert.Single(controllerLog.Invocations.Where(i => i.Method.Name == "Log" && Equals(i.Arguments[0], LogLevel.Error)));
+        Assert.Contains("190", fatal.Arguments[2].ToString());
+        Assert.Contains("463", fatal.Arguments[2].ToString());
+        AssertSafeLogs(controllerLog);
+        Assert.Single(handler.Requests); // read receipt only; no reply was attempted
     }
 
     [Fact]

@@ -113,7 +113,7 @@ public partial class WhatsAppFlowService
                 "Gestión de vehículos",
                 options);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Vehicle menu failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -209,7 +209,7 @@ public partial class WhatsAppFlowService
                 "¿Qué deseas hacer?",
                 buttons);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Client data display failed: {ExceptionType}", ex.GetType().Name);
             throw;
@@ -249,7 +249,7 @@ public partial class WhatsAppFlowService
                 "Selecciona una opción:",
                 buttons);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
         {
             _logger.LogError("Client edit menu failed: {ExceptionType}", ex.GetType().Name);
             throw;
