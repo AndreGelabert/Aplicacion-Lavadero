@@ -255,6 +255,154 @@ public class WhatsAppVehicleFirestoreTests
         Assert.DoesNotContain(logger.Messages, message => message.Contains(secretMessage, StringComparison.Ordinal));
     }
 
+    [LocalFirestoreFact]
+    public async Task UnlinkLastOwnerDeactivatesButSharedVehicleRemainsActive()
+    {
+        var db = NewDatabase();
+        const string phone = "543751123456";
+        var client = new Cliente { Id = "client", TipoDocumento = "DNI", NumeroDocumento = "12345678", Nombre = "Ana", Apellido = "Perez", Telefono = "3751123456", Email = "test@example.invalid", VehiculosIds = new() { "car", "shared" } };
+        await db.Collection("clientes").Document(client.Id).SetAsync(client);
+        var vehicle = new Vehiculo { Id = "car", Patente = "AB123CD", Marca = "Toyota", Modelo = "Corolla", Color = "Blanco", TipoVehiculo = "Automóvil", Estado = "Activo", ClienteId = client.Id, ClientesIds = new() { client.Id }, ClaveAsociacionHash = "old" };
+        var shared = new Vehiculo { Id = "shared", Patente = "AB124CD", Marca = "Toyota", Modelo = "Corolla", Color = "Blanco", TipoVehiculo = "Automóvil", Estado = "Activo", ClienteId = "other", ClientesIds = new() { "other", client.Id }, ClaveAsociacionHash = "shared-key" };
+        await db.Collection("vehiculos").Document(vehicle.Id).SetAsync(vehicle);
+        await db.Collection("vehiculos").Document(shared.Id).SetAsync(shared);
+        var session = NewSession(phone);
+        session.ClienteId = client.Id;
+        session.CurrentState = WhatsAppFlowStates.CONFIRMAR_ELIMINAR_VEHICULO;
+        session.TemporaryData["vehiculo_modificar_id"] = "car";
+        await db.Collection("whatsapp_sessions").Document(phone).SetAsync(session);
+        var (flow, _) = CreateFlow(db);
+        await flow.ProcessMessage(phone, "SI");
+        var service = new VehiculoService(db);
+        var removed = await service.ObtenerVehiculo("car");
+        Assert.Equal("Inactivo", removed!.Estado);
+        Assert.Empty(removed.ClientesIds);
+        Assert.Null(removed.ClaveAsociacionHash);
+        var unchanged = await service.ObtenerVehiculo("shared");
+        Assert.Equal("Activo", unchanged!.Estado);
+        Assert.Equal("shared-key", unchanged.ClaveAsociacionHash);
+    }
+
+    [LocalFirestoreFact]
+    public async Task OwnerlessVehicleCanBeClaimedWithoutAssociationKey()
+    {
+        var db = NewDatabase();
+        const string phone = "543751123456";
+        var client = new Cliente { Id = "client", TipoDocumento = "DNI", NumeroDocumento = "12345678", Nombre = "Ana", Apellido = "Perez", Telefono = "3751123456", Email = "test@example.invalid" };
+        await db.Collection("clientes").Document(client.Id).SetAsync(client);
+        var vehicle = new Vehiculo { Id = "car", Patente = "AB123CD", Marca = "Toyota", Modelo = "Corolla", Color = "Blanco", TipoVehiculo = "Automóvil", Estado = "Inactivo" };
+        await db.Collection("vehiculos").Document(vehicle.Id).SetAsync(vehicle);
+        var session = NewSession(phone);
+        session.ClienteId = client.Id;
+        session.CurrentState = WhatsAppFlowStates.ASOCIAR_VEHICULO_PATENTE;
+        await db.Collection("whatsapp_sessions").Document(phone).SetAsync(session);
+        var (flow, _) = CreateFlow(db);
+        await flow.ProcessMessage(phone, "AB123CD");
+        Assert.Equal(WhatsAppFlowStates.ASOCIAR_VEHICULO_CONFIRMACION, (await Session(db, phone)).CurrentState);
+        await flow.ProcessMessage(phone, "SI");
+        var result = await new VehiculoService(db).ObtenerVehiculo(vehicle.Id);
+        Assert.Equal("Activo", result!.Estado);
+        Assert.Equal(client.Id, result.ClienteId);
+        Assert.Contains(client.Id, result.ClientesIds);
+    }
+
+    [LocalFirestoreFact]
+    public async Task RotatedKeyCannotBeConfirmedAndLeavesOwnershipUnchanged()
+    {
+        var db = NewDatabase();
+        const string phone = "543751123456";
+        var client = new Cliente { Id = "client", Nombre = "Ana", Apellido = "Perez", TipoDocumento = "DNI", NumeroDocumento = "12345678", Telefono = "1234567890", Email = "test@example.invalid" };
+        await db.Collection("clientes").Document(client.Id).SetAsync(client);
+        var vehicle = new Vehiculo { Id = "car", Patente = "AB123CD", TipoVehiculo = "Automóvil", Marca = "Toyota", Modelo = "Corolla", Color = "Blanco", Estado = "Activo", ClienteId = "owner", ClientesIds = new() { "owner" }, ClaveAsociacionHash = VehiculoService.HashClaveAsociacion("ABCD-2345") };
+        await db.Collection("vehiculos").Document(vehicle.Id).SetAsync(vehicle);
+        var session = NewSession(phone);
+        session.ClienteId = client.Id;
+        session.CurrentState = WhatsAppFlowStates.ASOCIAR_VEHICULO_PATENTE;
+        await db.Collection("whatsapp_sessions").Document(phone).SetAsync(session);
+        var (flow, outgoing) = CreateFlow(db);
+        await flow.ProcessMessage(phone, "AB123CD");
+        await flow.ProcessMessage(phone, "ABCD-2345");
+        await db.Collection("vehiculos").Document(vehicle.Id).UpdateAsync("ClaveAsociacionHash", VehiculoService.HashClaveAsociacion("WXYZ-6789"));
+        await flow.ProcessMessage(phone, "SI");
+        var stored = await new VehiculoService(db).ObtenerVehiculo("car");
+        Assert.Equal(new[] { "owner" }, stored!.ClientesIds);
+        Assert.Empty((await new ClienteService(db).ObtenerCliente("client"))!.VehiculosIds);
+        Assert.Contains("Error", outgoing.LastBody);
+    }
+
+    [LocalFirestoreFact]
+    public async Task UnlinkPrimaryWithOtherOwnerIsRejectedWithoutChanges()
+    {
+        var db = NewDatabase();
+        var primary = new Cliente { Id = "primary", Nombre = "Ana", Apellido = "Perez", TipoDocumento = "DNI", NumeroDocumento = "12345678", Telefono = "1234567890", Email = "test@example.invalid", VehiculosIds = new() { "car" } };
+        var other = new Cliente { Id = "other", Nombre = "Juan", Apellido = "Perez", TipoDocumento = "DNI", NumeroDocumento = "87654321", Telefono = "1234567890", Email = "test@example.invalid", VehiculosIds = new() { "car" } };
+        await db.Collection("clientes").Document(primary.Id).SetAsync(primary);
+        await db.Collection("clientes").Document(other.Id).SetAsync(other);
+        await db.Collection("vehiculos").Document("car").SetAsync(new Vehiculo { Id = "car", Patente = "AB123CD", TipoVehiculo = "Automóvil", Marca = "Toyota", Modelo = "Corolla", Color = "Blanco", Estado = "Activo", ClienteId = primary.Id, ClientesIds = new() { primary.Id, other.Id } });
+        Assert.False(await new VehiculoService(db).DesvincularClienteDeVehiculo("car", primary.Id));
+        var stored = await new VehiculoService(db).ObtenerVehiculo("car");
+        Assert.Equal(primary.Id, stored!.ClienteId);
+        Assert.Equal("Activo", stored.Estado);
+        Assert.Equal(new[] { primary.Id, other.Id }, stored.ClientesIds);
+        Assert.Equal(new[] { "car" }, (await new ClienteService(db).ObtenerCliente(primary.Id))!.VehiculosIds);
+    }
+
+    [LocalFirestoreFact]
+    public async Task DuplicatePlateDuringRegistrationSuggestsAssociationOrOwnerlessClaim()
+    {
+        var db = NewDatabase();
+        const string phone = "543751123456";
+        var vehicle = new Vehiculo { Id = "car", Patente = "AB123CD", Marca = "Toyota", Modelo = "Corolla", Color = "Blanco", TipoVehiculo = "Automóvil", Estado = "Activo", ClienteId = "owner", ClientesIds = new() { "owner" }, ClaveAsociacionHash = VehiculoService.HashClaveAsociacion("ABCD-2345") };
+        await db.Collection("vehiculos").Document(vehicle.Id).SetAsync(vehicle);
+        var session = NewSession(phone);
+        session.ClienteId = "client";
+        session.CurrentState = WhatsAppFlowStates.VEHICULO_PATENTE;
+        await db.Collection("whatsapp_sessions").Document(phone).SetAsync(session);
+        var (flow, outgoing) = CreateFlow(db);
+        await flow.ProcessMessage(phone, "AB123CD");
+        Assert.Equal(WhatsAppFlowStates.ASOCIAR_VEHICULO_CLAVE, (await Session(db, phone)).CurrentState);
+        Assert.Contains("clave", outgoing.LastBody, StringComparison.OrdinalIgnoreCase);
+        Assert.Single((await db.Collection("vehiculos").GetSnapshotAsync()).Documents);
+        vehicle.ClienteId = "";
+        vehicle.ClientesIds.Clear();
+        vehicle.Estado = "Inactivo";
+        vehicle.ClaveAsociacionHash = null;
+        await db.Collection("vehiculos").Document(vehicle.Id).SetAsync(vehicle);
+        session.CurrentState = WhatsAppFlowStates.VEHICULO_PATENTE;
+        await db.Collection("whatsapp_sessions").Document(phone).SetAsync(session);
+        await flow.ProcessMessage(phone, "AB123CD");
+        Assert.Equal(WhatsAppFlowStates.ASOCIAR_VEHICULO_CONFIRMACION, (await Session(db, phone)).CurrentState);
+        Assert.Single((await db.Collection("vehiculos").GetSnapshotAsync()).Documents);
+    }
+
+    [LocalFirestoreFact]
+    public async Task SharedPrimaryWithOnlyVehicleReceivesWarningWithoutConfirmation()
+    {
+        var db = NewDatabase();
+        const string phone = "543751123456";
+        var client = new Cliente { Id = "primary", Nombre = "Ana", Apellido = "Perez", TipoDocumento = "DNI", NumeroDocumento = "12345678", Telefono = "1234567890", Email = "test@example.invalid", VehiculosIds = new() { "car" } };
+        var vehicle = new Vehiculo { Id = "car", Patente = "AB123CD", Marca = "Toyota", Modelo = "Corolla", Color = "Blanco", TipoVehiculo = "Automóvil", Estado = "Activo", ClienteId = client.Id, ClientesIds = new() { client.Id, "other" }, ClaveAsociacionHash = "old" };
+        await db.Collection("clientes").Document(client.Id).SetAsync(client);
+        await db.Collection("vehiculos").Document(vehicle.Id).SetAsync(vehicle);
+        var session = NewSession(phone);
+        session.ClienteId = client.Id;
+        session.CurrentState = WhatsAppFlowStates.MODIFICAR_VEHICULO_MENU;
+        session.TemporaryData["vehiculo_modificar_id"] = vehicle.Id;
+        await db.Collection("whatsapp_sessions").Document(phone).SetAsync(session);
+        var (flow, outgoing) = CreateFlow(db);
+        await flow.ProcessMessage(phone, "desvincular_vehiculo");
+        Assert.Contains("primero los demás deben desvincularse", System.Text.Json.JsonDocument.Parse(outgoing.LastBody).RootElement.GetProperty("text").GetProperty("body").GetString());
+        var after = await Session(db, phone);
+        Assert.Equal(WhatsAppFlowStates.MODIFICAR_VEHICULO_MENU, after.CurrentState);
+        Assert.Equal(vehicle.Id, after.TemporaryData["vehiculo_modificar_id"]);
+        var stored = await new VehiculoService(db).ObtenerVehiculo(vehicle.Id);
+        Assert.Equal(client.Id, stored!.ClienteId);
+        Assert.Equal(vehicle.ClientesIds, stored.ClientesIds);
+        Assert.Equal("Activo", stored.Estado);
+        Assert.Equal("old", stored.ClaveAsociacionHash);
+        Assert.Equal(new[] { "car" }, (await new ClienteService(db).ObtenerCliente(client.Id))!.VehiculosIds);
+    }
+
     private static FirestoreDb NewDatabase() => new FirestoreDbBuilder
     {
         ProjectId = "demo-lava-" + Guid.NewGuid().ToString("N")[..16],
@@ -284,7 +432,7 @@ public class WhatsAppVehicleFirestoreTests
         catalogue.Setup(c => c.GetColoresComunes()).ReturnsAsync(new List<string> { "Blanco" });
         var flow = new WhatsAppFlowService(new WhatsAppSessionService(db, NullLogger<WhatsAppSessionService>.Instance), whatsapp,
             new ClienteService(db), new VehiculoService(db), new TipoDocumentoService(db), new TipoVehiculoService(db),
-            null!, catalogue.Object, logger ?? NullLogger<WhatsAppFlowService>.Instance);
+            new LavaderoInfoService(new ConfiguracionService(db, new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions())), new TipoServicioService(db), NullLogger<LavaderoInfoService>.Instance), catalogue.Object, logger ?? NullLogger<WhatsAppFlowService>.Instance);
         return (flow, outgoing);
     }
 

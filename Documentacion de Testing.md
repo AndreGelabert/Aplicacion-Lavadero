@@ -1,5 +1,13 @@
 # Documentación de Testing - Aplicación Lavadero
 
+## Regresiones de titularidad y patentes
+
+- `Firebase.Tests/Integration/VehicleOwnershipRegressionTests.cs` cubre rechazo de claves inválidas sin escrituras, reasignación de huérfanos, bloqueo de desvinculación del titular compartido, relaciones inversas desactualizadas y nombres actuales.
+- La creación usa una guardia transaccional compartida por patente (`vehiclePlateGuards`), sin migrar vehículos existentes. Una consulta por patente sigue detectando registros anteriores; la guardia no reserva una patente después de eliminar su vehículo. La prueba concurrente cruza el guardado cliente–vehículo con el servicio de creación y exige un único ganador.
+- WhatsApp guarda cliente, vehículo y propuesta juntos; al agregar a un cliente existente conserva sus datos y asociaciones leídos dentro de la transacción.
+- Ejecutar únicamente contra emuladores desechables: `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& ./Firebase.Tests/run-isolated.ps1"`.
+- Navegador: `node scripts/playwright.cjs test tests/browser/vehicle-ownership.spec.cjs --reporter=line`. Incluye advertencia al quitar el titular compartido, envío de clave y modal de personas asociadas. Las respuestas HTTP están simuladas: no constituye una prueba Razor–servidor–Firestore de extremo a extremo.
+
 ## Resumen Ejecutivo
 
 Este documento presenta la documentación completa de testing para la aplicación Lavadero (Car Wash). Los tests fueron ejecutados utilizando el framework xUnit siguiendo la metodología Arrange-Act-Assert (AAA).

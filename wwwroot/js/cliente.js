@@ -713,7 +713,9 @@
                 color: v.color,
                 tipoVehiculo: v.tipoVehiculo,
                 esNuevo: v.esTemporalNuevo || false,
-                esReasignacion: v.esReasignacion || false // Flag para reasignación
+                esReasignacion: v.esReasignacion || false, // Flag para reasignación
+                esAsociacion: v.esAsociacion || false,
+                claveAsociacion: v.claveAsociacion || ''
             }));
 
             // Crear FormData del formulario
@@ -1114,7 +1116,9 @@
             marca: vehiculoSeleccionadoDropdown.marca,
             modelo: vehiculoSeleccionadoDropdown.modelo,
             color: vehiculoSeleccionadoDropdown.color,
-            tipoVehiculo: vehiculoSeleccionadoDropdown.tipoVehiculo
+            tipoVehiculo: vehiculoSeleccionadoDropdown.tipoVehiculo,
+            esTitular: vehiculoSeleccionadoDropdown.esTitular,
+            tieneOtrosAsociados: vehiculoSeleccionadoDropdown.tieneOtrosAsociados
         });
 
         vehiculoSeleccionadoDropdown = null;
@@ -1126,6 +1130,11 @@
     };
 
     window.removerVehiculoSeleccionado = function (id) {
+        const vehiculo = vehiculosSeleccionados.find(v => v.id === id);
+        if (vehiculo?.esTitular && vehiculo?.tieneOtrosAsociados) {
+            showFormMessage('error', 'Para quitar este vehículo, primero los demás deben desvincularse. Cuando seas el único titular podrás quitarlo y el vehículo se desactivará.');
+            return;
+        }
         // Remover de seleccionados
         vehiculosSeleccionados = vehiculosSeleccionados.filter(v => v.id !== id);
 
@@ -2133,6 +2142,8 @@
                 color: data.vehiculo.color,
                 tipoVehiculo: data.vehiculo.tipoVehiculo,
                 esTemporalNuevo: false,
+                esTitular: false,
+                tieneOtrosAsociados: true,
                 esAsociacion: true, // Flag especial para indicar asociación
                 claveAsociacion: clave
             };
@@ -2204,6 +2215,16 @@
                 return false;
             }
 
+            if (data.asociable) {
+                const toggle = document.getElementById('toggle-modo-vehiculo');
+                if (toggle) toggle.checked = true;
+                await window.toggleModoVehiculo(true);
+                document.getElementById('asociacion-patente').value = patente;
+                document.getElementById('asociacion-patente-input').value = patente;
+                showQuickVehiculoMessage('error', 'Este vehículo ya está registrado. Puede asociarlo con la clave de su titular.', 8000);
+                return false;
+            }
+
             if (data.existe === false && data.error) {
                 // Existe un vehículo activo o con dueño ? Bloquear
                 showQuickVehiculoMessage('error', data.error, 8000);
@@ -2212,6 +2233,7 @@
         } catch (error) {
             console.error('Error al verificar vehículo:', error);
             showQuickVehiculoMessage('error', 'Error al verificar el vehículo. Intente nuevamente.', 5000);
+            return false;
         }
 
         // Crear vehículo temporal (solo en memoria)
@@ -2373,7 +2395,9 @@
                 color: nuevoColor,
                 tipoVehiculo: nuevoTipo,
                 esTemporalNuevo: false, // NO es nuevo, es reasignación
-                esReasignacion: true // Flag especial para indicar reasignación
+                esReasignacion: true, // Flag especial para indicar reasignación
+                esTitular: true,
+                tieneOtrosAsociados: false
             };
 
             // Obtener datos del formulario que se quedó abierto

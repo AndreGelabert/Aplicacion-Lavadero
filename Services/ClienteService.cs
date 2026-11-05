@@ -156,6 +156,161 @@ public class ClienteService
         });
     }
 
+    public async Task<bool> CrearClienteYVincular(Cliente cliente, string vehiculoId, string hash, bool sinDueno)
+    {
+        if (string.IsNullOrWhiteSpace(vehiculoId)) return false;
+        var clienteRef = _firestore.Collection("clientes").Document();
+        var vehiculoRef = _firestore.Collection("vehiculos").Document(vehiculoId);
+        cliente.Id = clienteRef.Id;
+        return await _firestore.RunTransactionAsync(async tx =>
+        {
+            var snapshot = await tx.GetSnapshotAsync(vehiculoRef);
+            if (!snapshot.Exists) return false;
+            var vehiculo = snapshot.ConvertTo<Vehiculo>();
+            if (sinDueno)
+            {
+                if (vehiculo.Estado != "Inactivo" || !string.IsNullOrEmpty(vehiculo.ClienteId) || (vehiculo.ClientesIds?.Any() ?? false)) return false;
+                vehiculo.ClienteId = cliente.Id;
+                vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
+                vehiculo.ClientesIds = new List<string> { cliente.Id };
+                vehiculo.Estado = "Activo";
+                vehiculo.ClaveAsociacionHash = null;
+            }
+            else
+            {
+                if (vehiculo.Estado != "Activo" || string.IsNullOrEmpty(hash) || !string.Equals(hash, vehiculo.ClaveAsociacionHash, StringComparison.OrdinalIgnoreCase)) return false;
+                vehiculo.ClientesIds ??= new List<string>();
+                if (!vehiculo.ClientesIds.Contains(cliente.Id)) vehiculo.ClientesIds.Add(cliente.Id);
+            }
+            cliente.VehiculosIds = new List<string> { vehiculoId };
+            tx.Create(clienteRef, cliente);
+            tx.Set(vehiculoRef, vehiculo);
+            return true;
+        });
+    }
+
+    public sealed class VinculoWeb
+    {
+        public string Id { get; set; } = "";
+        public string Patente { get; set; } = "";
+        public string Clave { get; set; } = "";
+        public bool Asociacion { get; set; }
+        public Vehiculo? Nuevo { get; set; }
+        public Firebase.Services.VehicleCatalogueProposal? Propuesta { get; set; }
+        public string Color { get; set; } = "";
+        public string Tipo { get; set; } = "";
+    }
+
+    public sealed record AuditoriaVehiculo(string Accion, string Id, Dictionary<string, string> Antes, Dictionary<string, string> Despues, string Nombre);
+    public sealed record AuditoriaCliente(Dictionary<string, string> Antes, Dictionary<string, string> Despues, string Nombre);
+
+    public async Task<bool> GuardarClienteConVehiculos(Cliente cliente, bool crear, List<VinculoWeb> solicitados, List<AuditoriaVehiculo> auditorias, List<AuditoriaCliente> auditoriasCliente, bool conservarExistentes = false)
+    {
+        if (solicitados.Count == 0) return false;
+        var patentesNuevas = solicitados.Where(x => x.Nuevo != null).Select(x => x.Nuevo!.Patente.Trim().ToUpperInvariant()).ToList();
+        if (patentesNuevas.Distinct().Count() != patentesNuevas.Count) return false;
+        var clienteRef = crear ? _firestore.Collection("clientes").Document() : _firestore.Collection("clientes").Document(cliente.Id);
+        if (crear) cliente.Id = clienteRef.Id;
+        foreach (var item in solicitados.Where(x => x.Nuevo != null))
+        {
+            item.Nuevo!.Id = _firestore.Collection("vehiculos").Document().Id;
+            item.Nuevo.ClienteId = cliente.Id;
+            item.Nuevo.ClientesIds = new List<string> { cliente.Id };
+        }
+        return await _firestore.RunTransactionAsync(async tx =>
+        {
+            auditorias.Clear();
+            auditoriasCliente.Clear();
+            var clienteSnapshot = await tx.GetSnapshotAsync(clienteRef);
+            if (!crear && !clienteSnapshot.Exists) return false;
+            var collection = _firestore.Collection("vehiculos");
+            var vehiculos = new Dictionary<string, Vehiculo>();
+            void Include(QuerySnapshot snapshot)
+            {
+                foreach (var doc in snapshot.Documents) vehiculos[doc.Id] = doc.ConvertTo<Vehiculo>();
+            }
+            // Discover inverse relationships even when the client's cached list is stale.
+            Include(await tx.GetSnapshotAsync(collection.WhereEqualTo("ClienteId", cliente.Id)));
+            Include(await tx.GetSnapshotAsync(collection.WhereArrayContains("ClientesIds", cliente.Id)));
+            foreach (var id in solicitados.Where(x => x.Nuevo == null && !x.Asociacion)
+                         .Select(x => x.Id).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct())
+            {
+                var doc = await tx.GetSnapshotAsync(collection.Document(id));
+                if (doc.Exists) vehiculos[doc.Id] = doc.ConvertTo<Vehiculo>();
+            }
+            var guards = patentesNuevas.OrderBy(x => x, StringComparer.Ordinal)
+                .Select(plate => VehiclePlateGuard.Reference(_firestore, plate)).ToList();
+            foreach (var guard in guards) await tx.GetSnapshotAsync(guard);
+            foreach (var plate in solicitados.Where(x => x.Nuevo != null || x.Asociacion)
+                         .Select(x => VehiclePlateGuard.Normalize(x.Nuevo?.Patente ?? x.Patente)).Distinct())
+                Include(await tx.GetSnapshotAsync(collection.WhereEqualTo("Patente", plate)));
+            if (conservarExistentes && clienteSnapshot.Exists)
+                cliente = clienteSnapshot.ConvertTo<Cliente>();
+            var seleccion = new Dictionary<string, VinculoWeb>();
+            if (conservarExistentes)
+                foreach (var v in vehiculos.Values.Where(v => v.ClienteId == cliente.Id || (v.ClientesIds?.Contains(cliente.Id) ?? false)))
+                    seleccion[v.Id] = new VinculoWeb { Id = v.Id, Color = v.Color, Tipo = v.TipoVehiculo };
+            foreach (var item in solicitados)
+            {
+                if (item.Nuevo != null)
+                {
+                    item.Nuevo.Patente = VehiclePlateGuard.Normalize(item.Nuevo.Patente);
+                    if (vehiculos.Values.Any(v => v.Patente == item.Nuevo.Patente) || !seleccion.TryAdd(item.Nuevo.Id, item)) return false;
+                    continue;
+                }
+                var v = item.Asociacion ? vehiculos.Values.FirstOrDefault(v => v.Patente == item.Patente.Trim().ToUpperInvariant()) : vehiculos.GetValueOrDefault(item.Id);
+                if (v == null || !seleccion.TryAdd(v.Id, item)) return false;
+                if (item.Asociacion)
+                {
+                    if (v.Estado != "Activo" || !VehiculoService.ValidarClaveAsociacion(item.Clave, v.ClaveAsociacionHash ?? "")) return false;
+                }
+                else if (v.ClienteId != cliente.Id && !(v.ClientesIds?.Contains(cliente.Id) ?? false) &&
+                         (!string.IsNullOrEmpty(v.ClienteId) || (v.ClientesIds?.Any() ?? false))) return false;
+            }
+            var removidos = vehiculos.Values.Where(v => (v.ClienteId == cliente.Id || (v.ClientesIds?.Contains(cliente.Id) ?? false)) && !seleccion.ContainsKey(v.Id)).ToList();
+            if (removidos.Any(v => v.ClienteId == cliente.Id && (v.ClientesIds?.Any(id => !string.IsNullOrWhiteSpace(id) && id != cliente.Id) ?? false))) return false;
+            foreach (var guard in guards) VehiclePlateGuard.Touch(tx, guard);
+            foreach (var v in removidos)
+            {
+                var antesVehiculo = AuditCampos.CapturarVehiculo(v);
+                v.ClientesIds ??= new List<string>();
+                v.ClientesIds.RemoveAll(id => id == cliente.Id);
+                if (v.ClienteId == cliente.Id)
+                {
+                    v.ClienteId = "";
+                    v.ClienteNombreCompleto = null;
+                }
+                if (string.IsNullOrEmpty(v.ClienteId) && !v.ClientesIds.Any()) { v.Estado = "Inactivo"; v.ClaveAsociacionHash = null; }
+                auditorias.Add(new AuditoriaVehiculo("Vehiculo desvinculado de cliente", v.Id, antesVehiculo, AuditCampos.CapturarVehiculo(v), v.Patente));
+                tx.Set(_firestore.Collection("vehiculos").Document(v.Id), v);
+            }
+            foreach (var (id, item) in seleccion)
+            {
+                var v = item.Nuevo ?? vehiculos[id];
+                var antesVehiculo = item.Nuevo != null ? new Dictionary<string, string>() : AuditCampos.CapturarVehiculo(v);
+                v.ClientesIds ??= new List<string>();
+                if (!v.ClientesIds.Contains(cliente.Id)) v.ClientesIds.Add(cliente.Id);
+                if (string.IsNullOrEmpty(v.ClienteId)) { v.ClienteId = cliente.Id; v.Estado = "Activo"; }
+                if (v.ClienteId == cliente.Id) v.ClienteNombreCompleto = cliente.NombreCompleto;
+                if (!item.Asociacion && item.Nuevo == null) { v.Color = item.Color; v.TipoVehiculo = item.Tipo; }
+                if (item.Nuevo != null || item.Asociacion)
+                    auditorias.Add(new AuditoriaVehiculo(item.Nuevo != null ? "Creacion de vehiculo" : "Asociacion de cliente a vehiculo compartido", id, antesVehiculo, AuditCampos.CapturarVehiculo(v), v.Patente));
+                var vref = _firestore.Collection("vehiculos").Document(id);
+                if (item.Nuevo != null) tx.Create(vref, v); else tx.Set(vref, v);
+                if (item.Propuesta != null)
+                {
+                    item.Propuesta.VehiculoId = id;
+                    tx.Create(_firestore.Collection("vehicleCatalogueProposals").Document(id), item.Propuesta);
+                }
+            }
+            cliente.VehiculosIds = seleccion.Keys.ToList();
+            if (!crear) cliente.Estado = clienteSnapshot.ConvertTo<Cliente>().Estado;
+            auditoriasCliente.Add(new AuditoriaCliente(crear ? new() : AuditCampos.CapturarCliente(clienteSnapshot.ConvertTo<Cliente>()), AuditCampos.CapturarCliente(cliente), cliente.NombreCompleto));
+            if (crear) tx.Create(clienteRef, cliente); else tx.Set(clienteRef, cliente);
+            return true;
+        });
+    }
+
     public async Task ActualizarCliente(Cliente cliente)
     {
         var docRef = _firestore.Collection("clientes").Document(cliente.Id);
