@@ -1476,7 +1476,7 @@
                                     
                                     <div>
                                         <label for="clave-asociacion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                                            Clave de Asociación <span class="text-red-600">*</span>
+                                            Clave de Asociación (obligatoria con titular; sin clave para vehículo sin dueño)
                                         </label>
                                         <input type="text" id="clave-asociacion" 
                                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white uppercase"
@@ -2082,15 +2082,15 @@
         const claveInput = document.getElementById('clave-asociacion');
         const resultadoDiv = document.getElementById('validacion-clave-resultado');
         
-        const patente = patenteHidden?.value?.trim();
-        const clave = claveInput?.value?.trim();
+        const patente = document.getElementById('asociacion-patente-input')?.value?.trim() || patenteHidden?.value?.trim();
+        const clave = claveInput?.value?.trim() || '';
         
         if (!patente) {
             showQuickVehiculoMessage('error', 'Debe seleccionar un vehículo.', 5000);
             return;
         }
         
-        if (!clave || clave.length < 9) {
+        if (clave && !/^[A-Z0-9]{4}-[A-Z0-9]{4}$/i.test(clave)) {
             showQuickVehiculoMessage('error', 'Ingrese la clave de asociación completa (formato: XXXX-XXXX).', 5000);
             return;
         }
@@ -2209,19 +2209,13 @@
             const respuesta = await window.Peticiones.enviar(verificarUrl);
             const data = await respuesta.json();
 
-            if (data.existe && data.vehiculo) {
-                // Existe vehículo inactivo sin dueño ? Mostrar modal de reasignación
-                mostrarModalReasignacion(data.vehiculo, color, tipoVehiculo);
-                return false;
-            }
-
-            if (data.asociable) {
+            if (data.asociable || (data.existe && data.vehiculo)) {
                 const toggle = document.getElementById('toggle-modo-vehiculo');
                 if (toggle) toggle.checked = true;
                 await window.toggleModoVehiculo(true);
                 document.getElementById('asociacion-patente').value = patente;
                 document.getElementById('asociacion-patente-input').value = patente;
-                showQuickVehiculoMessage('error', 'Este vehículo ya está registrado. Puede asociarlo con la clave de su titular.', 8000);
+                showQuickVehiculoMessage('error', 'Este vehículo ya está registrado. Asócielo aquí; la clave es necesaria si tiene titular y puede omitirse si está sin dueño.', 8000);
                 return false;
             }
 

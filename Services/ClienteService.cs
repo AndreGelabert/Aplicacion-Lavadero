@@ -169,12 +169,12 @@ public class ClienteService
             var vehiculo = snapshot.ConvertTo<Vehiculo>();
             if (sinDueno)
             {
-                if (vehiculo.Estado != "Inactivo" || !string.IsNullOrEmpty(vehiculo.ClienteId) || (vehiculo.ClientesIds?.Any() ?? false)) return false;
+                if (!VehiculoService.EsHuerfanoReclamable(vehiculo) || string.IsNullOrWhiteSpace(hash)) return false;
                 vehiculo.ClienteId = cliente.Id;
                 vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
                 vehiculo.ClientesIds = new List<string> { cliente.Id };
                 vehiculo.Estado = "Activo";
-                vehiculo.ClaveAsociacionHash = null;
+                vehiculo.ClaveAsociacionHash = hash;
             }
             else
             {
@@ -195,6 +195,8 @@ public class ClienteService
         public string Patente { get; set; } = "";
         public string Clave { get; set; } = "";
         public bool Asociacion { get; set; }
+        public string NuevaClaveHash { get; set; } = "";
+        public string HuerfanoEsperadoId { get; set; } = "";
         public Vehiculo? Nuevo { get; set; }
         public Firebase.Services.VehicleCatalogueProposal? Propuesta { get; set; }
         public string Color { get; set; } = "";
@@ -204,7 +206,7 @@ public class ClienteService
     public sealed record AuditoriaVehiculo(string Accion, string Id, Dictionary<string, string> Antes, Dictionary<string, string> Despues, string Nombre);
     public sealed record AuditoriaCliente(Dictionary<string, string> Antes, Dictionary<string, string> Despues, string Nombre);
 
-    public async Task<bool> GuardarClienteConVehiculos(Cliente cliente, bool crear, List<VinculoWeb> solicitados, List<AuditoriaVehiculo> auditorias, List<AuditoriaCliente> auditoriasCliente, bool conservarExistentes = false)
+    public async Task<bool> GuardarClienteConVehiculos(Cliente cliente, bool crear, List<VinculoWeb> solicitados, List<AuditoriaVehiculo> auditorias, List<AuditoriaCliente> auditoriasCliente, bool conservarExistentes = false, bool permitirReclamarHuerfano = false)
     {
         if (solicitados.Count == 0) return false;
         var patentesNuevas = solicitados.Where(x => x.Nuevo != null).Select(x => x.Nuevo!.Patente.Trim().ToUpperInvariant()).ToList();
@@ -217,8 +219,10 @@ public class ClienteService
             item.Nuevo.ClienteId = cliente.Id;
             item.Nuevo.ClientesIds = new List<string> { cliente.Id };
         }
-        return await _firestore.RunTransactionAsync(async tx =>
+        var idsGuardados = new Dictionary<VinculoWeb, string>();
+        var guardado = await _firestore.RunTransactionAsync(async tx =>
         {
+            idsGuardados.Clear();
             auditorias.Clear();
             auditoriasCliente.Clear();
             var clienteSnapshot = await tx.GetSnapshotAsync(clienteRef);
@@ -244,9 +248,19 @@ public class ClienteService
             foreach (var plate in solicitados.Where(x => x.Nuevo != null || x.Asociacion)
                          .Select(x => VehiclePlateGuard.Normalize(x.Nuevo?.Patente ?? x.Patente)).Distinct())
                 Include(await tx.GetSnapshotAsync(collection.WhereEqualTo("Patente", plate)));
+            // Re-read each candidate document through the transaction before authorizing reuse.
+            // Keep eligibility tied to this attempt's document version, not discovery state.
+            foreach (var id in vehiculos.Values.Where(v => solicitados.Any(item => item.Nuevo != null &&
+                         VehiclePlateGuard.Normalize(item.Nuevo.Patente) == v.Patente)).Select(v => v.Id).ToList())
+            {
+                var actual = await tx.GetSnapshotAsync(collection.Document(id));
+                if (!actual.Exists) return false;
+                vehiculos[id] = actual.ConvertTo<Vehiculo>();
+            }
             if (conservarExistentes && clienteSnapshot.Exists)
                 cliente = clienteSnapshot.ConvertTo<Cliente>();
             var seleccion = new Dictionary<string, VinculoWeb>();
+            var reutilizados = new HashSet<string>();
             if (conservarExistentes)
                 foreach (var v in vehiculos.Values.Where(v => v.ClienteId == cliente.Id || (v.ClientesIds?.Contains(cliente.Id) ?? false)))
                     seleccion[v.Id] = new VinculoWeb { Id = v.Id, Color = v.Color, Tipo = v.TipoVehiculo };
@@ -255,17 +269,30 @@ public class ClienteService
                 if (item.Nuevo != null)
                 {
                     item.Nuevo.Patente = VehiclePlateGuard.Normalize(item.Nuevo.Patente);
-                    if (vehiculos.Values.Any(v => v.Patente == item.Nuevo.Patente) || !seleccion.TryAdd(item.Nuevo.Id, item)) return false;
+                    var coincidencias = vehiculos.Values.Where(v => v.Patente == item.Nuevo.Patente).ToList();
+                    if (!string.IsNullOrEmpty(item.HuerfanoEsperadoId) &&
+                        (coincidencias.Count != 1 || coincidencias[0].Id != item.HuerfanoEsperadoId)) return false;
+                    if (coincidencias.Count > 0)
+                    {
+                        if (!permitirReclamarHuerfano || coincidencias.Count != 1 || !VehiculoService.EsHuerfanoReclamable(coincidencias[0]) || string.IsNullOrEmpty(item.Nuevo.ClaveAsociacionHash)) return false;
+                        var existente = coincidencias[0];
+                        if (!seleccion.TryAdd(existente.Id, item)) return false;
+                        reutilizados.Add(existente.Id);
+                    }
+                    else if (!seleccion.TryAdd(item.Nuevo.Id, item)) return false;
                     continue;
                 }
                 var v = item.Asociacion ? vehiculos.Values.FirstOrDefault(v => v.Patente == item.Patente.Trim().ToUpperInvariant()) : vehiculos.GetValueOrDefault(item.Id);
                 if (v == null || !seleccion.TryAdd(v.Id, item)) return false;
                 if (item.Asociacion)
                 {
-                    if (v.Estado != "Activo" || !VehiculoService.ValidarClaveAsociacion(item.Clave, v.ClaveAsociacionHash ?? "")) return false;
+                    if (string.IsNullOrWhiteSpace(item.Clave))
+                    {
+                        if (!VehiculoService.EsHuerfanoReclamable(v) || string.IsNullOrEmpty(item.NuevaClaveHash)) return false;
+                    }
+                    else if (v.Estado != "Activo" || !VehiculoService.ValidarClaveAsociacion(item.Clave, v.ClaveAsociacionHash ?? "")) return false;
                 }
-                else if (v.ClienteId != cliente.Id && !(v.ClientesIds?.Contains(cliente.Id) ?? false) &&
-                         (!string.IsNullOrEmpty(v.ClienteId) || (v.ClientesIds?.Any() ?? false))) return false;
+                else if (v.ClienteId != cliente.Id && !(v.ClientesIds?.Contains(cliente.Id) ?? false)) return false;
             }
             var removidos = vehiculos.Values.Where(v => (v.ClienteId == cliente.Id || (v.ClientesIds?.Contains(cliente.Id) ?? false)) && !seleccion.ContainsKey(v.Id)).ToList();
             if (removidos.Any(v => v.ClienteId == cliente.Id && (v.ClientesIds?.Any(id => !string.IsNullOrWhiteSpace(id) && id != cliente.Id) ?? false))) return false;
@@ -286,8 +313,17 @@ public class ClienteService
             }
             foreach (var (id, item) in seleccion)
             {
-                var v = item.Nuevo ?? vehiculos[id];
-                var antesVehiculo = item.Nuevo != null ? new Dictionary<string, string>() : AuditCampos.CapturarVehiculo(v);
+                if (item.Nuevo != null) idsGuardados[item] = id;
+                var reutilizado = reutilizados.Contains(id);
+                var v = reutilizado ? vehiculos[id] : item.Nuevo ?? vehiculos[id];
+                var antesVehiculo = item.Nuevo != null && !reutilizado ? new Dictionary<string, string>() : AuditCampos.CapturarVehiculo(v);
+                if (reutilizado)
+                {
+                    v.Marca = item.Nuevo!.Marca; v.Modelo = item.Nuevo.Modelo;
+                    v.Color = item.Nuevo.Color; v.TipoVehiculo = item.Nuevo.TipoVehiculo;
+                    v.ClaveAsociacionHash = item.Nuevo.ClaveAsociacionHash;
+                }
+                else if (item.Asociacion && string.IsNullOrWhiteSpace(item.Clave)) v.ClaveAsociacionHash = item.NuevaClaveHash;
                 v.ClientesIds ??= new List<string>();
                 if (!v.ClientesIds.Contains(cliente.Id)) v.ClientesIds.Add(cliente.Id);
                 if (string.IsNullOrEmpty(v.ClienteId)) { v.ClienteId = cliente.Id; v.Estado = "Activo"; }
@@ -296,11 +332,12 @@ public class ClienteService
                 if (item.Nuevo != null || item.Asociacion)
                     auditorias.Add(new AuditoriaVehiculo(item.Nuevo != null ? "Creacion de vehiculo" : "Asociacion de cliente a vehiculo compartido", id, antesVehiculo, AuditCampos.CapturarVehiculo(v), v.Patente));
                 var vref = _firestore.Collection("vehiculos").Document(id);
-                if (item.Nuevo != null) tx.Create(vref, v); else tx.Set(vref, v);
+                if (item.Nuevo != null && !reutilizado) tx.Create(vref, v); else tx.Set(vref, v);
                 if (item.Propuesta != null)
                 {
                     item.Propuesta.VehiculoId = id;
-                    tx.Create(_firestore.Collection("vehicleCatalogueProposals").Document(id), item.Propuesta);
+                    if (reutilizado) tx.Set(_firestore.Collection("vehicleCatalogueProposals").Document(id), item.Propuesta);
+                    else tx.Create(_firestore.Collection("vehicleCatalogueProposals").Document(id), item.Propuesta);
                 }
             }
             cliente.VehiculosIds = seleccion.Keys.ToList();
@@ -309,6 +346,10 @@ public class ClienteService
             if (crear) tx.Create(clienteRef, cliente); else tx.Set(clienteRef, cliente);
             return true;
         });
+        // Publish resolved IDs only after a successful commit, never during a retried attempt.
+        if (guardado)
+            foreach (var (item, id) in idsGuardados) item.Nuevo!.Id = id;
+        return guardado;
     }
 
     public async Task ActualizarCliente(Cliente cliente)

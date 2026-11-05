@@ -238,7 +238,7 @@ public class VehiculoController : Controller
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(patente) || string.IsNullOrWhiteSpace(marca) || string.IsNullOrWhiteSpace(modelo))
+            if (string.IsNullOrWhiteSpace(patente))
             {
                 return Json(new { existe = false });
             }
@@ -251,6 +251,9 @@ public class VehiculoController : Controller
                 return Json(new { existe = false });
             }
             
+            if (VehiculoService.EsHuerfanoReclamable(vehiculoExistente))
+                return Json(new { existe = false, asociable = true });
+
             // CASO 2: Existe vehículo ACTIVO → ERROR, patente duplicada
             if (vehiculoExistente.Estado == "Activo")
             {
@@ -273,7 +276,7 @@ public class VehiculoController : Controller
             }
             
             // CASO 4: Existe vehículo INACTIVO, SIN DUEÑO, con misma marca y modelo → REASIGNACIÓN
-            if (vehiculoExistente.Marca.Equals(marca, StringComparison.OrdinalIgnoreCase) &&
+            if (VehiculoService.EsHuerfanoReclamable(vehiculoExistente) && vehiculoExistente.Marca.Equals(marca, StringComparison.OrdinalIgnoreCase) &&
                 vehiculoExistente.Modelo.Equals(modelo, StringComparison.OrdinalIgnoreCase))
             {
                 return Json(new
@@ -630,7 +633,7 @@ public class VehiculoController : Controller
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(request?.Patente) || string.IsNullOrWhiteSpace(request?.ClaveAsociacion))
+            if (string.IsNullOrWhiteSpace(request?.Patente))
             {
                 return Json(new { 
                     valida = false, 
@@ -640,7 +643,7 @@ public class VehiculoController : Controller
 
             var vehiculo = await _vehiculoService.ValidarClaveYObtenerVehiculo(
                 request.Patente.ToUpper(), 
-                request.ClaveAsociacion
+                request.ClaveAsociacion ?? ""
             );
 
             if (vehiculo == null)
@@ -654,6 +657,7 @@ public class VehiculoController : Controller
             return Json(new
             {
                 valida = true,
+                esHuerfano = VehiculoService.EsHuerfanoReclamable(vehiculo),
                 vehiculo = new
                 {
                     id = vehiculo.Id,

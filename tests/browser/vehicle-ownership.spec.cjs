@@ -68,6 +68,35 @@ test('valid association key is sent in the actual client form payload', async ({
   expect(payload.esNuevo).toBe(false);
 });
 
+test('blank association key for an orphan reaches the client form payload', async ({ page }) => {
+  await setup(page, 'sole');
+  await page.evaluate(() => {
+    const form = document.createElement('form');
+    form.id = 'client-submit'; form.action = '/Cliente/ActualizarClienteAjax';
+    form.innerHTML = '<button type="submit">Guardar cliente</button>';
+    form.onsubmit = event => submitClienteAjax(form, event);
+    document.body.appendChild(form);
+    window.Peticiones.enviar = async (url, options) => {
+      if (url.startsWith('/Vehiculo/FormPartialCliente')) return { text: async () => '<form id="vehiculo-form"><input id="Patente" value="AB123CD"><input id="Marca" value="Toyota"><input id="Modelo" value="Corolla"><input id="Color" value="Blanco"><input id="TipoVehiculo" value="Auto"></form>' };
+      if (url.startsWith('/Vehiculo/VerificarVehiculoSinDueno')) return { json: async () => ({ existe: false, asociable: true }) };
+      if (url.startsWith('/Vehiculo/ValidarClaveAsociacion')) return { json: async () => ({ valida: true, vehiculo: { id: 'orphan', patente: 'AB123CD', marca: 'Toyota', modelo: 'Corolla', color: 'Blanco', tipoVehiculo: 'Auto' } }) };
+      if (url.includes('/Cliente/ActualizarClienteAjax')) { window.submitted = JSON.parse(options.body.get('VehiculosDataJson')); throw new Error('payload captured'); }
+      return { json: async () => [] };
+    };
+  });
+  await page.evaluate(() => openQuickCreateVehiculoModal());
+  await page.locator('#vehiculo-form').evaluate(form => form.requestSubmit());
+  await expect(page.locator('#asociacion-patente')).toHaveValue('AB123CD');
+  await page.locator('button[onclick="validarClaveAsociacion()"]') .click();
+  await expect(page.locator('[data-vehiculo-id="orphan"]')).toHaveCount(1);
+  await page.locator('#client-submit button').click();
+  await expect.poll(() => page.evaluate(() => window.submitted)).not.toBeUndefined();
+  const payload = await page.evaluate(() => window.submitted.find(v => v.id === 'orphan'));
+  expect(payload.esAsociacion).toBe(true);
+  expect(payload.claveAsociacion).toBe('');
+  expect(payload.esNuevo).toBe(false);
+});
+
 test('X blocks shared titular after initial load and reselection, but allows secondary and sole', async ({ page }) => {
   await setup(page, 'shared,secondary,sole');
   const row = id => page.locator(`[data-vehiculo-id="${id}"]`);

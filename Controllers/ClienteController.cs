@@ -244,6 +244,12 @@ public class ClienteController : Controller
         foreach (var data in datos)
         {
             var vinculo = new ClienteService.VinculoWeb { Id = data.Id ?? "", Patente = data.Patente, Clave = data.ClaveAsociacion ?? "", Asociacion = data.EsAsociacion, Color = data.Color, Tipo = data.TipoVehiculo };
+            if (data.EsAsociacion && string.IsNullOrWhiteSpace(data.ClaveAsociacion))
+            {
+                var clave = VehiculoService.GenerarClaveAsociacion();
+                vinculo.NuevaClaveHash = VehiculoService.HashClaveAsociacion(clave);
+                claves.Add($"{data.Patente.ToUpperInvariant()}: {clave}");
+            }
             if (data.EsNuevo)
             {
                 var clave = VehiculoService.GenerarClaveAsociacion();

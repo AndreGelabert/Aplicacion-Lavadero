@@ -17,6 +17,83 @@ public class VehicleOwnershipRegressionTests
     private static FirestoreDb Database() => new FirestoreDbBuilder { ProjectId = "demo-lava-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
 
     [LocalFirestoreFact]
+    public async Task ConcurrentOrphanRegistrationsCannotReplaceTheWinningOwnerOrKey()
+    {
+        var db = Database();
+        await db.Collection("vehiculos").Document("orphan").SetAsync(new Vehiculo { Id = "orphan", Patente = "AB123CD", Marca = "Toyota", Modelo = "Corolla", Color = "Blanco", TipoVehiculo = "Auto", Estado = "Inactivo" });
+        async Task<(bool Won, Cliente Owner, Vehiculo Input)> Claim(string number, string color, string key)
+        {
+            var owner = MakeClient("", number);
+            var input = new Vehiculo { Id = "", Patente = "AB123CD", Marca = "Toyota", Modelo = "Corolla", Color = color, TipoVehiculo = "Auto", ClaveAsociacionHash = VehiculoService.HashClaveAsociacion(key) };
+            var won = await new ClienteService(db).GuardarClienteConVehiculos(owner, true,
+                new() { new() { Nuevo = input, HuerfanoEsperadoId = "orphan" } }, new(), new(), permitirReclamarHuerfano: true);
+            return (won, owner, input);
+        }
+        var results = await Task.WhenAll(Claim("11111111", "Rojo", "ABCD-2345"), Claim("22222222", "Azul", "WXYZ-6789"));
+        var winner = Assert.Single(results, x => x.Won);
+        Assert.Single(results, x => !x.Won);
+        var stored = (await new VehiculoService(db).ObtenerVehiculo("orphan"))!;
+        Assert.Equal(winner.Owner.Id, stored.ClienteId);
+        Assert.Equal(new[] { winner.Owner.Id }, stored.ClientesIds);
+        Assert.Equal(winner.Input.ClaveAsociacionHash, stored.ClaveAsociacionHash);
+        Assert.Equal(winner.Input.Color, stored.Color);
+        Assert.Equal("orphan", winner.Input.Id);
+        Assert.Equal("Activo", stored.Estado);
+        Assert.Single((await db.Collection("clientes").GetSnapshotAsync()).Documents);
+        Assert.Single((await db.Collection("vehiculos").GetSnapshotAsync()).Documents);
+    }
+
+    [LocalFirestoreFact]
+    public async Task ExplicitOrphanClaimCannotSucceedWithoutIssuingANewKey()
+    {
+        var db = Database();
+        var client = MakeClient("owner", "11111111");
+        await db.Collection("clientes").Document(client.Id).SetAsync(client);
+        var orphan = new Vehiculo { Id = "orphan", Patente = "AB123CD", Marca = "Toyota", Modelo = "Corolla", Color = "Blanco", TipoVehiculo = "Auto", Estado = "Inactivo" };
+        await db.Collection("vehiculos").Document(orphan.Id).SetAsync(orphan);
+        Assert.False(await new VehiculoService(db).ReclamarVehiculoSinDueno(orphan.Id, client));
+        Assert.False(await new ClienteService(db).CrearClienteYVincular(MakeClient("", "22222222"), orphan.Id, "", true));
+        Assert.Equal("Inactivo", (await new VehiculoService(db).ObtenerVehiculo(orphan.Id))!.Estado);
+        Assert.Single((await db.Collection("clientes").GetSnapshotAsync()).Documents);
+    }
+
+    [LocalFirestoreFact]
+    public async Task MissingExpectedOrphanCannotBecomeANewRegistration()
+    {
+        var db = Database();
+        var input = new Vehiculo { Id = "", Patente = "AB123CD", Marca = "Toyota", Modelo = "Corolla", Color = "Rojo", TipoVehiculo = "Auto", ClaveAsociacionHash = VehiculoService.HashClaveAsociacion("ABCD-2345") };
+        var client = MakeClient("", "11111111");
+        var audits = new List<ClienteService.AuditoriaVehiculo>();
+        var clientAudits = new List<ClienteService.AuditoriaCliente>();
+        Assert.False(await new ClienteService(db).GuardarClienteConVehiculos(client, true,
+            new() { new() { Nuevo = input, HuerfanoEsperadoId = "disappeared" } }, audits, clientAudits, permitirReclamarHuerfano: true));
+        Assert.Empty((await db.Collection("clientes").GetSnapshotAsync()).Documents);
+        Assert.Empty((await db.Collection("vehiculos").GetSnapshotAsync()).Documents);
+        Assert.Empty((await db.Collection("vehiclePlateGuards").GetSnapshotAsync()).Documents);
+        Assert.Empty((await db.Collection("vehicleCatalogueProposals").GetSnapshotAsync()).Documents);
+        Assert.Empty(audits); Assert.Empty(clientAudits);
+    }
+
+    [LocalFirestoreFact]
+    public async Task OrphanRegistrationReturnsThePersistedIdAndFreshKey()
+    {
+        var db = Database();
+        var orphan = new Vehiculo { Id = "orphan", Patente = "AB123CD", Marca = "Toyota", Modelo = "Corolla", Color = "Blanco", TipoVehiculo = "Auto", Estado = "Inactivo" };
+        await db.Collection("vehiculos").Document(orphan.Id).SetAsync(orphan);
+        var client = MakeClient("", "11111111");
+        var input = new Vehiculo { Id = "", Patente = orphan.Patente, Marca = "Ford", Modelo = "Ka", Color = "Rojo", TipoVehiculo = "Auto", ClaveAsociacionHash = VehiculoService.HashClaveAsociacion("ABCD-2345") };
+        Assert.True(await new ClienteService(db).GuardarClienteConVehiculos(client, true,
+            new() { new() { Nuevo = input } }, new(), new(), permitirReclamarHuerfano: true));
+        Assert.Equal(orphan.Id, input.Id);
+        var actual = (await new VehiculoService(db).ObtenerVehiculo(input.Id))!;
+        Assert.Equal(client.Id, actual.ClienteId);
+        Assert.Equal("Rojo", actual.Color); Assert.Equal("Ford", actual.Marca); Assert.Equal("Ka", actual.Modelo);
+        Assert.Equal(input.ClaveAsociacionHash, actual.ClaveAsociacionHash);
+        Assert.Equal(new[] { orphan.Id }, (await new ClienteService(db).ObtenerCliente(client.Id))!.VehiculosIds);
+        Assert.Single((await db.Collection("vehiculos").GetSnapshotAsync()).Documents);
+    }
+
+    [LocalFirestoreFact]
     public async Task VehicleServiceRejectsExistingPlateWithoutCreatingAnotherVehicle()
     {
         var db = Database();
@@ -111,7 +188,12 @@ public class VehicleOwnershipRegressionTests
                 Id = id, Patente = id, Marca = "Toyota", Modelo = "Corolla", Color = "Blanco", TipoVehiculo = "Auto",
                 Estado = "Activo", ClienteId = id == "missing" ? "gone" : client.Id, ClienteNombreCompleto = "Viejo"
             });
+        foreach (var id in new[] { "one", "two", "missing" })
+            await db.Collection("vehiculos").Document(id).UpdateAsync("ClienteNombreCompleto", "Viejo");
         var listed = await vehicles.ObtenerVehiculos("", new(), new(), new(), 1, 20, "Patente", "asc");
+        Assert.Equal(client.NombreCompleto, (await vehicles.ObtenerVehiculo("one"))!.ClienteNombreCompleto);
+        Assert.Equal(client.NombreCompleto, (await vehicles.ObtenerVehiculoPorPatente("one"))!.ClienteNombreCompleto);
+        Assert.Equal(2, (await vehicles.ObtenerVehiculosPorCliente(client.Id)).Count(v => v.ClienteNombreCompleto == client.NombreCompleto));
         Assert.Equal(new[] { "missing", "one", "two" }, listed.Select(v => v.Patente));
         Assert.Null(listed[0].ClienteNombreCompleto);
         Assert.All(listed.Skip(1), v => Assert.Equal(client.NombreCompleto, v.ClienteNombreCompleto));
@@ -156,13 +238,74 @@ public class VehicleOwnershipRegressionTests
         var db = Database(); var context = Context(); var client = MakeClient("", "22222222");
         var car = new Vehiculo { Id = "car", Patente = "AB123CD", Marca = "Toyota", Modelo = "Corolla", Color = "Blanco", TipoVehiculo = "Auto", Estado = "Inactivo", ClienteId = "", ClientesIds = new() };
         await db.Collection("vehiculos").Document(car.Id).SetAsync(car);
-        await Controller(db, context).CrearClienteAjax(client, JsonSerializer.Serialize(new[] { new { id = car.Id, patente = car.Patente, color = car.Color, tipoVehiculo = car.TipoVehiculo, esReasignacion = true } }));
+        await Controller(db, context).CrearClienteAjax(client, JsonSerializer.Serialize(new[] { new { id = car.Id, patente = car.Patente, esAsociacion = true, claveAsociacion = "" } }));
         Assert.Equal("true", context.Response.Headers["X-Form-Valid"]);
         Assert.Single((await db.Collection("vehiculos").GetSnapshotAsync()).Documents);
         var result = (await db.Collection("vehiculos").Document(car.Id).GetSnapshotAsync()).ConvertTo<Vehiculo>();
         Assert.Equal("Activo", result.Estado); Assert.Equal(client.Id, result.ClienteId); Assert.Equal(new[] { client.Id }, result.ClientesIds);
-        Assert.True(string.IsNullOrEmpty(result.ClaveAsociacionHash));
+        Assert.False(string.IsNullOrEmpty(result.ClaveAsociacionHash));
         Assert.Equal(new[] { car.Id }, (await db.Collection("clientes").Document(client.Id).GetSnapshotAsync()).ConvertTo<Cliente>().VehiculosIds);
+    }
+
+    [LocalFirestoreFact]
+    public async Task BlankKeyRejectsNonOrphansAndTransactionRevalidates()
+    {
+        foreach (var variant in new[] { "active", "owner", "secondary", "hash" })
+        {
+            var db = Database();
+            var car = new Vehiculo { Id = "car", Patente = "AB123CD", Marca = "Toyota", Modelo = "Corolla", Color = "Blanco", TipoVehiculo = "Auto", Estado = "Inactivo" };
+            await db.Collection("vehiculos").Document(car.Id).SetAsync(car);
+            var vehicles = new VehiculoService(db);
+            Assert.NotNull(await vehicles.ValidarClaveYObtenerVehiculo(car.Patente, ""));
+            if (variant == "active") car.Estado = "Activo";
+            if (variant == "owner") car.ClienteId = "owner";
+            if (variant == "secondary") car.ClientesIds.Add("owner");
+            if (variant == "hash") car.ClaveAsociacionHash = "stored";
+            await db.Collection("vehiculos").Document(car.Id).SetAsync(car);
+            Assert.Null(await vehicles.ValidarClaveYObtenerVehiculo(car.Patente, ""));
+            var audits = new List<ClienteService.AuditoriaVehiculo>();
+            Assert.False(await new ClienteService(db).GuardarClienteConVehiculos(MakeClient("", "22222222"), true,
+                new() { new() { Patente = car.Patente, Asociacion = true, NuevaClaveHash = "new" } }, audits, new()));
+            Assert.Empty(audits);
+            Assert.Empty((await db.Collection("clientes").GetSnapshotAsync()).Documents);
+            var stored = (await db.Collection("vehiculos").Document(car.Id).GetSnapshotAsync()).ConvertTo<Vehiculo>();
+            Assert.Equal(car.Estado, stored.Estado); Assert.Equal(car.ClienteId, stored.ClienteId);
+            Assert.Equal(car.ClientesIds, stored.ClientesIds); Assert.Equal(car.ClaveAsociacionHash, stored.ClaveAsociacionHash);
+        }
+    }
+
+    [LocalFirestoreFact]
+    public async Task WhatsAppOptInReusesOrphanAndRejectsChangedEligibility()
+    {
+        foreach (var changed in new[] { false, true })
+        {
+            var db = Database();
+            var car = new Vehiculo { Id = "car", Patente = "AB123CD", Marca = "Old", Modelo = "Old", Color = "Blanco", TipoVehiculo = "Auto", Estado = "Inactivo" };
+            await db.Collection("vehiculos").Document(car.Id).SetAsync(car);
+            Assert.NotNull(await new VehiculoService(db).ValidarClaveYObtenerVehiculo(car.Patente, ""));
+            if (changed) await db.Collection("vehiculos").Document(car.Id).UpdateAsync("ClaveAsociacionHash", "other");
+            var candidate = new Vehiculo { Id = "", Patente = car.Patente, Marca = "New", Modelo = "New", Color = "Rojo", TipoVehiculo = "SUV", ClaveAsociacionHash = "fresh" };
+            var client = MakeClient("", "22222222");
+            var saved = await new ClienteService(db).GuardarClienteConVehiculos(client, true,
+                new() { new() { Nuevo = candidate } }, new(), new(), permitirReclamarHuerfano: true);
+            Assert.Equal(!changed, saved);
+            Assert.Single((await db.Collection("vehiculos").GetSnapshotAsync()).Documents);
+            var stored = (await db.Collection("vehiculos").Document(car.Id).GetSnapshotAsync()).ConvertTo<Vehiculo>();
+            Assert.Equal(changed ? "other" : "fresh", stored.ClaveAsociacionHash);
+            Assert.Equal(changed ? "Old" : "New", stored.Marca);
+            Assert.Equal(changed ? "Blanco" : "Rojo", stored.Color);
+            Assert.Equal(changed ? "" : client.Id, stored.ClienteId);
+            Assert.Equal(changed ? 0 : 1, (await db.Collection("clientes").GetSnapshotAsync()).Count);
+        }
+    }
+
+    [LocalFirestoreFact]
+    public async Task NewVehicleSerializationOmitsDisplayName()
+    {
+        var db = Database();
+        var car = new Vehiculo { Id = "", Patente = "AB123CD", Marca = "Toyota", Modelo = "Corolla", Color = "Blanco", TipoVehiculo = "Auto", ClienteNombreCompleto = "display" };
+        await new VehiculoService(db).CrearVehiculo(car);
+        Assert.False((await db.Collection("vehiculos").Document(car.Id).GetSnapshotAsync()).ContainsField("ClienteNombreCompleto"));
     }
 
     [LocalFirestoreFact]

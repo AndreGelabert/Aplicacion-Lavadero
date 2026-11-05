@@ -16,6 +16,62 @@ namespace Firebase.Tests.Integration;
 public class WhatsAppVehicleFirestoreTests
 {
     [LocalFirestoreFact]
+    public async Task NormalOrphanRegistrationReusesDocumentForNewAndReturningClients()
+    {
+        foreach (var initial in new[] { false, true })
+        {
+            var db = NewDatabase();
+            const string phone = "543751123456";
+            var client = new Cliente { Id = "client", TipoDocumento = "DNI", NumeroDocumento = "12345678", Nombre = "Ana", Apellido = "Perez", Telefono = "3751123456", Email = "current@example.invalid", VehiculosIds = new() { "kept" } };
+            if (!initial)
+            {
+                await db.Collection("clientes").Document(client.Id).SetAsync(client);
+                await db.Collection("vehiculos").Document("kept").SetAsync(new Vehiculo { Id = "kept", Patente = "AB124CD", Marca = "Ford", Modelo = "Ka", Color = "Rojo", TipoVehiculo = "Automóvil", Estado = "Activo", ClienteId = client.Id, ClientesIds = new() { client.Id }, ClaveAsociacionHash = "keep-key" });
+            }
+            await db.Collection("vehiculos").Document("orphan").SetAsync(new Vehiculo { Id = "orphan", Patente = "AB123CD", Marca = "Ford", Modelo = "Ka", Color = "Rojo", TipoVehiculo = "Automóvil", Estado = "Inactivo" });
+            var session = NewSession(phone);
+            session.ClienteId = initial ? "" : client.Id;
+            session.CurrentState = WhatsAppFlowStates.VEHICULO_PATENTE;
+            session.TemporaryData["RegistroInicial"] = initial ? "true" : "false";
+            session.TemporaryData["TipoDocumento"] = "DNI";
+            session.TemporaryData["NumeroDocumento"] = "12345678";
+            session.TemporaryData["Nombre"] = "Ana";
+            session.TemporaryData["Apellido"] = "Perez";
+            session.TemporaryData["Email"] = "new@example.invalid";
+            await db.Collection("whatsapp_sessions").Document(phone).SetAsync(session);
+            var (flow, outgoing) = CreateFlow(db);
+            await flow.ProcessMessage(phone, "AB123CD");
+            var prepared = await Session(db, phone);
+            Assert.Equal(WhatsAppFlowStates.VEHICULO_MARCA, prepared.CurrentState);
+            Assert.Equal("orphan", prepared.TemporaryData["VehiculoHuerfanoEsperadoId"]);
+            await flow.ProcessMessage(phone, "1");
+            await flow.ProcessMessage(phone, "Modelo Nuevo");
+            await flow.ProcessMessage(phone, "usar_modelo_manual");
+            await flow.ProcessMessage(phone, "manual_si");
+            await flow.ProcessMessage(phone, "Blanco");
+            await flow.ProcessMessage(phone, "SI");
+            var stored = (await new VehiculoService(db).ObtenerVehiculo("orphan"))!;
+            Assert.Equal("Activo", stored.Estado);
+            Assert.Equal("Toyota", stored.Marca); Assert.Equal("Modelo Nuevo", stored.Modelo); Assert.Equal("Blanco", stored.Color);
+            Assert.Equal(initial ? 1 : 2, (await db.Collection("vehiculos").GetSnapshotAsync()).Count);
+            var owner = (await new ClienteService(db).ObtenerCliente(stored.ClienteId))!;
+            Assert.Contains("orphan", owner.VehiculosIds);
+            if (!initial)
+            {
+                Assert.Contains("kept", owner.VehiculosIds);
+                Assert.Equal(client.Email, owner.Email);
+                Assert.Equal("keep-key", (await new VehiculoService(db).ObtenerVehiculo("kept"))!.ClaveAsociacionHash);
+            }
+            Assert.Single((await db.Collection("clientes").GetSnapshotAsync()).Documents);
+            Assert.Equal("orphan", Assert.Single((await db.Collection("vehicleCatalogueProposals").GetSnapshotAsync()).Documents).Id);
+            var delivered = System.Text.RegularExpressions.Regex.Match(string.Join("\n", outgoing.Bodies), @"[A-Z0-9]{4}-[A-Z0-9]{4}").Value;
+            Assert.NotEmpty(delivered);
+            Assert.True(VehiculoService.ValidarClaveAsociacion(delivered, stored.ClaveAsociacionHash!));
+            Assert.False((await db.Collection("vehiculos").Document("orphan").GetSnapshotAsync()).ContainsField("ClienteNombreCompleto"));
+        }
+    }
+
+    [LocalFirestoreFact]
     public async Task ReturningClientConfirmsManualModelAndCreatesPendingProposal()
     {
         var db = NewDatabase();
@@ -296,7 +352,7 @@ public class WhatsAppVehicleFirestoreTests
         session.ClienteId = client.Id;
         session.CurrentState = WhatsAppFlowStates.ASOCIAR_VEHICULO_PATENTE;
         await db.Collection("whatsapp_sessions").Document(phone).SetAsync(session);
-        var (flow, _) = CreateFlow(db);
+        var (flow, outgoing) = CreateFlow(db);
         await flow.ProcessMessage(phone, "AB123CD");
         Assert.Equal(WhatsAppFlowStates.ASOCIAR_VEHICULO_CONFIRMACION, (await Session(db, phone)).CurrentState);
         await flow.ProcessMessage(phone, "SI");
@@ -304,6 +360,10 @@ public class WhatsAppVehicleFirestoreTests
         Assert.Equal("Activo", result!.Estado);
         Assert.Equal(client.Id, result.ClienteId);
         Assert.Contains(client.Id, result.ClientesIds);
+        Assert.False(string.IsNullOrEmpty(result.ClaveAsociacionHash));
+        var delivered = System.Text.RegularExpressions.Regex.Match(string.Join("\n", outgoing.Bodies), @"[A-Z0-9]{4}-[A-Z0-9]{4}").Value;
+        Assert.NotEmpty(delivered);
+        Assert.True(VehiculoService.ValidarClaveAsociacion(delivered, result.ClaveAsociacionHash!));
     }
 
     [LocalFirestoreFact]
@@ -371,7 +431,7 @@ public class WhatsAppVehicleFirestoreTests
         session.CurrentState = WhatsAppFlowStates.VEHICULO_PATENTE;
         await db.Collection("whatsapp_sessions").Document(phone).SetAsync(session);
         await flow.ProcessMessage(phone, "AB123CD");
-        Assert.Equal(WhatsAppFlowStates.ASOCIAR_VEHICULO_CONFIRMACION, (await Session(db, phone)).CurrentState);
+        Assert.Equal(WhatsAppFlowStates.VEHICULO_MARCA, (await Session(db, phone)).CurrentState);
         Assert.Single((await db.Collection("vehiculos").GetSnapshotAsync()).Documents);
     }
 
@@ -448,9 +508,11 @@ public class WhatsAppVehicleFirestoreTests
     private sealed class CapturingHandler : HttpMessageHandler
     {
         public string LastBody { get; private set; } = "";
+        public List<string> Bodies { get; } = new();
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastBody = request.Content == null ? "" : await request.Content.ReadAsStringAsync(cancellationToken);
+            Bodies.Add(LastBody);
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
         }
     }

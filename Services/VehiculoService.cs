@@ -71,6 +71,9 @@ public class VehiculoService
         return string.Equals(hashCalculado, hashAlmacenado, StringComparison.OrdinalIgnoreCase);
     }
 
+    public static bool EsHuerfanoReclamable(Vehiculo v) => v.Estado == "Inactivo" &&
+        string.IsNullOrEmpty(v.ClienteId) && !(v.ClientesIds?.Any() ?? false) && string.IsNullOrEmpty(v.ClaveAsociacionHash);
+
     public async Task<List<Vehiculo>> ObtenerVehiculos(
         string searchTerm,
         List<string> tiposVehiculo,
@@ -210,14 +213,20 @@ public class VehiculoService
     public async Task<Vehiculo?> ObtenerVehiculo(string id)
     {
         var doc = await _firestore.Collection("vehiculos").Document(id).GetSnapshotAsync();
-        return doc.Exists ? doc.ConvertTo<Vehiculo>() : null;
+        if (!doc.Exists) return null;
+        var vehiculo = doc.ConvertTo<Vehiculo>();
+        await ActualizarNombresTitulares(new() { vehiculo });
+        return vehiculo;
     }
 
     public async Task<Vehiculo?> ObtenerVehiculoPorPatente(string patente)
     {
         var query = _firestore.Collection("vehiculos").WhereEqualTo("Patente", patente);
         var snapshot = await query.GetSnapshotAsync();
-        return snapshot.Documents.Count > 0 ? snapshot.Documents[0].ConvertTo<Vehiculo>() : null;
+        if (snapshot.Documents.Count == 0) return null;
+        var vehiculo = snapshot.Documents[0].ConvertTo<Vehiculo>();
+        await ActualizarNombresTitulares(new() { vehiculo });
+        return vehiculo;
     }
 
     public async Task<List<Vehiculo>> ObtenerVehiculosPorCliente(string clienteId)
@@ -229,6 +238,7 @@ public class VehiculoService
             .Where(v => v.ClienteId == clienteId || 
                        (v.ClientesIds != null && v.ClientesIds.Contains(clienteId)))
             .ToList();
+        await ActualizarNombresTitulares(vehiculos);
         return vehiculos;
     }
 
@@ -238,10 +248,12 @@ public class VehiculoService
     public async Task<List<Vehiculo>> ObtenerVehiculosParaAsociacion()
     {
         var snapshot = await _firestore.Collection("vehiculos").GetSnapshotAsync();
-        return snapshot.Documents
+        var vehiculos = snapshot.Documents
             .Select(d => d.ConvertTo<Vehiculo>())
-            .Where(v => v.Estado == "Activo" && !string.IsNullOrEmpty(v.ClaveAsociacionHash))
+            .Where(v => (v.Estado == "Activo" && !string.IsNullOrEmpty(v.ClaveAsociacionHash)) || EsHuerfanoReclamable(v))
             .ToList();
+        await ActualizarNombresTitulares(vehiculos);
+        return vehiculos;
     }
 
     /// <summary>
@@ -255,9 +267,8 @@ public class VehiculoService
         var vehiculo = await ObtenerVehiculoPorPatente(patente);
         if (vehiculo == null) return null;
         
-        if (string.IsNullOrEmpty(vehiculo.ClaveAsociacionHash)) return null;
-        
-        if (!ValidarClaveAsociacion(claveTextoPlano, vehiculo.ClaveAsociacionHash)) return null;
+        if (string.IsNullOrWhiteSpace(claveTextoPlano)) return EsHuerfanoReclamable(vehiculo) ? vehiculo : null;
+        if (vehiculo.Estado != "Activo" || !ValidarClaveAsociacion(claveTextoPlano, vehiculo.ClaveAsociacionHash ?? "")) return null;
         
         return vehiculo;
     }
@@ -268,9 +279,10 @@ public class VehiculoService
     /// <param name="vehiculoId">ID del vehículo.</param>
     /// <param name="clienteId">ID del cliente a asociar.</param>
     /// <returns>True si la asociación fue exitosa.</returns>
-    public async Task<bool> ReclamarVehiculoSinDueno(string vehiculoId, Cliente cliente)
+    public async Task<bool> ReclamarVehiculoSinDueno(string vehiculoId, Cliente cliente, string nuevaClave = "")
     {
-        return await VincularCliente(vehiculoId, cliente.Id, null, true);
+        if (string.IsNullOrWhiteSpace(nuevaClave)) return false;
+        return await VincularCliente(vehiculoId, cliente.Id, HashClaveAsociacion(nuevaClave), true);
     }
 
     public async Task<bool> AsociarClienteAVehiculo(string vehiculoId, string clienteId, string clave = "") =>
@@ -293,11 +305,10 @@ public class VehiculoService
             var cliente = clienteSnapshot.ConvertTo<Cliente>();
             if (sinDueno)
             {
-                if (vehiculo.Estado != "Inactivo" || !string.IsNullOrEmpty(vehiculo.ClienteId) || (vehiculo.ClientesIds?.Any() ?? false)) return false;
+                if (!EsHuerfanoReclamable(vehiculo) || string.IsNullOrWhiteSpace(clave)) return false;
                 vehiculo.ClienteId = clienteId;
-                vehiculo.ClienteNombreCompleto = cliente.NombreCompleto;
                 vehiculo.ClientesIds = new List<string> { clienteId };
-                vehiculo.ClaveAsociacionHash = null;
+                vehiculo.ClaveAsociacionHash = clave;
                 vehiculo.Estado = "Activo";
             }
             else
@@ -354,7 +365,9 @@ public class VehiculoService
     public async Task<List<Vehiculo>> ObtenerTodosVehiculos()
     {
         var snapshot = await _firestore.Collection("vehiculos").GetSnapshotAsync();
-        return snapshot.Documents.Select(d => d.ConvertTo<Vehiculo>()).ToList();
+        var vehiculos = snapshot.Documents.Select(d => d.ConvertTo<Vehiculo>()).ToList();
+        await ActualizarNombresTitulares(vehiculos);
+        return vehiculos;
     }
 
     /// <summary>

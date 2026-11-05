@@ -316,7 +316,7 @@ public partial class WhatsAppFlowService
             };
 
             if (!await _clienteService.GuardarClienteConVehiculos(cliente, true,
-                new() { new ClienteService.VinculoWeb { Nuevo = vehiculo, Propuesta = VehicleCatalogueProposal.FromSession(session.TemporaryData) } }, new(), new()))
+                new() { new ClienteService.VinculoWeb { Nuevo = vehiculo, HuerfanoEsperadoId = session.TemporaryData.GetValueOrDefault("VehiculoHuerfanoEsperadoId", ""), Propuesta = VehicleCatalogueProposal.FromSession(session.TemporaryData) } }, new(), new(), permitirReclamarHuerfano: true))
             {
                 await _whatsAppService.SendTextMessage(phoneNumber, "⚠️ La patente ya está registrada. Busquemos el vehículo para asociarlo.");
                 await HandleVehiculoPatente(phoneNumber, session, vehiculo.Patente);
@@ -398,14 +398,18 @@ public partial class WhatsAppFlowService
                 Estado = "Activo"
             };
 
+            var sinDueno = session.TemporaryData.GetValueOrDefault("AsociarSinDueno") == "true";
+            var nuevaClave = sinDueno ? VehiculoService.GenerarClaveAsociacion() : "";
             var exitoso = await _clienteService.CrearClienteYVincular(cliente, vehiculoId,
-                session.TemporaryData.GetValueOrDefault("AsociarClaveHash", ""),
-                session.TemporaryData.GetValueOrDefault("AsociarSinDueno") == "true");
+                sinDueno ? VehiculoService.HashClaveAsociacion(nuevaClave) : session.TemporaryData.GetValueOrDefault("AsociarClaveHash", ""),
+                sinDueno);
             if (!exitoso)
             {
                 await _whatsAppService.SendTextMessage(phoneNumber, "❌ Error al asociar el vehículo. Por favor, intenta nuevamente.");
                 return;
             }
+            if (sinDueno)
+                await _whatsAppService.SendTextMessage(phoneNumber, $"🔑 *Clave de asociación:* `{nuevaClave}`\nGuarda esta clave en un lugar seguro; se muestra solo esta vez.");
             await _sessionService.AssociateClienteToSession(phoneNumber, cliente.Id);
 
             var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
@@ -455,6 +459,7 @@ public partial class WhatsAppFlowService
 
         // Datos del vehículo
         session.TemporaryData.Remove("VehiculoPatente");
+        session.TemporaryData.Remove("VehiculoHuerfanoEsperadoId");
         session.TemporaryData.Remove("VehiculoTipo");
         session.TemporaryData.Remove("VehiculoMarca");
         session.TemporaryData.Remove("VehiculoMarcaId");
