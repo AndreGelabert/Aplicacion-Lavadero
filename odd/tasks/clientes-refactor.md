@@ -8,10 +8,15 @@ S2. "Siempre valora mas el codigo, o no sigas super a raja tabla la documentacio
 S3. "muchas se hicieron en fases tempranas de desarrollo y despues no se actualizaron mas" — characterize production service calls instead of relying on test-local logic.
 S4. "Ramas encadenadas hacia la rama principal" — local work only, no publishing.
 
+S5. "Y segui si" — continue with the identified Index/SearchPartial duplication, preserving existing routes, permission guards, models and ViewBag metadata.
+
 ## Tasks
-T1 | S1-S3 | inline | done | Public service characterization and isolated baseline passed: 851 passed, 0 failed/skipped (job-9, exit 0). Commit: pending.
-T2 | S2-S3 | inline | done | Exact predicates/materialization retained; baseline and post-change isolated suites both 851 passed, 0 failed/skipped (job-9/job-10, exit 0). Commit: pending.
-T3 | S1-S4 | inline | in_progress | Suite passed; native ASSESS unassessable due to unrelated untracked declaration, plan medium/self-verification, no independent verifier. Preparing separate local unit commit.
+T1 | S1-S3 | inline | done | Public service characterization and isolated baseline passed: 851 passed, 0 failed/skipped (job-9, exit 0). Commit: 10219c4.
+T2 | S2-S3 | inline | done | Exact predicates/materialization retained; baseline and post-change isolated suites both 851 passed, 0 failed/skipped (job-9/job-10, exit 0). Commit: 10219c4.
+T3 | S1-S4 | inline | done | Both suites 851/851; diff check clean; native assessment unavailable, no independent verifier required by returned plan. Local implementation commit: 10219c4.
+
+T4 | S2-S3,S5 | inline | done | Controller extraction preserves signatures and ViewBag differences. Baseline/post-change 852 passed, zero failed/skipped (job-11/job-12). Commit: next local MVC slice.
+T5 | S2-S5 | inline | in_progress | Checks passed; preparing isolated local commit excluding pre-existing audit dependency edits.
 
 ## Log
 L1. User authorization verbatim: "Ignora esa prueba y segui con el proximo modulo planificado"
@@ -19,3 +24,7 @@ L2. Explorer mw46epny-5-wkbo identified duplicate filters Services/ClienteServic
 L3. Audit native review review-10210b6ea819cb83 approved and acknowledged. Independent audit executable verification timed out, remains unavailable and is not replaced by this work. Existing parent checks: 850 .NET and 10 browser fixtures passed. Audit delivery not declared fully verified.
 
 L4. Post-change job-10 exit 0: 851 passed, 0 failed/skipped; same emulator Connection reset warning as baseline. No behavior change means no meaningful RED; characterization brackets exact extraction. No UI, CLI, help or public signature changed. Risk: none (both listing/count explicitly in this unit; private helper only; no security/persistence changes). Native assessment unavailable due to untracked declaration; no native approval claimed.
+L5. Local slice 10219c4 on refactor/clientes-queries includes exactly service/test/task document (123 authored changed lines). Branch ancestry contains earlier query slice f302ec6; review this unit relative to f302ec6, not accumulated origin/main range. Audit writer changes remain uncommitted, including its two staged new files; no publishing.
+L6. User authorization verbatim: "Y segui si". Controller already contains uncommitted audit dependency change; preserve it and exclude it from Clientes delivery.
+L7. MVC baseline job-11 exit 0: 852 passed, 0 failed/skipped. Private PrepararListado extraction implemented; retains query order, permission-dependent Index reads, total-page math and ViewBag keys; PageSize remains Index-only. Post-change checks pending.
+L8. Post-change job-12 exit 0: 852 passed, zero failed/skipped. ASSESS unavailable: untracked declaration error; returned plan self-verification/no independent verifier. No native approval claimed. Risk: none, private extraction of explicitly scoped actions with unchanged permission checks. No CLI/UI contract or help change.

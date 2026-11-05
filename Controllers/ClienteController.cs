@@ -42,27 +42,7 @@ public class ClienteController : Controller
     {
         var puedeConsultar = User.TienePermiso("Clientes.Consultar");
 
-        // Si no se especifican estados, por defecto mostrar solo Activos
-        if (estados == null || !estados.Any())
-        {
-            estados = new List<string> { "Activo" };
-        }
-
-        var clientes = puedeConsultar
-            ? await _clienteService.ObtenerClientes(searchTerm, pageNumber, pageSize, sortBy, sortOrder, estados)
-            : new List<Cliente>();
-        var totalClientes = puedeConsultar
-            ? await _clienteService.ObtenerTotalClientes(searchTerm, estados)
-            : 0;
-        var totalPages = Math.Max((int)Math.Ceiling(totalClientes / (double)pageSize), 1);
-
-        ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = totalPages;
-        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-        ViewBag.SortBy = sortBy;
-        ViewBag.SortOrder = sortOrder;
-        ViewBag.SearchTerm = searchTerm;
-        ViewBag.Estados = estados;
+        var clientes = await PrepararListado(searchTerm, estados, pageNumber, pageSize, sortBy, sortOrder, puedeConsultar);
         ViewBag.PageSize = pageSize;
 
         await CargarListasForm();
@@ -81,22 +61,7 @@ public class ClienteController : Controller
         string sortBy = "Nombre",
         string sortOrder = "asc")
     {
-        if (estados == null || !estados.Any())
-        {
-            estados = new List<string> { "Activo" };
-        }
-
-        var clientes = await _clienteService.ObtenerClientes(searchTerm, pageNumber, pageSize, sortBy, sortOrder, estados);
-        var totalClientes = await _clienteService.ObtenerTotalClientes(searchTerm, estados);
-        var totalPages = Math.Max((int)Math.Ceiling(totalClientes / (double)pageSize), 1);
-
-        ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = totalPages;
-        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-        ViewBag.SortBy = sortBy;
-        ViewBag.SortOrder = sortOrder;
-        ViewBag.SearchTerm = searchTerm;
-        ViewBag.Estados = estados;
+        var clientes = await PrepararListado(searchTerm, estados, pageNumber, pageSize, sortBy, sortOrder);
 
         return PartialView("_ClienteTable", clientes);
     }
@@ -703,6 +668,34 @@ public class ClienteController : Controller
         Response.Headers["X-Form-Message"] = accionAuditoria.Contains("Creacion") ? "Cliente creado correctamente." : "Cliente actualizado correctamente.";
         await CargarListasForm();
         return PartialView("_ClienteForm", null);
+    }
+
+    private async Task<List<Cliente>> PrepararListado(
+        string searchTerm, List<string> estados, int pageNumber, int pageSize,
+        string sortBy, string sortOrder, bool puedeConsultar = true)
+    {
+        // Si no se especifican estados, por defecto mostrar solo Activos
+        if (estados == null || !estados.Any())
+        {
+            estados = new List<string> { "Activo" };
+        }
+
+        var clientes = puedeConsultar
+            ? await _clienteService.ObtenerClientes(searchTerm, pageNumber, pageSize, sortBy, sortOrder, estados)
+            : new List<Cliente>();
+        var totalClientes = puedeConsultar
+            ? await _clienteService.ObtenerTotalClientes(searchTerm, estados)
+            : 0;
+        var totalPages = Math.Max((int)Math.Ceiling(totalClientes / (double)pageSize), 1);
+
+        ViewBag.CurrentPage = pageNumber;
+        ViewBag.TotalPages = totalPages;
+        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
+        ViewBag.SortBy = sortBy;
+        ViewBag.SortOrder = sortOrder;
+        ViewBag.SearchTerm = searchTerm;
+        ViewBag.Estados = estados;
+        return clientes;
     }
 
     private List<int> GetVisiblePages(int currentPage, int totalPages, int range = 2)

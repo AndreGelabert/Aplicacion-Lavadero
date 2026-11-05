@@ -62,6 +62,64 @@ public class ClienteQueryRefactorTests
         }
     }
 
+    [LocalFirestoreFact]
+    public async Task ControllerListingsPreserveMetadataAndCreateOnlyEmptyRows()
+    {
+        var db = new FirestoreDbBuilder
+        {
+            ProjectId = "demo-clientmvc-" + Guid.NewGuid().ToString("N")[..16],
+            EmulatorDetection = EmulatorDetection.EmulatorOnly
+        }.Build();
+        await db.Collection("clientes").Document("a").SetAsync(
+            Client("a", "Ana", "Perez", "123", "ana@example.invalid", "1111111111", "Activo"));
+        ClienteController Controller(bool canRead) => new(new ClienteService(db),
+            new TipoDocumentoService(db), new VehiculoService(db), new AuditService(db),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ClienteController>.Instance)
+        {
+            ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
+            {
+                HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
+                {
+                    User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+                        new[] { new System.Security.Claims.Claim("permiso", canRead ? "Clientes.Consultar" : "Clientes.Crear") }, "test"))
+                }
+            }
+        };
+        void Metadata(Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary data)
+        {
+            Assert.Equal(2, data["CurrentPage"]);
+            Assert.Equal(1, data["TotalPages"]);
+            Assert.Equal(new[] { 1 }, Assert.IsType<List<int>>(data["VisiblePages"]));
+            Assert.Equal("Nombre", data["SortBy"]);
+            Assert.Equal("desc", data["SortOrder"]);
+            Assert.Equal(new[] { "Activo" }, Assert.IsType<List<string>>(data["Estados"]));
+        }
+        var index = Assert.IsType<Microsoft.AspNetCore.Mvc.ViewResult>(
+            await Controller(true).Index("ANA", null!, 2, 1, "Nombre", "desc"));
+        Assert.Empty(Assert.IsType<List<Cliente>>(index.Model));
+        Metadata(index.ViewData);
+        Assert.Equal("ANA", index.ViewData["SearchTerm"]);
+        Assert.Equal(1, index.ViewData["PageSize"]);
+        var search = Assert.IsType<Microsoft.AspNetCore.Mvc.PartialViewResult>(
+            await Controller(true).SearchPartial("ANA", new(), 2, 1, "Nombre", "desc"));
+        Assert.Equal("_ClienteTable", search.ViewName);
+        Assert.Empty(Assert.IsType<List<Cliente>>(search.Model));
+        Metadata(search.ViewData);
+        Assert.Equal("ANA", search.ViewData["SearchTerm"]);
+        Assert.False(search.ViewData.ContainsKey("PageSize"));
+        var table = Assert.IsType<Microsoft.AspNetCore.Mvc.PartialViewResult>(
+            await Controller(true).TablePartial(null!, 2, 1, "Nombre", "desc"));
+        Assert.Empty(Assert.IsType<List<Cliente>>(table.Model));
+        Metadata(table.ViewData);
+        Assert.Null(table.ViewData["SearchTerm"]);
+        var createOnly = Assert.IsType<Microsoft.AspNetCore.Mvc.ViewResult>(
+            await Controller(false).Index(null!, null!));
+        Assert.Empty(Assert.IsType<List<Cliente>>(createOnly.Model));
+        Assert.Equal(1, createOnly.ViewData["TotalPages"]);
+        Assert.Equal("CrearClienteAjax", createOnly.ViewData["FormAction"]);
+        Assert.Single(await new ClienteService(db).ObtenerClientes(null!, 1, 10, "Nombre", "asc"));
+    }
+
     private static Cliente Client(string id, string name, string surname, string document,
         string email, string phone, string state) => new()
     {
