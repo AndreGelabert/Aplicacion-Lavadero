@@ -7,7 +7,7 @@ namespace Firebase.Models
     /// Modelo que representa un vehículo registrado en el lavadero.
     /// Un vehículo puede tener múltiples clientes asociados (dueños compartidos).
     /// </summary>
-    [FirestoreData]
+    [FirestoreData(UnknownPropertyHandling = UnknownPropertyHandling.Ignore)]
     public class Vehiculo
     {
         /// <summary>
@@ -62,7 +62,6 @@ namespace Firebase.Models
         /// <summary>
         /// Nombre completo del dueño principal (solo lectura/visualización).
         /// </summary>
-        [FirestoreProperty]
         public string? ClienteNombreCompleto { get; set; }
 
         /// <summary>

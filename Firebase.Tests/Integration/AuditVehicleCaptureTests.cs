@@ -14,7 +14,7 @@ public class AuditVehicleCaptureTests
 {
     private static Dictionary<string, string> Snapshot(string model, string color, string state) => new() {
         ["Patente"] = "ABC123", ["TipoVehiculo"] = "Auto", ["Marca"] = "Marca", ["Modelo"] = model,
-        ["Color"] = color, ["Estado"] = state, ["ClienteId"] = "", ["ClientesIds"] = "[\"cliente-1\"]"
+        ["Color"] = color, ["Estado"] = state, ["ClienteId"] = "", ["ClientesIds"] = "[]"
     };
 
     [LocalFirestoreFact]
@@ -22,7 +22,7 @@ public class AuditVehicleCaptureTests
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-lava-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var service = new VehiculoService(db);
-        var vehicle = new Vehiculo { Id = "vehicle", Patente = "ABC123", TipoVehiculo = "Auto", Marca = "Marca", Modelo = "Original", Color = "Azul", ClientesIds = new() { "cliente-1" }, ClaveAsociacionHash = "secret-hash" };
+        var vehicle = new Vehiculo { Id = "vehicle", Patente = "ABC123", TipoVehiculo = "Auto", Marca = "Marca", Modelo = "Original", Color = "Azul", ClientesIds = new(), ClaveAsociacionHash = "secret-hash" };
         await service.ActualizarVehiculo(vehicle);
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, "actor"), new Claim(ClaimTypes.Email, "actor@example.invalid") }, "test")) };
         var controller = new VehiculoController(service, new TipoVehiculoService(db), new ClienteService(db), new AuditService(db), null!, NullLogger<VehiculoController>.Instance) { ControllerContext = new ControllerContext { HttpContext = context } };

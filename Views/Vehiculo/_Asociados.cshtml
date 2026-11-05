@@ -1,0 +1,14 @@
+@model List<Firebase.Models.Cliente>
+<h4 class="font-semibold text-gray-900 dark:text-white">Personas asociadas a @ViewBag.Patente</h4>
+@if (!Model.Any())
+{
+    <p class="text-gray-500">No hay personas asociadas.</p>
+}
+@foreach (var cliente in Model)
+{
+    <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <p class="font-medium text-gray-900 dark:text-white">@cliente.NombreCompleto @(cliente.Id == (string)ViewBag.TitularId ? "(Titular)" : "")</p>
+        <p class="text-sm text-gray-500">@cliente.TipoDocumento @cliente.NumeroDocumento</p>
+        <p class="text-sm text-gray-500">@cliente.Telefono · @cliente.Email</p>
+    </div>
+}

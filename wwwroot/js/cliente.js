@@ -713,7 +713,9 @@
                 color: v.color,
                 tipoVehiculo: v.tipoVehiculo,
                 esNuevo: v.esTemporalNuevo || false,
-                esReasignacion: v.esReasignacion || false // Flag para reasignación
+                esReasignacion: v.esReasignacion || false, // Flag para reasignación
+                esAsociacion: v.esAsociacion || false,
+                claveAsociacion: v.claveAsociacion || ''
             }));
 
             // Crear FormData del formulario
@@ -1114,7 +1116,9 @@
             marca: vehiculoSeleccionadoDropdown.marca,
             modelo: vehiculoSeleccionadoDropdown.modelo,
             color: vehiculoSeleccionadoDropdown.color,
-            tipoVehiculo: vehiculoSeleccionadoDropdown.tipoVehiculo
+            tipoVehiculo: vehiculoSeleccionadoDropdown.tipoVehiculo,
+            esTitular: vehiculoSeleccionadoDropdown.esTitular,
+            tieneOtrosAsociados: vehiculoSeleccionadoDropdown.tieneOtrosAsociados
         });
 
         vehiculoSeleccionadoDropdown = null;
@@ -1126,6 +1130,46 @@
     };
 
     window.removerVehiculoSeleccionado = function (id) {
+        const vehiculo = vehiculosSeleccionados.find(v => v.id === id);
+        if (!vehiculo) return;
+        if (vehiculo.esTitular && vehiculo.tieneOtrosAsociados) {
+            showFormMessage('error', 'Para quitar este vehículo, primero los demás deben desvincularse. Cuando seas el único titular podrás quitarlo y el vehículo se desactivará.');
+            return;
+        }
+        if (document.getElementById('quitar-vehiculo-modal')) return;
+        const trigger = document.activeElement;
+        const dialog = document.createElement('dialog');
+        dialog.id = 'quitar-vehiculo-modal';
+        dialog.setAttribute('aria-labelledby', 'quitar-vehiculo-title');
+        dialog.className = 'p-5 rounded-lg shadow bg-white dark:bg-gray-800 text-gray-900 dark:text-white w-full max-w-md';
+        const clientId = document.getElementById('Id')?.value || '';
+        const editing = !!clientId;
+        dialog.innerHTML = `<h3 id="quitar-vehiculo-title" class="text-lg font-semibold mb-4">Quitar vehículo</h3>
+            <p class="mb-2">${editing ? '¿Seguro que desea eliminar este vehículo de su propiedad?' : '¿Está seguro de que desea descartar este vehículo para su registro?'}</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">El cambio se aplicará al guardar el cliente.</p>
+            <div class="flex justify-end gap-3"><button type="button" data-cancel class="px-4 py-2 border rounded-lg">Cancelar</button>
+            <button type="button" data-confirm class="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg">Confirmar</button></div>`;
+        dialog.style.cssText = 'max-width:28rem;border:0;';
+        const cleanup = () => { dialog.remove(); if (trigger?.isConnected) trigger.focus(); };
+        dialog.addEventListener('close', cleanup, { once: true });
+        dialog.querySelector('[data-cancel]').addEventListener('click', () => dialog.close());
+        dialog.querySelector('[data-confirm]').addEventListener('click', () => {
+            // A replaced form must never remove an item from another client's selection.
+            if ((document.getElementById('Id')?.value || '') === clientId)
+                quitarVehiculoConfirmado(id);
+            dialog.close();
+        });
+        document.body.appendChild(dialog);
+        dialog.showModal();
+        dialog.querySelector('[data-cancel]').focus();
+    };
+
+    function quitarVehiculoConfirmado(id) {
+        const vehiculo = vehiculosSeleccionados.find(v => v.id === id);
+        if (vehiculo?.esTitular && vehiculo?.tieneOtrosAsociados) {
+            showFormMessage('error', 'Para quitar este vehículo, primero los demás deben desvincularse. Cuando seas el único titular podrás quitarlo y el vehículo se desactivará.');
+            return;
+        }
         // Remover de seleccionados
         vehiculosSeleccionados = vehiculosSeleccionados.filter(v => v.id !== id);
 
@@ -1140,7 +1184,7 @@
 
         updateVehiculosSeleccionadosList();
         renderVehiculosDropdown(vehiculosDisponibles, document.getElementById('vehiculo-search')?.value || '');
-    };
+    }
 
     function updateVehiculosSeleccionadosList() {
         const container = document.getElementById('vehiculos-seleccionados-container');
@@ -1467,7 +1511,7 @@
                                     
                                     <div>
                                         <label for="clave-asociacion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                                            Clave de Asociación <span class="text-red-600">*</span>
+                                            Clave de Asociación (obligatoria con titular; sin clave para vehículo sin dueño)
                                         </label>
                                         <input type="text" id="clave-asociacion" 
                                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white uppercase"
@@ -2073,15 +2117,15 @@
         const claveInput = document.getElementById('clave-asociacion');
         const resultadoDiv = document.getElementById('validacion-clave-resultado');
         
-        const patente = patenteHidden?.value?.trim();
-        const clave = claveInput?.value?.trim();
+        const patente = document.getElementById('asociacion-patente-input')?.value?.trim() || patenteHidden?.value?.trim();
+        const clave = claveInput?.value?.trim() || '';
         
         if (!patente) {
             showQuickVehiculoMessage('error', 'Debe seleccionar un vehículo.', 5000);
             return;
         }
         
-        if (!clave || clave.length < 9) {
+        if (clave && !/^[A-Z0-9]{4}-[A-Z0-9]{4}$/i.test(clave)) {
             showQuickVehiculoMessage('error', 'Ingrese la clave de asociación completa (formato: XXXX-XXXX).', 5000);
             return;
         }
@@ -2133,6 +2177,8 @@
                 color: data.vehiculo.color,
                 tipoVehiculo: data.vehiculo.tipoVehiculo,
                 esTemporalNuevo: false,
+                esTitular: false,
+                tieneOtrosAsociados: true,
                 esAsociacion: true, // Flag especial para indicar asociación
                 claveAsociacion: clave
             };
@@ -2198,9 +2244,13 @@
             const respuesta = await window.Peticiones.enviar(verificarUrl);
             const data = await respuesta.json();
 
-            if (data.existe && data.vehiculo) {
-                // Existe vehículo inactivo sin dueño ? Mostrar modal de reasignación
-                mostrarModalReasignacion(data.vehiculo, color, tipoVehiculo);
+            if (data.asociable || (data.existe && data.vehiculo)) {
+                const toggle = document.getElementById('toggle-modo-vehiculo');
+                if (toggle) toggle.checked = true;
+                await window.toggleModoVehiculo(true);
+                document.getElementById('asociacion-patente').value = patente;
+                document.getElementById('asociacion-patente-input').value = patente;
+                showQuickVehiculoMessage('error', 'Este vehículo ya está registrado. Asócielo aquí; la clave es necesaria si tiene titular y puede omitirse si está sin dueño.', 8000);
                 return false;
             }
 
@@ -2212,6 +2262,7 @@
         } catch (error) {
             console.error('Error al verificar vehículo:', error);
             showQuickVehiculoMessage('error', 'Error al verificar el vehículo. Intente nuevamente.', 5000);
+            return false;
         }
 
         // Crear vehículo temporal (solo en memoria)
@@ -2373,7 +2424,9 @@
                 color: nuevoColor,
                 tipoVehiculo: nuevoTipo,
                 esTemporalNuevo: false, // NO es nuevo, es reasignación
-                esReasignacion: true // Flag especial para indicar reasignación
+                esReasignacion: true, // Flag especial para indicar reasignación
+                esTitular: true,
+                tieneOtrosAsociados: false
             };
 
             // Obtener datos del formulario que se quedó abierto

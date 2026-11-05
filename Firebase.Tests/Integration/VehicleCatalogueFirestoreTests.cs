@@ -168,6 +168,7 @@ public class VehicleCatalogueFirestoreTests
         foreach (var type in new[] { "Automóvil", "Camión" })
         {
             var vehicle = NewVehicle();
+            vehicle.Patente = type == "Automóvil" ? "AB123CD" : "AB124CD";
             vehicle.TipoVehiculo = type;
             vehicle.Marca = "Marca Nueva";
             vehicle.Modelo = "Modelo Uno";

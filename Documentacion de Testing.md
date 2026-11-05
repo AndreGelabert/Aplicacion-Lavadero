@@ -1,5 +1,22 @@
 # Documentación de Testing - Aplicación Lavadero
 
+## Regresiones de titularidad y patentes
+
+### Nombres actuales y vehículos huérfanos
+
+- El nombre actual del titular se obtiene desde `clientes` por `ClienteId`, con lecturas agrupadas. `ClienteNombreCompleto` sigue disponible para UI/JSON, pero no se serializa en escrituras del vehículo. Los documentos anteriores siguen siendo legibles; no se hace migración masiva ni se reescriben auditorías históricas.
+- Web: usar **Asociar existente**. La clave solo puede omitirse si el vehículo está inactivo, sin titular, sin asociados y sin hash de clave. El servidor vuelve a comprobarlo al guardar; genera una nueva clave y la muestra solo tras confirmar la transacción. Registrar una patente duplicada orienta a ese apartado.
+- WhatsApp: una patente huérfana continúa el registro normal de marca, modelo y color. Se reutiliza el mismo documento y se entrega una nueva clave. El ID observado queda fijado durante la conversación: si desaparece, cambia o deja de ser reclamable, el guardado se rechaza sin crear cliente, vehículo ni propuesta parcialmente.
+- Pruebas específicas: `MissingExpectedOrphanCannotBecomeANewRegistration`, `OrphanRegistrationReturnsThePersistedIdAndFreshKey`, `ExplicitOrphanClaimCannotSucceedWithoutIssuingANewKey` y `NormalOrphanRegistrationReusesDocumentForNewAndReturningClients`. Esta última atraviesa mensajes del flujo público, valida propuesta, clave entregada y conservación de datos/asociaciones del cliente existente.
+- Evidencia de esta entrega: 843 pruebas aisladas aprobadas, ninguna fallida ni omitida (`ownership-live-lifecycle.*.log`). Los RED previos reproducen ID incorrecto, huérfano desaparecido y reclamación sin nueva clave. Las pruebas de navegador simulan HTTP: no demuestran el recorrido completo Razor–servidor–Firestore.
+
+
+- `Firebase.Tests/Integration/VehicleOwnershipRegressionTests.cs` cubre rechazo de claves inválidas sin escrituras, reasignación de huérfanos, bloqueo de desvinculación del titular compartido, relaciones inversas desactualizadas y nombres actuales.
+- La creación usa una guardia transaccional compartida por patente (`vehiclePlateGuards`), sin migrar vehículos existentes. Una consulta por patente sigue detectando registros anteriores; la guardia no reserva una patente después de eliminar su vehículo. La prueba concurrente cruza el guardado cliente–vehículo con el servicio de creación y exige un único ganador.
+- WhatsApp guarda cliente, vehículo y propuesta juntos; al agregar a un cliente existente conserva sus datos y asociaciones leídos dentro de la transacción.
+- Ejecutar únicamente contra emuladores desechables: `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& ./Firebase.Tests/run-isolated.ps1"`.
+- Navegador: `node scripts/playwright.cjs test tests/browser/vehicle-ownership.spec.cjs --reporter=line`. Incluye advertencia al quitar el titular compartido, envío de clave y modal de personas asociadas. Las respuestas HTTP están simuladas: no constituye una prueba Razor–servidor–Firestore de extremo a extremo.
+
 ## Resumen Ejecutivo
 
 Este documento presenta la documentación completa de testing para la aplicación Lavadero (Car Wash). Los tests fueron ejecutados utilizando el framework xUnit siguiendo la metodología Arrange-Act-Assert (AAA).

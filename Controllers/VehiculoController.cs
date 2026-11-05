@@ -180,6 +180,26 @@ public class VehiculoController : Controller
 
     [HttpGet]
     [Permiso("Vehiculos.Consultar")]
+    public async Task<IActionResult> AsociadosPartial(string id)
+    {
+        if (!User.TienePermiso("Clientes.Consultar")) return Forbid();
+        var vehiculo = await _vehiculoService.ObtenerVehiculo(id);
+        if (vehiculo == null) return NotFound();
+        var ids = (vehiculo.ClientesIds ?? new List<string>()).Append(vehiculo.ClienteId)
+            .Where(x => !string.IsNullOrEmpty(x)).Distinct();
+        var clientes = new List<Cliente>();
+        foreach (var clienteId in ids)
+        {
+            var cliente = await _clienteService.ObtenerCliente(clienteId);
+            if (cliente != null) clientes.Add(cliente);
+        }
+        ViewBag.Patente = vehiculo.Patente;
+        ViewBag.TitularId = vehiculo.ClienteId;
+        return PartialView("_Asociados", clientes);
+    }
+
+    [HttpGet]
+    [Permiso("Vehiculos.Consultar")]
     public async Task<IActionResult> GetClienteInfo(string clienteId)
     {
         if (string.IsNullOrEmpty(clienteId)) return NotFound();
@@ -218,7 +238,7 @@ public class VehiculoController : Controller
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(patente) || string.IsNullOrWhiteSpace(marca) || string.IsNullOrWhiteSpace(modelo))
+            if (string.IsNullOrWhiteSpace(patente))
             {
                 return Json(new { existe = false });
             }
@@ -231,18 +251,22 @@ public class VehiculoController : Controller
                 return Json(new { existe = false });
             }
             
+            if (VehiculoService.EsHuerfanoReclamable(vehiculoExistente))
+                return Json(new { existe = false, asociable = true });
+
             // CASO 2: Existe vehículo ACTIVO → ERROR, patente duplicada
             if (vehiculoExistente.Estado == "Activo")
             {
                 return Json(new 
                 { 
-                    existe = false, 
+                    existe = false,
+                    asociable = !string.IsNullOrEmpty(vehiculoExistente.ClienteId) || (vehiculoExistente.ClientesIds?.Any() ?? false),
                     error = $"Ya existe un vehículo activo con la patente {vehiculoExistente.Patente} ({vehiculoExistente.TipoVehiculo} - {vehiculoExistente.Marca} {vehiculoExistente.Modelo}). No se pueden registrar patentes duplicadas."
                 });
             }
             
             // CASO 3: Existe vehículo INACTIVO pero CON DUEÑO → ERROR, no se puede reasignar
-            if (!string.IsNullOrEmpty(vehiculoExistente.ClienteId))
+            if (!string.IsNullOrEmpty(vehiculoExistente.ClienteId) || (vehiculoExistente.ClientesIds?.Any() ?? false))
             {
                 return Json(new 
                 { 
@@ -252,7 +276,7 @@ public class VehiculoController : Controller
             }
             
             // CASO 4: Existe vehículo INACTIVO, SIN DUEÑO, con misma marca y modelo → REASIGNACIÓN
-            if (vehiculoExistente.Marca.Equals(marca, StringComparison.OrdinalIgnoreCase) &&
+            if (VehiculoService.EsHuerfanoReclamable(vehiculoExistente) && vehiculoExistente.Marca.Equals(marca, StringComparison.OrdinalIgnoreCase) &&
                 vehiculoExistente.Modelo.Equals(modelo, StringComparison.OrdinalIgnoreCase))
             {
                 return Json(new
@@ -302,6 +326,9 @@ public class VehiculoController : Controller
             vehiculo.Marca = original.Marca;
             vehiculo.ClienteId = original.ClienteId; // El dueño no se cambia desde aquí según requerimiento implícito de "solo lectura"
             vehiculo.ClienteNombreCompleto = original.ClienteNombreCompleto;
+            vehiculo.ClientesIds = original.ClientesIds;
+            vehiculo.ClaveAsociacionHash = original.ClaveAsociacionHash;
+            vehiculo.Estado = original.Estado;
 
             // Solo Modelo y Color son editables según "Una vez registrado el vehículo, no se puede editar patente, tipo vehículo y marca"
             // El usuario no mencionó Modelo y Color como NO editables, así que asumimos que sí.
@@ -310,7 +337,7 @@ public class VehiculoController : Controller
             if (!ModelState.IsValid) return await PrepararRespuestaAjax(false, vehiculo, null);
 
             var antes = AuditCampos.CapturarVehiculo(original);
-            await _vehiculoService.ActualizarVehiculo(vehiculo);
+            await _vehiculoService.ActualizarDatosVehiculo(vehiculo);
             var despues = await _vehiculoService.ObtenerVehiculo(vehiculo.Id);
             return await PrepararRespuestaAjax(true, vehiculo, "Actualizacion de vehiculo", antes, despues);
         }
@@ -334,7 +361,7 @@ public class VehiculoController : Controller
                 return Json(new { success = false, message = "Vehículo no encontrado." });
             }
 
-            if (!string.IsNullOrEmpty(vehiculo.ClienteId))
+            if (!string.IsNullOrEmpty(vehiculo.ClienteId) || (vehiculo.ClientesIds?.Any() ?? false))
             {
                 return Json(new { 
                     success = false, 
@@ -606,7 +633,7 @@ public class VehiculoController : Controller
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(request?.Patente) || string.IsNullOrWhiteSpace(request?.ClaveAsociacion))
+            if (string.IsNullOrWhiteSpace(request?.Patente))
             {
                 return Json(new { 
                     valida = false, 
@@ -616,7 +643,7 @@ public class VehiculoController : Controller
 
             var vehiculo = await _vehiculoService.ValidarClaveYObtenerVehiculo(
                 request.Patente.ToUpper(), 
-                request.ClaveAsociacion
+                request.ClaveAsociacion ?? ""
             );
 
             if (vehiculo == null)
@@ -630,6 +657,7 @@ public class VehiculoController : Controller
             return Json(new
             {
                 valida = true,
+                esHuerfano = VehiculoService.EsHuerfanoReclamable(vehiculo),
                 vehiculo = new
                 {
                     id = vehiculo.Id,

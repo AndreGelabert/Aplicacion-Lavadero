@@ -231,21 +231,6 @@ public partial class WhatsAppFlowService
     {
         try
         {
-            var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(session.ClienteId!);
-            var vehiculosActivos = vehiculos?.Where(v => v.Estado == "Activo").Count() ?? 0;
-
-            if (vehiculosActivos <= 1)
-            {
-                await _whatsAppService.SendTextMessage(phoneNumber,
-                    "⚠️ *No puedes desvincular tu único vehículo.*\n\n" +
-                    "Debes tener al menos un vehículo asociado.\n\n" +
-                    "Si deseas cambiar de vehículo, primero agrega el nuevo y luego desvincula este.");
-
-                await Task.Delay(500);
-                await MostrarMenuVehiculos(phoneNumber, session);
-                return;
-            }
-
             // Obtener datos del vehículo
             var vehiculoId = session.TemporaryData.GetValueOrDefault("vehiculo_modificar_id", "");
             var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoId);
@@ -276,6 +261,25 @@ public partial class WhatsAppFlowService
             var cantidadDuenos = todosLosDuenos.Count;
 
             var esDuenoPrincipal = vehiculo.ClienteId == session.ClienteId;
+            if (esDuenoPrincipal && cantidadDuenos > 1)
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "⚠️ Para quitar este vehículo, primero los demás deben desvincularse. Cuando seas el único titular podrás quitarlo y el vehículo se desactivará.");
+                return;
+            }
+
+            var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(session.ClienteId!);
+            var vehiculosActivos = vehiculos?.Count(v => v.Estado == "Activo") ?? 0;
+            if (vehiculosActivos <= 1)
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "⚠️ *No puedes desvincular tu único vehículo.*\n\n" +
+                    "Debes tener al menos un vehículo asociado.\n\n" +
+                    "Si deseas cambiar de vehículo, primero agrega el nuevo y luego desvincula este.");
+                await Task.Delay(500);
+                await MostrarMenuVehiculos(phoneNumber, session);
+                return;
+            }
 
             var mensaje = $"⚠️ *Confirmar desvinculación*\n\n" +
                          $"¿Estás seguro de que deseas desvincular el vehículo?\n\n" +
@@ -406,16 +410,8 @@ public partial class WhatsAppFlowService
             if (!exitoso)
             {
                 await _whatsAppService.SendTextMessage(phoneNumber,
-                    "❌ Error al desvincular el vehículo.");
+                    "❌ No se pudo desvincular el vehículo. Si eres el titular, primero los demás deben desvincularse; cuando seas el único titular podrás quitarlo y se desactivará.");
                 return;
-            }
-
-            // Actualizar lista de vehículos del cliente
-            var cliente = await _clienteService.ObtenerCliente(session.ClienteId!);
-            if (cliente != null)
-            {
-                cliente.VehiculosIds.Remove(vehiculoId);
-                await _clienteService.ActualizarCliente(cliente);
             }
 
             _logger.LogInformation("Vehicle unlinked");
@@ -473,7 +469,7 @@ public partial class WhatsAppFlowService
             var modeloAnterior = vehiculo.Modelo;
             vehiculo.Modelo = nuevoModelo;
 
-            await _vehiculoService.ActualizarVehiculo(vehiculo);
+            await _vehiculoService.ActualizarDatosVehiculo(vehiculo);
 
             _logger.LogInformation("Vehicle model updated");
 
@@ -523,7 +519,7 @@ public partial class WhatsAppFlowService
             var colorAnterior = vehiculo.Color;
             vehiculo.Color = nuevoColor;
 
-            await _vehiculoService.ActualizarVehiculo(vehiculo);
+            await _vehiculoService.ActualizarDatosVehiculo(vehiculo);
 
             _logger.LogInformation("Vehicle color updated");
 
