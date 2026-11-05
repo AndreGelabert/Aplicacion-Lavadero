@@ -1131,6 +1131,41 @@
 
     window.removerVehiculoSeleccionado = function (id) {
         const vehiculo = vehiculosSeleccionados.find(v => v.id === id);
+        if (!vehiculo) return;
+        if (vehiculo.esTitular && vehiculo.tieneOtrosAsociados) {
+            showFormMessage('error', 'Para quitar este vehículo, primero los demás deben desvincularse. Cuando seas el único titular podrás quitarlo y el vehículo se desactivará.');
+            return;
+        }
+        if (document.getElementById('quitar-vehiculo-modal')) return;
+        const trigger = document.activeElement;
+        const dialog = document.createElement('dialog');
+        dialog.id = 'quitar-vehiculo-modal';
+        dialog.setAttribute('aria-labelledby', 'quitar-vehiculo-title');
+        dialog.className = 'p-5 rounded-lg shadow bg-white dark:bg-gray-800 text-gray-900 dark:text-white w-full max-w-md';
+        const clientId = document.getElementById('Id')?.value || '';
+        const editing = !!clientId;
+        dialog.innerHTML = `<h3 id="quitar-vehiculo-title" class="text-lg font-semibold mb-4">Quitar vehículo</h3>
+            <p class="mb-2">${editing ? '¿Seguro que desea eliminar este vehículo de su propiedad?' : '¿Está seguro de que desea descartar este vehículo para su registro?'}</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">El cambio se aplicará al guardar el cliente.</p>
+            <div class="flex justify-end gap-3"><button type="button" data-cancel class="px-4 py-2 border rounded-lg">Cancelar</button>
+            <button type="button" data-confirm class="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg">Confirmar</button></div>`;
+        dialog.style.cssText = 'max-width:28rem;border:0;';
+        const cleanup = () => { dialog.remove(); if (trigger?.isConnected) trigger.focus(); };
+        dialog.addEventListener('close', cleanup, { once: true });
+        dialog.querySelector('[data-cancel]').addEventListener('click', () => dialog.close());
+        dialog.querySelector('[data-confirm]').addEventListener('click', () => {
+            // A replaced form must never remove an item from another client's selection.
+            if ((document.getElementById('Id')?.value || '') === clientId)
+                quitarVehiculoConfirmado(id);
+            dialog.close();
+        });
+        document.body.appendChild(dialog);
+        dialog.showModal();
+        dialog.querySelector('[data-cancel]').focus();
+    };
+
+    function quitarVehiculoConfirmado(id) {
+        const vehiculo = vehiculosSeleccionados.find(v => v.id === id);
         if (vehiculo?.esTitular && vehiculo?.tieneOtrosAsociados) {
             showFormMessage('error', 'Para quitar este vehículo, primero los demás deben desvincularse. Cuando seas el único titular podrás quitarlo y el vehículo se desactivará.');
             return;
@@ -1149,7 +1184,7 @@
 
         updateVehiculosSeleccionadosList();
         renderVehiculosDropdown(vehiculosDisponibles, document.getElementById('vehiculo-search')?.value || '');
-    };
+    }
 
     function updateVehiculosSeleccionadosList() {
         const container = document.getElementById('vehiculos-seleccionados-container');

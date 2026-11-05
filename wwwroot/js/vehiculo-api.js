@@ -478,10 +478,21 @@
         const rect = inputElement.getBoundingClientRect();
 
         // Posicionar justo debajo del input
-        dropdownElement.style.top = `${rect.bottom + window.scrollY}px`;
-        dropdownElement.style.left = `${rect.left + window.scrollX}px`;
+        dropdownElement.style.top = `${rect.bottom}px`;
+        dropdownElement.style.left = `${rect.left}px`;
         dropdownElement.style.width = `${rect.width}px`;
     }
+
+    function repositionVisibleDropdowns() {
+        for (const [inputId, dropdownId] of [['Marca', 'marca-dropdown'], ['Modelo', 'modelo-dropdown']]) {
+            const dropdown = document.getElementById(dropdownId);
+            if (dropdown && !dropdown.classList.contains('hidden'))
+                positionDropdown(document.getElementById(inputId), dropdown);
+        }
+    }
+    // Fixed dropdowns use viewport coordinates, including inside scrolling modals.
+    window.addEventListener('scroll', repositionVisibleDropdowns, true);
+    window.addEventListener('resize', repositionVisibleDropdowns);
 
     // ==================== SELECCIÓN DE MARCA ====================
     function selectMarca(id, nombre) {

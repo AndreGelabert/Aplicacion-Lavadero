@@ -244,6 +244,8 @@ public class VehicleOwnershipRegressionTests
         var result = (await db.Collection("vehiculos").Document(car.Id).GetSnapshotAsync()).ConvertTo<Vehiculo>();
         Assert.Equal("Activo", result.Estado); Assert.Equal(client.Id, result.ClienteId); Assert.Equal(new[] { client.Id }, result.ClientesIds);
         Assert.False(string.IsNullOrEmpty(result.ClaveAsociacionHash));
+        Assert.Equal("no-cache, no-store", context.Response.Headers.CacheControl.ToString());
+        Assert.Equal("no-cache", context.Response.Headers.Pragma.ToString());
         Assert.Equal(new[] { car.Id }, (await db.Collection("clientes").Document(client.Id).GetSnapshotAsync()).ConvertTo<Cliente>().VehiculosIds);
     }
 

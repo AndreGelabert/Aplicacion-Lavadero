@@ -97,6 +97,39 @@ test('blank association key for an orphan reaches the client form payload', asyn
   expect(payload.esNuevo).toBe(false);
 });
 
+for (const editing of [false, true]) {
+  test(`removal requires confirmation and preserves cancellation in ${editing ? 'edit' : 'create'} mode`, async ({ page }) => {
+    await setup(page, 'sole');
+    await page.locator('#Id').fill(editing ? 'owner' : '');
+    const row = page.locator('[data-vehiculo-id="sole"]');
+    await row.getByRole('button', { name: 'Quitar vehículo' }).click();
+    await expect(row).toHaveCount(1);
+    const dialog = page.getByRole('dialog', { name: 'Quitar vehículo' });
+    await expect(dialog).toContainText(editing ? '¿Seguro que desea eliminar este vehículo de su propiedad?' : '¿Está seguro de que desea descartar este vehículo para su registro?');
+    await dialog.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(row).toHaveCount(1);
+    await row.getByRole('button', { name: 'Quitar vehículo' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click();
+    await expect(row).toHaveCount(0);
+  });
+}
+
+test('fixed catalogue dropdown stays attached after page and modal scrolling', async ({ page }) => {
+  await page.goto('/fixture');
+  await page.setContent('<style>body{height:2200px}.hidden{display:none}</style><div style="height:600px"></div><div style="height:200px;overflow:auto" id="scroller"><form id="vehiculo-form"><select id="TipoVehiculo"><option>Auto</option></select><div style="height:90px"></div><input id="Marca"><div id="marca-dropdown" class="hidden" style="position:fixed"></div><input id="Modelo"><div id="modelo-dropdown" class="hidden" style="position:fixed"></div><input type="checkbox" id="color-custom-toggle"><select id="Color"></select><input id="ColorCustom"><div style="height:500px"></div></form></div>');
+  await page.evaluate(() => { window.Peticiones = { enviar: async () => ({ ok: true, json: async () => [{ id: '1', nombre: 'Toyota' }] }) }; window.scrollTo(0, 400); });
+  await page.addScriptTag({ path: path.resolve(__dirname, '../../wwwroot/js/vehiculo-api.js') });
+  await page.evaluate(() => window.initVehiculoApiSelects());
+  await expect(page.locator('#marca-dropdown')).toContainText('Toyota');
+  await page.locator('#TipoVehiculo').dispatchEvent('change');
+  await expect(page.locator('#Marca')).toBeEnabled();
+  await page.locator('#Marca').focus();
+  const gap = () => page.evaluate(() => Math.abs(document.getElementById('marca-dropdown').getBoundingClientRect().top - document.getElementById('Marca').getBoundingClientRect().bottom));
+  await expect.poll(gap).toBeLessThan(2);
+  await page.evaluate(() => { document.getElementById('scroller').scrollTop = 40; });
+  await expect.poll(gap).toBeLessThan(2);
+});
+
 test('X blocks shared titular after initial load and reselection, but allows secondary and sole', async ({ page }) => {
   await setup(page, 'shared,secondary,sole');
   const row = id => page.locator(`[data-vehiculo-id="${id}"]`);
@@ -106,10 +139,12 @@ test('X blocks shared titular after initial load and reselection, but allows sec
   expect(await page.evaluate(() => messages.at(-1))).toEqual({ type: 'error', text: 'Para quitar este vehículo, primero los demás deben desvincularse. Cuando seas el único titular podrás quitarlo y el vehículo se desactivará.' });
   for (const id of ['secondary', 'sole']) {
     await row(id).getByRole('button', { name: 'Quitar vehículo' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click();
     await expect(row(id)).toHaveCount(0);
     await page.evaluate(id => { selectVehiculoFromDropdown(id); agregarVehiculoSeleccionado(); }, id);
     await expect(row(id)).toHaveCount(1);
     await row(id).getByRole('button', { name: 'Quitar vehículo' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click();
     await expect(row(id)).toHaveCount(0);
   }
   await setup(page, 'sole');

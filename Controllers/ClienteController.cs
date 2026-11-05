@@ -273,7 +273,9 @@ public class ClienteController : Controller
         if (claves.Any())
         {
             ViewBag.AssociationKeys = System.Text.Json.JsonSerializer.Serialize(claves);
-            Response.Headers.CacheControl = "no-store";
+            // Match the policy applied when the returned form issues an antiforgery token.
+            Response.Headers.CacheControl = "no-cache, no-store";
+            Response.Headers.Pragma = "no-cache";
         }
         return await PrepararRespuestaAjax(true, cliente, crear ? "Creacion de cliente" : "Actualizacion de cliente", antes, auditoriaRegistrada: true);
     }
