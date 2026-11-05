@@ -62,69 +62,36 @@ public class AuditoriaController : Controller
     /// <summary>
     /// Página principal de auditoría con filtros y paginación.
     /// </summary>
-    /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
-    /// <param name="fechaFin">Fecha de fin del filtro.</param>
-    /// <param name="acciones">Lista de acciones a filtrar.</param>
-    /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
-    /// <param name="pageNumber">Número de página actual.</param>
-    /// <param name="pageSize">Tamaño de página.</param>
-    /// <param name="sortBy">Campo por el cual ordenar.</param>
-    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <param name="filters">Filtros, orden y paginación de la consulta.</param>
     /// <returns>Vista con la lista de registros de auditoría.</returns>
     [HttpGet]
     [Permiso("Auditoria.Consultar")]
-    public async Task<IActionResult> Index(
-        DateTime? fechaInicio = null,
-        DateTime? fechaFin = null,
-        List<string> acciones = null,
-        List<string> tiposObjetivo = null,
-        int pageNumber = 1,
-        int pageSize = 20,
-        string sortBy = null,
-        string sortOrder = null)
+    public async Task<IActionResult> Index([FromQuery] AuditoriaFilter filters)
     {
         // Configurar ordenamiento por defecto
-        sortBy ??= "Timestamp";
-        sortOrder ??= "desc";
+        filters.SortBy ??= "Timestamp";
+        filters.SortOrder ??= "desc";
 
         // Caso especial: ordenar por Objeto (TargetName) requiere resolver nombres primero y luego paginar
-        if (string.Equals(sortBy, "TargetName", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(filters.SortBy, "TargetName", StringComparison.OrdinalIgnoreCase))
         {
-            var todos = await _auditService.ObtenerRegistros(
-                fechaInicio, fechaFin, acciones, tiposObjetivo,
-                pageNumber: 1, pageSize: int.MaxValue, sortBy: "Timestamp", sortOrder: "desc");
-
-            var conNombres = await MapearNombresUsuarios(todos);
-
-            var totalRegistros = conNombres.Count;
-            var totalPages = Math.Max((int)Math.Ceiling(totalRegistros / (double)pageSize), 1);
-            var currentPage = Math.Clamp(pageNumber, 1, totalPages);
-            var visiblePages = GetVisiblePages(currentPage, totalPages);
-
-            var ordenados = OrdenarRegistrosConNombre(conNombres, sortBy, sortOrder);
-            var pagina = ordenados.Skip((currentPage - 1) * pageSize).Take(pageSize).ToList();
-
+            var model = await ConsultarPorNombre(filters);
             var (accionesUnicas, tiposObjetivoUnicos) = await CargarListasFiltros();
 
-            ConfigurarViewBag(fechaInicio, fechaFin, acciones, tiposObjetivo,
-                accionesUnicas, tiposObjetivoUnicos,
-                pageSize, currentPage, totalPages, visiblePages, sortBy, sortOrder);
-
-            return View(pagina);
+            model.TodasLasAcciones = accionesUnicas;
+            model.TodosLosTiposObjetivo = tiposObjetivoUnicos;
+            return View(model);
         }
 
         // Flujo estándar (ordenamientos por campos del modelo base)
         var (registros, currentPageStd, totalPagesStd, visiblePagesStd) = await ObtenerDatosAuditoria(
-            fechaInicio, fechaFin, acciones, tiposObjetivo, pageNumber, pageSize, sortBy, sortOrder);
+            filters.FechaInicio, filters.FechaFin, filters.Acciones, filters.TiposObjetivo, filters.PageNumber, filters.PageSize, filters.SortBy, filters.SortOrder);
 
         var registrosConNombresStd = await MapearNombresUsuarios(registros);
 
         var (accionesUnicasStd, tiposObjetivoUnicosStd) = await CargarListasFiltros();
 
-        ConfigurarViewBag(fechaInicio, fechaFin, acciones, tiposObjetivo, accionesUnicasStd, tiposObjetivoUnicosStd,
-            pageSize, currentPageStd, totalPagesStd, visiblePagesStd, sortBy, sortOrder);
-
-        return View(registrosConNombresStd);
+        return View(CrearModelo(filters, registrosConNombresStd, currentPageStd, totalPagesStd, visiblePagesStd, accionesUnicasStd, tiposObjetivoUnicosStd));
     }
     #endregion
 
@@ -133,115 +100,49 @@ public class AuditoriaController : Controller
     /// <summary>
     /// Obtener tabla parcial para AJAX.
     /// </summary>
-    /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
-    /// <param name="fechaFin">Fecha de fin del filtro.</param>
-    /// <param name="acciones">Lista de acciones a filtrar.</param>
-    /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
-    /// <param name="pageNumber">Número de página actual.</param>
-    /// <param name="pageSize">Tamaño de página.</param>
-    /// <param name="sortBy">Campo por el cual ordenar.</param>
-    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <param name="filters">Filtros, orden y paginación de la consulta.</param>
     /// <returns>Vista parcial con la tabla de auditoría.</returns>
     [HttpGet]
     [Permiso("Auditoria.Consultar")]
-    public async Task<IActionResult> TablePartial(
-        DateTime? fechaInicio = null,
-        DateTime? fechaFin = null,
-        List<string> acciones = null,
-        List<string> tiposObjetivo = null,
-        int pageNumber = 1,
-        int pageSize = 20,
-        string sortBy = null,
-        string sortOrder = null)
+    public async Task<IActionResult> TablePartial([FromQuery] AuditoriaFilter filters)
     {
-        sortBy ??= "Timestamp";
-        sortOrder ??= "desc";
+        filters.SortBy ??= "Timestamp";
+        filters.SortOrder ??= "desc";
 
         // Caso especial: ordenar por TargetName requiere resolver nombres y paginar aquí
-        if (string.Equals(sortBy, "TargetName", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(filters.SortBy, "TargetName", StringComparison.OrdinalIgnoreCase))
         {
-            var todos = await _auditService.ObtenerRegistros(
-                fechaInicio, fechaFin, acciones, tiposObjetivo,
-                pageNumber: 1, pageSize: int.MaxValue, sortBy: "Timestamp", sortOrder: "desc");
-
-            var conNombres = await MapearNombresUsuarios(todos);
-
-            var totalRegistros = conNombres.Count;
-            var totalPages = Math.Max((int)Math.Ceiling(totalRegistros / (double)pageSize), 1);
-            var currentPage = Math.Clamp(pageNumber, 1, totalPages);
-            var visiblePages = GetVisiblePages(currentPage, totalPages);
-
-            var ordenados = OrdenarRegistrosConNombre(conNombres, sortBy, sortOrder);
-            var pagina = ordenados.Skip((currentPage - 1) * pageSize).Take(pageSize).ToList();
-
-            ViewBag.CurrentPage = currentPage;
-            ViewBag.TotalPages = totalPages;
-            ViewBag.VisiblePages = visiblePages;
-            ViewBag.FechaInicio = fechaInicio;
-            ViewBag.FechaFin = fechaFin;
-            ViewBag.Acciones = acciones;
-            ViewBag.TiposObjetivo = tiposObjetivo;
-            ViewBag.SortBy = sortBy;
-            ViewBag.SortOrder = sortOrder;
-
-            return PartialView("_AuditoriaTable", pagina);
+            return PartialView("_AuditoriaTable", await ConsultarPorNombre(filters));
         }
 
         // Flujo estándar (servicio ya pagina y ordena por campos base)
         var registros = await _auditService.ObtenerRegistros(
-            fechaInicio, fechaFin, acciones, tiposObjetivo, pageNumber, pageSize, sortBy, sortOrder);
+            filters.FechaInicio, filters.FechaFin, filters.Acciones, filters.TiposObjetivo, filters.PageNumber, filters.PageSize, filters.SortBy, filters.SortOrder);
 
         var registrosConNombres = await MapearNombresUsuarios(registros);
 
-        var totalPagesStd = await _auditService.ObtenerTotalPaginas(fechaInicio, fechaFin, acciones, tiposObjetivo, pageSize);
+        var totalPagesStd = await _auditService.ObtenerTotalPaginas(filters.FechaInicio, filters.FechaFin, filters.Acciones, filters.TiposObjetivo, filters.PageSize);
         totalPagesStd = Math.Max(totalPagesStd, 1);
 
-        ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = totalPagesStd;
-        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPagesStd);
-        ViewBag.FechaInicio = fechaInicio;
-        ViewBag.FechaFin = fechaFin;
-        ViewBag.Acciones = acciones;
-        ViewBag.TiposObjetivo = tiposObjetivo;
-        ViewBag.SortBy = sortBy;
-        ViewBag.SortOrder = sortOrder;
-
-        return PartialView("_AuditoriaTable", registrosConNombres);
+        return PartialView("_AuditoriaTable", CrearModelo(filters, registrosConNombres, filters.PageNumber, totalPagesStd, GetVisiblePages(filters.PageNumber, totalPagesStd)));
     }
 
     /// <summary>
     /// Búsqueda de registros (mejorada con búsqueda por nombres).
     /// </summary>
-    /// <param name="searchTerm">Término de búsqueda.</param>
-    /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
-    /// <param name="fechaFin">Fecha de fin del filtro.</param>
-    /// <param name="acciones">Lista de acciones a filtrar.</param>
-    /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
-    /// <param name="pageNumber">Número de página actual.</param>
-    /// <param name="pageSize">Tamaño de página.</param>
-    /// <param name="sortBy">Campo por el cual ordenar.</param>
-    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <param name="filters">Filtros, orden y paginación de la consulta.</param>
     /// <returns>Vista parcial with la tabla de auditoría.</returns>
     [HttpGet]
     [Permiso("Auditoria.Consultar")]
-    public async Task<IActionResult> SearchPartial(
-        string searchTerm,
-        DateTime? fechaInicio,
-        DateTime? fechaFin,
-        List<string> acciones,
-        List<string> tiposObjetivo,
-        int pageNumber = 1,
-        int pageSize = 20,
-        string sortBy = null,
-        string sortOrder = null)
+    public async Task<IActionResult> SearchPartial([FromQuery] AuditoriaFilter filters)
     {
-        sortBy ??= "Timestamp";
-        sortOrder ??= "desc";
+        filters.SortBy ??= "Timestamp";
+        filters.SortOrder ??= "desc";
 
         // 1) Coincidencias por texto básico (correo/acción/tipo/id/fecha)
         var porTexto = await _auditService.BuscarRegistros(
-            searchTerm, fechaInicio, fechaFin, acciones, tiposObjetivo,
-            pageNumber: 1, pageSize: int.MaxValue, sortBy, sortOrder);
+            filters.SearchTerm, filters.FechaInicio, filters.FechaFin, filters.Acciones, filters.TiposObjetivo,
+            pageNumber: 1, pageSize: int.MaxValue, filters.SortBy, filters.SortOrder);
 
         // 2) Coincidencias por NOMBRE del usuario actor (no por correo)
         // Usar método sin filtro para incluir empleados inactivos/eliminados
@@ -249,13 +150,13 @@ public class AuditoriaController : Controller
 
         var idsPorNombre = new HashSet<string>(
             empleados
-                .Where(e => CoincideTexto(e.NombreCompleto, searchTerm))
+                .Where(e => CoincideTexto(e.NombreCompleto, filters.SearchTerm))
                 .Select(e => e.Id)
         );
 
         var porFiltros = await _auditService.ObtenerRegistros(
-            fechaInicio, fechaFin, acciones, tiposObjetivo,
-            pageNumber: 1, pageSize: int.MaxValue, sortBy, sortOrder);
+            filters.FechaInicio, filters.FechaFin, filters.Acciones, filters.TiposObjetivo,
+            pageNumber: 1, pageSize: int.MaxValue, filters.SortBy, filters.SortOrder);
 
         var porNombreActor = porFiltros
             .Where(r => !string.IsNullOrWhiteSpace(r.UserId) && idsPorNombre.Contains(r.UserId))
@@ -264,7 +165,7 @@ public class AuditoriaController : Controller
         // 3) Coincidencias por NOMBRE DEL OBJETO (TargetName) mostrado en la vista
         var porFiltrosConNombres = await MapearNombresUsuarios(porFiltros);
         var porNombreObjeto = porFiltrosConNombres
-            .Where(r => !string.IsNullOrWhiteSpace(r.TargetName) && CoincideTexto(r.TargetName, searchTerm))
+            .Where(r => !string.IsNullOrWhiteSpace(r.TargetName) && CoincideTexto(r.TargetName, filters.SearchTerm))
             .Select(r => new AuditLog
             {
                 DocId = r.DocId,
@@ -291,56 +192,25 @@ public class AuditoriaController : Controller
         var totalRegistros = unificados.Count;
 
         // Orden especial por TargetName (requiere resolver nombres antes de ordenar/paginar)
-        if (string.Equals(sortBy, "TargetName", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(filters.SortBy, "TargetName", StringComparison.OrdinalIgnoreCase))
         {
-            var conNombresTodos = await MapearNombresUsuarios(unificados);
-
-            var totalPagesTN = Math.Max((int)Math.Ceiling(totalRegistros / (double)pageSize), 1);
-            var currentPageTN = Math.Clamp(pageNumber, 1, totalPagesTN);
-            var visiblePagesTN = GetVisiblePages(currentPageTN, totalPagesTN);
-
-            var ordenadosTN = OrdenarRegistrosConNombre(conNombresTodos, sortBy, sortOrder);
-            var paginaTN = ordenadosTN.Skip((currentPageTN - 1) * pageSize).Take(pageSize).ToList();
-
-            ViewBag.CurrentPage = currentPageTN;
-            ViewBag.TotalPages = totalPagesTN;
-            ViewBag.VisiblePages = visiblePagesTN;
-            ViewBag.FechaInicio = fechaInicio?.ToString("yyyy-MM-dd");
-            ViewBag.FechaFin = fechaFin?.ToString("yyyy-MM-dd");
-            ViewBag.Acciones = acciones ?? new List<string>();
-            ViewBag.TiposObjetivo = tiposObjetivo ?? new List<string>();
-            ViewBag.SortBy = sortBy;
-            ViewBag.SortOrder = sortOrder;
-            ViewBag.SearchTerm = searchTerm;
-
-            return PartialView("_AuditoriaTable", paginaTN);
+            return PartialView("_AuditoriaTable", await PaginarPorNombre(filters, unificados));
         }
 
         // Flujo estándar: ordenar/paginar con el modelo base
-        var ordenados = OrdenarRegistros(unificados, sortBy, sortOrder);
+        var ordenados = OrdenarRegistros(unificados, filters.SortBy, filters.SortOrder);
         var pagina = ordenados
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
+            .Skip((filters.PageNumber - 1) * filters.PageSize)
+            .Take(filters.PageSize)
             .ToList();
 
         // 5) Mapear nombres para la vista
         var registrosConNombres = await MapearNombresUsuarios(pagina);
 
         // 6) Paginación
-        var totalPages = Math.Max((int)Math.Ceiling(totalRegistros / (double)pageSize), 1);
+        var totalPages = Math.Max((int)Math.Ceiling(totalRegistros / (double)filters.PageSize), 1);
 
-        ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = totalPages;
-        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-        ViewBag.FechaInicio = fechaInicio?.ToString("yyyy-MM-dd");
-        ViewBag.FechaFin = fechaFin?.ToString("yyyy-MM-dd");
-        ViewBag.Acciones = acciones ?? new List<string>();
-        ViewBag.TiposObjetivo = tiposObjetivo ?? new List<string>();
-        ViewBag.SortBy = sortBy;
-        ViewBag.SortOrder = sortOrder;
-        ViewBag.SearchTerm = searchTerm;
-
-        return PartialView("_AuditoriaTable", registrosConNombres);
+        return PartialView("_AuditoriaTable", CrearModelo(filters, registrosConNombres, filters.PageNumber, totalPages, GetVisiblePages(filters.PageNumber, totalPages)));
     }
     #endregion
 
@@ -599,40 +469,38 @@ public class AuditoriaController : Controller
         return (acciones, tiposObjetivo);
     }
 
-    /// <summary>
-    /// Configura el ViewBag con todos los datos necesarios.
-    /// </summary>
-    /// <param name="fechaInicio">Fecha de inicio del filtro.</param>
-    /// <param name="fechaFin">Fecha de fin del filtro.</param>
-    /// <param name="acciones">Lista de acciones a filtrar.</param>
-    /// <param name="tiposObjetivo">Lista de tipos objetivo a filtrar.</param>
-    /// <param name="accionesUnicas">Lista de acciones únicas.</param>
-    /// <param name="tiposObjetivoUnicos">Lista de tipos objetivo únicos.</param>
-    /// <param name="pageSize">Tamaño de página.</param>
-    /// <param name="currentPage">Página actual.</param>
-    /// <param name="totalPages">Total de páginas.</param>
-    /// <param name="visiblePages">Páginas visibles.</param>
-    /// <param name="sortBy">Campo de ordenamiento.</param>
-    /// <param name="sortOrder">Dirección del ordenamiento.</param>
-    private void ConfigurarViewBag(
-        DateTime? fechaInicio, DateTime? fechaFin, List<string> acciones, List<string> tiposObjetivo,
-        List<string> accionesUnicas, List<string> tiposObjetivoUnicos,
-        int pageSize, int currentPage, int totalPages, List<int> visiblePages,
-        string sortBy, string sortOrder)
+    // Resolve display names before pagination; standard field ordering keeps its existing path.
+    private async Task<AuditoriaViewModel> ConsultarPorNombre(AuditoriaFilter filters)
     {
-        ViewBag.TotalPages = totalPages;
-        ViewBag.VisiblePages = visiblePages;
-        ViewBag.CurrentPage = currentPage;
-        ViewBag.FechaInicio = fechaInicio;
-        ViewBag.FechaFin = fechaFin;
-        ViewBag.Acciones = acciones ?? new List<string>();
-        ViewBag.TiposObjetivo = tiposObjetivo ?? new List<string>();
-        ViewBag.TodasLasAcciones = accionesUnicas;
-        ViewBag.TodosLosTiposObjetivo = tiposObjetivoUnicos;
-        ViewBag.PageSize = pageSize;
-        ViewBag.SortBy = sortBy;
-        ViewBag.SortOrder = sortOrder;
+        var registros = await _auditService.ObtenerRegistros(
+            filters.FechaInicio, filters.FechaFin, filters.Acciones, filters.TiposObjetivo,
+            pageNumber: 1, pageSize: int.MaxValue, sortBy: "Timestamp", sortOrder: "desc");
+        return await PaginarPorNombre(filters, registros);
     }
+
+    private async Task<AuditoriaViewModel> PaginarPorNombre(AuditoriaFilter filters, List<AuditLog> registros)
+    {
+        var conNombres = await MapearNombresUsuarios(registros);
+        var totalPages = Math.Max((int)Math.Ceiling(registros.Count / (double)filters.PageSize), 1);
+        var currentPage = Math.Clamp(filters.PageNumber, 1, totalPages);
+        var pagina = OrdenarRegistrosConNombre(conNombres, filters.SortBy, filters.SortOrder)
+            .Skip((currentPage - 1) * filters.PageSize).Take(filters.PageSize).ToList();
+        return CrearModelo(filters, pagina, currentPage, totalPages, GetVisiblePages(currentPage, totalPages));
+    }
+
+    private static AuditoriaViewModel CrearModelo(
+        AuditoriaFilter filters, List<AuditLogConNombre> registros,
+        int currentPage, int totalPages, List<int> visiblePages,
+        List<string>? acciones = null, List<string>? tiposObjetivo = null) => new()
+    {
+        Filters = filters,
+        Registros = registros,
+        CurrentPage = currentPage,
+        TotalPages = totalPages,
+        VisiblePages = visiblePages,
+        TodasLasAcciones = acciones ?? new(),
+        TodosLosTiposObjetivo = tiposObjetivo ?? new()
+    };
 
     /// <summary>
     /// Obtiene las páginas visibles para la paginación.
