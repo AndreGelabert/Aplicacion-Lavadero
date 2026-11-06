@@ -78,6 +78,39 @@ public class VehiculoService
             });
     }
 
+    public async Task<Vehiculo> PrepararEdicion(Vehiculo vehiculo)
+    {
+        var original = await ObtenerVehiculo(vehiculo.Id);
+        if (original == null) return null;
+
+        vehiculo.Patente = original.Patente;
+        vehiculo.TipoVehiculo = original.TipoVehiculo;
+        vehiculo.Marca = original.Marca;
+        vehiculo.ClienteId = original.ClienteId;
+        vehiculo.ClienteNombreCompleto = original.ClienteNombreCompleto;
+        vehiculo.ClientesIds = original.ClientesIds;
+        vehiculo.ClaveAsociacionHash = original.ClaveAsociacionHash;
+        vehiculo.Estado = original.Estado;
+        return original;
+    }
+
+    public record ResultadoDesactivacion(string Error, Vehiculo Antes = null,
+        Vehiculo Despues = null, Dictionary<string, string> CamposAntes = null);
+
+    public async Task<ResultadoDesactivacion> DesactivarSinClientes(string id)
+    {
+        var vehiculo = await ObtenerVehiculo(id);
+        if (vehiculo == null)
+            return new("Vehículo no encontrado.");
+        if (TieneClientesAsignados(vehiculo))
+            return new($"No se puede desactivar el vehículo porque está asignado al cliente: {vehiculo.ClienteNombreCompleto}. Para desactivarlo, primero remuévalo del cliente desde la edición del cliente.");
+
+        var antes = AuditCampos.CapturarVehiculo(vehiculo);
+        await CambiarEstadoVehiculo(id, "Inactivo");
+        var despues = await ObtenerVehiculo(id);
+        return new(null, vehiculo, despues, antes);
+    }
+
     private static bool TieneClientesAsignados(Vehiculo vehiculo) =>
         !string.IsNullOrEmpty(vehiculo.ClienteId) || (vehiculo.ClientesIds?.Any() ?? false);
 

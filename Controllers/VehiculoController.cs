@@ -249,23 +249,8 @@ public class VehiculoController : Controller
     {
         try
         {
-            // Validaciones de solo lectura (Patente, Tipo, Marca no editables)
-            // Debemos obtener el original para comparar o restaurar
-            var original = await _vehiculoService.ObtenerVehiculo(vehiculo.Id);
+            var original = await _vehiculoService.PrepararEdicion(vehiculo);
             if (original == null) return NotFound();
-
-            // Restaurar campos no editables para asegurar integridad si el binder los trajo modificados (o validar que sean iguales)
-            vehiculo.Patente = original.Patente;
-            vehiculo.TipoVehiculo = original.TipoVehiculo;
-            vehiculo.Marca = original.Marca;
-            vehiculo.ClienteId = original.ClienteId; // El dueño no se cambia desde aquí según requerimiento implícito de "solo lectura"
-            vehiculo.ClienteNombreCompleto = original.ClienteNombreCompleto;
-            vehiculo.ClientesIds = original.ClientesIds;
-            vehiculo.ClaveAsociacionHash = original.ClaveAsociacionHash;
-            vehiculo.Estado = original.Estado;
-
-            // Solo Modelo y Color son editables según "Una vez registrado el vehículo, no se puede editar patente, tipo vehículo y marca"
-            // El usuario no mencionó Modelo y Color como NO editables, así que asumimos que sí.
 
             ModelState.Remove("ClienteNombreCompleto");
             if (!ModelState.IsValid) return await PrepararRespuestaAjax(false, vehiculo, null);
@@ -288,24 +273,13 @@ public class VehiculoController : Controller
     {
         try
         {
-            // Verificar si el vehículo tiene dueño
-            var vehiculo = await _vehiculoService.ObtenerVehiculo(id);
-            if (vehiculo == null)
-            {
-                return Json(new { success = false, message = "Vehículo no encontrado." });
-            }
+            var resultado = await _vehiculoService.DesactivarSinClientes(id);
+            if (resultado.Error != null)
+                return Json(new { success = false, message = resultado.Error });
 
-            if (!string.IsNullOrEmpty(vehiculo.ClienteId) || (vehiculo.ClientesIds?.Any() ?? false))
-            {
-                return Json(new { 
-                    success = false, 
-                    message = $"No se puede desactivar el vehículo porque está asignado al cliente: {vehiculo.ClienteNombreCompleto}. Para desactivarlo, primero remuévalo del cliente desde la edición del cliente." 
-                });
-            }
-
-            var antes = AuditCampos.CapturarVehiculo(vehiculo);
-            await _vehiculoService.CambiarEstadoVehiculo(id, "Inactivo");
-            var despues = await _vehiculoService.ObtenerVehiculo(id);
+            var vehiculo = resultado.Antes;
+            var antes = resultado.CamposAntes;
+            var despues = resultado.Despues;
             await RegistrarEvento("Desactivacion de vehiculo", id, "Vehiculo", antes, AuditCampos.CapturarVehiculo(despues), despues?.Patente ?? vehiculo.Patente);
             return Json(new { success = true, message = "Vehículo desactivado correctamente." });
         }
