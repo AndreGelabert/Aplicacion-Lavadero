@@ -14,8 +14,8 @@ T1 | S1-S3 | inline | done | Baseline isolated job-1 exit 0: 853 passed, zero fa
 T2 | S2-S3 | worker + parent checks | done | Private FiltrarVehiculos extracted; parent diff inspected. Baseline/post-change isolated suites: 853 passed, zero failed/skipped, exit 0. Commit: 38ad981.
 T3 | S1-S3 | inline | done | Post-change job-2 passed; ASSESS unavailable due to untracked declaration, returned self-verification/no independent verifier. Local slice saved as 38ad981. Commit: 38ad981.
 
-T4 | S2-S4 | worker + parent checks | done | Public MVC characterization baseline job-3 exit 0: 854 passed, zero failed/skipped. Commit: pending.
-T5 | S2-S4 | worker + parent checks | in_progress | Private PrepararListado extracted, parent inspected diff, diff-check passed. Post-change job-4 exit 0: 854 passed, zero failed/skipped. Native assessment medium, reviewDue false (under_budget), writer self-verification only. Commit: pending.
+T4 | S2-S4 | worker + parent checks | done | Public MVC characterization baseline job-3 exit 0: 854 passed, zero failed/skipped. Commit: e025863.
+T5 | S2-S4 | worker + parent checks | done | Private PrepararListado extracted, parent inspected diff, diff-check passed. Post-change job-4 exit 0: 854 passed, zero failed/skipped. Native assessment medium, reviewDue false (under_budget), writer self-verification only. Commit: e025863.
 
 ## Log
 L1. User authorization verbatim: "Si, continua con el proximo modulo"
@@ -28,3 +28,4 @@ L5. Implementation slice 38ad981 contains exactly service extraction, characteri
 L6. User verbatim: "Bien, segui con lo que falte y/o el siguiente modulo a refactorizar". Explorer mw49np6l-4-jqkp confirms Index early return without listing metadata when consultation permission absent; do not copy Clientes behavior. Native accumulated review review-276410af4a8958d3 approved and acknowledged for prior candidate through d25b052; this new unit not included.
 L7. Characterization worker mw49qa9j-5-0bnd edited only test file; extraction worker mw49u0jd-6-nqz7 edited only controller. Baseline 854/854; no meaningful RED for exact behavior-preserving extraction. No permission check moved or changed; Index-only values remain outside helper.
 L8. MVC post-change job-4 exit 0: 854 passed, zero failed/skipped, matching baseline. Native ASSESS succeeded: medium, 3 paths/144 changed lines, reviewDue false under_budget; no independent verifier required. No native approval claimed for this unit. Slice base d25b052; commit only controller/test/tracking, not accumulated branch. Risk: none (private extraction of scoped Index/SearchPartial; existing guard, routes and signatures unchanged, no persistence/auth logic modified). No UI markup or CLI/help changes.
+L9. Local MVC slice e025863 saved after 854/854 baseline/post-change checks. Source/test/task paths only. No branch changes, history rewrite or publishing.
