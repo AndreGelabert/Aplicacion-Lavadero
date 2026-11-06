@@ -55,26 +55,7 @@ public class VehiculoController : Controller
             return View(new List<Vehiculo>());
         }
 
-        // Si no se especifican estados, por defecto mostrar solo Activos
-        if (estados == null || !estados.Any())
-        {
-            estados = new List<string> { "Activo" };
-        }
-
-        var vehiculos = await _vehiculoService.ObtenerVehiculos(searchTerm, tiposVehiculo, marcas, colores, pageNumber, pageSize, sortBy, sortOrder, estados);
-        var totalVehiculos = await _vehiculoService.ObtenerTotalVehiculos(searchTerm, tiposVehiculo, marcas, colores, estados);
-        var totalPages = Math.Max((int)Math.Ceiling(totalVehiculos / (double)pageSize), 1);
-
-        ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = totalPages;
-        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-        ViewBag.SortBy = sortBy;
-        ViewBag.SortOrder = sortOrder;
-        ViewBag.SearchTerm = searchTerm;
-        ViewBag.TiposVehiculoFiltrados = tiposVehiculo;
-        ViewBag.MarcasFiltradas = marcas;
-        ViewBag.ColoresFiltrados = colores;
-        ViewBag.Estados = estados;
+        var vehiculos = await PrepararListado(searchTerm, tiposVehiculo, marcas, colores, estados, pageNumber, pageSize, sortBy, sortOrder);
         ViewBag.PageSize = pageSize;
 
         await CargarListasForm();
@@ -110,6 +91,21 @@ public class VehiculoController : Controller
         string sortBy = "Patente",
         string sortOrder = "asc")
     {
+        var vehiculos = await PrepararListado(searchTerm, tiposVehiculo, marcas, colores, estados, pageNumber, pageSize, sortBy, sortOrder);
+        return PartialView("_VehiculoTable", vehiculos);
+    }
+
+    private async Task<List<Vehiculo>> PrepararListado(
+        string searchTerm,
+        List<string> tiposVehiculo,
+        List<string> marcas,
+        List<string> colores,
+        List<string> estados,
+        int pageNumber,
+        int pageSize,
+        string sortBy,
+        string sortOrder)
+    {
         if (estados == null || !estados.Any())
         {
             estados = new List<string> { "Activo" };
@@ -130,7 +126,7 @@ public class VehiculoController : Controller
         ViewBag.ColoresFiltrados = colores;
         ViewBag.Estados = estados;
 
-        return PartialView("_VehiculoTable", vehiculos);
+        return vehiculos;
     }
 
     [HttpGet]

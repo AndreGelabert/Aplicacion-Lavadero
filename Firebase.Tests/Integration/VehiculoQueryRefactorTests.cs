@@ -1,6 +1,10 @@
 using Firebase.Models;
 using Google.Api.Gax;
 using Google.Cloud.Firestore;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Security.Claims;
 
 namespace Firebase.Tests.Integration;
 
@@ -68,6 +72,100 @@ public class VehiculoQueryRefactorTests
             Assert.Equal(vehicle.ClienteId, stored.ClienteId);
             Assert.Equal(vehicle.ClientesIds, stored.ClientesIds);
             Assert.Equal(vehicle.ClaveAsociacionHash, stored.ClaveAsociacionHash);
+        }
+    }
+
+    [LocalFirestoreFact]
+    public async Task ListingActionsPreserveModelsMetadataAndPermissionEarlyReturn()
+    {
+        var db = new FirestoreDbBuilder
+        {
+            ProjectId = "demo-vehmvc-" + Guid.NewGuid().ToString("N")[..16],
+            EmulatorDetection = EmulatorDetection.EmulatorOnly
+        }.Build();
+        await db.Collection("clientes").Document("owner").SetAsync(new Cliente
+        {
+            Id = "owner", Nombre = "Ana", Apellido = "Perez", TipoDocumento = "DNI",
+            NumeroDocumento = "123", Telefono = "1111111111", Email = "ana@example.invalid"
+        });
+        foreach (var vehicle in new[]
+        {
+            Vehicle("a", "AAA123", "Ford", "Fiesta", "Rojo", "Auto", "Activo"),
+            Vehicle("b", "BBB456", "Toyota", "Hilux", "Azul", "Camioneta", "Inactivo")
+        })
+            await db.Collection("vehiculos").Document(vehicle.Id).SetAsync(vehicle);
+        await db.Collection("tiposVehiculos").Document("auto").SetAsync(new Dictionary<string, object> { ["Nombre"] = "Auto" });
+
+        VehiculoController Controller(string permission, bool services = true) => new(
+            services ? new VehiculoService(db) : null!, services ? new TipoVehiculoService(db) : null!,
+            services ? new ClienteService(db) : null!, services ? new AuditService(db) : null!,
+            null!, NullLogger<VehiculoController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("permiso", permission) }, "test"))
+            } }
+        };
+
+        foreach (var action in new[] { "Index", "SearchPartial", "TablePartial" })
+        foreach (var page in new[] { 1, 2 })
+        {
+            var controller = Controller("Vehiculos.Consultar");
+            var types = new List<string> { "Auto" };
+            var brands = new List<string> { "Ford" };
+            var colors = new List<string> { "Rojo" };
+            var term = action == "TablePartial" ? null : "AAA";
+            var result = action switch
+            {
+                "Index" => await controller.Index(term!, types, brands, colors, new(), page, 1, "Patente", "desc"),
+                "SearchPartial" => await controller.SearchPartial(term!, types, brands, colors, new(), page, 1, "Patente", "desc"),
+                _ => await controller.TablePartial(types, brands, colors, new(), page, 1, "Patente", "desc")
+            };
+            object? model;
+            if (action == "Index") model = Assert.IsType<ViewResult>(result).Model;
+            else
+            {
+                var partial = Assert.IsType<PartialViewResult>(result);
+                Assert.Equal("_VehiculoTable", partial.ViewName);
+                model = partial.Model;
+            }
+            var rows = Assert.IsType<List<Vehiculo>>(model);
+            Assert.Equal(page == 1 ? new[] { "a" } : Array.Empty<string>(), rows.Select(v => v.Id));
+            Assert.All(rows, v => Assert.Equal("Ana Perez", v.ClienteNombreCompleto));
+            var data = controller.ViewData;
+            Assert.Equal(page, data["CurrentPage"]);
+            Assert.Equal(1, data["TotalPages"]);
+            Assert.Equal(new[] { 1 }, Assert.IsType<List<int>>(data["VisiblePages"]));
+            Assert.Equal("Patente", data["SortBy"]);
+            Assert.Equal("desc", data["SortOrder"]);
+            Assert.Equal(term, data["SearchTerm"]);
+            Assert.Equal(types, Assert.IsType<List<string>>(data["TiposVehiculoFiltrados"]));
+            Assert.Equal(brands, Assert.IsType<List<string>>(data["MarcasFiltradas"]));
+            Assert.Equal(colors, Assert.IsType<List<string>>(data["ColoresFiltrados"]));
+            Assert.Equal(new[] { "Activo" }, Assert.IsType<List<string>>(data["Estados"]));
+            if (action == "Index")
+            {
+                Assert.Equal(1, data["PageSize"]);
+                Assert.Equal(new[] { "Ford", "Toyota" }, Assert.IsType<List<string>>(data["MarcasDisponibles"]));
+                Assert.Equal(new[] { "Azul", "Rojo" }, Assert.IsType<List<string>>(data["ColoresDisponibles"]));
+                Assert.Equal(new[] { "Auto" }, Assert.IsType<List<string>>(data["TiposVehiculo"]));
+                Assert.Equal("Editar Vehículo", data["FormTitle"]);
+                Assert.True(data.ContainsKey("EditVehiculo"));
+                Assert.Null(data["EditVehiculo"]);
+            }
+            else
+                foreach (var key in new[] { "PageSize", "MarcasDisponibles", "ColoresDisponibles", "TiposVehiculo", "FormTitle", "EditVehiculo" })
+                    Assert.False(data.ContainsKey(key));
+        }
+
+        foreach (var permission in new[] { "Vehiculos.Modificar", "Vehiculos.Eliminar" })
+        {
+            var controller = Controller(permission, services: false);
+            var result = Assert.IsType<ViewResult>(await controller.Index(null!, new(), new(), new(), new()));
+            Assert.Empty(Assert.IsType<List<Vehiculo>>(result.Model));
+            Assert.True(controller.ViewData.ContainsKey("EditVehiculo"));
+            Assert.Null(controller.ViewData["EditVehiculo"]);
+            Assert.Single(controller.ViewData);
         }
     }
 
