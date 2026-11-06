@@ -201,6 +201,7 @@ builder.Services.AddScoped<PaqueteServicioService>();
 builder.Services.AddScoped<ConfiguracionService>();
 builder.Services.AddScoped<ClienteService>();
 builder.Services.AddScoped<ClienteLifecycleService>();
+builder.Services.AddScoped<ClienteVehicleService>();
 builder.Services.AddScoped<VehiculoService>();
 builder.Services.AddScoped<TipoDocumentoService>();
 builder.Services.AddScoped<Firebase.Services.LavadoService>();

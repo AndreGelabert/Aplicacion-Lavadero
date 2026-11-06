@@ -20,7 +20,7 @@ public class ClienteLifecycleRefactorTests
         var clients = new ClienteService(db);
         var vehicles = new VehiculoService(db);
         var identity = new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, "actor"), new Claim(ClaimTypes.Email, "actor@example.invalid") }, "test");
-        var controller = new ClienteController(clients, new TipoDocumentoService(db), vehicles, new AuditService(db), NullLogger<ClienteController>.Instance, new ClienteLifecycleService(clients, vehicles, new AuditService(db)))
+        var controller = new ClienteController(clients, new TipoDocumentoService(db), vehicles, new AuditService(db), NullLogger<ClienteController>.Instance, new ClienteLifecycleService(clients, vehicles, new AuditService(db)), new ClienteVehicleService(clients, vehicles, new AuditService(db)))
         { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) } } };
         var target = Client("Activo"); var active = Client("Activo"); var inactive = Client("Inactivo");
         await clients.CrearCliente(target); await clients.CrearCliente(active); await clients.CrearCliente(inactive);

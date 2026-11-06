@@ -75,7 +75,8 @@ public class ClienteQueryRefactorTests
         ClienteController Controller(bool canRead) => new(new ClienteService(db),
             new TipoDocumentoService(db), new VehiculoService(db), new AuditService(db),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ClienteController>.Instance,
-            new Firebase.Services.ClienteLifecycleService(new ClienteService(db), new VehiculoService(db), new AuditService(db)))
+            new Firebase.Services.ClienteLifecycleService(new ClienteService(db), new VehiculoService(db), new AuditService(db)),
+            new Firebase.Services.ClienteVehicleService(new ClienteService(db), new VehiculoService(db), new AuditService(db)))
         {
             ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
             {
