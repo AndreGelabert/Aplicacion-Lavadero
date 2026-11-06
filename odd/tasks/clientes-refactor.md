@@ -1,6 +1,6 @@
 # Clientes refactor
 Objective: preserve observable Clientes behavior while consolidating duplicated listing/count filtering.
-Delivery: local only; audit writer remains uncommitted and separate. No changes to keys, transactions, permissions, lifecycle mutations or audit emissions.
+Delivery: local only; audit writer saved separately in commit 88f523b on the current integration line. No changes to keys, transactions, permissions, lifecycle mutations or audit emissions.
 
 ## Specs
 S1. "Ignora esa prueba y segui con el proximo modulo planificado" — proceed with Clientes; audit independent execution remains unavailable, not passed.
@@ -15,8 +15,8 @@ T1 | S1-S3 | inline | done | Public service characterization and isolated baseli
 T2 | S2-S3 | inline | done | Exact predicates/materialization retained; baseline and post-change isolated suites both 851 passed, 0 failed/skipped (job-9/job-10, exit 0). Commit: 10219c4.
 T3 | S1-S4 | inline | done | Both suites 851/851; diff check clean; native assessment unavailable, no independent verifier required by returned plan. Local implementation commit: 10219c4.
 
-T4 | S2-S3,S5 | inline | done | Controller extraction preserves signatures and ViewBag differences. Baseline/post-change 852 passed, zero failed/skipped (job-11/job-12). Commit: next local MVC slice.
-T5 | S2-S5 | inline | in_progress | Checks passed; preparing isolated local commit excluding pre-existing audit dependency edits.
+T4 | S2-S3,S5 | inline | done | Controller extraction preserves signatures and ViewBag differences. Baseline/post-change 852 passed, zero failed/skipped (job-11/job-12). Commit: f982100.
+T5 | S2-S5 | inline | done | 852/852 before and after; local MVC slice f982100 excludes audit constructor/field edits.
 
 ## Log
 L1. User authorization verbatim: "Ignora esa prueba y segui con el proximo modulo planificado"
@@ -28,3 +28,5 @@ L5. Local slice 10219c4 on refactor/clientes-queries includes exactly service/te
 L6. User authorization verbatim: "Y segui si". Controller already contains uncommitted audit dependency change; preserve it and exclude it from Clientes delivery.
 L7. MVC baseline job-11 exit 0: 852 passed, 0 failed/skipped. Private PrepararListado extraction implemented; retains query order, permission-dependent Index reads, total-page math and ViewBag keys; PageSize remains Index-only. Post-change checks pending.
 L8. Post-change job-12 exit 0: 852 passed, zero failed/skipped. ASSESS unavailable: untracked declaration error; returned plan self-verification/no independent verifier. No native approval claimed. Risk: none, private extraction of explicitly scoped actions with unchanged permission checks. No CLI/UI contract or help change.
+L9. Commit f982100 contains only MVC extraction, its public-action characterization and tracking. Temporary index used to exclude the two pre-existing IAuditWriter lines; normalized candidate line endings before commit after diff-check rejected initial CRLF blob. Worktree bytes preserved. Remaining controller diff verified to be exactly the two audit dependency lines; staged audit new files preserved. No publishing.
+L10. User authorized organizing pending local commits and personal files. Audit writer saved separately as 88f523b after client slices 10219c4/f982100; no history rewrite. Current authoritative work line: refactor/clientes-queries. Earlier audit branches are historical pointers only. Slice boundaries: f302ec6 audit queries; 10219c4 client filters; f982100 MVC listing; 88f523b audit writer. Review individual slices, not accumulated main range.
