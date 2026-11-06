@@ -11,6 +11,29 @@ namespace Firebase.Tests.Integration;
 public class VehiculoMutationRefactorTests
 {
     [LocalFirestoreFact]
+    public async Task AssociationValidationPreservesNullMissingAndBlankKeyOrphanResponses()
+    {
+        var db = new FirestoreDbBuilder { ProjectId = "demo-vehkey-" + Guid.NewGuid().ToString("N")[..12], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
+        var service = new VehiculoService(db);
+        var controller = new VehiculoController(service, new TipoVehiculoService(db), new ClienteService(db), new AuditService(db), null!, NullLogger<VehiculoController>.Instance);
+        async Task<JsonElement> Check(VehiculoController.ValidarClaveRequest request) => JsonSerializer.SerializeToElement(Assert.IsType<JsonResult>(await controller.ValidarClaveAsociacion(request)).Value);
+        var blank = await Check(null!);
+        Assert.False(blank.GetProperty("valida").GetBoolean());
+        Assert.Equal("La patente y la clave de asociación son obligatorias.", blank.GetProperty("error").GetString());
+        var missing = await Check(new() { Patente = "UNKNOWN" });
+        Assert.False(missing.GetProperty("valida").GetBoolean());
+        Assert.Equal("La clave de asociación no es válida para este vehículo.", missing.GetProperty("error").GetString());
+        await service.ActualizarVehiculo(new Vehiculo { Id = "orphan", Patente = "ABC123", Marca = "Ford", Modelo = "Fiesta", Color = "Azul", TipoVehiculo = "Auto", Estado = "Inactivo" });
+        var result = await Check(new() { Patente = "abc123", ClaveAsociacion = null! });
+        Assert.True(result.GetProperty("valida").GetBoolean());
+        Assert.True(result.GetProperty("esHuerfano").GetBoolean());
+        var expected = JsonSerializer.SerializeToElement(new { id = "orphan", patente = "ABC123", marca = "Ford", modelo = "Fiesta", color = "Azul", tipoVehiculo = "Auto", clienteNombreCompleto = (string?)null });
+        Assert.Equal(expected.GetRawText(), result.GetProperty("vehiculo").GetRawText());
+        Assert.Equal("Inactivo", (await service.ObtenerVehiculo("orphan")).Estado);
+        Assert.Empty(await new AuditService(db).ObtenerRegistros());
+    }
+
+    [LocalFirestoreFact]
     public async Task UpdateRestoresImmutableFieldsAndDeactivationRejectsBothOwnershipForms()
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-vehmutation-" + Guid.NewGuid().ToString("N")[..12], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();

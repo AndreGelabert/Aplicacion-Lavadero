@@ -181,14 +181,7 @@ public class VehiculoController : Controller
         if (!User.TienePermiso("Clientes.Consultar")) return Forbid();
         var vehiculo = await _vehiculoService.ObtenerVehiculo(id);
         if (vehiculo == null) return NotFound();
-        var ids = (vehiculo.ClientesIds ?? new List<string>()).Append(vehiculo.ClienteId)
-            .Where(x => !string.IsNullOrEmpty(x)).Distinct();
-        var clientes = new List<Cliente>();
-        foreach (var clienteId in ids)
-        {
-            var cliente = await _clienteService.ObtenerCliente(clienteId);
-            if (cliente != null) clientes.Add(cliente);
-        }
+        var clientes = await _clienteService.ObtenerAsociadosVehiculo(vehiculo);
         ViewBag.Patente = vehiculo.Patente;
         ViewBag.TitularId = vehiculo.ClienteId;
         return PartialView("_Asociados", clientes);
@@ -300,10 +293,9 @@ public class VehiculoController : Controller
     {
         try
         {
-            // Borrado físico - solo si realmente es necesario
-            var vehiculo = await _vehiculoService.ObtenerVehiculo(id);
-            var antes = AuditCampos.CapturarVehiculo(vehiculo);
-            await _vehiculoService.EliminarVehiculo(id);
+            var resultado = await _vehiculoService.EliminarConCaptura(id);
+            var vehiculo = resultado.Vehiculo;
+            var antes = resultado.CamposAntes;
             await RegistrarEvento("Eliminacion fisica de vehiculo", id, "Vehiculo", antes, new(), vehiculo?.Patente);
             return Json(new { success = true, message = "Vehículo eliminado correctamente." });
         }
@@ -541,42 +533,7 @@ public class VehiculoController : Controller
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(request?.Patente))
-            {
-                return Json(new { 
-                    valida = false, 
-                    error = "La patente y la clave de asociación son obligatorias." 
-                });
-            }
-
-            var vehiculo = await _vehiculoService.ValidarClaveYObtenerVehiculo(
-                request.Patente.ToUpper(), 
-                request.ClaveAsociacion ?? ""
-            );
-
-            if (vehiculo == null)
-            {
-                return Json(new { 
-                    valida = false, 
-                    error = "La clave de asociación no es válida para este vehículo." 
-                });
-            }
-
-            return Json(new
-            {
-                valida = true,
-                esHuerfano = VehiculoService.EsHuerfanoReclamable(vehiculo),
-                vehiculo = new
-                {
-                    id = vehiculo.Id,
-                    patente = vehiculo.Patente,
-                    marca = vehiculo.Marca,
-                    modelo = vehiculo.Modelo,
-                    color = vehiculo.Color,
-                    tipoVehiculo = vehiculo.TipoVehiculo,
-                    clienteNombreCompleto = vehiculo.ClienteNombreCompleto
-                }
-            });
+            return Json(await _vehiculoService.EvaluarClaveAsociacion(request?.Patente, request?.ClaveAsociacion));
         }
         catch (Exception ex)
         {

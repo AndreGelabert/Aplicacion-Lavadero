@@ -13,6 +13,19 @@ public class ClienteService
         _firestore = firestore;
     }
 
+    public async Task<List<Cliente>> ObtenerAsociadosVehiculo(Vehiculo vehiculo)
+    {
+        var ids = (vehiculo.ClientesIds ?? new List<string>()).Append(vehiculo.ClienteId)
+            .Where(x => !string.IsNullOrEmpty(x)).Distinct();
+        var clientes = new List<Cliente>();
+        foreach (var clienteId in ids)
+        {
+            var cliente = await ObtenerCliente(clienteId);
+            if (cliente != null) clientes.Add(cliente);
+        }
+        return clientes;
+    }
+
     /// <summary>
     /// Obtiene una lista paginada y filtrada de clientes.
     /// </summary>

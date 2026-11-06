@@ -78,6 +78,54 @@ public class VehiculoService
             });
     }
 
+    public async Task<object> EvaluarClaveAsociacion(string patente, string claveAsociacion)
+    {
+            if (string.IsNullOrWhiteSpace(patente))
+            {
+                return (new {
+                    valida = false,
+                    error = "La patente y la clave de asociación son obligatorias."
+                });
+            }
+
+            var vehiculo = await ValidarClaveYObtenerVehiculo(
+                patente.ToUpper(),
+                claveAsociacion ?? ""
+            );
+
+            if (vehiculo == null)
+            {
+                return (new {
+                    valida = false,
+                    error = "La clave de asociación no es válida para este vehículo."
+                });
+            }
+
+            return (new
+            {
+                valida = true,
+                esHuerfano = VehiculoService.EsHuerfanoReclamable(vehiculo),
+                vehiculo = new
+                {
+                    id = vehiculo.Id,
+                    patente = vehiculo.Patente,
+                    marca = vehiculo.Marca,
+                    modelo = vehiculo.Modelo,
+                    color = vehiculo.Color,
+                    tipoVehiculo = vehiculo.TipoVehiculo,
+                    clienteNombreCompleto = vehiculo.ClienteNombreCompleto
+                }
+            });
+    }
+
+    public async Task<(Vehiculo Vehiculo, Dictionary<string, string> CamposAntes)> EliminarConCaptura(string id)
+    {
+        var vehiculo = await ObtenerVehiculo(id);
+        var antes = AuditCampos.CapturarVehiculo(vehiculo);
+        await EliminarVehiculo(id);
+        return (vehiculo, antes);
+    }
+
     public async Task<Vehiculo> PrepararEdicion(Vehiculo vehiculo)
     {
         var original = await ObtenerVehiculo(vehiculo.Id);
