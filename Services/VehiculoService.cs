@@ -90,45 +90,7 @@ public class VehiculoService
         var vehiculos = snapshot.Documents.Select(d => d.ConvertTo<Vehiculo>()).ToList();
         await ActualizarNombresTitulares(vehiculos);
 
-        // Filtrado por estado (por defecto solo Activos)
-        if (estados != null && estados.Any())
-        {
-            vehiculos = vehiculos.Where(v => estados.Contains(v.Estado)).ToList();
-        }
-        else
-        {
-            vehiculos = vehiculos.Where(v => v.Estado == "Activo").ToList();
-        }
-
-        // Filtrado en memoria por búsqueda
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            string term = searchTerm.ToLowerInvariant();
-            vehiculos = vehiculos.Where(v =>
-                v.Patente.ToLowerInvariant().Contains(term) ||
-                v.Marca.ToLowerInvariant().Contains(term) ||
-                v.Modelo.ToLowerInvariant().Contains(term) ||
-                (v.ClienteNombreCompleto != null && v.ClienteNombreCompleto.ToLowerInvariant().Contains(term))
-            ).ToList();
-        }
-
-        // Filtrado por tipos de vehículo
-        if (tiposVehiculo != null && tiposVehiculo.Any())
-        {
-            vehiculos = vehiculos.Where(v => tiposVehiculo.Contains(v.TipoVehiculo)).ToList();
-        }
-
-        // Filtrado por marcas
-        if (marcas != null && marcas.Any())
-        {
-            vehiculos = vehiculos.Where(v => marcas.Contains(v.Marca)).ToList();
-        }
-
-        // Filtrado por colores
-        if (colores != null && colores.Any())
-        {
-            vehiculos = vehiculos.Where(v => colores.Contains(v.Color)).ToList();
-        }
+        vehiculos = FiltrarVehiculos(vehiculos, searchTerm, tiposVehiculo, marcas, colores, estados);
 
         // Ordenamiento
         vehiculos = sortOrder?.ToLower() == "desc"
@@ -149,6 +111,13 @@ public class VehiculoService
         var vehiculos = snapshot.Documents.Select(d => d.ConvertTo<Vehiculo>()).ToList();
         await ActualizarNombresTitulares(vehiculos);
 
+        vehiculos = FiltrarVehiculos(vehiculos, searchTerm, tiposVehiculo, marcas, colores, estados);
+
+        return vehiculos.Count;
+    }
+
+    private static List<Vehiculo> FiltrarVehiculos(List<Vehiculo> vehiculos, string searchTerm, List<string> tiposVehiculo, List<string> marcas, List<string> colores, List<string> estados)
+    {
         // Filtrado por estado
         if (estados != null && estados.Any())
         {
@@ -185,7 +154,7 @@ public class VehiculoService
             vehiculos = vehiculos.Where(v => colores.Contains(v.Color)).ToList();
         }
 
-        return vehiculos.Count;
+        return vehiculos;
     }
 
     public async Task<List<string>> ObtenerMarcasUnicas()
