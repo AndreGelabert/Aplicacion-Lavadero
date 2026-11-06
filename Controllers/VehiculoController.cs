@@ -234,69 +234,7 @@ public class VehiculoController : Controller
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(patente))
-            {
-                return Json(new { existe = false });
-            }
-
-            var vehiculoExistente = await _vehiculoService.ObtenerVehiculoPorPatente(patente.ToUpper());
-            
-            // CASO 1: No existe ningún vehículo con esa patente → OK, puede crear
-            if (vehiculoExistente == null)
-            {
-                return Json(new { existe = false });
-            }
-            
-            if (VehiculoService.EsHuerfanoReclamable(vehiculoExistente))
-                return Json(new { existe = false, asociable = true });
-
-            // CASO 2: Existe vehículo ACTIVO → ERROR, patente duplicada
-            if (vehiculoExistente.Estado == "Activo")
-            {
-                return Json(new 
-                { 
-                    existe = false,
-                    asociable = !string.IsNullOrEmpty(vehiculoExistente.ClienteId) || (vehiculoExistente.ClientesIds?.Any() ?? false),
-                    error = $"Ya existe un vehículo activo con la patente {vehiculoExistente.Patente} ({vehiculoExistente.TipoVehiculo} - {vehiculoExistente.Marca} {vehiculoExistente.Modelo}). No se pueden registrar patentes duplicadas."
-                });
-            }
-            
-            // CASO 3: Existe vehículo INACTIVO pero CON DUEÑO → ERROR, no se puede reasignar
-            if (!string.IsNullOrEmpty(vehiculoExistente.ClienteId) || (vehiculoExistente.ClientesIds?.Any() ?? false))
-            {
-                return Json(new 
-                { 
-                    existe = false, 
-                    error = $"Ya existe un vehículo con la patente {vehiculoExistente.Patente} asignado al cliente {vehiculoExistente.ClienteNombreCompleto}. No se pueden registrar patentes duplicadas."
-                });
-            }
-            
-            // CASO 4: Existe vehículo INACTIVO, SIN DUEÑO, con misma marca y modelo → REASIGNACIÓN
-            if (VehiculoService.EsHuerfanoReclamable(vehiculoExistente) && vehiculoExistente.Marca.Equals(marca, StringComparison.OrdinalIgnoreCase) &&
-                vehiculoExistente.Modelo.Equals(modelo, StringComparison.OrdinalIgnoreCase))
-            {
-                return Json(new
-                {
-                    existe = true,
-                    vehiculo = new
-                    {
-                        id = vehiculoExistente.Id,
-                        patente = vehiculoExistente.Patente,
-                        marca = vehiculoExistente.Marca,
-                        modelo = vehiculoExistente.Modelo,
-                        color = vehiculoExistente.Color,
-                        tipoVehiculo = vehiculoExistente.TipoVehiculo
-                    }
-                });
-            }
-            
-            // CASO 5: Existe vehículo INACTIVO, SIN DUEÑO, pero DIFERENTE marca/modelo → ERROR
-            // Esto indica que la misma patente perteneció a un vehículo distinto
-            return Json(new 
-            { 
-                existe = false, 
-                error = $"Ya existe un vehículo registrado con la patente {vehiculoExistente.Patente}, pero es un {vehiculoExistente.TipoVehiculo} {vehiculoExistente.Marca} {vehiculoExistente.Modelo}. Está ingresando datos de un {marca} {modelo}. Verifique la patente."
-            });
+            return Json(await _vehiculoService.EvaluarDisponibilidadPatente(patente, marca, modelo));
         }
         catch (Exception ex)
         {
