@@ -744,33 +744,12 @@ namespace FirebaseLoginCustom.Controllers
         {
             try
             {
-                var lavado = await _lavadoService.ObtenerLavado(lavadoId);
-                if (lavado == null)
+                var resultado = await _lavadoService.RegistrarRetiro(lavadoId);
+                if (resultado.Error != null)
                 {
-                    return Json(new { success = false, message = "Lavado no encontrado." });
+                    return Json(new { success = false, message = resultado.Error });
                 }
-
-                // Verificar si ya fue retirado
-                if (lavado.EstadoRetiro == Lavado.EstadosRetiro.Retirado)
-                {
-                    return Json(new { success = false, message = "El vehículo ya fue retirado." });
-                }
-
-                // Verificar si el lavado fue pagado o cancelado
-                var estadoPago = lavado.Pago?.Estado ?? "Pendiente";
-                var estadoLavado = lavado.Estado;
-
-                if (estadoLavado != "Cancelado" && estadoPago != "Pagado")
-                {
-                    return Json(new { success = false, message = "El lavado debe estar pagado antes de permitir el retiro del vehículo." });
-                }
-
-                var antes = AuditCampos.CapturarLavado(lavado);
-                // Registrar el retiro
-                lavado.EstadoRetiro = Lavado.EstadosRetiro.Retirado;
-                lavado.FechaRetiro = DateTime.UtcNow;
-
-                await _lavadoService.ActualizarLavado(lavado);
+                var antes = resultado.CamposAntes!;
                 await RegistrarLavado("Retiro de vehículo", lavadoId, antes);
 
                 return Json(new { success = true, message = "Retiro registrado correctamente." });

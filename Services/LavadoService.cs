@@ -45,6 +45,40 @@ namespace Firebase.Services
         }
         #endregion
 
+        public record ResultadoRetiro(string? Error = null, Dictionary<string, string>? CamposAntes = null);
+
+        public async Task<ResultadoRetiro> RegistrarRetiro(string lavadoId)
+        {
+            var lavado = await ObtenerLavado(lavadoId);
+            if (lavado == null)
+            {
+                return new ResultadoRetiro("Lavado no encontrado.");
+            }
+
+            // Verificar si ya fue retirado
+            if (lavado.EstadoRetiro == Lavado.EstadosRetiro.Retirado)
+            {
+                return new ResultadoRetiro("El vehículo ya fue retirado.");
+            }
+
+            // Verificar si el lavado fue pagado o cancelado
+            var estadoPago = lavado.Pago?.Estado ?? "Pendiente";
+            var estadoLavado = lavado.Estado;
+
+            if (estadoLavado != "Cancelado" && estadoPago != "Pagado")
+            {
+                return new ResultadoRetiro("El lavado debe estar pagado antes de permitir el retiro del vehículo.");
+            }
+
+            var antes = AuditCampos.CapturarLavado(lavado);
+            // Registrar el retiro
+            lavado.EstadoRetiro = Lavado.EstadosRetiro.Retirado;
+            lavado.FechaRetiro = DateTime.UtcNow;
+
+            await ActualizarLavado(lavado);
+            return new ResultadoRetiro(CamposAntes: antes);
+        }
+
         #region Operaciones de Consulta
 
         /// <summary>
