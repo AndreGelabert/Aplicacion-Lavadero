@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Firebase.Models;
+using Firebase.Services;
 using Google.Api.Gax;
 using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Http;
@@ -12,7 +13,7 @@ namespace Firebase.Tests.Integration;
 public class VehicleOwnershipRegressionTests
 {
     private static Cliente MakeClient(string id, string document) => new() { Id = id, TipoDocumento = "DNI", NumeroDocumento = document, Nombre = "Ana", Apellido = "Perez", Telefono = "1234567890", Email = "test@example.invalid", Estado = "Activo" };
-    private static ClienteController Controller(FirestoreDb db, DefaultHttpContext context) => new(new ClienteService(db), new TipoDocumentoService(db), new VehiculoService(db), new AuditService(db), NullLogger<ClienteController>.Instance) { ControllerContext = new ControllerContext { HttpContext = context } };
+    private static ClienteController Controller(FirestoreDb db, DefaultHttpContext context) => new(new ClienteService(db), new TipoDocumentoService(db), new VehiculoService(db), new AuditService(db), NullLogger<ClienteController>.Instance, new ClienteLifecycleService(new ClienteService(db), new VehiculoService(db), new AuditService(db))) { ControllerContext = new ControllerContext { HttpContext = context } };
     private static DefaultHttpContext Context() => new() { User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("permiso", "Clientes.Crear"), new Claim("permiso", "Clientes.Modificar"), new Claim("permiso", "Vehiculos.Crear"), new Claim(ClaimTypes.NameIdentifier, "test") }, "test")) };
     private static FirestoreDb Database() => new FirestoreDbBuilder { ProjectId = "demo-lava-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
 
@@ -369,7 +370,7 @@ public class VehicleOwnershipRegressionTests
         client.VehiculosIds.Add(vehicle.Id);
         await clients.ActualizarCliente(client);
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("permiso", "Clientes.Modificar"), new Claim("permiso", "Vehiculos.Crear"), new Claim(ClaimTypes.NameIdentifier, "test") }, "test")) };
-        var controller = new ClienteController(clients, new TipoDocumentoService(db), vehicles, new AuditService(db), NullLogger<ClienteController>.Instance) { ControllerContext = new ControllerContext { HttpContext = context } };
+        var controller = new ClienteController(clients, new TipoDocumentoService(db), vehicles, new AuditService(db), NullLogger<ClienteController>.Instance, new ClienteLifecycleService(clients, vehicles, new AuditService(db))) { ControllerContext = new ControllerContext { HttpContext = context } };
         await controller.ActualizarClienteAjax(client, "[]");
         Assert.Equal("false", context.Response.Headers["X-Form-Valid"]);
         Assert.Equal(new[] { vehicle.Id }, (await clients.ObtenerCliente(client.Id))!.VehiculosIds);
@@ -389,7 +390,7 @@ public class VehicleOwnershipRegressionTests
         await vehicles.CrearVehiculo(vehicle);
         var client = new Cliente { Id = "", TipoDocumento = "DNI", NumeroDocumento = "12345678", Nombre = "Ana", Apellido = "Perez", Telefono = "1234567890", Email = "test@example.invalid" };
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("permiso", "Clientes.Crear"), new Claim("permiso", "Vehiculos.Crear"), new Claim(ClaimTypes.NameIdentifier, "test") }, "test")) };
-        var controller = new ClienteController(clients, new TipoDocumentoService(db), vehicles, new AuditService(db), NullLogger<ClienteController>.Instance) { ControllerContext = new ControllerContext { HttpContext = context } };
+        var controller = new ClienteController(clients, new TipoDocumentoService(db), vehicles, new AuditService(db), NullLogger<ClienteController>.Instance, new ClienteLifecycleService(clients, vehicles, new AuditService(db))) { ControllerContext = new ControllerContext { HttpContext = context } };
         await controller.CrearClienteAjax(client, JsonSerializer.Serialize(new[] { new { patente = vehicle.Patente, esAsociacion = true, claveAsociacion = "ABCD-2345" } }));
         Assert.Equal("false", context.Response.Headers["X-Form-Valid"]);
         Assert.Empty((await db.Collection("clientes").GetSnapshotAsync()).Documents);
@@ -436,7 +437,7 @@ public class VehicleOwnershipRegressionTests
         client.VehiculosIds = new() { kept.Id };
         await clients.ActualizarCliente(client);
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("permiso", "Clientes.Modificar"), new Claim("permiso", "Vehiculos.Crear"), new Claim(ClaimTypes.NameIdentifier, "test") }, "test")) };
-        var controller = new ClienteController(clients, new TipoDocumentoService(db), vehicles, new AuditService(db), NullLogger<ClienteController>.Instance) { ControllerContext = new ControllerContext { HttpContext = context } };
+        var controller = new ClienteController(clients, new TipoDocumentoService(db), vehicles, new AuditService(db), NullLogger<ClienteController>.Instance, new ClienteLifecycleService(clients, vehicles, new AuditService(db))) { ControllerContext = new ControllerContext { HttpContext = context } };
         await controller.ActualizarClienteAjax(client, JsonSerializer.Serialize(new[] { new { id = kept.Id, color = kept.Color, tipoVehiculo = kept.TipoVehiculo } }));
         Assert.Equal("true", context.Response.Headers["X-Form-Valid"]);
         var result = await vehicles.ObtenerVehiculo(removed.Id);

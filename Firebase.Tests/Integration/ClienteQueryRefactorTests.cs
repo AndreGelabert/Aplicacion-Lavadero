@@ -74,7 +74,8 @@ public class ClienteQueryRefactorTests
             Client("a", "Ana", "Perez", "123", "ana@example.invalid", "1111111111", "Activo"));
         ClienteController Controller(bool canRead) => new(new ClienteService(db),
             new TipoDocumentoService(db), new VehiculoService(db), new AuditService(db),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<ClienteController>.Instance)
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ClienteController>.Instance,
+            new Firebase.Services.ClienteLifecycleService(new ClienteService(db), new VehiculoService(db), new AuditService(db)))
         {
             ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
             {

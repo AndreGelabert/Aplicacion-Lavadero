@@ -14,19 +14,22 @@ public class ClienteController : Controller
     private readonly VehiculoService _vehiculoService;
     private readonly IAuditWriter _auditService;
     private readonly ILogger<ClienteController> _logger;
+    private readonly ClienteLifecycleService _lifecycle;
 
     public ClienteController(
         ClienteService clienteService,
         TipoDocumentoService tipoDocumentoService,
         VehiculoService vehiculoService,
         IAuditWriter auditService,
-        ILogger<ClienteController> logger)
+        ILogger<ClienteController> logger,
+        ClienteLifecycleService lifecycle)
     {
         _clienteService = clienteService;
         _tipoDocumentoService = tipoDocumentoService;
         _vehiculoService = vehiculoService;
         _auditService = auditService;
         _logger = logger;
+        _lifecycle = lifecycle;
     }
 
     [HttpGet]
@@ -350,76 +353,8 @@ public class ClienteController : Controller
     {
         try
         {
-            // Obtener vehículos del cliente
-            var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(id);
-            
-            int vehiculosDesactivados = 0;
-            int vehiculosCompartidosNoDesactivados = 0;
-            
-            // Procesar cada vehículo activo
-            foreach (var vehiculo in vehiculos.Where(v => v.Estado == "Activo"))
-            {
-                // Verificar si el vehículo es compartido (tiene otros clientes activos)
-                bool tieneOtrosClientesActivos = false;
-                
-                if (vehiculo.ClientesIds != null && vehiculo.ClientesIds.Any())
-                {
-                    // Verificar si hay otros clientes activos que usan este vehículo
-                    foreach (var clienteId in vehiculo.ClientesIds.Where(c => c != id))
-                    {
-                        var otroCliente = await _clienteService.ObtenerCliente(clienteId);
-                        if (otroCliente != null && otroCliente.Estado == "Activo")
-                        {
-                            tieneOtrosClientesActivos = true;
-                            break;
-                        }
-                    }
-                }
-                
-                // También verificar ClienteId principal si es diferente
-                if (!tieneOtrosClientesActivos && !string.IsNullOrEmpty(vehiculo.ClienteId) && vehiculo.ClienteId != id)
-                {
-                    var clientePrincipal = await _clienteService.ObtenerCliente(vehiculo.ClienteId);
-                    if (clientePrincipal != null && clientePrincipal.Estado == "Activo")
-                    {
-                        tieneOtrosClientesActivos = true;
-                    }
-                }
-                
-                if (tieneOtrosClientesActivos)
-                {
-                    // No desactivar el vehículo porque otros clientes activos lo usan
-                    vehiculosCompartidosNoDesactivados++;
-                }
-                else
-                {
-                    // Desactivar el vehículo porque es exclusivo de este cliente (o compartido solo con clientes inactivos)
-                    var antesVehiculo = AuditCampos.CapturarVehiculo(vehiculo);
-                    await _vehiculoService.CambiarEstadoVehiculo(vehiculo.Id, "Inactivo");
-                    await RegistrarVehiculo("Desactivacion de vehiculo (por desactivacion de cliente)", vehiculo.Id, antesVehiculo);
-                    vehiculosDesactivados++;
-                }
-            }
-            
-            // Desactivar el cliente
-            var antesCliente = AuditCampos.CapturarCliente(await _clienteService.ObtenerCliente(id));
-            await _clienteService.CambiarEstadoCliente(id, "Inactivo");
-            await RegistrarCliente("Desactivacion de cliente", id, antesCliente);
-            
-            // Construir mensaje informativo
-            var mensajeParts = new List<string> { "Cliente desactivado correctamente." };
-            
-            if (vehiculosDesactivados > 0)
-            {
-                mensajeParts.Add($"Se desactivaron {vehiculosDesactivados} vehículo(s) exclusivo(s).");
-            }
-            
-            if (vehiculosCompartidosNoDesactivados > 0)
-            {
-                mensajeParts.Add($"{vehiculosCompartidosNoDesactivados} vehículo(s) compartido(s) permanecen activos (usados por otros clientes).");
-            }
-            
-            return Json(new { success = true, message = string.Join(" ", mensajeParts) });
+            var message = await _lifecycle.Desactivar(id, User.FindFirstValue(ClaimTypes.NameIdentifier), User.FindFirstValue(ClaimTypes.Email));
+            return Json(new { success = true, message });
         }
         catch (Exception ex)
         {
@@ -435,76 +370,8 @@ public class ClienteController : Controller
     {
         try
         {
-            // Obtener vehículos del cliente
-            var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(id);
-            
-            int vehiculosReactivados = 0;
-            int vehiculosYaActivos = 0;
-            
-            // Procesar cada vehículo inactivo
-            foreach (var vehiculo in vehiculos.Where(v => v.Estado == "Inactivo"))
-            {
-                // Solo reactivar si el vehículo tenía algún dueño (no quedó huérfano)
-                bool tieneAlgunCliente = !string.IsNullOrEmpty(vehiculo.ClienteId) || 
-                                         (vehiculo.ClientesIds != null && vehiculo.ClientesIds.Any());
-                
-                if (tieneAlgunCliente)
-                {
-                    // Verificar si algún otro cliente activo ya está usando este vehículo
-                    bool tieneOtroClienteActivo = false;
-                    
-                    if (vehiculo.ClientesIds != null)
-                    {
-                        foreach (var clienteId in vehiculo.ClientesIds.Where(c => c != id))
-                        {
-                            var otroCliente = await _clienteService.ObtenerCliente(clienteId);
-                            if (otroCliente != null && otroCliente.Estado == "Activo")
-                            {
-                                tieneOtroClienteActivo = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (!tieneOtroClienteActivo && !string.IsNullOrEmpty(vehiculo.ClienteId) && vehiculo.ClienteId != id)
-                    {
-                        var clientePrincipal = await _clienteService.ObtenerCliente(vehiculo.ClienteId);
-                        if (clientePrincipal != null && clientePrincipal.Estado == "Activo")
-                        {
-                            tieneOtroClienteActivo = true;
-                        }
-                    }
-                    
-                    // Reactivar el vehículo (ya sea porque es exclusivo de este cliente o compartido)
-                    var antesVehiculo = AuditCampos.CapturarVehiculo(vehiculo);
-                    await _vehiculoService.CambiarEstadoVehiculo(vehiculo.Id, "Activo");
-                    await RegistrarVehiculo("Reactivacion de vehiculo (por reactivacion de cliente)", vehiculo.Id, antesVehiculo);
-                    vehiculosReactivados++;
-                }
-            }
-            
-            // Contar vehículos que ya estaban activos (compartidos con otros clientes activos)
-            vehiculosYaActivos = vehiculos.Count(v => v.Estado == "Activo");
-            
-            // Reactivar el cliente
-            var antesCliente = AuditCampos.CapturarCliente(await _clienteService.ObtenerCliente(id));
-            await _clienteService.CambiarEstadoCliente(id, "Activo");
-            await RegistrarCliente("Reactivacion de cliente", id, antesCliente);
-            
-            // Construir mensaje informativo
-            var mensajeParts = new List<string> { "Cliente reactivado correctamente." };
-            
-            if (vehiculosReactivados > 0)
-            {
-                mensajeParts.Add($"Se reactivaron {vehiculosReactivados} vehículo(s).");
-            }
-            
-            if (vehiculosYaActivos > 0)
-            {
-                mensajeParts.Add($"{vehiculosYaActivos} vehículo(s) ya estaban activos (compartidos con otros clientes).");
-            }
-            
-            return Json(new { success = true, message = string.Join(" ", mensajeParts) });
+            var message = await _lifecycle.Reactivar(id, User.FindFirstValue(ClaimTypes.NameIdentifier), User.FindFirstValue(ClaimTypes.Email));
+            return Json(new { success = true, message });
         }
         catch (Exception ex)
         {
