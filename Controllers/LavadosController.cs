@@ -163,20 +163,8 @@ namespace FirebaseLoginCustom.Controllers
 
             var totalPages = Math.Max((int)Math.Ceiling(totalLavados / (double)pageSize), 1);
 
-            ViewBag.CurrentPage = pageNumber;
-            ViewBag.TotalPages = totalPages;
-            ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-            ViewBag.Estados = estados;
-            ViewBag.ClienteId = clienteId;
-            ViewBag.VehiculoId = vehiculoId;
-            ViewBag.FechaDesde = fechaDesde;
-            ViewBag.FechaHasta = fechaHasta;
-            ViewBag.PrecioDesde = precioDesde;
-            ViewBag.PrecioHasta = precioHasta;
-            ViewBag.EstadosPago = estadosPago;
-            ViewBag.EstadosRetiro = estadosRetiro;
-            ViewBag.SortBy = sortBy;
-            ViewBag.SortOrder = sortOrder;
+            PrepararMetadataPartial(pageNumber, totalPages, estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, sortBy, sortOrder);
+
             ViewBag.SearchTerm = searchTerm;
 
             return PartialView("_LavadoTable", lavados);
@@ -214,20 +202,8 @@ namespace FirebaseLoginCustom.Controllers
                 estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, pageSize);
             totalPages = Math.Max(totalPages, 1);
 
-            ViewBag.CurrentPage = pageNumber;
-            ViewBag.TotalPages = totalPages;
-            ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-            ViewBag.Estados = estados;
-            ViewBag.ClienteId = clienteId;
-            ViewBag.VehiculoId = vehiculoId;
-            ViewBag.FechaDesde = fechaDesde;
-            ViewBag.FechaHasta = fechaHasta;
-            ViewBag.PrecioDesde = precioDesde;
-            ViewBag.PrecioHasta = precioHasta;
-            ViewBag.EstadosPago = estadosPago;
-            ViewBag.EstadosRetiro = estadosRetiro;
-            ViewBag.SortBy = sortBy;
-            ViewBag.SortOrder = sortOrder;
+            PrepararMetadataPartial(pageNumber, totalPages, estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, sortBy, sortOrder);
+
 
             return PartialView("_LavadoTable", lavados);
         }
@@ -1284,6 +1260,24 @@ namespace FirebaseLoginCustom.Controllers
             var start = Math.Max(1, currentPage - range);
             var end = Math.Min(totalPages, currentPage + range);
             return Enumerable.Range(start, end - start + 1).ToList();
+        }
+
+        private void PrepararMetadataPartial(int pageNumber, int totalPages, List<string>? estados, string? clienteId, string? vehiculoId, DateTime? fechaDesde, DateTime? fechaHasta, decimal? precioDesde, decimal? precioHasta, List<string>? estadosPago, List<string>? estadosRetiro, string sortBy, string sortOrder)
+        {
+            ViewBag.CurrentPage = pageNumber;
+            ViewBag.TotalPages = totalPages;
+            ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
+            ViewBag.Estados = estados;
+            ViewBag.ClienteId = clienteId;
+            ViewBag.VehiculoId = vehiculoId;
+            ViewBag.FechaDesde = fechaDesde;
+            ViewBag.FechaHasta = fechaHasta;
+            ViewBag.PrecioDesde = precioDesde;
+            ViewBag.PrecioHasta = precioHasta;
+            ViewBag.EstadosPago = estadosPago;
+            ViewBag.EstadosRetiro = estadosRetiro;
+            ViewBag.SortBy = sortBy;
+            ViewBag.SortOrder = sortOrder;
         }
 
         private async Task RegistrarLavado(string accion, string id, Dictionary<string, string> antes)
