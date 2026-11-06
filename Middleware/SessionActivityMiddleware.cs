@@ -1,3 +1,4 @@
+using Firebase.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Security.Claims;
@@ -22,7 +23,7 @@ namespace Firebase.Middleware
             _sessionRegistry = sessionRegistry;
         }
 
-        public async Task InvokeAsync(HttpContext context, ConfiguracionService configuracionService, AuditService auditService)
+        public async Task InvokeAsync(HttpContext context, ConfiguracionService configuracionService, IAuditWriter auditService)
         {
             // Saltar verificaci�n en rutas de autenticaci�n
             var path = context.Request.Path.Value?.ToLower() ?? "";

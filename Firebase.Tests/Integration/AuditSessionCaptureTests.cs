@@ -45,10 +45,27 @@ public class AuditSessionCaptureTests
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-lava-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var audit = new AuditService(db);
-        await audit.LogSessionEvent("actor", "actor@example.invalid", "Cerrar Sesión", "actor", "Empleado");
-        await audit.LogEvent("actor", "actor@example.invalid", "Legacy", "actor", "Empleado");
+        Firebase.Services.IAuditWriter writer = audit;
+        var started = DateTime.UtcNow;
+        await writer.LogSessionEvent("actor", "actor@example.invalid", "Cerrar Sesión", "actor", "Empleado");
+        await writer.LogEvent("actor", "actor@example.invalid", "Legacy", "actor", "Empleado");
+        await writer.LogEvent("actor", "actor@example.invalid", "Editar", "target", "Externo",
+            new() { ["Nombre"] = "Anterior" }, new() { ["Nombre"] = "Nuevo" }, "Nombre histórico");
         var events = await audit.ObtenerRegistros();
-        Assert.Equal(2, events.Count);
+        Assert.Equal(3, events.Count);
+        Assert.All(events, e =>
+        {
+            Assert.Equal("actor", e.UserId);
+            Assert.Equal("actor@example.invalid", e.UserEmail);
+            Assert.InRange(e.Timestamp, started.AddSeconds(-1), DateTime.UtcNow.AddSeconds(1));
+        });
+        var change = await audit.ObtenerDetalle(Assert.Single(events, e => e.Action == "Editar").DocId);
+        Assert.Equal("target", change.TargetId);
+        Assert.Equal("Externo", change.TargetType);
+        Assert.Equal("Nombre histórico", change.NombreHistorico);
+        Assert.Equal("Anterior", Assert.Single(change.Antes).Value);
+        Assert.Equal("Nuevo", Assert.Single(change.Despues).Value);
+        Assert.False(change.ComparacionNoAplica);
         var session = Assert.Single(events, e => e.Action == "Cerrar Sesión");
         var detail = await audit.ObtenerDetalle(session.DocId);
         Assert.True(detail.ComparacionNoAplica);

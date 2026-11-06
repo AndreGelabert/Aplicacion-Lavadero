@@ -1,3 +1,4 @@
+using Firebase.Services;
 using Firebase.Models;
 using Firebase.Security;
 using Microsoft.AspNetCore.Authorization;
@@ -14,7 +15,7 @@ public class ServicioController : Controller
 {
     #region Dependencias
     private readonly ServicioService _servicioService;
-    private readonly AuditService _auditService;
+    private readonly IAuditWriter _auditService;
     private readonly TipoServicioService _tipoServicioService;
     private readonly TipoVehiculoService _tipoVehiculoService;
     private readonly PaqueteServicioService _paqueteServicioService;
@@ -25,7 +26,7 @@ public class ServicioController : Controller
     /// </summary>
     public ServicioController(
         ServicioService servicioService,
-        AuditService auditService,
+        IAuditWriter auditService,
         TipoServicioService tipoServicioService,
         TipoVehiculoService tipoVehiculoService,
         PaqueteServicioService paqueteServicioService,

@@ -12,14 +12,14 @@ public class ClienteController : Controller
     private readonly ClienteService _clienteService;
     private readonly TipoDocumentoService _tipoDocumentoService;
     private readonly VehiculoService _vehiculoService;
-    private readonly AuditService _auditService;
+    private readonly IAuditWriter _auditService;
     private readonly ILogger<ClienteController> _logger;
 
     public ClienteController(
         ClienteService clienteService,
         TipoDocumentoService tipoDocumentoService,
         VehiculoService vehiculoService,
-        AuditService auditService,
+        IAuditWriter auditService,
         ILogger<ClienteController> logger)
     {
         _clienteService = clienteService;

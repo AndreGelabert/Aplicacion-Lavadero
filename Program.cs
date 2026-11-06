@@ -190,6 +190,7 @@ builder.Services.AddScoped<Firebase.Services.ICarQueryService>(provider => new F
     provider.GetRequiredService<Firebase.Services.IApprovedVehicleCatalogue>()));
 
 builder.Services.AddScoped<AuditService>();
+builder.Services.AddScoped<IAuditWriter>(provider => provider.GetRequiredService<AuditService>());
 builder.Services.AddScoped<RolService>();
 builder.Services.AddScoped<PersonalService>();
 builder.Services.AddScoped<ServicioService>();

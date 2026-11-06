@@ -21,7 +21,7 @@ namespace FirebaseLoginCustom.Controllers
     {
         #region Dependencias
         private readonly ILogger<LavadosController> _logger;
-        private readonly AuditService _auditService;
+        private readonly IAuditWriter _auditService;
         private readonly LavadoService _lavadoService;
         private readonly ServicioService _servicioService;
         private readonly PaqueteServicioService _paqueteServicioService;
@@ -37,7 +37,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         public LavadosController(
             ILogger<LavadosController> logger,
-            AuditService auditService,
+            IAuditWriter auditService,
             LavadoService lavadoService,
             ServicioService servicioService,
             PaqueteServicioService paqueteServicioService,

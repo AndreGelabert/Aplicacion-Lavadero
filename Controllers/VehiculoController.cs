@@ -11,7 +11,7 @@ public class VehiculoController : Controller
     private readonly VehiculoService _vehiculoService;
     private readonly TipoVehiculoService _tipoVehiculoService;
     private readonly ClienteService _clienteService;
-    private readonly AuditService _auditService;
+    private readonly IAuditWriter _auditService;
     private readonly ICarQueryService _carQueryService;
     private readonly ILogger<VehiculoController> _logger; // Agregado el logger
 
@@ -19,7 +19,7 @@ public class VehiculoController : Controller
         VehiculoService vehiculoService,
         TipoVehiculoService tipoVehiculoService,
         ClienteService clienteService,
-        AuditService auditService,
+        IAuditWriter auditService,
         ICarQueryService carQueryService,
         ILogger<VehiculoController> logger) // Inyectado el logger
     {

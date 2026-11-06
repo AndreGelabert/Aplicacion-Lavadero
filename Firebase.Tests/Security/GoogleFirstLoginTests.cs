@@ -54,6 +54,7 @@ public class GoogleFirstLoginTests
                 services.AddSession();
                 services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie();
                 services.AddSingleton((AuditService)RuntimeHelpers.GetUninitializedObject(typeof(AuditService)));
+                services.AddScoped<Firebase.Services.IAuditWriter>(provider => provider.GetRequiredService<AuditService>());
                 services.AddSingleton((ConfiguracionService)RuntimeHelpers.GetUninitializedObject(typeof(ConfiguracionService)));
             })
             .Configure(app =>

@@ -1,3 +1,4 @@
+using Firebase.Services;
 using Firebase.Models;
 using Firebase.Security;
 using Microsoft.AspNetCore.Authorization;
@@ -15,7 +16,7 @@ public class PaqueteServicioController : Controller
     private readonly PaqueteServicioService _paqueteServicioService;
     private readonly ServicioService _servicioService;
     private readonly TipoVehiculoService _tipoVehiculoService;
-    private readonly AuditService _auditService;
+    private readonly IAuditWriter _auditService;
     private readonly ConfiguracionService _configuracionService;
 
     /// <summary>
@@ -25,7 +26,7 @@ public class PaqueteServicioController : Controller
         PaqueteServicioService paqueteServicioService,
         ServicioService servicioService,
         TipoVehiculoService tipoVehiculoService,
-        AuditService auditService,
+        IAuditWriter auditService,
         ConfiguracionService configuracionService)
     {
         _paqueteServicioService = paqueteServicioService;

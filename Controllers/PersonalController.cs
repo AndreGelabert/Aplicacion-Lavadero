@@ -1,4 +1,5 @@
-﻿using Firebase.Models;
+﻿using Firebase.Services;
+using Firebase.Models;
 using Firebase.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +15,7 @@ public class PersonalController : Controller
     #region Dependencias
     private readonly PersonalService _personalService;
     private readonly RolService _rolService;
-    private readonly AuditService _auditService;
+    private readonly IAuditWriter _auditService;
 
     /// <summary>
     /// Crea una nueva instancia del controlador de personal.
@@ -22,7 +23,7 @@ public class PersonalController : Controller
     /// <param name="personalService">Servicio para operaciones de personal.</param>
     /// <param name="rolService">Servicio para operaciones de roles.</param>
     /// <param name="auditService">Servicio para registro de auditoría.</param>
-    public PersonalController(PersonalService personalService, RolService rolService, AuditService auditService)
+    public PersonalController(PersonalService personalService, RolService rolService, IAuditWriter auditService)
     {
         _personalService = personalService;
         _rolService = rolService;

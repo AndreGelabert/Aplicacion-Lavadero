@@ -1,3 +1,4 @@
+using Firebase.Services;
 using Firebase.Models;
 using Firebase.Security;
 using Microsoft.AspNetCore.Authorization;
@@ -11,12 +12,12 @@ using System.Security.Claims;
 public class TipoDocumentoController : Controller
 {
     private readonly TipoDocumentoService _tipoDocumentoService;
-    private readonly AuditService _auditService;
+    private readonly IAuditWriter _auditService;
     private readonly ClienteService _clienteService;
 
     public TipoDocumentoController(
         TipoDocumentoService tipoDocumentoService,
-        AuditService auditService,
+        IAuditWriter auditService,
         ClienteService clienteService)
     {
         _tipoDocumentoService = tipoDocumentoService;

@@ -5,7 +5,7 @@ using Google.Cloud.Firestore;
 /// Servicio para la gesti�n de registros de auditor�a en Firestore.
 /// Proporciona operaciones de registro, consulta, filtrado y paginaci�n.
 /// </summary>
-public class AuditService
+public class AuditService : Firebase.Services.IAuditWriter
 {
     #region Constantes
     private const string COLLECTION_NAME = "registros_auditoria";
