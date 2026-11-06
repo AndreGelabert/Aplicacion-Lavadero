@@ -600,60 +600,8 @@ public class AuditService : Firebase.Services.IAuditWriter
     /// <param name="texto">Texto a buscar.</param>
     /// <param name="termino">T�rmino de b�squeda.</param>
     /// <returns>True si coincide.</returns>
-    private static bool BuscarEnTexto(string texto, string termino)
-    {
-        if (string.IsNullOrWhiteSpace(texto) || string.IsNullOrWhiteSpace(termino))
-            return false;
-
-        if (texto.Equals(termino, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        var textoNormalizado = NormalizarTexto(texto);
-        var terminoNormalizado = NormalizarTexto(termino);
-
-        if (textoNormalizado.Equals(terminoNormalizado, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        if (textoNormalizado.Contains(terminoNormalizado, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        if (termino.Contains(' '))
-        {
-            var palabrasBusqueda = terminoNormalizado.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var palabrasTexto = textoNormalizado.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-            return palabrasBusqueda.All(palabraBusqueda =>
-                palabrasTexto.Any(palabraTexto =>
-                    palabraTexto.Contains(palabraBusqueda, StringComparison.OrdinalIgnoreCase) ||
-                    palabraBusqueda.Contains(palabraTexto, StringComparison.OrdinalIgnoreCase)));
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Normaliza el texto para b�squeda.
-    /// </summary>
-    /// <param name="texto">Texto a normalizar.</param>
-    /// <returns>Texto normalizado.</returns>
-    private static string NormalizarTexto(string texto)
-    {
-        if (string.IsNullOrWhiteSpace(texto))
-            return string.Empty;
-
-        var textoNormalizado = texto.Normalize(System.Text.NormalizationForm.FormD);
-        var resultado = new System.Text.StringBuilder(textoNormalizado.Length);
-        foreach (var c in textoNormalizado)
-        {
-            var categoriaUnicode = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
-            if (categoriaUnicode != System.Globalization.UnicodeCategory.NonSpacingMark)
-            {
-                resultado.Append(c);
-            }
-        }
-
-        return resultado.ToString().Normalize(System.Text.NormalizationForm.FormC);
-    }
+    private static bool BuscarEnTexto(string texto, string termino) =>
+        Firebase.Services.AuditTextMatcher.Matches(texto, termino);
 
     /// <summary>
     /// Busca si el t�rmino est� contenido en la fecha.

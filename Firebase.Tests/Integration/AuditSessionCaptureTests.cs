@@ -75,7 +75,7 @@ public class AuditSessionCaptureTests
         Assert.False(legacy.ComparacionNoAplica);
         Assert.Null(legacy.Antes);
         Assert.Null(legacy.Despues);
-        var controller = new AuditoriaController(audit, null!, null!, null!, null!, null!, null!, null!, null!);
+        var controller = new AuditoriaController(audit, null!);
         var result = Assert.IsType<JsonResult>(await controller.Detalle(session.DocId));
         var json = System.Text.Json.JsonSerializer.SerializeToElement(result.Value);
         Assert.True(json.GetProperty("comparacionNoAplica").GetBoolean());

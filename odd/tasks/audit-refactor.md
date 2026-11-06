@@ -10,11 +10,17 @@ S4. Delivery selection: "Ramas encadenadas hacia la rama principal" (stacked-to-
 
 S5. "Me es valida tu justificacion, continua implementandolo. Para mi es mejor si que solo accedan a esa interfaz mas reducida antes que todo el servicio de auditoria" — retain IAuditWriter as a narrow emission-only dependency, preserving existing storage behavior.
 
+S6. "Bueno, hace todo eso mas la eliminacion de codigo duplicado, no es uno u otro." — complete responsibility separation as well as duplication removal.
+S7. "Si, asi que avanza con eso en ese orden por favor" — complete pending responsibility work in order Audit, Clientes, Vehiculos, Lavados; preserve earlier delivered units.
+
 ## Tasks
 T1 | S1-S3 | inline | done | Baseline 844 passed, 0 skipped; browser fixture 10 passed. New behavioral characterization passed; typed-model contract RED: expected AuditoriaViewModel, actual List`1 (845 passed, 1 failed). Commit: f302ec6.
 T2 | S1-S3 | inline | done | Typed audit filter/view model; screen ViewBag removed; shared TargetName pipeline. GREEN: 846 passed, 0 skipped; compiled Razor rendering 1 passed. Commit: f302ec6.
 T3 | S1-S3,S5 | inline | done | IAuditWriter and emitter consumers implemented; final isolated suite 850 passed, 0 skipped; browser fixture 10 passed; all three interface operations round-trip through disposable Firestore. Commit: 88f523b.
 T4 | S1-S5 | inline + independent verify (Risk item 3: shared audit emission contract and consumers) | dropped | User explicitly stopped pursuing the independent executable check. Native review approved and acknowledged; separate verifier timed out and is not passed. Local commit now explicitly authorized; no claim of complete independent verification.
+
+T5 | S2-S3,S6-S7 | worker + parent checks | done | Characterize query/name orchestration and extract concrete AuditQueryService; controller retains HTTP/actions/detail mapping. Slice base 9f1a4d3. Commit: pending.
+T6 | S2-S3,S6-S7 | parent assessment and checks | pending | Verify query extraction, evaluate remaining responsibility/duplication, save local slice and evidence. Commit: pending.
 
 ## Log
 L1. User authorization verbatim: "Bueno empeza con el mega plan recomendado por apartados empezando con audtioria y sus dos partes"
@@ -35,3 +41,12 @@ L14. Native four-lens review review-10210b6ea819cb83 approved and exact acknowle
 L15. User disposition verbatim: "Ignora esa prueba y segui con el proximo modulo planificado". Independent check stopped, not passed.
 L16. Local commit authorization verbatim: "Si, hace eso por favor, te autorizo a meter mis archivos personales al staged/commit tambien". Save existing audit implementation in its own local commit on current refactor/clientes-queries; preserve prior query/client commits, do not rewrite history, publish or merge. Personal files stored separately. Parent isolated suite on combined workspace last passed 852/852 (job-12); code unchanged since.
 L17. Audit writer saved as local slice 88f523b, 178 authored changed lines, reviewed separately from accumulated branch. No source changed during commit organization.
+
+L18. User correction verbatim: "Bueno, hace todo eso mas la eliminacion de codigo duplicado, no es uno u otro. Pero antes, ahora me dejaste con la duda, si con los modulos anteriores que refactorizaste tuviste ese foco de tener en cuenta lo de responsabilidades mezcladas entre el controlador y el servicio o se te olvido? Por ejemplo en @odd/tasks/audit-refactor.md @odd/tasks/clientes-refactor.md"
+L19. User authorization verbatim: "Si, asi que avanza con eso en ese orden por favor". Prior delivered tasks remain valid, not full module architectural closure. Order Audit > Clientes > Vehiculos > Lavados. New query service isolates read orchestration from emission/storage; keep existing writer storage unchanged and detail HTTP guard/JSON in controller. Explorer mw4zyvh6-5-58cg unavailable (no final report); parent read full controller and query characterization as fallback. Preserve untracked Lavados test/task files.
+
+L20. Baseline job-1 exit1: 856 passed/1 failed/0 skipped; only pending Lavados characterization fixture invalid (no services). Fixture corrected without assertion/production change. Baseline job-2 exit0:857 passed/0 failed/0 skipped. Worker extraction attempts mw505s6d-8-0ibm and continuation returned partial with no edits/no technical blocker; parent performed mechanical extraction into AuditQueryService, unchanged Detalle/permissions, adapted DI/test constructors. Post-change job-3 running. This responsibility unit remains incomplete; no commit or closure claimed.
+
+L21. Extracted orchestration post-change job-3 exit0:857 passed/0failed/0skipped. Explorer mw509pat-a-5e4l confirmed controller now only HTTP endpoints/detail mapping. Shared text matcher extracted with identical normalization/token algorithm (worker mw50b1k4-b-48yz); ordering deliberately separate because alias/culture semantics differ. Direct query service assertion added without MVC. Program BOM corrected. Final same-suite job-4 running. No closure/commit yet; later modules pending as authorized.
+
+L22. Final job-4 exit0:857 passed,0failed,0skipped including direct query-service assertion. Exact audit text matching/normalization shared; sorting differences retained. Diff-check passed; AuditService only text helper forwarding, emission/storage unchanged. ASSESS unavailable due ambient untracked files; inspect explicitly excludes only Lavados pending files and includes staged audit services. No START yet. Risk: none (query orchestration moved, endpoint guards/JSON/permissions and writer contract unchanged; shared matcher both audit search paths scoped and characterized). Historical independent writer timeout remains unavailable, not rerun or replaced. Slice is large mechanical move of ~500 lines, not split into broken intermediate layers; review only this unit relative9f1a4d3, never accumulated branch.

@@ -24,7 +24,7 @@ public class AuditDetailTests
         Assert.Contains(await service.ObtenerRegistros(), r => r.DocId == doc.Id);
         Assert.Contains(await service.ObtenerRegistros(sortBy: "Action"), r => r.DocId == doc.Id);
         Assert.Contains(await service.BuscarRegistros("Editar"), r => r.DocId == doc.Id);
-        var controller = new AuditoriaController(service, null, null, null, null, null, null, null, null);
+        var controller = new AuditoriaController(service, null!);
         var result = Assert.IsType<JsonResult>(await controller.Detalle(doc.Id));
         var payload = System.Text.Json.JsonSerializer.SerializeToElement(result.Value);
         Assert.Equal(doc.Id, payload.GetProperty("docId").GetString());
