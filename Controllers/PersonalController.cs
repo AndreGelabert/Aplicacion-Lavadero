@@ -14,6 +14,7 @@ public class PersonalController : Controller
 {
     #region Dependencias
     private readonly PersonalService _personalService;
+    private readonly PersonalQueryService _personalQueryService;
     private readonly RolService _rolService;
     private readonly IAuditWriter _auditService;
 
@@ -21,11 +22,13 @@ public class PersonalController : Controller
     /// Crea una nueva instancia del controlador de personal.
     /// </summary>
     /// <param name="personalService">Servicio para operaciones de personal.</param>
+    /// <param name="personalQueryService">Servicio para coordinar consultas de personal.</param>
     /// <param name="rolService">Servicio para operaciones de roles.</param>
     /// <param name="auditService">Servicio para registro de auditoría.</param>
-    public PersonalController(PersonalService personalService, RolService rolService, IAuditWriter auditService)
+    public PersonalController(PersonalService personalService, PersonalQueryService personalQueryService, RolService rolService, IAuditWriter auditService)
     {
         _personalService = personalService;
+        _personalQueryService = personalQueryService;
         _rolService = rolService;
         _auditService = auditService;
     }
@@ -102,13 +105,8 @@ public class PersonalController : Controller
         sortBy ??= "NombreCompleto";
         sortOrder ??= "asc";
 
-        var empleados = await _personalService.BuscarEmpleados(
+        var (empleados, totalPages) = await _personalQueryService.Buscar(
             searchTerm, estados, roles, pageNumber, pageSize, sortBy, sortOrder);
-
-        var totalEmpleados = await _personalService.ObtenerTotalEmpleadosBusqueda(
-            searchTerm, estados, roles);
-
-        var totalPages = Math.Max((int)Math.Ceiling(totalEmpleados / (double)pageSize), 1);
 
         ViewBag.CurrentPage = pageNumber;
         ViewBag.TotalPages = totalPages;
@@ -150,9 +148,8 @@ public class PersonalController : Controller
         sortBy ??= "NombreCompleto";
         sortOrder ??= "asc";
 
-        var empleados = await _personalService.ObtenerEmpleados(estados, roles, pageNumber, pageSize, sortBy, sortOrder);
-        var totalPages = await _personalService.ObtenerTotalPaginas(estados, roles, pageSize);
-        totalPages = Math.Max(totalPages, 1);
+        var (empleados, totalPages) = await _personalQueryService.ObtenerListado(
+            estados, roles, pageNumber, pageSize, sortBy, sortOrder);
 
         ViewBag.CurrentPage = pageNumber;
         ViewBag.TotalPages = totalPages;
@@ -354,8 +351,8 @@ public class PersonalController : Controller
         ObtenerDatosEmpleados(List<string> estados, List<string> roles,
         int pageNumber, int pageSize, string sortBy, string sortOrder)
     {
-        var empleados = await _personalService.ObtenerEmpleados(estados, roles, pageNumber, pageSize, sortBy, sortOrder);
-        var totalPages = Math.Max(await _personalService.ObtenerTotalPaginas(estados, roles, pageSize), 1);
+        var (empleados, totalPages) = await _personalQueryService.ObtenerListado(
+            estados, roles, pageNumber, pageSize, sortBy, sortOrder);
         var currentPage = Math.Clamp(pageNumber, 1, totalPages);
         var visiblePages = GetVisiblePages(currentPage, totalPages);
 

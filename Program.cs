@@ -194,6 +194,7 @@ builder.Services.AddScoped<AuditQueryService>();
 builder.Services.AddScoped<IAuditWriter>(provider => provider.GetRequiredService<AuditService>());
 builder.Services.AddScoped<RolService>();
 builder.Services.AddScoped<PersonalService>();
+builder.Services.AddScoped<PersonalQueryService>();
 builder.Services.AddScoped<ServicioService>();
 builder.Services.AddScoped<ServicioQueryService>();
 builder.Services.AddScoped<ServicioLifecycleService>();

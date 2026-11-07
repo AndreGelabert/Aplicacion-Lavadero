@@ -18,7 +18,8 @@ public class AuditSessionCaptureTests
         var ctx = new Microsoft.AspNetCore.Http.DefaultHttpContext();
         ctx.Request.Headers["X-Requested-With"] = "XMLHttpRequest";
         ctx.User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, "actor"), new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, "actor@example.invalid") }, "test"));
-        var controller = new PersonalController(new PersonalService(db), roles, new AuditService(db)) { ControllerContext = new ControllerContext { HttpContext = ctx } };
+        var personal = new PersonalService(db);
+        var controller = new PersonalController(personal, new Firebase.Services.PersonalQueryService(personal), roles, new AuditService(db)) { ControllerContext = new ControllerContext { HttpContext = ctx } };
         static bool Success(IActionResult r) => System.Text.Json.JsonSerializer.SerializeToElement(((JsonResult)r).Value).GetProperty("success").GetBoolean();
         Assert.False(Success(await controller.UpdateRole("employee", "no-existe")));
         Assert.Empty((await db.Collection("registros_auditoria").GetSnapshotAsync()).Documents);
