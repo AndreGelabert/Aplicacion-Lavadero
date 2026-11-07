@@ -176,6 +176,85 @@ public class LavadoCreationPricingRefactorTests
         }
     }
 
+    [LocalFirestoreFact]
+    public async Task CreationGuardsReturnExactErrorsWithoutWritesOrAudit()
+    {
+        foreach (var (vehicle, service, message) in new[]
+        {
+            ("missing", "one", "Vehículo con ID missing no encontrado."),
+            ("vehicle", "missing", "Servicio con ID missing no encontrado."),
+            ("vehicle", "incompatible", "El servicio 'incompatible' no es compatible con el tipo de vehículo 'Auto'.")
+        })
+        {
+            using var fixture = await Fixture.Create();
+            SetAuditActor(fixture);
+            await fixture.Db.Collection("servicios").Document("incompatible").SetAsync(new Dictionary<string, object>
+            {
+                ["Nombre"] = "incompatible", ["Tipo"] = "incompatible", ["TipoVehiculo"] = "moto",
+                ["Precio"] = 10.0, ["TiempoEstimado"] = 10, ["Descripcion"] = "Servicio", ["Estado"] = "Activo"
+            });
+            var request = Request(new[] { Item(service) }, 0m);
+            request.VehiculosServicios[0].VehiculoId = vehicle;
+            AssertError(Json(await fixture.Controller.CrearLavadoAjax(request)), message);
+            Assert.Empty((await fixture.Db.Collection("lavados").GetSnapshotAsync()).Documents);
+            Assert.Empty((await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Documents);
+        }
+    }
+
+    [LocalFirestoreFact]
+    public async Task SecondVehicleFailureLeavesFirstWashStartedAndAudited()
+    {
+        using var fixture = await Fixture.Create();
+        SetAuditActor(fixture);
+        var request = Request(new[] { Item("one") }, 0m);
+        request.VehiculosServicios.Add(new VehiculoServiciosRequest { VehiculoId = "missing", Servicios = new() { Item("one") } });
+
+        AssertError(Json(await fixture.Controller.CrearLavadoAjax(request)), "Vehículo con ID missing no encontrado.");
+        var document = Assert.Single((await fixture.Db.Collection("lavados").GetSnapshotAsync()).Documents);
+        var lavado = await fixture.Washes.ObtenerLavado(document.Id);
+        Assert.NotNull(lavado);
+        Assert.Equal("vehicle", lavado.VehiculoId);
+        Assert.Equal("EnProceso", lavado.Estado);
+        var servicio = Assert.Single(lavado.Servicios);
+        Assert.Equal("one", servicio.ServicioId);
+        Assert.Equal("EnProceso", servicio.Estado);
+        Assert.NotNull(servicio.TiempoInicio);
+        var auditDoc = Assert.Single((await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Documents);
+        var audit = await new AuditService(fixture.Db).ObtenerDetalle(auditDoc.Id);
+        Assert.Equal("actor", audit.UserId);
+        Assert.Equal("actor@example.com", audit.UserEmail);
+        Assert.Equal("Creación de lavado", audit.Action);
+        Assert.Equal(document.Id, audit.TargetId);
+        Assert.Equal("Lavado", audit.TargetType);
+        Assert.Empty(audit.Antes);
+        Assert.Equal(AuditCampos.CapturarLavado(lavado).OrderBy(x => x.Key), audit.Despues.OrderBy(x => x.Key));
+    }
+
+    [LocalFirestoreFact]
+    public async Task MissingPackageOnSecondVehicleRejectsBeforeAnyWrite()
+    {
+        using var fixture = await Fixture.Create();
+        SetAuditActor(fixture);
+        var request = Request(new[] { Item("one") }, 0m);
+        request.VehiculosServicios.Add(new VehiculoServiciosRequest { VehiculoId = "missing", Servicios = new() { Item("one", "missing") } });
+
+        AssertError(Json(await fixture.Controller.CrearLavadoAjax(request)), "Uno de los paquetes seleccionados ya no está disponible.");
+        Assert.Empty((await fixture.Db.Collection("lavados").GetSnapshotAsync()).Documents);
+        Assert.Empty((await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Documents);
+    }
+
+    private static void SetAuditActor(Fixture fixture) => fixture.Controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+    {
+        new Claim(ClaimTypes.NameIdentifier, "actor"), new Claim(ClaimTypes.Email, "actor@example.com")
+    }, "test"));
+
+    private static void AssertError(JsonElement response, string message)
+    {
+        Assert.Equal(new[] { "success", "message" }, response.EnumerateObject().Select(property => property.Name));
+        Assert.False(response.GetProperty("success").GetBoolean());
+        Assert.Equal(message, response.GetProperty("message").GetString());
+    }
+
     private static ServicioItemRequest Item(string id, string? package = null) => new() { ServicioId = id, PaqueteId = package, PaqueteNombre = package == null ? null : "Paquete" };
     private static CrearLavadoRequest Request(ServicioItemRequest[] items, decimal discount) => new()
     {
@@ -202,7 +281,8 @@ public class LavadoCreationPricingRefactorTests
             Washes = new LavadoService(db, services, packages, staff, config);
             Controller = new LavadosController(NullLogger<LavadosController>.Instance, new AuditService(db), Washes,
                 services, packages, new ClienteService(db), new VehiculoService(db), staff, config,
-                new TipoVehiculoService(db), new TipoDocumentoService(db))
+                new TipoVehiculoService(db), new TipoDocumentoService(db),
+                new LavadoCreationService(new ClienteService(db), new VehiculoService(db), services, packages, new TipoVehiculoService(db), Washes))
             {
                 ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
                 {

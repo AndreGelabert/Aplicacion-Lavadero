@@ -36,7 +36,7 @@ public class LavadoQueryRefactorTests
 
         LavadosController Controller() => new(NullLogger<LavadosController>.Instance, new AuditService(db), washes,
             services, packages, new ClienteService(db), new VehiculoService(db), staff, config,
-            new TipoVehiculoService(db), new TipoDocumentoService(db))
+            new TipoVehiculoService(db), new TipoDocumentoService(db), null!)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
             {
