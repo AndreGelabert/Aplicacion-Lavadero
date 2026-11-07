@@ -106,6 +106,76 @@ public class LavadoCreationPricingRefactorTests
         }
     }
 
+    [LocalFirestoreFact]
+    public async Task CreationCopiesOrderedServicesAndStagesAndStartsOnlyTheFirst()
+    {
+        foreach (var firstHasStages in new[] { false, true })
+        {
+            using var fixture = await Fixture.Create();
+            fixture.Controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, "actor"), new Claim(ClaimTypes.Email, "actor@example.com")
+            }, "test"));
+            var stagedId = firstHasStages ? "two" : "one";
+            await fixture.Db.Collection("servicios").Document(stagedId).UpdateAsync(new Dictionary<string, object>
+            {
+                ["TiempoEstimado"] = 23,
+                ["Etapas"] = new[]
+                {
+                    new Dictionary<string, object> { ["Id"] = "z-stage", ["Nombre"] = "Primera" },
+                    new Dictionary<string, object> { ["Id"] = "a-stage", ["Nombre"] = "Segunda" }
+                }
+            });
+            var before = (await fixture.Db.Collection("servicios").Document(stagedId).GetSnapshotAsync()).UpdateTime;
+            var response = Json(await fixture.Controller.CrearLavadoAjax(Request(new[] { Item("two", "pack"), Item("one") }, 0m)));
+            Assert.True(response.GetProperty("success").GetBoolean(), response.GetRawText());
+            Assert.Equal("Lavado creado correctamente.", response.GetProperty("message").GetString());
+            var id = Assert.Single(response.GetProperty("lavadosIds").EnumerateArray()).GetString();
+            var lavado = await fixture.Washes.ObtenerLavado(id!);
+            Assert.NotNull(lavado);
+            Assert.Equal("EnProceso", lavado.Estado);
+            Assert.Equal(33, lavado.TiempoEstimado);
+            Assert.Equal(2, lavado.Servicios.Count);
+            var first = lavado.Servicios[0];
+            var second = lavado.Servicios[1];
+            Assert.Equal(new[] { "two", "one" }, lavado.Servicios.Select(s => s.ServicioId));
+            Assert.Equal(new[] { "two", "one" }, lavado.Servicios.Select(s => s.ServicioNombre));
+            Assert.Equal(new[] { "two", "one" }, lavado.Servicios.Select(s => s.TipoServicio));
+            Assert.Equal(new[] { 50m, 100.25m }, lavado.Servicios.Select(s => s.Precio));
+            Assert.Equal(new[] { firstHasStages ? 23 : 10, firstHasStages ? 10 : 23 }, lavado.Servicios.Select(s => s.TiempoEstimado));
+            Assert.Equal(new[] { 0, 1 }, lavado.Servicios.Select(s => s.Orden));
+            Assert.Equal(new[] { "pack", "" }, lavado.Servicios.Select(s => s.PaqueteId));
+            Assert.Equal(new[] { "Paquete", "" }, lavado.Servicios.Select(s => s.PaqueteNombre));
+            Assert.Equal("EnProceso", first.Estado);
+            Assert.NotNull(first.TiempoInicio);
+            Assert.Null(first.TiempoFinalizacion);
+            Assert.Equal("Pendiente", second.Estado);
+            Assert.Null(second.TiempoInicio);
+            Assert.Null(second.TiempoFinalizacion);
+            var staged = firstHasStages ? first : second;
+            Assert.Empty((firstHasStages ? second : first).Etapas);
+            Assert.Equal(new[] { "z-stage", "a-stage" }, staged.Etapas.Select(e => e.EtapaId));
+            Assert.Equal(new[] { "Primera", "Segunda" }, staged.Etapas.Select(e => e.Nombre));
+            Assert.Equal(firstHasStages ? "EnProceso" : "Pendiente", staged.Etapas[0].Estado);
+            if (firstHasStages) Assert.NotNull(staged.Etapas[0].TiempoInicio);
+            else Assert.Null(staged.Etapas[0].TiempoInicio);
+            Assert.Equal("Pendiente", staged.Etapas[1].Estado);
+            Assert.Null(staged.Etapas[1].TiempoInicio);
+            Assert.All(staged.Etapas, e => Assert.Null(e.TiempoFinalizacion));
+            Assert.Equal(before, (await fixture.Db.Collection("servicios").Document(stagedId).GetSnapshotAsync()).UpdateTime);
+            Assert.Equal(1, (await fixture.Db.Collection("lavados").GetSnapshotAsync()).Count);
+            var auditDoc = Assert.Single((await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Documents);
+            var audit = await new AuditService(fixture.Db).ObtenerDetalle(auditDoc.Id);
+            Assert.Equal("actor", audit.UserId);
+            Assert.Equal("actor@example.com", audit.UserEmail);
+            Assert.Equal("Creación de lavado", audit.Action);
+            Assert.Equal(id, audit.TargetId);
+            Assert.Equal("Lavado", audit.TargetType);
+            Assert.Empty(audit.Antes);
+            Assert.Equal(AuditCampos.CapturarLavado(lavado).OrderBy(x => x.Key), audit.Despues.OrderBy(x => x.Key));
+        }
+    }
+
     private static ServicioItemRequest Item(string id, string? package = null) => new() { ServicioId = id, PaqueteId = package, PaqueteNombre = package == null ? null : "Paquete" };
     private static CrearLavadoRequest Request(ServicioItemRequest[] items, decimal discount) => new()
     {

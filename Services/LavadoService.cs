@@ -45,6 +45,53 @@ namespace Firebase.Services
         }
         #endregion
 
+        public ServicioEnLavado CrearServicioEnLavado(Servicio servicio, int orden, string? paqueteId, string? paqueteNombre)
+        {
+            var servicioEnLavado = new ServicioEnLavado
+            {
+                ServicioId = servicio.Id,
+                ServicioNombre = servicio.Nombre,
+                TipoServicio = servicio.Tipo,
+                Precio = servicio.Precio,
+                TiempoEstimado = servicio.TiempoEstimado,
+                Estado = "Pendiente",
+                Orden = orden,
+                PaqueteId = paqueteId,
+                PaqueteNombre = paqueteNombre
+            };
+
+            // Agregar etapas si las tiene
+            if (servicio.Etapas != null && servicio.Etapas.Any())
+            {
+                foreach (var etapa in servicio.Etapas)
+                {
+                    servicioEnLavado.Etapas.Add(new EtapaEnLavado
+                    {
+                        EtapaId = etapa.Id,
+                        Nombre = etapa.Nombre,
+                        Estado = "Pendiente"
+                    });
+                }
+            }
+
+            return servicioEnLavado;
+        }
+
+        public async Task IniciarPrimerServicioCreacion(Lavado lavadoCreado)
+        {
+            if (lavadoCreado.Servicios.Any())
+            {
+                var primerServicio = lavadoCreado.Servicios.OrderBy(s => s.Orden).First();
+                await IniciarServicio(lavadoCreado.Id, primerServicio.ServicioId);
+
+                if (primerServicio.Etapas.Any())
+                {
+                    var primeraEtapa = primerServicio.Etapas.First();
+                    await IniciarEtapa(lavadoCreado.Id, primerServicio.ServicioId, primeraEtapa.EtapaId);
+                }
+            }
+        }
+
         public record ResultadoPrecioCreacion(decimal PrecioOriginal, decimal Precio, string? Error = null);
 
         public ResultadoPrecioCreacion CalcularPrecioCreacion(

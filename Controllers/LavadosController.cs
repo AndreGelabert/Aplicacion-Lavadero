@@ -351,33 +351,8 @@ namespace FirebaseLoginCustom.Controllers
                             return Json(new { success = false, message = $"El servicio '{servicio.Nombre}' no es compatible con el tipo de vehículo '{vehiculo.TipoVehiculo}'." });
                         }
 
-                        var servicioEnLavado = new ServicioEnLavado
-                        {
-                            ServicioId = servicio.Id,
-                            ServicioNombre = servicio.Nombre,
-                            TipoServicio = servicio.Tipo,
-                            Precio = servicio.Precio,
-                            TiempoEstimado = servicio.TiempoEstimado,
-                            Estado = "Pendiente",
-                            Orden = orden++,
-                            PaqueteId = servicioItem.PaqueteId,
-                            PaqueteNombre = servicioItem.PaqueteNombre
-                        };
-
-                        // Agregar etapas si las tiene
-                        if (servicio.Etapas != null && servicio.Etapas.Any())
-                        {
-                            foreach (var etapa in servicio.Etapas)
-                            {
-                                servicioEnLavado.Etapas.Add(new EtapaEnLavado
-                                {
-                                    EtapaId = etapa.Id,
-                                    Nombre = etapa.Nombre,
-                                    Estado = "Pendiente"
-                                });
-                            }
-                        }
-
+                        var servicioEnLavado = _lavadoService.CrearServicioEnLavado(
+                            servicio, orden++, servicioItem.PaqueteId, servicioItem.PaqueteNombre);
                         serviciosEnLavado.Add(servicioEnLavado);
                         tiempoEstimadoTotal += servicio.TiempoEstimado;
                     }
@@ -433,18 +408,7 @@ namespace FirebaseLoginCustom.Controllers
                     lavadosCreados.Add(lavadoCreado);
 
                     // Iniciar automáticamente el primer servicio
-                    if (lavadoCreado.Servicios.Any())
-                    {
-                        var primerServicio = lavadoCreado.Servicios.OrderBy(s => s.Orden).First();
-                        await _lavadoService.IniciarServicio(lavadoCreado.Id, primerServicio.ServicioId);
-
-                        // Si el servicio tiene etapas, iniciar la primera
-                        if (primerServicio.Etapas.Any())
-                        {
-                            var primeraEtapa = primerServicio.Etapas.First();
-                            await _lavadoService.IniciarEtapa(lavadoCreado.Id, primerServicio.ServicioId, primeraEtapa.EtapaId);
-                        }
-                    }
+                    await _lavadoService.IniciarPrimerServicioCreacion(lavadoCreado);
 
                     await RegistrarLavado("Creación de lavado", lavadoCreado.Id, new());
                 }
