@@ -22,7 +22,7 @@ public class AuditWashCaptureTests
         var services = new ServicioService(db); var packages = new PaqueteServicioService(db, services, cache); var staff = new PersonalService(db); var config = new ConfiguracionService(db, cache);
         var washes = new LavadoService(db, services, packages, staff, config);
         var identity = new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, "actor"), new Claim(ClaimTypes.Email, "actor@example.invalid") }, "test");
-        var controller = new LavadosController(NullLogger<LavadosController>.Instance, new AuditService(db), washes, services, packages, new ClienteService(db), new VehiculoService(db), staff, config, new TipoVehiculoService(db), new TipoDocumentoService(db), null!) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) } } };
+        var controller = new LavadosController(NullLogger<LavadosController>.Instance, new AuditService(db), washes, services, packages, new ClienteService(db), new VehiculoService(db), staff, config, new TipoVehiculoService(db), new TipoDocumentoService(db), null!, null!) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) } } };
         var wash = new Lavado { Id = "wash", Estado = "EnProceso", ClienteId = "client", VehiculoId = "vehicle", VehiculoPatente = "ABC123", Precio = 100, FechaCreacion = DateTime.UtcNow, Servicios = new() { new ServicioEnLavado { ServicioId = "service", Estado = "Pendiente" } } };
         await washes.ActualizarLavado(wash);
         var initial = AuditCampos.CapturarLavado((await washes.ObtenerLavado(wash.Id))!);
@@ -50,7 +50,7 @@ public class AuditWashCaptureTests
         var services = new ServicioService(db); var packages = new PaqueteServicioService(db, services, cache); var staff = new PersonalService(db); var config = new ConfiguracionService(db, cache);
         var washes = new LavadoService(db, services, packages, staff, config);
         var identity = new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, "actor"), new Claim(ClaimTypes.Email, "actor@example.invalid") }, "test");
-        var controller = new LavadosController(NullLogger<LavadosController>.Instance, new AuditService(db), washes, services, packages, new ClienteService(db), new VehiculoService(db), staff, config, new TipoVehiculoService(db), new TipoDocumentoService(db), null!) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) } } };
+        var controller = new LavadosController(NullLogger<LavadosController>.Instance, new AuditService(db), washes, services, packages, new ClienteService(db), new VehiculoService(db), staff, config, new TipoVehiculoService(db), new TipoDocumentoService(db), null!, null!) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) } } };
         async Task AssertFailure(string id, string message)
         {
             var json = JsonSerializer.SerializeToElement(Assert.IsType<JsonResult>(await controller.RegistrarRetiro(id)).Value);

@@ -282,7 +282,8 @@ public class LavadoCreationPricingRefactorTests
             Controller = new LavadosController(NullLogger<LavadosController>.Instance, new AuditService(db), Washes,
                 services, packages, new ClienteService(db), new VehiculoService(db), staff, config,
                 new TipoVehiculoService(db), new TipoDocumentoService(db),
-                new LavadoCreationService(new ClienteService(db), new VehiculoService(db), services, packages, new TipoVehiculoService(db), Washes))
+                new LavadoCreationService(new ClienteService(db), new VehiculoService(db), services, packages, new TipoVehiculoService(db), Washes),
+                new LavadoAssociatedClientService(new ClienteService(db), new VehiculoService(db), new TipoDocumentoService(db)))
             {
                 ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
                 {

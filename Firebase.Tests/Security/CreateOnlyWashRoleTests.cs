@@ -39,7 +39,7 @@ public class CreateOnlyWashRoleTests
     public async Task CreateOnlyCannotFetchExistingRoleOrWashForm()
     {
         var roles = new RolController(null!, null!) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = UserWith("Roles.Crear") } } };
-        var washes = new LavadosController(null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = UserWith("Lavados.Crear") } } };
+        var washes = new LavadosController(null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = UserWith("Lavados.Crear") } } };
         Assert.IsType<ForbidResult>(await roles.FormPartial("existing"));
         Assert.IsType<ForbidResult>(await washes.FormPartial("existing"));
     }
@@ -47,7 +47,7 @@ public class CreateOnlyWashRoleTests
     [Fact]
     public async Task CreateOnlyVehicleLookupRejectsBlankInputWithoutStorageAccess()
     {
-        var controller = new LavadosController(null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = UserWith("Lavados.Crear") } } };
+        var controller = new LavadosController(null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = UserWith("Lavados.Crear") } } };
         var result = Assert.IsType<JsonResult>(await controller.BuscarVehiculosPorPatente(" "));
         Assert.Empty(Assert.IsType<List<object>>(result.Value));
     }
@@ -55,7 +55,7 @@ public class CreateOnlyWashRoleTests
     [Fact]
     public async Task CustomerLookupRequiresPlateForCreateOnlyUser()
     {
-        var controller = new LavadosController(null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = UserWith("Lavados.Crear") } } };
+        var controller = new LavadosController(null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = UserWith("Lavados.Crear") } } };
         var result = Assert.IsType<JsonResult>(await controller.ObtenerClientesVehiculo("existing"));
         Assert.Empty(Assert.IsType<List<object>>(result.Value));
     }

@@ -24,6 +24,7 @@ namespace FirebaseLoginCustom.Controllers
         private readonly IAuditWriter _auditService;
         private readonly LavadoService _lavadoService;
         private readonly LavadoCreationService _lavadoCreationService;
+        private readonly LavadoAssociatedClientService _lavadoAssociatedClientService;
         private readonly ServicioService _servicioService;
         private readonly PaqueteServicioService _paqueteServicioService;
         private readonly ClienteService _clienteService;
@@ -48,12 +49,14 @@ namespace FirebaseLoginCustom.Controllers
             ConfiguracionService configuracionService,
             TipoVehiculoService tipoVehiculoService,
             TipoDocumentoService tipoDocumentoService,
-            LavadoCreationService lavadoCreationService)
+            LavadoCreationService lavadoCreationService,
+            LavadoAssociatedClientService lavadoAssociatedClientService)
         {
             _logger = logger;
             _auditService = auditService;
             _lavadoService = lavadoService;
             _lavadoCreationService = lavadoCreationService;
+            _lavadoAssociatedClientService = lavadoAssociatedClientService;
             _servicioService = servicioService;
             _paqueteServicioService = paqueteServicioService;
             _clienteService = clienteService;
@@ -697,71 +700,10 @@ namespace FirebaseLoginCustom.Controllers
         [Permiso("Clientes.Crear")]
         public async Task<IActionResult> RegistrarClienteAsociado([FromBody] RegistroClienteAsociadoRequest request)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.VehiculoId) ||
-                string.IsNullOrWhiteSpace(request.ClaveAsociacion))
-                return Json(new { success = false, message = "Selecciona un vehículo e ingresa su clave de asociación." });
-
-            if (new[] { request.TipoDocumento, request.NumeroDocumento, request.Nombre, request.Apellido, request.Telefono, request.Email }
-                .Any(string.IsNullOrWhiteSpace))
-                return Json(new { success = false, message = "Completa todos los campos obligatorios." });
-
-            var vehiculo = await _vehiculoService.ObtenerVehiculo(request.VehiculoId);
-            if (vehiculo == null || vehiculo.Estado != "Activo")
-                return Json(new { success = false, message = "El vehículo seleccionado ya no está disponible." });
-
-            if (string.IsNullOrEmpty(vehiculo.ClaveAsociacionHash) ||
-                !VehiculoService.ValidarClaveAsociacion(request.ClaveAsociacion, vehiculo.ClaveAsociacionHash))
-                return Json(new { success = false, message = "La clave de asociación no es válida para este vehículo." });
-
-            var tipoDocumento = await _tipoDocumentoService.ObtenerTipoDocumentoPorNombre(request.TipoDocumento.Trim());
-            if (tipoDocumento == null || string.IsNullOrWhiteSpace(tipoDocumento.Formato))
-                return Json(new { success = false, message = "Selecciona un tipo de documento válido." });
-
-            bool documentoValido;
-            try
-            {
-                documentoValido = System.Text.RegularExpressions.Regex.IsMatch(
-                    request.NumeroDocumento?.Trim() ?? string.Empty,
-                    tipoDocumento.ObtenerRegexPattern());
-            }
-            catch (ArgumentException)
-            {
-                documentoValido = false;
-            }
-            if (!documentoValido)
-                return Json(new { success = false, message = $"El número de documento debe respetar el formato: {tipoDocumento.Formato}." });
-
-            var existente = await _clienteService.ObtenerClientePorDocumento(request.TipoDocumento, request.NumeroDocumento);
-            if (existente != null)
-                return Json(new { success = false, message = "Ya existe un cliente con este documento." });
-
-            var cliente = new Cliente
-            {
-                Id = string.Empty,
-                TipoDocumento = request.TipoDocumento.Trim(),
-                NumeroDocumento = request.NumeroDocumento.Trim(),
-                Nombre = request.Nombre.Trim(),
-                Apellido = request.Apellido.Trim(),
-                Telefono = request.Telefono.Trim(),
-                Email = request.Email.Trim(),
-                Estado = "Activo",
-                VehiculosIds = new List<string> { vehiculo.Id }
-            };
-
-            var validationContext = new System.ComponentModel.DataAnnotations.ValidationContext(cliente);
-            var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
-            foreach (var propertyName in new[] { nameof(Cliente.TipoDocumento), nameof(Cliente.Nombre), nameof(Cliente.Apellido), nameof(Cliente.Telefono), nameof(Cliente.Email) })
-            {
-                var value = typeof(Cliente).GetProperty(propertyName)!.GetValue(cliente);
-                var propertyContext = new System.ComponentModel.DataAnnotations.ValidationContext(cliente) { MemberName = propertyName };
-                System.ComponentModel.DataAnnotations.Validator.TryValidateProperty(value, propertyContext, validationResults);
-            }
-            if (validationResults.Count > 0)
-                return Json(new { success = false, message = string.Join(" ", validationResults.Select(result => result.ErrorMessage)) });
-
-            var asociado = await _clienteService.CrearClienteAsociado(cliente, vehiculo.Id, request.ClaveAsociacion);
-            if (!asociado)
-                return Json(new { success = false, message = "No se pudo asociar el cliente al vehículo." });
+            var resultado = await _lavadoAssociatedClientService.Registrar(request);
+            if (resultado.Error != null)
+                return Json(new { success = false, message = resultado.Error });
+            var cliente = resultado.Cliente!;
 
             var clientePersistido = await _clienteService.ObtenerCliente(cliente.Id) ?? throw new InvalidOperationException("Cliente no encontrado después de crear.");
             await RegistrarEvento("Creacion de cliente y asociacion a vehiculo", cliente.Id, "Cliente", new(), AuditCampos.CapturarCliente(clientePersistido), clientePersistido.NombreCompleto);
