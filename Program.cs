@@ -202,6 +202,7 @@ builder.Services.AddScoped<ServicioTypeService>();
 builder.Services.AddScoped<TipoServicioService>();
 builder.Services.AddScoped<TipoVehiculoService>();
 builder.Services.AddScoped<PaqueteServicioService>();
+builder.Services.AddScoped<PaqueteServicioFormService>();
 builder.Services.AddScoped<ConfiguracionService>();
 builder.Services.AddScoped<ClienteService>();
 builder.Services.AddScoped<ClienteLifecycleService>();

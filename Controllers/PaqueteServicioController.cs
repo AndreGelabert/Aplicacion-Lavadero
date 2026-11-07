@@ -18,6 +18,7 @@ public class PaqueteServicioController : Controller
     private readonly TipoVehiculoService _tipoVehiculoService;
     private readonly IAuditWriter _auditService;
     private readonly ConfiguracionService _configuracionService;
+    private readonly PaqueteServicioFormService _formService;
 
     /// <summary>
     /// Crea una nueva instancia del controlador de paquetes de servicios.
@@ -27,13 +28,15 @@ public class PaqueteServicioController : Controller
         ServicioService servicioService,
         TipoVehiculoService tipoVehiculoService,
         IAuditWriter auditService,
-        ConfiguracionService configuracionService)
+        ConfiguracionService configuracionService,
+        PaqueteServicioFormService formService)
     {
         _paqueteServicioService = paqueteServicioService;
         _servicioService = servicioService;
         _tipoVehiculoService = tipoVehiculoService;
         _auditService = auditService;
         _configuracionService = configuracionService;
+        _formService = formService;
     }
     #endregion
 
@@ -497,14 +500,12 @@ public class PaqueteServicioController : Controller
             return ResultadoOperacion.CrearError("Por favor, complete todos los campos obligatorios correctamente.");
         }
 
-        if (await _paqueteServicioService.ExistePaqueteConNombre(paquete.Nombre))
+        var preparacion = await _formService.PrepararCreacion(paquete);
+        if (preparacion.Error != null)
         {
-            var mensaje = $"Ya existe un paquete con el nombre '{paquete.Nombre}'.";
-            ModelState.AddModelError("Nombre", "Ya existe un paquete con este nombre.");
-            return ResultadoOperacion.CrearError(mensaje);
+            ModelState.AddModelError(preparacion.ErrorCampo!.Campo, preparacion.ErrorCampo.Mensaje);
+            return preparacion.Error;
         }
-
-        paquete.Estado = "Activo";
         await _paqueteServicioService.CrearPaquete(paquete);
         return ResultadoOperacion.CrearExito("Paquete de servicios creado correctamente.");
     }
@@ -520,27 +521,14 @@ public class PaqueteServicioController : Controller
             return (ResultadoOperacion.CrearError("Por favor, complete todos los campos obligatorios correctamente."), null);
         }
 
-        var paqueteActual = await _paqueteServicioService.ObtenerPaquete(paquete.Id);
-        if (paqueteActual == null)
+        var preparacion = await _formService.PrepararActualizacion(paquete);
+        if (preparacion.Error != null)
         {
-            ModelState.AddModelError("", "No se pudo encontrar el paquete a actualizar.");
-            return (ResultadoOperacion.CrearError("No se pudo encontrar el paquete a actualizar."), null);
+            ModelState.AddModelError(preparacion.ErrorCampo!.Campo, preparacion.ErrorCampo.Mensaje);
+            return (preparacion.Error, null);
         }
 
-        // VALIDACIÓN: Prevenir cambio de tipo de vehículo
-        if (!string.Equals(paqueteActual.TipoVehiculo, paquete.TipoVehiculo, StringComparison.OrdinalIgnoreCase))
-        {
-            ModelState.AddModelError("TipoVehiculo", "No se puede cambiar el tipo de vehículo de un paquete existente.");
-            return (ResultadoOperacion.CrearError("No se puede cambiar el tipo de vehículo de un paquete existente. Si necesita cambiar el tipo de vehículo, debe crear un nuevo paquete."), null);
-        }
-
-        if (await _paqueteServicioService.ExistePaqueteConNombre(paquete.Nombre, paquete.Id))
-        {
-            var mensaje = $"Ya existe un paquete con el nombre '{paquete.Nombre}'.";
-            ModelState.AddModelError("Nombre", "Ya existe un paquete con este nombre.");
-            return (ResultadoOperacion.CrearError(mensaje), null);
-        }
-
+        var paqueteActual = preparacion.Original!;
         var antes = await CapturarPaquete(paqueteActual);
         paquete.Estado = paqueteActual.Estado;
         await _paqueteServicioService.ActualizarPaquete(paquete);
@@ -632,24 +620,11 @@ public class PaqueteServicioController : Controller
     /// </summary>
     private async Task ValidatePaqueteAsync(PaqueteServicio paquete)
     {
-        if (!string.IsNullOrEmpty(paquete.Nombre) && !System.Text.RegularExpressions.Regex.IsMatch(paquete.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
-        {
-            ModelState.AddModelError("Nombre", "El nombre solo puede contener letras y espacios.");
-        }
+        foreach (var error in _formService.ValidarNombre(paquete))
+            ModelState.AddModelError(error.Campo, error.Mensaje);
 
-        // **CRÍTICO: Obtener mínimo desde configuración**
-        var descuentoMinimo = await _configuracionService.ObtenerPaquetesDescuentoStep();
-        descuentoMinimo = Math.Max(descuentoMinimo, 5); // Garantizar mínimo absoluto de 5
-
-        if (paquete.PorcentajeDescuento < descuentoMinimo || paquete.PorcentajeDescuento > 95)
-        {
-            ModelState.AddModelError("PorcentajeDescuento", $"El porcentaje de descuento debe estar entre {descuentoMinimo} y 95.");
-        }
-
-        if (paquete.ServiciosIds == null || paquete.ServiciosIds.Count < 2)
-        {
-            ModelState.AddModelError("ServiciosIds", "Debe seleccionar al menos 2 servicios.");
-        }
+        foreach (var error in await _formService.ValidarDescuentoYServicios(paquete))
+            ModelState.AddModelError(error.Campo, error.Mensaje);
     }
 
     /// <summary>

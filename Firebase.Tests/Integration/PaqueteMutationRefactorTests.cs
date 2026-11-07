@@ -43,7 +43,7 @@ public class PaqueteMutationRefactorTests
         await packages.CrearPaquete(first); await packages.CrearPaquete(second);
         await packages.CambiarEstadoPaquete(first.Id, "Inactivo");
         var audit = new AuditCounter();
-        PaqueteServicioController Controller() => new(packages, services, new TipoVehiculoService(db), audit, new ConfiguracionService(db, cache))
+        PaqueteServicioController Controller() => new(packages, services, new TipoVehiculoService(db), audit, new ConfiguracionService(db, cache), new PaqueteServicioFormService(packages, new ConfiguracionService(db, cache)))
         { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() } };
         void Failure(PaqueteServicioController controller, IActionResult result, PaqueteServicio input, string key, string message)
         {
