@@ -62,6 +62,50 @@ public class LavadoCreationPricingRefactorTests
         }
     }
 
+    [LocalFirestoreFact]
+    public async Task CreationPersistsDefaultCappedAndWithinLimitStaffAssignments()
+    {
+        foreach (var (requirement, maximum, expected) in new (int?, int, int)[]
+        {
+            (null, 3, 1),
+            (4, 2, 2),
+            (2, 3, 2),
+            (2, 2, 2)
+        })
+        {
+            using var fixture = await Fixture.Create();
+            fixture.SetStaffMaximum(maximum);
+            if (requirement.HasValue)
+                await fixture.Db.Collection("tiposVehiculos").Document("auto").SetAsync(new Dictionary<string, object>
+                {
+                    ["Nombre"] = "Auto", ["CantidadEmpleadosRequeridos"] = requirement.Value
+                });
+            var staff = new Dictionary<string, string> { ["staff"] = "Empleado", ["staff2"] = "Segundo", ["staff3"] = "Tercero" };
+            foreach (var id in new[] { "staff2", "staff3" })
+                await fixture.Db.Collection("empleados").Document(id).SetAsync(new Dictionary<string, object>
+                {
+                    ["Nombre"] = staff[id], ["Email"] = id + "@example.com", ["Rol"] = "Empleado", ["Estado"] = "Activo"
+                });
+
+            var response = Json(await fixture.Controller.CrearLavadoAjax(Request(new[] { Item("one") }, 0m)));
+            Assert.True(response.GetProperty("success").GetBoolean(), response.GetRawText());
+            Assert.Equal("Lavado creado correctamente.", response.GetProperty("message").GetString());
+            var idCreated = Assert.Single(response.GetProperty("lavadosIds").EnumerateArray()).GetString();
+            var lavado = await fixture.Washes.ObtenerLavado(idCreated!);
+            Assert.NotNull(lavado);
+            Assert.Equal(expected, lavado.CantidadEmpleadosRequeridos);
+            Assert.Equal(expected, lavado.EmpleadosAsignadosIds.Count);
+            Assert.Equal(expected, lavado.EmpleadosAsignadosNombres.Count);
+            Assert.Equal(expected, lavado.EmpleadosAsignadosIds.Distinct().Count());
+            for (var i = 0; i < expected; i++)
+            {
+                Assert.True(staff.TryGetValue(lavado.EmpleadosAsignadosIds[i], out var name));
+                Assert.Equal(name, lavado.EmpleadosAsignadosNombres[i]);
+            }
+            Assert.Equal(1, (await fixture.Db.Collection("lavados").GetSnapshotAsync()).Count);
+        }
+    }
+
     private static ServicioItemRequest Item(string id, string? package = null) => new() { ServicioId = id, PaqueteId = package, PaqueteNombre = package == null ? null : "Paquete" };
     private static CrearLavadoRequest Request(ServicioItemRequest[] items, decimal discount) => new()
     {
@@ -96,6 +140,11 @@ public class LavadoCreationPricingRefactorTests
                 } }
             };
         }
+
+        public void SetStaffMaximum(int maximum) => _cache.Set("system_configuration", new Configuracion
+        {
+            HorariosOperacion = new(), CapacidadMaximaConcurrente = 10, EmpleadosMaximosPorLavado = maximum
+        });
 
         public static async Task<Fixture> Create()
         {

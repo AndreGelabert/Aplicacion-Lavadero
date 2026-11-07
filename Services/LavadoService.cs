@@ -727,6 +727,21 @@ namespace Firebase.Services
 
         #region Asignación de Empleados
 
+        public record ResultadoAsignacionCreacion(int CantidadEmpleadosRequeridos, List<Empleado> EmpleadosAsignados);
+
+        public async Task<ResultadoAsignacionCreacion> PrepararAsignacionCreacion(int? cantidadRequerida)
+        {
+            var cantidad = cantidadRequerida ?? 1;
+            var config = await _configuracionService.ObtenerConfiguracion();
+            if (cantidad > config.EmpleadosMaximosPorLavado)
+            {
+                cantidad = config.EmpleadosMaximosPorLavado;
+            }
+
+            var empleados = await AsignarEmpleadosAleatorios(cantidad);
+            return new ResultadoAsignacionCreacion(cantidad, empleados);
+        }
+
         /// <summary>
         /// Asigna empleados aleatoriamente a un lavado basándose en disponibilidad.
         /// </summary>

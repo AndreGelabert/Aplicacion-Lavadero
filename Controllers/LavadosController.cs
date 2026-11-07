@@ -393,16 +393,9 @@ namespace FirebaseLoginCustom.Controllers
 
                     // Obtener cantidad de empleados según el tipo de vehículo
                     var tipoVehiculo = await _tipoVehiculoService.ObtenerTipoVehiculoPorNombre(vehiculo.TipoVehiculo);
-                    var cantidadEmpleadosPorTipo = tipoVehiculo?.CantidadEmpleadosRequeridos ?? 1;
-
-                    // Validar cantidad de empleados
-                    var config = await _configuracionService.ObtenerConfiguracion();
-                    if (cantidadEmpleadosPorTipo > config.EmpleadosMaximosPorLavado)
-                    {
-                        cantidadEmpleadosPorTipo = config.EmpleadosMaximosPorLavado;
-                    }
-
-                    var empleadosAsignados = await _lavadoService.AsignarEmpleadosAleatorios(cantidadEmpleadosPorTipo);
+                    var asignacion = await _lavadoService.PrepararAsignacionCreacion(tipoVehiculo?.CantidadEmpleadosRequeridos);
+                    var cantidadEmpleadosPorTipo = asignacion.CantidadEmpleadosRequeridos;
+                    var empleadosAsignados = asignacion.EmpleadosAsignados;
 
                     // Obtener información del cliente que trae y retira el vehículo
                     var clienteTrajoId = request.ClienteTrajoId ?? cliente.Id;
