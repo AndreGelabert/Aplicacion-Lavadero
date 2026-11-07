@@ -197,6 +197,7 @@ builder.Services.AddScoped<PersonalService>();
 builder.Services.AddScoped<ServicioService>();
 builder.Services.AddScoped<ServicioQueryService>();
 builder.Services.AddScoped<ServicioLifecycleService>();
+builder.Services.AddScoped<ServicioFormService>();
 builder.Services.AddScoped<TipoServicioService>();
 builder.Services.AddScoped<TipoVehiculoService>();
 builder.Services.AddScoped<PaqueteServicioService>();

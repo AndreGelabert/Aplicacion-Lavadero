@@ -20,6 +20,7 @@ public class ServicioController : Controller
     private readonly TipoServicioService _tipoServicioService;
     private readonly TipoVehiculoService _tipoVehiculoService;
     private readonly ServicioLifecycleService _lifecycle;
+    private readonly ServicioFormService _form;
     private readonly VehiculoService _vehiculoService; // ✅ NUEVO
 
     /// <summary>
@@ -32,7 +33,8 @@ public class ServicioController : Controller
         TipoVehiculoService tipoVehiculoService,
         VehiculoService vehiculoService,
         ServicioQueryService queries,
-        ServicioLifecycleService lifecycle)
+        ServicioLifecycleService lifecycle,
+        ServicioFormService form)
     {
         _servicioService = servicioService;
         _queries = queries;
@@ -40,6 +42,7 @@ public class ServicioController : Controller
         _tipoServicioService = tipoServicioService;
         _tipoVehiculoService = tipoVehiculoService;
         _lifecycle = lifecycle;
+        _form = form;
         _vehiculoService = vehiculoService; // ✅ NUEVO
     }
     #endregion
@@ -673,16 +676,7 @@ public class ServicioController : Controller
             return ResultadoOperacion.CrearError("Por favor, complete todos los campos obligatorios correctamente.");
         }
 
-        if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo))
-        {
-            var mensaje = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'.";
-            ModelState.AddModelError("Nombre", $"Ya existe un servicio con este nombre para vehículos tipo '{servicio.TipoVehiculo}'.");
-            return ResultadoOperacion.CrearError(mensaje);
-        }
-
-        servicio.Estado = "Activo";
-        await _servicioService.CrearServicio(servicio);
-        return ResultadoOperacion.CrearExito("Servicio creado correctamente.");
+        return AplicarResultadoFormulario(await _form.Crear(servicio));
     }
 
     /// <summary>
@@ -698,37 +692,14 @@ public class ServicioController : Controller
             return ResultadoOperacion.CrearError("Por favor, complete todos los campos obligatorios correctamente.");
         }
 
-        var servicioActual = await _servicioService.ObtenerServicio(servicio.Id);
-        if (servicioActual == null)
-        {
-            ModelState.AddModelError("", "No se pudo encontrar el servicio a actualizar.");
-            return ResultadoOperacion.CrearError("No se pudo encontrar el servicio a actualizar.");
-        }
+        return AplicarResultadoFormulario(await _form.Actualizar(servicio));
+    }
 
-        // Validación: Prevenir cambio de tipo de vehículo
-        if (!string.Equals(servicioActual.TipoVehiculo, servicio.TipoVehiculo, StringComparison.OrdinalIgnoreCase))
-        {
-            ModelState.AddModelError("TipoVehiculo", "No se puede cambiar el tipo de vehículo de un servicio existente.");
-            return ResultadoOperacion.CrearError("No se puede cambiar el tipo de vehículo de un servicio existente. Si necesita cambiar el tipo de vehículo, debe crear un nuevo servicio.");
-        }
-
-        // NUEVA VALIDACIÓN: Prevenir cambio de tipo de servicio
-        if (!string.Equals(servicioActual.Tipo, servicio.Tipo, StringComparison.OrdinalIgnoreCase))
-        {
-            ModelState.AddModelError("Tipo", "No se puede cambiar el tipo de servicio de un servicio existente.");
-            return ResultadoOperacion.CrearError("No se puede cambiar el tipo de servicio de un servicio existente. Si necesita cambiar el tipo, debe crear un nuevo servicio.");
-        }
-
-        if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id))
-        {
-            var mensaje = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'.";
-            ModelState.AddModelError("Nombre", $"Ya existe un servicio con este nombre para vehículos tipo '{servicio.TipoVehiculo}'.");
-            return ResultadoOperacion.CrearError(mensaje);
-        }
-
-        servicio.Estado = servicioActual.Estado;
-        await _servicioService.ActualizarServicio(servicio);
-        return ResultadoOperacion.CrearExito("Servicio actualizado correctamente.");
+    private ResultadoOperacion AplicarResultadoFormulario(ServicioFormService.ResultadoFormulario resultado)
+    {
+        if (resultado.Error != null)
+            ModelState.AddModelError(resultado.Error.Campo, resultado.Error.Mensaje);
+        return resultado.Operacion;
     }
 
     /// <summary>
@@ -829,20 +800,8 @@ public class ServicioController : Controller
     /// <param name="servicio">Modelo a validar.</param>
     private void ValidateServicio(Servicio servicio)
     {
-        if (!string.IsNullOrEmpty(servicio.Nombre) && !System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
-        {
-            ModelState.AddModelError("Nombre", "El nombre solo puede contener letras y espacios.");
-        }
-
-        if (servicio.Precio < 0)
-        {
-            ModelState.AddModelError("Precio", "El precio debe ser igual o mayor a 0.");
-        }
-
-        if (servicio.TiempoEstimado <= 0)
-        {
-            ModelState.AddModelError("TiempoEstimado", "El tiempo estimado debe ser mayor a 0.");
-        }
+        foreach (var error in _form.Validar(servicio))
+            ModelState.AddModelError(error.Campo, error.Mensaje);
     }
 
     /// <summary>

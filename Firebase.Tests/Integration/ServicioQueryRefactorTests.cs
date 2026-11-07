@@ -24,7 +24,7 @@ public class ServicioQueryRefactorTests
         };
         await services.CrearServicio(service);
         ServicioController Controller(bool consult) => new(services, null!, new TipoServicioService(db),
-            new TipoVehiculoService(db), null!, new Firebase.Services.ServicioQueryService(services), new Firebase.Services.ServicioLifecycleService(services, null!))
+            new TipoVehiculoService(db), null!, new Firebase.Services.ServicioQueryService(services), new Firebase.Services.ServicioLifecycleService(services, null!), new Firebase.Services.ServicioFormService(services))
         {
             ControllerContext = new ControllerContext
             {
@@ -97,7 +97,7 @@ public class ServicioQueryRefactorTests
         foreach (var search in new[] { false, true })
         foreach (var emptyStates in new[] { false, true })
         {
-            var controller = new ServicioController(services, null!, null!, null!, null!, new Firebase.Services.ServicioQueryService(services), new Firebase.Services.ServicioLifecycleService(services, null!));
+            var controller = new ServicioController(services, null!, null!, null!, null!, new Firebase.Services.ServicioQueryService(services), new Firebase.Services.ServicioLifecycleService(services, null!), new Firebase.Services.ServicioFormService(services));
             List<string>? states = emptyStates ? new() : null;
             var result = search
                 ? await controller.SearchPartial("Lavado", states!, null!, null!, pageNumber: 2, pageSize: 1)
@@ -124,7 +124,7 @@ public class ServicioQueryRefactorTests
         foreach (var search in new[] { false, true })
         foreach (var page in new[] { 1, 2 })
         {
-            var controller = new ServicioController(services, null!, null!, null!, null!, new Firebase.Services.ServicioQueryService(services), new Firebase.Services.ServicioLifecycleService(services, null!));
+            var controller = new ServicioController(services, null!, null!, null!, null!, new Firebase.Services.ServicioQueryService(services), new Firebase.Services.ServicioLifecycleService(services, null!), new Firebase.Services.ServicioFormService(services));
             var states = new List<string> { "Activo" };
             var types = new List<string> { "Exterior" };
             var vehicles = new List<string> { "Auto" };
@@ -149,7 +149,7 @@ public class ServicioQueryRefactorTests
 
         foreach (var search in new[] { false, true })
         {
-            var controller = new ServicioController(services, null!, null!, null!, null!, new Firebase.Services.ServicioQueryService(services), new Firebase.Services.ServicioLifecycleService(services, null!));
+            var controller = new ServicioController(services, null!, null!, null!, null!, new Firebase.Services.ServicioQueryService(services), new Firebase.Services.ServicioLifecycleService(services, null!), new Firebase.Services.ServicioFormService(services));
             var result = search
                 ? await controller.SearchPartial("missing", null!, null!, null!)
                 : await controller.TablePartial(null!, new List<string> { "missing" }, null!);
