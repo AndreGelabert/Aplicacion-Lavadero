@@ -1,0 +1,20 @@
+# Personal query responsibility refactor
+Branch: `refactor/clientes-queries`; base `79821ca41b63263ab4427bb5cdfeb6d429f4c88f`, baseline 885 passing tests.
+Scope: query coordination only; preserve role initialization, authorization and all mutations. Sequential local commits; no publication or new branches.
+
+## Specs
+S1. User approval verbatim: "si", accepting "¿Avanzo con **Personal**, empezando por caracterizar sus consultas y delimitar los cambios sin alterar permisos?"
+S2. Preserve public query actions, permissions and PersonalService APIs/defaults. AsegurarRolesBaseAsync must remain the first awaited operation in each query action; do not alter role initialization, assignment, employee state mutations or authorization.
+S3. Consolidate duplicated paired employee list/count query coordination using a concrete scoped service with plain results. Preserve sequential calls, default filters/sorts, raw pageSize search calculation, Index display-page clamp without refetch, partial raw page metadata and distinct ViewBag fields. No speculative interfaces or pure-helper extraction solely for testability.
+S4. Characterize public query behavior before extraction and run the same isolated suite afterward. Keep TODO.md separate, no unrelated fixes, dependency changes, push/PR, branch creation, history rewriting or worktree deletion.
+
+## Tasks
+T1 | S1-S4 | bounded tests / parent runtime | done | Four public-query characterization tests added. Parent baseline job-30 exit 0: 889 passed, 0 failed/skipped before production edits. Commit: `8bdcb78`.
+T2 | S2-S4 | bounded writer / parent runtime | done | PersonalQueryService extracts sequential list/count and search/count coordination. Required DI and both factories updated, no fallback. Parent job-31 exit 0: 889 passed, 0 failed/skipped, matching baseline job-30. Parent diff readback confirms role initialization remains first, controller policy/MVC retained, PersonalService and mutations untouched. Commit: `8bdcb78`, slice `79821ca..8bdcb78`, 214 diff lines including tests.
+T3 | S1-S4 | parent reconciliation | in_progress | Runtime and structural readback complete; native assessment pending declaration of this tracking document. No additional query extraction justified; role/state mutations explicitly outside this unit. Commit: passive tracking separate.
+
+## Log
+L3. Baseline job-30 and post-extraction job-31 each exit 0, 889 passed, 0 failed/skipped. No artificial RED for preservation refactor. No failed compile/test attempt in this unit. Netty Connection reset warning on emulator shutdown did not fail tests. No browser E2E executed: no markup, JS, routes or presentation contracts changed. No independent verifier required: authorization, role initialization and mutation implementation unchanged. Risk: none identified.
+L4. Exact local unit boundary `79821ca..8bdcb78`: 214 diff lines, source and characterization together. Passive tracking separate; global branch hook totals are not this candidate. Initial native assessment unavailable because untracked intended files required declaration; not approval. TODO.md remains separate and uncommitted. No publication, new branches, history rewriting or worktree removal. Bounded query scope does not imply all Personal mutations were refactored or need refactoring.
+L1. User verbatim: "si" after proposal quoted in S1.
+L2. Explorer mw70p1dy-12-wkd6 mapped paired query duplication and initialization ordering. Reject optional constructor fallback recommendation: required scoped injection and update all factories. Explorer reported task/generic-odd-personal-query-refactor branch, but parent git verification confirms refactor/clientes-queries at 79821ca with TODO.md only dirty; no branch mutation observed or authorized. Preserve public PersonalService for Login, Lavados, audit and authentication consumers; do not edit its helpers. Query initialization can write base roles, so it remains in controller before employee reads. No security logic moved. Parent owns isolated emulators 8190/9199.
