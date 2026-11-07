@@ -174,14 +174,7 @@ public class ServicioController : Controller
 
         var totalPages = Math.Max((int)Math.Ceiling(totalServicios / (double)pageSize), 1);
 
-        ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = totalPages;
-        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-        ViewBag.Estados = estados;
-        ViewBag.Tipos = tipos;
-        ViewBag.TiposVehiculo = tiposVehiculo;
-        ViewBag.SortBy = sortBy;
-        ViewBag.SortOrder = sortOrder;
+        ConfigurarMetadataTabla(pageNumber, totalPages, estados, tipos, tiposVehiculo, sortBy, sortOrder);
         ViewBag.SearchTerm = searchTerm;
 
         return PartialView("_ServicioTable", servicios);
@@ -212,6 +205,16 @@ public class ServicioController : Controller
         var totalPages = await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageSize);
         totalPages = Math.Max(totalPages, 1);
 
+        ConfigurarMetadataTabla(pageNumber, totalPages, estados, tipos, tiposVehiculo, sortBy, sortOrder);
+
+        return PartialView("_ServicioTable", servicios);
+    }
+    #endregion
+
+    private void ConfigurarMetadataTabla(int pageNumber, int totalPages,
+        List<string> estados, List<string> tipos, List<string> tiposVehiculo,
+        string sortBy, string sortOrder)
+    {
         ViewBag.CurrentPage = pageNumber;
         ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
@@ -220,10 +223,7 @@ public class ServicioController : Controller
         ViewBag.TiposVehiculo = tiposVehiculo;
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
-
-        return PartialView("_ServicioTable", servicios);
     }
-    #endregion
 
     #region Cambio de Estado
 
