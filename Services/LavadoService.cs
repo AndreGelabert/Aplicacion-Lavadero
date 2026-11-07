@@ -45,6 +45,48 @@ namespace Firebase.Services
         }
         #endregion
 
+        public record ResultadoPrecioCreacion(decimal PrecioOriginal, decimal Precio, string? Error = null);
+
+        public ResultadoPrecioCreacion CalcularPrecioCreacion(
+            List<ServicioEnLavado> serviciosEnLavado,
+            Dictionary<string, PaqueteServicio> paquetesPorId,
+            decimal descuento)
+        {
+            decimal precioTotal = 0;
+            var paquetesUnicos = serviciosEnLavado
+                .Where(s => !string.IsNullOrEmpty(s.PaqueteId))
+                .Select(s => s.PaqueteId)
+                .Distinct()
+                .ToList();
+
+            foreach (var paqueteId in paquetesUnicos)
+            {
+                var paquete = paquetesPorId[paqueteId!];
+                var serviciosSeleccionadosPaquete = serviciosEnLavado
+                    .Where(servicio => string.Equals(servicio.PaqueteId, paqueteId, StringComparison.Ordinal));
+                if (PaqueteServicioService.TryCalcularPrecioSeleccionado(
+                    paquete,
+                    serviciosSeleccionadosPaquete,
+                    out var precioPaqueteConDescuento))
+                {
+                    precioTotal += precioPaqueteConDescuento;
+                }
+                else
+                {
+                    return new ResultadoPrecioCreacion(0, 0, "Los servicios seleccionados no corresponden al paquete indicado.");
+                }
+            }
+
+            var serviciosIndividuales = serviciosEnLavado.Where(s => string.IsNullOrEmpty(s.PaqueteId));
+            foreach (var servIndiv in serviciosIndividuales)
+            {
+                precioTotal += servIndiv.Precio;
+            }
+
+            var precioConDescuento = precioTotal - (precioTotal * descuento / 100);
+            return new ResultadoPrecioCreacion(precioTotal, precioConDescuento);
+        }
+
         public record ResultadoRetiro(string? Error = null, Dictionary<string, string>? CamposAntes = null);
 
         public async Task<ResultadoRetiro> RegistrarRetiro(string lavadoId)

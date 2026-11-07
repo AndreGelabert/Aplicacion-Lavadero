@@ -335,7 +335,6 @@ namespace FirebaseLoginCustom.Controllers
                     // Construir lista de servicios y calcular precios
                     var serviciosEnLavado = new List<ServicioEnLavado>();
                     var tiempoEstimadoTotal = 0;
-                    decimal precioTotal = 0;
 
                     var orden = 0;
                     foreach (var servicioItem in vehiculoServicios.Servicios)
@@ -383,43 +382,14 @@ namespace FirebaseLoginCustom.Controllers
                         tiempoEstimadoTotal += servicio.TiempoEstimado;
                     }
 
-                    // CALCULAR PRECIO TOTAL considerando paquetes
-                    // Primero identificar qué paquetes hay
-                    var paquetesUnicos = serviciosEnLavado
-                        .Where(s => !string.IsNullOrEmpty(s.PaqueteId))
-                        .Select(s => s.PaqueteId)
-                        .Distinct()
-                        .ToList();
-
-                    // Calcular y sumar precio de cada paquete UNA SOLA VEZ
-                    foreach (var paqueteId in paquetesUnicos)
-                    {
-                        var paquete = paquetesPorId[paqueteId!];
-                        var serviciosSeleccionadosPaquete = serviciosEnLavado
-                            .Where(servicio => string.Equals(servicio.PaqueteId, paqueteId, StringComparison.Ordinal));
-                        if (PaqueteServicioService.TryCalcularPrecioSeleccionado(
-                            paquete,
-                            serviciosSeleccionadosPaquete,
-                            out var precioPaqueteConDescuento))
-                        {
-                            precioTotal += precioPaqueteConDescuento;
-                        }
-                        else
-                        {
-                            return Json(new { success = false, message = "Los servicios seleccionados no corresponden al paquete indicado." });
-                        }
-                    }
-
-                    // Sumar servicios individuales (los que NO tienen PaqueteId)
-                    var serviciosIndividuales = serviciosEnLavado.Where(s => string.IsNullOrEmpty(s.PaqueteId));
-                    foreach (var servIndiv in serviciosIndividuales)
-                    {
-                        precioTotal += servIndiv.Precio;
-                    }
-
-                    // Aplicar descuento
                     var descuento = request.Descuento;
-                    var precioConDescuento = precioTotal - (precioTotal * descuento / 100);
+                    var resultadoPrecio = _lavadoService.CalcularPrecioCreacion(serviciosEnLavado, paquetesPorId, descuento);
+                    if (resultadoPrecio.Error != null)
+                    {
+                        return Json(new { success = false, message = resultadoPrecio.Error });
+                    }
+                    var precioTotal = resultadoPrecio.PrecioOriginal;
+                    var precioConDescuento = resultadoPrecio.Precio;
 
                     // Obtener cantidad de empleados según el tipo de vehículo
                     var tipoVehiculo = await _tipoVehiculoService.ObtenerTipoVehiculoPorNombre(vehiculo.TipoVehiculo);
