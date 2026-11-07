@@ -20,17 +20,27 @@ public class AuditoriaController : Controller
     [HttpGet]
     [Permiso("Auditoria.Consultar")]
     public async Task<IActionResult> Index([FromQuery] AuditoriaFilter filters)
-        => View(await _queries.ObtenerPantalla(filters));
+        => RangoFechasInvertido(filters)
+            ? BadRequest("La fecha Desde no puede ser posterior a la fecha Hasta.")
+            : View(await _queries.ObtenerPantalla(filters));
 
     [HttpGet]
     [Permiso("Auditoria.Consultar")]
     public async Task<IActionResult> TablePartial([FromQuery] AuditoriaFilter filters)
-        => PartialView("_AuditoriaTable", await _queries.ObtenerTabla(filters));
+        => RangoFechasInvertido(filters)
+            ? BadRequest("La fecha Desde no puede ser posterior a la fecha Hasta.")
+            : PartialView("_AuditoriaTable", await _queries.ObtenerTabla(filters));
 
     [HttpGet]
     [Permiso("Auditoria.Consultar")]
     public async Task<IActionResult> SearchPartial([FromQuery] AuditoriaFilter filters)
-        => PartialView("_AuditoriaTable", await _queries.Buscar(filters));
+        => RangoFechasInvertido(filters)
+            ? BadRequest("La fecha Desde no puede ser posterior a la fecha Hasta.")
+            : PartialView("_AuditoriaTable", await _queries.Buscar(filters));
+
+    private static bool RangoFechasInvertido(AuditoriaFilter filters)
+        => filters.FechaInicio.HasValue && filters.FechaFin.HasValue
+            && filters.FechaInicio.Value.Date > filters.FechaFin.Value.Date;
 
     #region Detalle de Registro
 

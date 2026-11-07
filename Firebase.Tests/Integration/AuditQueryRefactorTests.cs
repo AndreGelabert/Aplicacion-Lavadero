@@ -135,6 +135,47 @@ public class AuditQueryRefactorTests
     }
 
     [LocalFirestoreFact]
+    public async Task DateRangesAllowEqualOrderedAndOpenEndedDatesAcrossAllListings()
+    {
+        var db = new FirestoreDbBuilder
+        {
+            ProjectId = "demo-dates-" + Guid.NewGuid().ToString("N")[..16],
+            EmulatorDetection = EmulatorDetection.EmulatorOnly
+        }.Build();
+        var day = new DateTime(2026, 11, 2);
+        await db.Collection("registros_auditoria").Document("same-day").SetAsync(new AuditLog
+        {
+            UserId = "missing", UserEmail = "actor@example.invalid", Action = "Editar",
+            TargetType = "Externo", TargetId = "object", NombreHistorico = "Original",
+            Timestamp = DateTime.SpecifyKind(day.AddHours(12), DateTimeKind.Local).ToUniversalTime()
+        });
+        var audit = new AuditService(db);
+        var controller = new AuditoriaController(audit, new Firebase.Services.AuditQueryService(audit,
+            new PersonalService(db), null!, null!, null!, null!, null!, null!, null!));
+        foreach (var (start, end) in new (DateTime?, DateTime?)[]
+        {
+            (day, day), (day.AddDays(-1), day.AddDays(1)), (day, null), (null, day), (null, null)
+        })
+        {
+            foreach (var action in new[] { "Index", "TablePartial", "SearchPartial" })
+            {
+                var filters = new AuditoriaFilter { FechaInicio = start, FechaFin = end };
+                var result = action switch
+                {
+                    "Index" => await controller.Index(filters),
+                    "TablePartial" => await controller.TablePartial(filters),
+                    _ => await controller.SearchPartial(filters)
+                };
+                var model = result is ViewResult view
+                    ? view.Model!
+                    : Assert.IsType<PartialViewResult>(result).Model!;
+                Assert.Equal("same-day", Assert.Single(Rows(model)).DocId);
+            }
+        }
+        Assert.Single((await db.Collection("registros_auditoria").GetSnapshotAsync()).Documents);
+    }
+
+    [LocalFirestoreFact]
     public async Task ScreenUsesExplicitTypedModelInsteadOfDynamicViewData()
     {
         var db = new FirestoreDbBuilder
