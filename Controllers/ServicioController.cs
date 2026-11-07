@@ -15,6 +15,7 @@ public class ServicioController : Controller
 {
     #region Dependencias
     private readonly ServicioService _servicioService;
+    private readonly ServicioQueryService _queries;
     private readonly IAuditWriter _auditService;
     private readonly TipoServicioService _tipoServicioService;
     private readonly TipoVehiculoService _tipoVehiculoService;
@@ -30,9 +31,11 @@ public class ServicioController : Controller
         TipoServicioService tipoServicioService,
         TipoVehiculoService tipoVehiculoService,
         PaqueteServicioService paqueteServicioService,
-        VehiculoService vehiculoService) // ✅ NUEVO
+        VehiculoService vehiculoService,
+        ServicioQueryService queries)
     {
         _servicioService = servicioService;
+        _queries = queries;
         _auditService = auditService;
         _tipoServicioService = tipoServicioService;
         _tipoVehiculoService = tipoVehiculoService;
@@ -166,13 +169,10 @@ public class ServicioController : Controller
         sortBy ??= "Nombre";
         sortOrder ??= "asc";
 
-        var servicios = await _servicioService.BuscarServicios(
-            searchTerm, estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
-
-        var totalServicios = await _servicioService.ObtenerTotalServiciosBusqueda(
-            searchTerm, estados, tipos, tiposVehiculo, precioDesde, precioHasta);
-
-        var totalPages = Math.Max((int)Math.Ceiling(totalServicios / (double)pageSize), 1);
+        var resultado = await _queries.Buscar(searchTerm, estados, tipos, tiposVehiculo,
+            precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
+        var servicios = resultado.Servicios;
+        var totalPages = resultado.TotalPages;
 
         ConfigurarMetadataTabla(pageNumber, totalPages, estados, tipos, tiposVehiculo, sortBy, sortOrder);
         ViewBag.SearchTerm = searchTerm;
@@ -201,9 +201,10 @@ public class ServicioController : Controller
         sortBy ??= "Nombre";
         sortOrder ??= "asc";
 
-        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
-        var totalPages = await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageSize);
-        totalPages = Math.Max(totalPages, 1);
+        var resultado = await _queries.ObtenerListado(estados, tipos, tiposVehiculo,
+            precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
+        var servicios = resultado.Servicios;
+        var totalPages = resultado.TotalPages;
 
         ConfigurarMetadataTabla(pageNumber, totalPages, estados, tipos, tiposVehiculo, sortBy, sortOrder);
 
@@ -607,8 +608,10 @@ public class ServicioController : Controller
         ObtenerDatosServicios(List<string> estados, List<string> tipos, List<string> tiposVehiculo,
         decimal? precioDesde, decimal? precioHasta, int pageNumber, int pageSize, string sortBy, string sortOrder)
     {
-        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
-        var totalPages = Math.Max(await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageSize), 1);
+        var resultado = await _queries.ObtenerListado(estados, tipos, tiposVehiculo,
+            precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
+        var servicios = resultado.Servicios;
+        var totalPages = resultado.TotalPages;
         var currentPage = Math.Clamp(pageNumber, 1, totalPages);
         var visiblePages = GetVisiblePages(currentPage, totalPages);
 

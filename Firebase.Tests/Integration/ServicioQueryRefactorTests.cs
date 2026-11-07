@@ -9,6 +9,65 @@ namespace Firebase.Tests.Integration;
 public class ServicioQueryRefactorTests
 {
     [LocalFirestoreFact]
+    public async Task IndexPreservesPageClampFormAndCreateOnlyBranch()
+    {
+        var db = new FirestoreDbBuilder
+        {
+            ProjectId = "demo-serviceindex-" + Guid.NewGuid().ToString("N")[..16],
+            EmulatorDetection = EmulatorDetection.EmulatorOnly
+        }.Build();
+        var services = new ServicioService(db);
+        var service = new Servicio
+        {
+            Id = "generated", Nombre = "Lavado Basico", Precio = 100m, Estado = "Activo",
+            Tipo = "Exterior", TipoVehiculo = "Auto", Descripcion = "Description", TiempoEstimado = 10
+        };
+        await services.CrearServicio(service);
+        ServicioController Controller(bool consult) => new(services, null!, new TipoServicioService(db),
+            new TipoVehiculoService(db), null!, null!, new Firebase.Services.ServicioQueryService(services))
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
+                {
+                    User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+                        new[] { new System.Security.Claims.Claim("permiso", consult ? "Servicios.Consultar" : "Servicios.Crear") }, "test"))
+                }
+            }
+        };
+        foreach (var page in new[] { 1, 2 })
+        {
+            var controller = Controller(true);
+            var view = Assert.IsType<ViewResult>(await controller.Index(null!, null!, null!, pageNumber: page, pageSize: 1));
+            Assert.Equal(page == 1 ? new[] { service.Id } : Array.Empty<string>(),
+                Assert.IsType<List<Servicio>>(view.Model).Select(row => row.Id));
+            Assert.Equal(1, controller.ViewData["CurrentPage"]);
+            Assert.Equal(1, controller.ViewData["TotalPages"]);
+            Assert.Equal(1, controller.ViewData["PageSize"]);
+            Assert.Equal(new[] { 1 }, Assert.IsType<List<int>>(controller.ViewData["VisiblePages"]));
+            Assert.Equal(new[] { "Activo" }, Assert.IsType<List<string>>(controller.ViewData["Estados"]));
+            Assert.Equal("Nombre", controller.ViewData["SortBy"]);
+            Assert.Equal("asc", controller.ViewData["SortOrder"]);
+            Assert.Equal(100m, controller.ViewData["PrecioMinimo"]);
+            Assert.Equal(100m, controller.ViewData["PrecioMaximo"]);
+            Assert.Equal("CrearServicioAjax", controller.ViewData["FormAction"]);
+            Assert.Equal("Registrando un Servicio", controller.ViewData["FormTitle"]);
+            Assert.False(controller.ViewData.ContainsKey("SearchTerm"));
+        }
+        var createOnly = Controller(false);
+        // Invalid paging and edit ID must not reach listing or edit reads in this branch.
+        var creation = Assert.IsType<ViewResult>(await createOnly.Index(null!, null!, null!, pageNumber: 0, pageSize: 0, editId: "missing"));
+        Assert.Empty(Assert.IsType<List<Servicio>>(creation.Model));
+        Assert.Equal("CrearServicioAjax", createOnly.ViewData["FormAction"]);
+        Assert.Equal("Registrar", createOnly.ViewData["SubmitButtonText"]);
+        Assert.Equal("Limpiar Campos", createOnly.ViewData["ClearButtonText"]);
+        Assert.IsType<List<string>>(createOnly.ViewData["TiposServicio"]);
+        Assert.IsType<List<string>>(createOnly.ViewData["TodosLosTiposVehiculo"]);
+        Assert.False(createOnly.ViewData.ContainsKey("CurrentPage"));
+        Assert.False(createOnly.ViewData.ContainsKey("EditServicio"));
+    }
+
+    [LocalFirestoreFact]
     public async Task PartialActionsPreserveRowsFiltersAndDistinctMetadata()
     {
         var db = new FirestoreDbBuilder
@@ -38,7 +97,7 @@ public class ServicioQueryRefactorTests
         foreach (var search in new[] { false, true })
         foreach (var emptyStates in new[] { false, true })
         {
-            var controller = new ServicioController(services, null!, null!, null!, null!, null!);
+            var controller = new ServicioController(services, null!, null!, null!, null!, null!, new Firebase.Services.ServicioQueryService(services));
             List<string>? states = emptyStates ? new() : null;
             var result = search
                 ? await controller.SearchPartial("Lavado", states!, null!, null!, pageNumber: 2, pageSize: 1)
@@ -65,7 +124,7 @@ public class ServicioQueryRefactorTests
         foreach (var search in new[] { false, true })
         foreach (var page in new[] { 1, 2 })
         {
-            var controller = new ServicioController(services, null!, null!, null!, null!, null!);
+            var controller = new ServicioController(services, null!, null!, null!, null!, null!, new Firebase.Services.ServicioQueryService(services));
             var states = new List<string> { "Activo" };
             var types = new List<string> { "Exterior" };
             var vehicles = new List<string> { "Auto" };
@@ -90,7 +149,7 @@ public class ServicioQueryRefactorTests
 
         foreach (var search in new[] { false, true })
         {
-            var controller = new ServicioController(services, null!, null!, null!, null!, null!);
+            var controller = new ServicioController(services, null!, null!, null!, null!, null!, new Firebase.Services.ServicioQueryService(services));
             var result = search
                 ? await controller.SearchPartial("missing", null!, null!, null!)
                 : await controller.TablePartial(null!, new List<string> { "missing" }, null!);

@@ -1,5 +1,5 @@
-# Servicio MVC refactor — first bounded unit
-Branch: `refactor/clientes-queries`; scope: partial-table presentation metadata only. Preserve current observable behavior.
+# Servicio MVC refactor — bounded units
+Branch: `refactor/clientes-queries`; completed partial metadata; active unit: listing/search query coordination. Preserve current observable behavior.
 Delivery: isolated local work-unit commit based on `298a8b16add7dc8fb581f38bea155f4a6a456ec6`; forecast ~180 authored changed lines, no push/PR. Runner: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File Firebase.Tests/run-isolated.ps1`.
 
 ## Specs
@@ -7,12 +7,21 @@ S1. User priority: "Prefiero terminar primero con las refactorizaciones"; contin
 S2. Preservation constraints carried from the agreed refactor: keep routes, public signatures, permissions, query ordering, persistence and audit unchanged. Preserve the eight shared metadata keys, SearchPartial-only SearchTerm, and leave Index unchanged. These are implementation preservation boundaries, not new product behavior.
 S3. User disposition: "Agrega esa correccion propuesta al @TODO.md ,ya que ahora no me es una super prioridad." Keep that pending documentation separate; no credential changes.
 
+S4. User continuation: "Continua, pero antes explicame que identificaste en servicio para mejorar/que cosas estas haciendo". After explaining the findings, continue with concrete query coordination for Index and both partial actions; preserve Index-only page clamping, separate search/count behavior and unchanged controller permission/form branch. S2's Index exclusion applies to the completed metadata unit, not this subsequent unit.
+
 ## Tasks
 T1 | S1-S2 | inline | done | Characterized both public partial actions on existing code; job-17 exit 0, 879 passed, 0 failed/skipped. No artificial RED. Commit: `5cdc247`.
 T2 | S1-S2 | inline | done | Extracted ConfigurarMetadataTabla, eight assignments only. Job-18 exit 0: 879 passed, 0 failed/skipped, matching job-17. Production diff inspected: 11 additions/11 deletions. Commit: `5cdc247`.
 T3 | S1-S3 | inline | done | Verified unit committed as `5cdc247`; scoped native assessment: medium, 3 paths/146 lines, reviewDue=false (under_budget), no independent verifier required. Review outcome remains unknown, not approved. Tracking closure is a separate passive commit.
 
+T4 | S2-S4 | inline | done | Extended Index characterization; job-19 exit 0: 880 passed, 0 failed/skipped before extraction. Commit: pending.
+T5 | S2-S4 | inline | done | Extracted concrete ServicioQueryService/plain result; updated DI and all known factories. Job-21 exit 0: 880 passed, 0 failed/skipped, matching baseline job-19. No guard moved, reads remain sequential. Commit: pending.
+T6 | S2-S4 | inline | in_progress | Commit verified query unit separately, record scoped risk/verification and remaining module boundaries. Commit: pending.
+
 ## Log
+L10. Job-21 exit 0: 880 passed, 0 failed/skipped after constructor fixture correction. Exact read sequences and page-count expressions moved unchanged; filters, Index clamping, metadata and guards stay in controller. Error-view helper and underlying ServicioService unchanged; no unrelated shared-command behavior changed. No Razor/JS/UI changes, browser check not applicable. Risk: none identified for this extraction (no auth/guard/contract mutation). Scoped unit base e0a35c3, forecast below 400 authored diff lines; TODO.md excluded.
+L9. Post-extraction job-20 exited 1 during compilation (CS7036): the target-typed Index test factory omitted one existing constructor argument while adding queries. No tests ran. Corrected that factory to pass all seven arguments; no optional fallback dependency or production behavior change. Verification must rerun.
+L8. User continuation verbatim: "Continua, pero antes explicame que identificaste en servicio para mejorar/que cosas estas haciendo". Explained presentation duplication, query coordination and business/type management boundaries before continuing. Unit 2 forecast ~300 authored changed lines, base e0a35c3, separate local commit and no publication. Read-only explorer mw6rqzba-n-x9uj mapped DI and constructor calls; existing tests provide partial behavior. Scope excludes existing error-view helper to avoid touching mutation failure behavior; keep its private pagination utility intact. No guard moves or public action changes.
 L1. User original continuation: "Y continua si por favor".
 L2. Prior user priority: "Agrega esa correccion propuesta al @TODO.md ,ya que ahora no me es una super prioridad. Prefiero terminar primero con las refactorizaciones".
 L3. Read-only explorer mw6r8suk-m-46i7 mapped Servicio. Parent narrowed its broad recommendation to shared partial metadata, avoiding premature query abstractions and Index permission/form behavior. SearchPartial retains distinct search/count calls and SearchTerm; TablePartial retains its distinct read/count. No security guards move. Risk: none identified for this bounded extraction. `TODO.md` is already modified and excluded from the unit commit.
