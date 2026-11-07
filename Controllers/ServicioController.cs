@@ -19,7 +19,7 @@ public class ServicioController : Controller
     private readonly IAuditWriter _auditService;
     private readonly TipoServicioService _tipoServicioService;
     private readonly TipoVehiculoService _tipoVehiculoService;
-    private readonly PaqueteServicioService _paqueteServicioService;
+    private readonly ServicioLifecycleService _lifecycle;
     private readonly VehiculoService _vehiculoService; // ✅ NUEVO
 
     /// <summary>
@@ -30,16 +30,16 @@ public class ServicioController : Controller
         IAuditWriter auditService,
         TipoServicioService tipoServicioService,
         TipoVehiculoService tipoVehiculoService,
-        PaqueteServicioService paqueteServicioService,
         VehiculoService vehiculoService,
-        ServicioQueryService queries)
+        ServicioQueryService queries,
+        ServicioLifecycleService lifecycle)
     {
         _servicioService = servicioService;
         _queries = queries;
         _auditService = auditService;
         _tipoServicioService = tipoServicioService;
         _tipoVehiculoService = tipoVehiculoService;
-        _paqueteServicioService = paqueteServicioService;
+        _lifecycle = lifecycle;
         _vehiculoService = vehiculoService; // ✅ NUEVO
     }
     #endregion
@@ -742,23 +742,12 @@ public class ServicioController : Controller
     {
         try
         {
-            if (nuevoEstado == "Inactivo")
-            {
-                var paquetesActivos = await _paqueteServicioService.ObtenerPaquetes(new List<string> { "Activo" }, null, 1, int.MaxValue, "Nombre", "asc");
-                var paquetesConServicio = paquetesActivos
-                    .Where(p => p.ServiciosIds != null && p.ServiciosIds.Contains(id))
-                       .ToList();
+            var resultado = await _lifecycle.CambiarEstado(id, nuevoEstado);
+            if (resultado.Error != null)
+                return Json(new { success = false, message = resultado.Error });
 
-                if (paquetesConServicio.Any())
-                {
-                    var nombresPaquetes = string.Join(", ", paquetesConServicio.Select(p => p.Nombre));
-                    return Json(new { success = false, message = $"No se puede desactivar el servicio porque está siendo usado en los siguientes paquetes activos: {nombresPaquetes}" });
-                }
-            }
-
-            var servicioAntesCambio = await ObtenerServicioParaAuditoria(id);
-            var antesCambio = AuditCampos.CapturarServicio(servicioAntesCambio);
-            await _servicioService.CambiarEstadoServicio(id, nuevoEstado);
+            var servicioAntesCambio = resultado.ServicioAntes;
+            var antesCambio = resultado.Antes;
             TempData["StateChangeEvent_UserId"] = id;
             TempData["StateChangeEvent_NewState"] = nuevoEstado;
             var despuesCambio = AuditCampos.CapturarServicio(await ObtenerServicioParaAuditoria(id));

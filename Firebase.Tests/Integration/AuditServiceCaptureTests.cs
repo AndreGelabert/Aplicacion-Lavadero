@@ -24,7 +24,7 @@ public class AuditServiceCaptureTests
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, "actor"), new Claim(ClaimTypes.Email, "actor@example.invalid") }, "test")) };
         if (ajax) context.Request.Headers["X-Requested-With"] = "XMLHttpRequest";
         var service = new ServicioService(db);
-        var controller = new ServicioController(service, new AuditService(db), new TipoServicioService(db), new TipoVehiculoService(db), new PaqueteServicioService(db, service, cache), new VehiculoService(db), new Firebase.Services.ServicioQueryService(service)) { ControllerContext = new ControllerContext { HttpContext = context } };
+        var controller = new ServicioController(service, new AuditService(db), new TipoServicioService(db), new TipoVehiculoService(db), new VehiculoService(db), new Firebase.Services.ServicioQueryService(service), new Firebase.Services.ServicioLifecycleService(service, new PaqueteServicioService(db, service, cache))) { ControllerContext = new ControllerContext { HttpContext = context } };
         controller.TempData = new TempDataDictionary(context, new TempProvider());
         return controller;
     }
