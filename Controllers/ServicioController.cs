@@ -21,6 +21,7 @@ public class ServicioController : Controller
     private readonly TipoVehiculoService _tipoVehiculoService;
     private readonly ServicioLifecycleService _lifecycle;
     private readonly ServicioFormService _form;
+    private readonly ServicioTypeService _types;
     private readonly VehiculoService _vehiculoService; // ✅ NUEVO
 
     /// <summary>
@@ -34,7 +35,8 @@ public class ServicioController : Controller
         VehiculoService vehiculoService,
         ServicioQueryService queries,
         ServicioLifecycleService lifecycle,
-        ServicioFormService form)
+        ServicioFormService form,
+        ServicioTypeService types)
     {
         _servicioService = servicioService;
         _queries = queries;
@@ -43,6 +45,7 @@ public class ServicioController : Controller
         _tipoVehiculoService = tipoVehiculoService;
         _lifecycle = lifecycle;
         _form = form;
+        _types = types;
         _vehiculoService = vehiculoService; // ✅ NUEVO
     }
     #endregion
@@ -262,22 +265,10 @@ public class ServicioController : Controller
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(nombreTipo))
-                {
-                    return Json(new { success = false, message = "El nombre del tipo de servicio es obligatorio." });
-                }
-
-                if (nombreTipo.Length < 3)
-                {
-                    return Json(new { success = false, message = "El nombre debe tener al menos 3 caracteres." });
-                }
-
-                if (await _tipoServicioService.ExisteTipoServicio(nombreTipo))
-                {
-                    return Json(new { success = false, message = "Ya existe un tipo de servicio con el mismo nombre." });
-                }
-
-                var docId = await _tipoServicioService.CrearTipoServicio(nombreTipo);
+                var resultado = await _types.CrearServicioAjax(nombreTipo);
+                if (resultado.Error != null)
+                    return Json(new { success = false, message = resultado.Error });
+                var docId = resultado.Id!;
                 await RegistrarCreacionTipo("Creacion de tipo de servicio", docId, "TipoServicio");
 
                 var tiposActualizados = await _tipoServicioService.ObtenerTiposServicio();
@@ -296,13 +287,8 @@ public class ServicioController : Controller
         }
 
         // Fallback (mantener por si se usa fuera de AJAX)
-        return await GestionarTipoConId(
-            nombreTipo,
-            () => _tipoServicioService.ExisteTipoServicio(nombreTipo),
-            () => _tipoServicioService.CrearTipoServicio(nombreTipo),
-            "TipoServicio",
-            "Creacion de tipo de servicio"
-        );
+        return await ResponderCreacionTipo(await _types.CrearServicioFallback(nombreTipo),
+            "TipoServicio", "Creacion de tipo de servicio");
     }
 
     /// <summary>
@@ -317,22 +303,10 @@ public class ServicioController : Controller
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(nombreTipo))
-                {
-                    return Json(new { success = false, message = "Debe seleccionar un tipo de servicio." });
-                }
-
-                var serviciosUsandoTipo = await _servicioService.ObtenerServiciosPorTipo(nombreTipo);
-                if (serviciosUsandoTipo.Any())
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        message = "No se puede eliminar el tipo de servicio porque hay servicios que lo utilizan."
-                    });
-                }
-
-                var idsEliminados = await _tipoServicioService.EliminarTipoServicio(nombreTipo);
+                var resultado = await _types.EliminarServicioAjax(nombreTipo);
+                if (resultado.Error != null)
+                    return Json(new { success = false, message = resultado.Error });
+                var idsEliminados = resultado.Ids!;
                 foreach (var id in idsEliminados)
                 {
                     await RegistrarEvento("Eliminacion de tipo de servicio", id, "TipoServicio", new() { ["Nombre"] = nombreTipo }, new(), nombreTipo);
@@ -354,13 +328,8 @@ public class ServicioController : Controller
         }
 
         // Fallback
-        return await EliminarTipoConIds(
-            nombreTipo,
-            () => _servicioService.ObtenerServiciosPorTipo(nombreTipo),
-            _ => _tipoServicioService.EliminarTipoServicio(nombreTipo),
-            "TipoServicio",
-            "Eliminacion de tipo de servicio"
-        );
+        return await ResponderEliminacionTipo(await _types.EliminarServicioFallback(nombreTipo),
+            nombreTipo, "TipoServicio", "Eliminacion de tipo de servicio");
     }
 
     /// <summary>
@@ -374,45 +343,10 @@ public class ServicioController : Controller
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
             try {
-                if (string.IsNullOrWhiteSpace(nombreTipo))
-                {
-                    return Json(new { success = false, message = "El nombre del tipo de vehículo es obligatorio." });
-                }
-
-                if (nombreTipo.Length < 3)
-                {
-                    return Json(new { success = false, message = "El nombre debe tener al menos 3 caracteres." });
-                }
-
-                // ✅ Validar que el formato sea obligatorio
-                if (string.IsNullOrWhiteSpace(formatoPatente))
-                {
-                    return Json(new { success = false, message = "El formato de patente es obligatorio." });
-                }
-
-                if (formatoPatente.Length < 3)
-                {
-                    return Json(new { success = false, message = "El formato debe tener al menos 3 caracteres." });
-                }
-
-                // ✅ Validar que el formato solo contenga caracteres permitidos
-                if (!System.Text.RegularExpressions.Regex.IsMatch(formatoPatente, @"^[nl.\-|]{3,}$"))
-                {
-                    return Json(new { success = false, message = "El formato solo puede contener 'n' (números), 'l' (letras), '.' '-' y '|'. Mínimo 3 caracteres." });
-                }
-
-                // Validar cantidad de empleados
-                if (cantidadEmpleadosRequeridos < 1 || cantidadEmpleadosRequeridos > 10)
-                {
-                    return Json(new { success = false, message = "La cantidad de empleados debe estar entre 1 y 10." });
-                }
-
-                if (await _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo))
-                {
-                    return Json(new { success = false, message = "Ya existe un tipo de vehículo con el mismo nombre." });
-                }
-
-                var vehDocId = await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos);
+                var resultado = await _types.CrearVehiculoAjax(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos);
+                if (resultado.Error != null)
+                    return Json(new { success = false, message = resultado.Error });
+                var vehDocId = resultado.Id!;
                 await RegistrarCreacionTipo("Creacion de tipo de vehiculo", vehDocId, "TipoVehiculo");
 
                 var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculosCompletos();
@@ -438,13 +372,8 @@ public class ServicioController : Controller
         }
 
         // Fallback
-        return await GestionarTipoConId(
-            nombreTipo,
-            () => _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo),
-            () => _tipoVehiculoService.CrearTipoVehiculo(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos),
-            "TipoVehiculo",
-            "Creacion de tipo de vehiculo"
-        );
+        return await ResponderCreacionTipo(await _types.CrearVehiculoFallback(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos),
+            "TipoVehiculo", "Creacion de tipo de vehiculo");
     }
 
     /// <summary>
@@ -501,35 +430,11 @@ public class ServicioController : Controller
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(nombreTipo))
-                {
-                    return Json(new { success = false, message = "Debe seleccionar un tipo de vehículo." });
-                }
-
-                // ✅ Validar si hay servicios usando este tipo
-                var serviciosUsandoTipo = await _servicioService.ObtenerServiciosPorTipoVehiculo(nombreTipo);
-                if (serviciosUsandoTipo.Any())
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        message = $"No se puede eliminar el tipo '{nombreTipo}' porque hay servicios que lo utilizan."
-                    });
-                }
-
-                // ✅ NUEVO: Validar si hay vehículos usando este tipo
-                var vehiculosUsandoTipo = await _vehiculoService.ExisteTipoVehiculoEnUso(nombreTipo);
-                if (vehiculosUsandoTipo)
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        message = $"No se puede eliminar el tipo '{nombreTipo}' porque está en uso por uno o más vehículos."
-                    });
-                }
-
-                var capturas = await CapturarTiposVehiculo(nombreTipo);
-                var vehIdsEliminados = await _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo, capturas.Keys.ToHashSet());
+                var resultado = await _types.EliminarVehiculoAjax(nombreTipo);
+                if (resultado.Error != null)
+                    return Json(new { success = false, message = resultado.Error });
+                var capturas = resultado.Capturas!;
+                var vehIdsEliminados = resultado.Ids!;
                 foreach (var id in vehIdsEliminados)
                 {
                     await RegistrarEliminacionTipoVehiculo(id, capturas);
@@ -551,13 +456,8 @@ public class ServicioController : Controller
         }
 
         // Fallback
-        return await EliminarTipoConIds(
-            nombreTipo,
-            () => _servicioService.ObtenerServiciosPorTipoVehiculo(nombreTipo),
-            ids => _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo, ids),
-            "TipoVehiculo",
-            "Eliminacion de tipo de vehiculo"
-        );
+        return await ResponderEliminacionTipo(await _types.EliminarVehiculoFallback(nombreTipo),
+            nombreTipo, "TipoVehiculo", "Eliminacion de tipo de vehiculo");
     }
     #endregion
 
@@ -907,9 +807,6 @@ public class ServicioController : Controller
         await RegistrarEvento(accion, id, entidad, new(), despues, nombre);
     }
 
-    private async Task<Dictionary<string, TipoVehiculo>> CapturarTiposVehiculo(string nombre) =>
-        (await _tipoVehiculoService.ObtenerParaAuditoriaPorNombre(nombre)).ToDictionary(t => t.Id);
-
     private async Task RegistrarEliminacionTipoVehiculo(string id, Dictionary<string, TipoVehiculo> capturas)
     {
         if (!capturas.TryGetValue(id, out var tipo))
@@ -937,74 +834,33 @@ public class ServicioController : Controller
         ViewBag.TodosLosTiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
     }
 
-    /// <summary>
-    /// Fallback no-AJAX: crea un tipo (servicio o vehículo), registra auditoría y redirige a Index.
-    /// </summary>
-    /// <param name="nombreTipo">Nombre del tipo a crear.</param>
-    /// <param name="verificarExistencia">Función que verifica existencia previa del tipo.</param>
-    /// <param name="crearConId">Función que crea el tipo y devuelve el ID creado.</param>
-    /// <param name="entidad">Etiqueta de entidad para auditoría (por ejemplo, "TipoServicio").</param>
-    /// <param name="accionAuditoria">Acción a registrar en auditoría.</param>
-    /// <returns>Redirección a <c>Index</c>.</returns>
-    private async Task<IActionResult> GestionarTipoConId(
-        string nombreTipo,
-        Func<Task<bool>> verificarExistencia,
-        Func<Task<string>> crearConId,
-        string entidad,
-        string accionAuditoria)
+    private async Task<IActionResult> ResponderCreacionTipo(ServicioTypeService.Creacion resultado, string entidad, string accionAuditoria)
     {
-        if (!string.IsNullOrWhiteSpace(nombreTipo))
+        if (resultado.Error != null)
+            TempData["Error"] = resultado.Error;
+        else if (resultado.Id != null)
         {
-            if (await verificarExistencia())
-            {
-                TempData["Error"] = $"Ya existe un {entidad} con el mismo nombre.";
-            }
-            else
-            {
-                var id = await crearConId();
-                await RegistrarCreacionTipo(accionAuditoria, id, entidad);
-                TempData["Success"] = $"{entidad} creado correctamente.";
-            }
+            await RegistrarCreacionTipo(accionAuditoria, resultado.Id, entidad);
+            TempData["Success"] = $"{entidad} creado correctamente.";
         }
         return RedirectToAction("Index");
     }
 
-    /// <summary>
-    /// Fallback no-AJAX: elimina un tipo (servicio o vehículo), registra auditoría y redirige a Index.
-    /// </summary>
-    /// <param name="nombreTipo">Nombre del tipo a eliminar.</param>
-    /// <param name="obtenerServiciosUsandoTipo">Función que obtiene servicios que usan el tipo (para impedir eliminación si hay uso).</param>
-    /// <param name="eliminarConIds">Función que elimina el tipo y devuelve los IDs eliminados.</param>
-    /// <param name="entidad">Etiqueta de entidad para auditoría (por ejemplo, "TipoVehiculo").</param>
-    /// <param name="accionAuditoria">Acción a registrar en auditoría.</param>
-    /// <returns>Redirección a <c>Index</c>.</returns>
-    private async Task<IActionResult> EliminarTipoConIds(
-        string nombreTipo,
-        Func<Task<List<Servicio>>> obtenerServiciosUsandoTipo,
-        Func<IReadOnlySet<string>, Task<List<string>>> eliminarConIds,
-        string entidad,
-        string accionAuditoria)
+    private async Task<IActionResult> ResponderEliminacionTipo(ServicioTypeService.Eliminacion resultado,
+        string nombreTipo, string entidad, string accionAuditoria)
     {
-        if (!string.IsNullOrWhiteSpace(nombreTipo))
+        if (resultado.Error != null)
+            TempData["Error"] = resultado.Error;
+        else if (resultado.Ids != null)
         {
-            var serviciosUsandoTipo = await obtenerServiciosUsandoTipo();
-            if (serviciosUsandoTipo.Any())
+            foreach (var id in resultado.Ids)
             {
-                TempData["Error"] = $"No se puede eliminar {entidad} porque hay servicios que lo utilizan.";
+                if (entidad == "TipoVehiculo")
+                    await RegistrarEliminacionTipoVehiculo(id, resultado.Capturas!);
+                else
+                    await RegistrarEvento(accionAuditoria, id, entidad, new() { ["Nombre"] = nombreTipo }, new(), nombreTipo);
             }
-            else
-            {
-                var capturas = entidad == "TipoVehiculo" ? await CapturarTiposVehiculo(nombreTipo) : null;
-                var ids = await eliminarConIds(capturas?.Keys.ToHashSet());
-                foreach (var id in ids)
-                {
-                    if (entidad == "TipoVehiculo")
-                        await RegistrarEliminacionTipoVehiculo(id, capturas);
-                    else
-                        await RegistrarEvento(accionAuditoria, id, entidad, new() { ["Nombre"] = nombreTipo }, new(), nombreTipo);
-                }
-                TempData["Success"] = $"{entidad} eliminado correctamente.";
-            }
+            TempData["Success"] = $"{entidad} eliminado correctamente.";
         }
         return RedirectToAction("Index");
     }

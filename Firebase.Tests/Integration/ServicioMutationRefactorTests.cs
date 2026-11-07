@@ -45,7 +45,8 @@ public class ServicioMutationRefactorTests
         var services = new ServicioService(db);
         var controller = new ServicioController(services, audit, new TipoServicioService(db), new TipoVehiculoService(db),
             new VehiculoService(db), new ServicioQueryService(services),
-            new ServicioLifecycleService(services, new PaqueteServicioService(db, services, cache)), new ServicioFormService(services))
+            new ServicioLifecycleService(services, new PaqueteServicioService(db, services, cache)), new ServicioFormService(services),
+            new ServicioTypeService(services, new TipoServicioService(db), new TipoVehiculoService(db), new VehiculoService(db)))
         { ControllerContext = new ControllerContext { HttpContext = context } };
         controller.TempData = new TempDataDictionary(context, new TempProvider());
         return controller;
