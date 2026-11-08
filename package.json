@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "build:css": "tailwindcss -i ./wwwroot/css/app.css -o ./wwwroot/css/app.min.css --minify",
     "test:e2e": "node scripts/playwright.cjs test",
     "test:e2e:headed": "node scripts/playwright.cjs headed",
     "test:e2e:ui": "node scripts/playwright.cjs ui",

@@ -33,6 +33,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - @nombreLavadero</title>
     <base href="~/" />
+    @await Html.PartialAsync("_ThemeAssets")
     <link href="~/css/app.min.css" rel="stylesheet" asp-append-version="true" />
     <link rel="stylesheet" href="~/Firebase.styles.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/notifications.css" asp-append-version="true" />
@@ -87,6 +88,7 @@
                 </div>
                 <!-- Menu del usuario -->
                 <div class="flex items-center lg:order-2">
+                    @await Html.PartialAsync("_ThemeSelector")
                     <button type="button"
                             class="flex mx-3 text-sm bg-transparent rounded-full md:mr-0 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
                             id="user-menu-button"
