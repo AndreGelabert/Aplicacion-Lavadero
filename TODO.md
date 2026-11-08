@@ -54,3 +54,20 @@ Los resultados explícitos de los servicios y los logs correlacionados son mejor
 - El diseño documenta sus límites: una transacción local no incluye el servicio de Meta y la outbox **no garantiza por sí sola entrega exactamente una vez**.
 
 **Relación entre las tareas:** diseñar WA-02 junto con los estados y la recuperación de WA-01. La deduplicación de entrada y la outbox resuelven problemas distintos; ninguna reemplaza a la otra.
+
+## [ ] AUTH-01 — Preservar los datos al migrar una cuenta existente a Google
+
+**Prioridad:** pospuesta por decisión del usuario; no implementar como parte del refactor de expiración de sesiones.
+
+**Problema que resuelve:** en `Services/AuthenticationService.cs`, `AuthenticateWithGoogleAsync` elimina el documento anterior del empleado antes de guardar el documento con el UID de Google. Las operaciones no son atómicas: si falla el segundo guardado, el documento anterior ya fue eliminado. Es un riesgo observado en el código, no una pérdida reproducida ni una vulnerabilidad confirmada.
+
+**Trabajo propuesto:**
+- Definir qué campos y referencias deben conservarse al cambiar el identificador; no asumir que basta con copiar los campos actualmente seleccionados.
+- Diseñar una transición atómica o recuperable dentro de Firestore, con validaciones de identidad y tratamiento explícito de documentos de destino existentes, conflictos y reintentos.
+- No ejecutar llamadas a Firebase Authentication, Google ni emisión de auditoría dentro de un callback de transacción que pueda repetirse.
+- Mantener permisos y estado del empleado, el rechazo de cuentas inactivas y los contratos públicos de autenticación. Revisar por separado la coherencia de auditoría ante resultados inciertos.
+
+**Criterios de aceptación:**
+- Pruebas aisladas con datos sintéticos cubren éxito, fallo antes del guardado, conflicto de destino y repetición/interrupción: nunca se pierden los datos originales ni se mezclan identidades.
+- Se demuestra la conservación de los campos y referencias definidos, sin autenticación real ni eliminación de cuentas reales.
+- La corrección tiene verificación independiente por afectar identidad y persistencia; su revisión y entrega se mantienen separadas de los refactors mecánicos.
