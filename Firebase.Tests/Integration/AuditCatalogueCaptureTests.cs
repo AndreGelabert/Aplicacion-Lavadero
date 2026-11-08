@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Firebase.Models;
+using Firebase.Services;
 using Google.Api.Gax;
 using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Http;
@@ -53,7 +54,7 @@ public class AuditCatalogueCaptureTests
         foreach (var (id, type, price, time) in new[] { ("s1", "Exterior", 100, 10), ("s2", "Interior", 200, 20) })
             await db.Collection("servicios").Document(id).SetAsync(new Dictionary<string,object> { ["Nombre"] = id, ["Tipo"] = type, ["TipoVehiculo"] = "Auto", ["Precio"] = price, ["TiempoEstimado"] = time, ["Descripcion"] = "", ["Estado"] = "Activo" });
         var service = new ServicioService(db); var packages = new PaqueteServicioService(db, service, cache);
-        var controller = new PaqueteServicioController(packages, service, new TipoVehiculoService(db), new AuditService(db), new ConfiguracionService(db, cache)); Setup(controller);
+        var controller = new PaqueteServicioController(packages, service, new TipoVehiculoService(db), new AuditService(db), new ConfiguracionService(db, cache), new PaqueteServicioFormService(packages, new ConfiguracionService(db, cache))); Setup(controller);
         var p = new PaqueteServicio { Id = "input", Nombre = "Completo", Estado = "Activo", TipoVehiculo = "Auto", PorcentajeDescuento = 10, ServiciosIds = new() { "s1", "s2" } };
         Assert.IsType<PartialViewResult>(await controller.CrearPaqueteAjax(p, null)); Assert.Equal("true", controller.Response.Headers["X-Form-Valid"].ToString());
         var created = Package("Completo", "Activo", "10", (300m - 300m * (10m / 100m)).ToString());

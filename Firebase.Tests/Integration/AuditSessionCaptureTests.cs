@@ -18,7 +18,8 @@ public class AuditSessionCaptureTests
         var ctx = new Microsoft.AspNetCore.Http.DefaultHttpContext();
         ctx.Request.Headers["X-Requested-With"] = "XMLHttpRequest";
         ctx.User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, "actor"), new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, "actor@example.invalid") }, "test"));
-        var controller = new PersonalController(new PersonalService(db), roles, new AuditService(db)) { ControllerContext = new ControllerContext { HttpContext = ctx } };
+        var personal = new PersonalService(db);
+        var controller = new PersonalController(personal, new Firebase.Services.PersonalQueryService(personal), roles, new AuditService(db)) { ControllerContext = new ControllerContext { HttpContext = ctx } };
         static bool Success(IActionResult r) => System.Text.Json.JsonSerializer.SerializeToElement(((JsonResult)r).Value).GetProperty("success").GetBoolean();
         Assert.False(Success(await controller.UpdateRole("employee", "no-existe")));
         Assert.Empty((await db.Collection("registros_auditoria").GetSnapshotAsync()).Documents);
@@ -45,10 +46,27 @@ public class AuditSessionCaptureTests
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-lava-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var audit = new AuditService(db);
-        await audit.LogSessionEvent("actor", "actor@example.invalid", "Cerrar Sesión", "actor", "Empleado");
-        await audit.LogEvent("actor", "actor@example.invalid", "Legacy", "actor", "Empleado");
+        Firebase.Services.IAuditWriter writer = audit;
+        var started = DateTime.UtcNow;
+        await writer.LogSessionEvent("actor", "actor@example.invalid", "Cerrar Sesión", "actor", "Empleado");
+        await writer.LogEvent("actor", "actor@example.invalid", "Legacy", "actor", "Empleado");
+        await writer.LogEvent("actor", "actor@example.invalid", "Editar", "target", "Externo",
+            new() { ["Nombre"] = "Anterior" }, new() { ["Nombre"] = "Nuevo" }, "Nombre histórico");
         var events = await audit.ObtenerRegistros();
-        Assert.Equal(2, events.Count);
+        Assert.Equal(3, events.Count);
+        Assert.All(events, e =>
+        {
+            Assert.Equal("actor", e.UserId);
+            Assert.Equal("actor@example.invalid", e.UserEmail);
+            Assert.InRange(e.Timestamp, started.AddSeconds(-1), DateTime.UtcNow.AddSeconds(1));
+        });
+        var change = await audit.ObtenerDetalle(Assert.Single(events, e => e.Action == "Editar").DocId);
+        Assert.Equal("target", change.TargetId);
+        Assert.Equal("Externo", change.TargetType);
+        Assert.Equal("Nombre histórico", change.NombreHistorico);
+        Assert.Equal("Anterior", Assert.Single(change.Antes).Value);
+        Assert.Equal("Nuevo", Assert.Single(change.Despues).Value);
+        Assert.False(change.ComparacionNoAplica);
         var session = Assert.Single(events, e => e.Action == "Cerrar Sesión");
         var detail = await audit.ObtenerDetalle(session.DocId);
         Assert.True(detail.ComparacionNoAplica);
@@ -58,7 +76,7 @@ public class AuditSessionCaptureTests
         Assert.False(legacy.ComparacionNoAplica);
         Assert.Null(legacy.Antes);
         Assert.Null(legacy.Despues);
-        var controller = new AuditoriaController(audit, null!, null!, null!, null!, null!, null!, null!, null!);
+        var controller = new AuditoriaController(audit, null!);
         var result = Assert.IsType<JsonResult>(await controller.Detalle(session.DocId));
         var json = System.Text.Json.JsonSerializer.SerializeToElement(result.Value);
         Assert.True(json.GetProperty("comparacionNoAplica").GetBoolean());

@@ -1,4 +1,4 @@
-@model List<Firebase.Models.AuditLogConNombre>
+@model Firebase.Models.AuditoriaViewModel
 @{
     ViewData["Title"] = "Registros de Auditoría";
 }
@@ -23,7 +23,7 @@
                     <h3 class="font-semibold text-gray-900 dark:text-white">Ayuda</h3>
                 </div>
                 <div class="px-3 py-2">
-                    <p>En esta página puedes consultar todos los registros de auditoría del sistema, incluyendo acciones de usuarios, cambios en servicios, empleados y más.</p>
+                    <p>En esta página puedes consultar todos los registros de auditoría del sistema, incluyendo acciones de usuarios, cambios en servicios, empleados y más. La fecha Desde debe ser anterior o igual a la fecha Hasta; puedes dejar cualquiera de las dos vacía.</p>
                 </div>
                 <div data-popper-arrow></div>
             </div>
@@ -40,7 +40,7 @@
                                 <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
                             </svg>
                         </div>
-                        <input type="text" id="simple-search" value="@(ViewBag.SearchTerm ?? "")" 
+                        <input type="text" id="simple-search" value="@(Model.Filters.SearchTerm ?? "")"
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
                                placeholder="Buscar por fecha, usuario, acción, tipo...">
                     </div>
@@ -79,13 +79,13 @@
                                         <div>
                                             <label for="fechaInicio" class="block mb-1 text-xs text-gray-700 dark:text-gray-300">Desde</label>
                                             <input type="date" id="fechaInicio" name="fechaInicio" 
-                                                   value="@(ViewBag.FechaInicio?.ToString("yyyy-MM-dd") ?? "")"
+                                                   value="@(Model.Filters.FechaInicio?.ToString("yyyy-MM-dd") ?? "")"
                                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white">
                                         </div>
                                         <div>
                                             <label for="fechaFin" class="block mb-1 text-xs text-gray-700 dark:text-gray-300">Hasta</label>
                                             <input type="date" id="fechaFin" name="fechaFin" 
-                                                   value="@(ViewBag.FechaFin?.ToString("yyyy-MM-dd") ?? "")"
+                                                   value="@(Model.Filters.FechaFin?.ToString("yyyy-MM-dd") ?? "")"
                                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white">
                                         </div>
                                     </div>
@@ -97,13 +97,13 @@
                                         Tipo de Acción
                                     </h6>
                                     <div class="space-y-2 max-h-40 overflow-y-auto text-sm">
-                                        @if (ViewBag.TodasLasAcciones != null)
+                                        @if (Model.TodasLasAcciones != null)
                                         {
-                                            @foreach (var accion in ViewBag.TodasLasAcciones)
+                                            @foreach (var accion in Model.TodasLasAcciones)
                                             {
                                                 <label class="flex items-center">
                                                     <input type="checkbox" name="acciones" value="@accion"
-                                                           @(ViewBag.Acciones?.Contains(accion) == true ? "checked" : "")
+                                                           @(Model.Filters.Acciones?.Contains(accion) == true ? "checked" : "")
                                                            class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                     <span class="ml-2 text-gray-900 dark:text-gray-100">@accion</span>
                                                 </label>
@@ -118,13 +118,13 @@
                                         Tipo de Objeto
                                     </h6>
                                     <div class="space-y-2 max-h-40 overflow-y-auto text-sm">
-                                        @if (ViewBag.TodosLosTiposObjetivo != null)
+                                        @if (Model.TodosLosTiposObjetivo != null)
                                         {
-                                            @foreach (var tipo in ViewBag.TodosLosTiposObjetivo)
+                                            @foreach (var tipo in Model.TodosLosTiposObjetivo)
                                             {
                                                 <label class="flex items-center">
                                                     <input type="checkbox" name="tiposObjetivo" value="@tipo"
-                                                           @(ViewBag.TiposObjetivo?.Contains(tipo) == true ? "checked" : "")
+                                                           @(Model.Filters.TiposObjetivo?.Contains(tipo) == true ? "checked" : "")
                                                            class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                     <span class="ml-2 text-gray-900 dark:text-gray-100">@tipo</span>
                                                 </label>
@@ -152,7 +152,7 @@
         </div>
 
         <!-- Tabla de la vista -->
-        <div id="auditoria-table-container" data-current-page="@ViewBag.CurrentPage">
+        <div id="auditoria-table-container" data-current-page="@Model.CurrentPage">
             @await Html.PartialAsync("_AuditoriaTable", Model)
         </div>
     </div>

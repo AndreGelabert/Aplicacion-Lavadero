@@ -21,8 +21,10 @@ namespace FirebaseLoginCustom.Controllers
     {
         #region Dependencias
         private readonly ILogger<LavadosController> _logger;
-        private readonly AuditService _auditService;
+        private readonly IAuditWriter _auditService;
         private readonly LavadoService _lavadoService;
+        private readonly LavadoCreationService _lavadoCreationService;
+        private readonly LavadoAssociatedClientService _lavadoAssociatedClientService;
         private readonly ServicioService _servicioService;
         private readonly PaqueteServicioService _paqueteServicioService;
         private readonly ClienteService _clienteService;
@@ -37,7 +39,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         public LavadosController(
             ILogger<LavadosController> logger,
-            AuditService auditService,
+            IAuditWriter auditService,
             LavadoService lavadoService,
             ServicioService servicioService,
             PaqueteServicioService paqueteServicioService,
@@ -46,11 +48,15 @@ namespace FirebaseLoginCustom.Controllers
             PersonalService personalService,
             ConfiguracionService configuracionService,
             TipoVehiculoService tipoVehiculoService,
-            TipoDocumentoService tipoDocumentoService)
+            TipoDocumentoService tipoDocumentoService,
+            LavadoCreationService lavadoCreationService,
+            LavadoAssociatedClientService lavadoAssociatedClientService)
         {
             _logger = logger;
             _auditService = auditService;
             _lavadoService = lavadoService;
+            _lavadoCreationService = lavadoCreationService;
+            _lavadoAssociatedClientService = lavadoAssociatedClientService;
             _servicioService = servicioService;
             _paqueteServicioService = paqueteServicioService;
             _clienteService = clienteService;
@@ -163,20 +169,8 @@ namespace FirebaseLoginCustom.Controllers
 
             var totalPages = Math.Max((int)Math.Ceiling(totalLavados / (double)pageSize), 1);
 
-            ViewBag.CurrentPage = pageNumber;
-            ViewBag.TotalPages = totalPages;
-            ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-            ViewBag.Estados = estados;
-            ViewBag.ClienteId = clienteId;
-            ViewBag.VehiculoId = vehiculoId;
-            ViewBag.FechaDesde = fechaDesde;
-            ViewBag.FechaHasta = fechaHasta;
-            ViewBag.PrecioDesde = precioDesde;
-            ViewBag.PrecioHasta = precioHasta;
-            ViewBag.EstadosPago = estadosPago;
-            ViewBag.EstadosRetiro = estadosRetiro;
-            ViewBag.SortBy = sortBy;
-            ViewBag.SortOrder = sortOrder;
+            PrepararMetadataPartial(pageNumber, totalPages, estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, sortBy, sortOrder);
+
             ViewBag.SearchTerm = searchTerm;
 
             return PartialView("_LavadoTable", lavados);
@@ -214,20 +208,8 @@ namespace FirebaseLoginCustom.Controllers
                 estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, pageSize);
             totalPages = Math.Max(totalPages, 1);
 
-            ViewBag.CurrentPage = pageNumber;
-            ViewBag.TotalPages = totalPages;
-            ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-            ViewBag.Estados = estados;
-            ViewBag.ClienteId = clienteId;
-            ViewBag.VehiculoId = vehiculoId;
-            ViewBag.FechaDesde = fechaDesde;
-            ViewBag.FechaHasta = fechaHasta;
-            ViewBag.PrecioDesde = precioDesde;
-            ViewBag.PrecioHasta = precioHasta;
-            ViewBag.EstadosPago = estadosPago;
-            ViewBag.EstadosRetiro = estadosRetiro;
-            ViewBag.SortBy = sortBy;
-            ViewBag.SortOrder = sortOrder;
+            PrepararMetadataPartial(pageNumber, totalPages, estados, clienteId, vehiculoId, fechaDesde, fechaHasta, precioDesde, precioHasta, estadosPago, estadosRetiro, sortBy, sortOrder);
+
 
             return PartialView("_LavadoTable", lavados);
         }
@@ -308,205 +290,23 @@ namespace FirebaseLoginCustom.Controllers
         {
             try
             {
-                // Validar cliente
-                var cliente = await _clienteService.ObtenerCliente(request.ClienteId);
-                if (cliente == null)
+                var preparacion = await _lavadoCreationService.Preparar(request);
+                if (preparacion.Error != null)
                 {
-                    return Json(new { success = false, message = "Cliente no encontrado." });
-                }
-
-                // Obtener vehículos seleccionados
-                var vehiculosConServicios = request.VehiculosServicios;
-                if (vehiculosConServicios == null || !vehiculosConServicios.Any())
-                {
-                    return Json(new { success = false, message = "Debe seleccionar al menos un vehículo con servicios." });
-                }
-
-                // Validate package references for the entire request before creating any wash.
-                var paquetesPorId = new Dictionary<string, PaqueteServicio>(StringComparer.Ordinal);
-                var serviciosConPaquete = vehiculosConServicios
-                    .SelectMany(vehiculo => vehiculo.Servicios.Select(servicio => new { Servicio = servicio, servicio.PaqueteId }))
-                    .Where(item => !string.IsNullOrWhiteSpace(item.PaqueteId))
-                    .GroupBy(item => item.PaqueteId!, StringComparer.Ordinal);
-
-                foreach (var grupo in serviciosConPaquete)
-                {
-                    var paquete = await _paqueteServicioService.ObtenerPaquete(grupo.Key);
-                    if (paquete == null)
-                    {
-                        return Json(new { success = false, message = "Uno de los paquetes seleccionados ya no está disponible." });
-                    }
-
-                    var idsPaquete = new HashSet<string>(paquete.ServiciosIds ?? new List<string>(), StringComparer.Ordinal);
-                    if (grupo.Any(item => string.IsNullOrWhiteSpace(item.Servicio.ServicioId) || !idsPaquete.Contains(item.Servicio.ServicioId)))
-                    {
-                        return Json(new { success = false, message = "Los servicios seleccionados no corresponden al paquete indicado." });
-                    }
-
-                    paquetesPorId.Add(grupo.Key, paquete);
+                    return Json(new { success = false, message = preparacion.Error });
                 }
 
                 var lavadosCreados = new List<Lavado>();
-
-                foreach (var vehiculoServicios in vehiculosConServicios)
+                var contexto = preparacion.Contexto!;
+                foreach (var vehiculoServicios in contexto.Vehiculos)
                 {
-                    var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoServicios.VehiculoId);
-                    if (vehiculo == null)
+                    var resultado = await _lavadoCreationService.CrearVehiculo(request, contexto, vehiculoServicios);
+                    if (resultado.Error != null)
                     {
-                        return Json(new { success = false, message = $"Vehículo con ID {vehiculoServicios.VehiculoId} no encontrado." });
+                        return Json(new { success = false, message = resultado.Error });
                     }
-
-                    // Construir lista de servicios y calcular precios
-                    var serviciosEnLavado = new List<ServicioEnLavado>();
-                    var tiempoEstimadoTotal = 0;
-                    decimal precioTotal = 0;
-
-                    var orden = 0;
-                    foreach (var servicioItem in vehiculoServicios.Servicios)
-                    {
-                        var servicio = await _servicioService.ObtenerServicio(servicioItem.ServicioId);
-                        if (servicio == null)
-                        {
-                            return Json(new { success = false, message = $"Servicio con ID {servicioItem.ServicioId} no encontrado." });
-                        }
-
-                        // Validar que el servicio sea para el tipo de vehículo correcto
-                        if (!string.Equals(servicio.TipoVehiculo, vehiculo.TipoVehiculo, StringComparison.OrdinalIgnoreCase))
-                        {
-                            return Json(new { success = false, message = $"El servicio '{servicio.Nombre}' no es compatible con el tipo de vehículo '{vehiculo.TipoVehiculo}'." });
-                        }
-
-                        var servicioEnLavado = new ServicioEnLavado
-                        {
-                            ServicioId = servicio.Id,
-                            ServicioNombre = servicio.Nombre,
-                            TipoServicio = servicio.Tipo,
-                            Precio = servicio.Precio,
-                            TiempoEstimado = servicio.TiempoEstimado,
-                            Estado = "Pendiente",
-                            Orden = orden++,
-                            PaqueteId = servicioItem.PaqueteId,
-                            PaqueteNombre = servicioItem.PaqueteNombre
-                        };
-
-                        // Agregar etapas si las tiene
-                        if (servicio.Etapas != null && servicio.Etapas.Any())
-                        {
-                            foreach (var etapa in servicio.Etapas)
-                            {
-                                servicioEnLavado.Etapas.Add(new EtapaEnLavado
-                                {
-                                    EtapaId = etapa.Id,
-                                    Nombre = etapa.Nombre,
-                                    Estado = "Pendiente"
-                                });
-                            }
-                        }
-
-                        serviciosEnLavado.Add(servicioEnLavado);
-                        tiempoEstimadoTotal += servicio.TiempoEstimado;
-                    }
-
-                    // CALCULAR PRECIO TOTAL considerando paquetes
-                    // Primero identificar qué paquetes hay
-                    var paquetesUnicos = serviciosEnLavado
-                        .Where(s => !string.IsNullOrEmpty(s.PaqueteId))
-                        .Select(s => s.PaqueteId)
-                        .Distinct()
-                        .ToList();
-
-                    // Calcular y sumar precio de cada paquete UNA SOLA VEZ
-                    foreach (var paqueteId in paquetesUnicos)
-                    {
-                        var paquete = paquetesPorId[paqueteId!];
-                        var serviciosSeleccionadosPaquete = serviciosEnLavado
-                            .Where(servicio => string.Equals(servicio.PaqueteId, paqueteId, StringComparison.Ordinal));
-                        if (PaqueteServicioService.TryCalcularPrecioSeleccionado(
-                            paquete,
-                            serviciosSeleccionadosPaquete,
-                            out var precioPaqueteConDescuento))
-                        {
-                            precioTotal += precioPaqueteConDescuento;
-                        }
-                        else
-                        {
-                            return Json(new { success = false, message = "Los servicios seleccionados no corresponden al paquete indicado." });
-                        }
-                    }
-
-                    // Sumar servicios individuales (los que NO tienen PaqueteId)
-                    var serviciosIndividuales = serviciosEnLavado.Where(s => string.IsNullOrEmpty(s.PaqueteId));
-                    foreach (var servIndiv in serviciosIndividuales)
-                    {
-                        precioTotal += servIndiv.Precio;
-                    }
-
-                    // Aplicar descuento
-                    var descuento = request.Descuento;
-                    var precioConDescuento = precioTotal - (precioTotal * descuento / 100);
-
-                    // Obtener cantidad de empleados según el tipo de vehículo
-                    var tipoVehiculo = await _tipoVehiculoService.ObtenerTipoVehiculoPorNombre(vehiculo.TipoVehiculo);
-                    var cantidadEmpleadosPorTipo = tipoVehiculo?.CantidadEmpleadosRequeridos ?? 1;
-
-                    // Validar cantidad de empleados
-                    var config = await _configuracionService.ObtenerConfiguracion();
-                    if (cantidadEmpleadosPorTipo > config.EmpleadosMaximosPorLavado)
-                    {
-                        cantidadEmpleadosPorTipo = config.EmpleadosMaximosPorLavado;
-                    }
-
-                    var empleadosAsignados = await _lavadoService.AsignarEmpleadosAleatorios(cantidadEmpleadosPorTipo);
-
-                    // Obtener información del cliente que trae y retira el vehículo
-                    var clienteTrajoId = request.ClienteTrajoId ?? cliente.Id;
-                    var clienteRetiraId = request.ClienteRetiraId ?? cliente.Id;
-
-                    var clienteTrajo = await _clienteService.ObtenerCliente(clienteTrajoId);
-                    var clienteRetira = await _clienteService.ObtenerCliente(clienteRetiraId);
-
-                    var lavado = new Lavado
-                    {
-                        Id = string.Empty, // Se generará en el servicio
-                        Estado = "EnProceso",
-                        ClienteId = cliente.Id,
-                        ClienteNombre = cliente.NombreCompleto,
-                        VehiculoId = vehiculo.Id,
-                        VehiculoPatente = vehiculo.Patente,
-                        TipoVehiculo = vehiculo.TipoVehiculo,
-                        Servicios = serviciosEnLavado,
-                        PrecioOriginal = precioTotal,
-                        Precio = precioConDescuento,
-                        Descuento = descuento,
-                        CantidadEmpleadosRequeridos = cantidadEmpleadosPorTipo,
-                        EmpleadosAsignadosIds = empleadosAsignados.Select(e => e.Id).ToList(),
-                        EmpleadosAsignadosNombres = empleadosAsignados.Select(e => e.NombreCompleto).ToList(),
-                        TiempoEstimado = tiempoEstimadoTotal,
-                        Notas = request.Notas,
-                        EstadoRetiro = "Pendiente",
-                        ClienteTrajoId = clienteTrajoId,
-                        ClienteTrajoNombre = clienteTrajo?.NombreCompleto ?? cliente.NombreCompleto,
-                        ClienteRetiraId = clienteRetiraId,
-                        ClienteRetiraNombre = clienteRetira?.NombreCompleto ?? cliente.NombreCompleto
-                    };
-
-                    var lavadoCreado = await _lavadoService.CrearLavado(lavado);
+                    var lavadoCreado = resultado.Lavado!;
                     lavadosCreados.Add(lavadoCreado);
-
-                    // Iniciar automáticamente el primer servicio
-                    if (lavadoCreado.Servicios.Any())
-                    {
-                        var primerServicio = lavadoCreado.Servicios.OrderBy(s => s.Orden).First();
-                        await _lavadoService.IniciarServicio(lavadoCreado.Id, primerServicio.ServicioId);
-
-                        // Si el servicio tiene etapas, iniciar la primera
-                        if (primerServicio.Etapas.Any())
-                        {
-                            var primeraEtapa = primerServicio.Etapas.First();
-                            await _lavadoService.IniciarEtapa(lavadoCreado.Id, primerServicio.ServicioId, primeraEtapa.EtapaId);
-                        }
-                    }
-
                     await RegistrarLavado("Creación de lavado", lavadoCreado.Id, new());
                 }
 
@@ -744,33 +544,12 @@ namespace FirebaseLoginCustom.Controllers
         {
             try
             {
-                var lavado = await _lavadoService.ObtenerLavado(lavadoId);
-                if (lavado == null)
+                var resultado = await _lavadoService.RegistrarRetiro(lavadoId);
+                if (resultado.Error != null)
                 {
-                    return Json(new { success = false, message = "Lavado no encontrado." });
+                    return Json(new { success = false, message = resultado.Error });
                 }
-
-                // Verificar si ya fue retirado
-                if (lavado.EstadoRetiro == Lavado.EstadosRetiro.Retirado)
-                {
-                    return Json(new { success = false, message = "El vehículo ya fue retirado." });
-                }
-
-                // Verificar si el lavado fue pagado o cancelado
-                var estadoPago = lavado.Pago?.Estado ?? "Pendiente";
-                var estadoLavado = lavado.Estado;
-
-                if (estadoLavado != "Cancelado" && estadoPago != "Pagado")
-                {
-                    return Json(new { success = false, message = "El lavado debe estar pagado antes de permitir el retiro del vehículo." });
-                }
-
-                var antes = AuditCampos.CapturarLavado(lavado);
-                // Registrar el retiro
-                lavado.EstadoRetiro = Lavado.EstadosRetiro.Retirado;
-                lavado.FechaRetiro = DateTime.UtcNow;
-
-                await _lavadoService.ActualizarLavado(lavado);
+                var antes = resultado.CamposAntes!;
                 await RegistrarLavado("Retiro de vehículo", lavadoId, antes);
 
                 return Json(new { success = true, message = "Retiro registrado correctamente." });
@@ -921,71 +700,10 @@ namespace FirebaseLoginCustom.Controllers
         [Permiso("Clientes.Crear")]
         public async Task<IActionResult> RegistrarClienteAsociado([FromBody] RegistroClienteAsociadoRequest request)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.VehiculoId) ||
-                string.IsNullOrWhiteSpace(request.ClaveAsociacion))
-                return Json(new { success = false, message = "Selecciona un vehículo e ingresa su clave de asociación." });
-
-            if (new[] { request.TipoDocumento, request.NumeroDocumento, request.Nombre, request.Apellido, request.Telefono, request.Email }
-                .Any(string.IsNullOrWhiteSpace))
-                return Json(new { success = false, message = "Completa todos los campos obligatorios." });
-
-            var vehiculo = await _vehiculoService.ObtenerVehiculo(request.VehiculoId);
-            if (vehiculo == null || vehiculo.Estado != "Activo")
-                return Json(new { success = false, message = "El vehículo seleccionado ya no está disponible." });
-
-            if (string.IsNullOrEmpty(vehiculo.ClaveAsociacionHash) ||
-                !VehiculoService.ValidarClaveAsociacion(request.ClaveAsociacion, vehiculo.ClaveAsociacionHash))
-                return Json(new { success = false, message = "La clave de asociación no es válida para este vehículo." });
-
-            var tipoDocumento = await _tipoDocumentoService.ObtenerTipoDocumentoPorNombre(request.TipoDocumento.Trim());
-            if (tipoDocumento == null || string.IsNullOrWhiteSpace(tipoDocumento.Formato))
-                return Json(new { success = false, message = "Selecciona un tipo de documento válido." });
-
-            bool documentoValido;
-            try
-            {
-                documentoValido = System.Text.RegularExpressions.Regex.IsMatch(
-                    request.NumeroDocumento?.Trim() ?? string.Empty,
-                    tipoDocumento.ObtenerRegexPattern());
-            }
-            catch (ArgumentException)
-            {
-                documentoValido = false;
-            }
-            if (!documentoValido)
-                return Json(new { success = false, message = $"El número de documento debe respetar el formato: {tipoDocumento.Formato}." });
-
-            var existente = await _clienteService.ObtenerClientePorDocumento(request.TipoDocumento, request.NumeroDocumento);
-            if (existente != null)
-                return Json(new { success = false, message = "Ya existe un cliente con este documento." });
-
-            var cliente = new Cliente
-            {
-                Id = string.Empty,
-                TipoDocumento = request.TipoDocumento.Trim(),
-                NumeroDocumento = request.NumeroDocumento.Trim(),
-                Nombre = request.Nombre.Trim(),
-                Apellido = request.Apellido.Trim(),
-                Telefono = request.Telefono.Trim(),
-                Email = request.Email.Trim(),
-                Estado = "Activo",
-                VehiculosIds = new List<string> { vehiculo.Id }
-            };
-
-            var validationContext = new System.ComponentModel.DataAnnotations.ValidationContext(cliente);
-            var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
-            foreach (var propertyName in new[] { nameof(Cliente.TipoDocumento), nameof(Cliente.Nombre), nameof(Cliente.Apellido), nameof(Cliente.Telefono), nameof(Cliente.Email) })
-            {
-                var value = typeof(Cliente).GetProperty(propertyName)!.GetValue(cliente);
-                var propertyContext = new System.ComponentModel.DataAnnotations.ValidationContext(cliente) { MemberName = propertyName };
-                System.ComponentModel.DataAnnotations.Validator.TryValidateProperty(value, propertyContext, validationResults);
-            }
-            if (validationResults.Count > 0)
-                return Json(new { success = false, message = string.Join(" ", validationResults.Select(result => result.ErrorMessage)) });
-
-            var asociado = await _clienteService.CrearClienteAsociado(cliente, vehiculo.Id, request.ClaveAsociacion);
-            if (!asociado)
-                return Json(new { success = false, message = "No se pudo asociar el cliente al vehículo." });
+            var resultado = await _lavadoAssociatedClientService.Registrar(request);
+            if (resultado.Error != null)
+                return Json(new { success = false, message = resultado.Error });
+            var cliente = resultado.Cliente!;
 
             var clientePersistido = await _clienteService.ObtenerCliente(cliente.Id) ?? throw new InvalidOperationException("Cliente no encontrado después de crear.");
             await RegistrarEvento("Creacion de cliente y asociacion a vehiculo", cliente.Id, "Cliente", new(), AuditCampos.CapturarCliente(clientePersistido), clientePersistido.NombreCompleto);
@@ -1307,6 +1025,24 @@ namespace FirebaseLoginCustom.Controllers
             return Enumerable.Range(start, end - start + 1).ToList();
         }
 
+        private void PrepararMetadataPartial(int pageNumber, int totalPages, List<string>? estados, string? clienteId, string? vehiculoId, DateTime? fechaDesde, DateTime? fechaHasta, decimal? precioDesde, decimal? precioHasta, List<string>? estadosPago, List<string>? estadosRetiro, string sortBy, string sortOrder)
+        {
+            ViewBag.CurrentPage = pageNumber;
+            ViewBag.TotalPages = totalPages;
+            ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
+            ViewBag.Estados = estados;
+            ViewBag.ClienteId = clienteId;
+            ViewBag.VehiculoId = vehiculoId;
+            ViewBag.FechaDesde = fechaDesde;
+            ViewBag.FechaHasta = fechaHasta;
+            ViewBag.PrecioDesde = precioDesde;
+            ViewBag.PrecioHasta = precioHasta;
+            ViewBag.EstadosPago = estadosPago;
+            ViewBag.EstadosRetiro = estadosRetiro;
+            ViewBag.SortBy = sortBy;
+            ViewBag.SortOrder = sortOrder;
+        }
+
         private async Task RegistrarLavado(string accion, string id, Dictionary<string, string> antes)
         {
             var lavado = await _lavadoService.ObtenerLavado(id) ?? throw new InvalidOperationException("Lavado no encontrado después de modificar.");
@@ -1326,47 +1062,4 @@ namespace FirebaseLoginCustom.Controllers
         #endregion
     }
 
-    #region Request Models
-
-    /// <summary>
-    /// Modelo para la solicitud de creación de lavado.
-    /// </summary>
-    public class CrearLavadoRequest
-    {
-        public string ClienteId { get; set; } = string.Empty;
-        public List<VehiculoServiciosRequest> VehiculosServicios { get; set; } = new List<VehiculoServiciosRequest>();
-        public decimal Descuento { get; set; }
-        public string? Notas { get; set; }
-        /// <summary>
-        /// ID del cliente que trajo el vehículo al lavadero.
-        /// Si no se especifica, se usa el ClienteId.
-        /// </summary>
-        public string? ClienteTrajoId { get; set; }
-        /// <summary>
-        /// ID del cliente encargado de retirar el vehículo.
-        /// Si no se especifica, se usa el ClienteId.
-        /// </summary>
-        public string? ClienteRetiraId { get; set; }
-    }
-
-    /// <summary>
-    /// Modelo para los servicios de un vehículo.
-    /// </summary>
-    public class VehiculoServiciosRequest
-    {
-        public string VehiculoId { get; set; } = string.Empty;
-        public List<ServicioItemRequest> Servicios { get; set; } = new List<ServicioItemRequest>();
-    }
-
-    /// <summary>
-    /// Modelo para un servicio individual.
-    /// </summary>
-    public class ServicioItemRequest
-    {
-        public string ServicioId { get; set; } = string.Empty;
-        public string? PaqueteId { get; set; }
-        public string? PaqueteNombre { get; set; }
-    }
-
-    #endregion
 }

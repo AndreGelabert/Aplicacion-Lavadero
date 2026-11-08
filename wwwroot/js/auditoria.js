@@ -233,6 +233,13 @@
             }
         }
 
+        const fechaInicio = params.get('fechaInicio');
+        const fechaFin = params.get('fechaFin');
+        if (fechaInicio && fechaFin && fechaInicio > fechaFin) {
+            showMessage('error', 'La fecha Desde no puede ser posterior a la fecha Hasta.');
+            return;
+        }
+
         // Orden actual
         const currentSort = getCurrentSort();
         params.set('pageNumber', page.toString());

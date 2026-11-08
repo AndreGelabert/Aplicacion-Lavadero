@@ -10,6 +10,158 @@ using System.Text;
 /// </summary>
 public class VehiculoService
 {
+    // Preserve the current availability branch order, including the early orphan result.
+    public async Task<object> EvaluarDisponibilidadPatente(string patente, string marca, string modelo)
+    {
+            if (string.IsNullOrWhiteSpace(patente))
+            {
+                return (new { existe = false });
+            }
+
+            var vehiculoExistente = await ObtenerVehiculoPorPatente(patente.ToUpper());
+
+            // CASO 1: No existe ningún vehículo con esa patente → OK, puede crear
+            if (vehiculoExistente == null)
+            {
+                return (new { existe = false });
+            }
+
+            if (VehiculoService.EsHuerfanoReclamable(vehiculoExistente))
+                return (new { existe = false, asociable = true });
+
+            // CASO 2: Existe vehículo ACTIVO → ERROR, patente duplicada
+            if (vehiculoExistente.Estado == "Activo")
+            {
+                return (new
+                {
+                    existe = false,
+                    asociable = TieneClientesAsignados(vehiculoExistente),
+                    error = $"Ya existe un vehículo activo con la patente {vehiculoExistente.Patente} ({vehiculoExistente.TipoVehiculo} - {vehiculoExistente.Marca} {vehiculoExistente.Modelo}). No se pueden registrar patentes duplicadas."
+                });
+            }
+
+            // CASO 3: Existe vehículo INACTIVO pero CON DUEÑO → ERROR, no se puede reasignar
+            if (TieneClientesAsignados(vehiculoExistente))
+            {
+                return (new
+                {
+                    existe = false,
+                    error = $"Ya existe un vehículo con la patente {vehiculoExistente.Patente} asignado al cliente {vehiculoExistente.ClienteNombreCompleto}. No se pueden registrar patentes duplicadas."
+                });
+            }
+
+            // CASO 4: Existe vehículo INACTIVO, SIN DUEÑO, con misma marca y modelo → REASIGNACIÓN
+            if (VehiculoService.EsHuerfanoReclamable(vehiculoExistente) && vehiculoExistente.Marca.Equals(marca, StringComparison.OrdinalIgnoreCase) &&
+                vehiculoExistente.Modelo.Equals(modelo, StringComparison.OrdinalIgnoreCase))
+            {
+                return (new
+                {
+                    existe = true,
+                    vehiculo = new
+                    {
+                        id = vehiculoExistente.Id,
+                        patente = vehiculoExistente.Patente,
+                        marca = vehiculoExistente.Marca,
+                        modelo = vehiculoExistente.Modelo,
+                        color = vehiculoExistente.Color,
+                        tipoVehiculo = vehiculoExistente.TipoVehiculo
+                    }
+                });
+            }
+
+            // CASO 5: Existe vehículo INACTIVO, SIN DUEÑO, pero DIFERENTE marca/modelo → ERROR
+            // Esto indica que la misma patente perteneció a un vehículo distinto
+            return (new
+            {
+                existe = false,
+                error = $"Ya existe un vehículo registrado con la patente {vehiculoExistente.Patente}, pero es un {vehiculoExistente.TipoVehiculo} {vehiculoExistente.Marca} {vehiculoExistente.Modelo}. Está ingresando datos de un {marca} {modelo}. Verifique la patente."
+            });
+    }
+
+    public async Task<object> EvaluarClaveAsociacion(string patente, string claveAsociacion)
+    {
+            if (string.IsNullOrWhiteSpace(patente))
+            {
+                return (new {
+                    valida = false,
+                    error = "La patente y la clave de asociación son obligatorias."
+                });
+            }
+
+            var vehiculo = await ValidarClaveYObtenerVehiculo(
+                patente.ToUpper(),
+                claveAsociacion ?? ""
+            );
+
+            if (vehiculo == null)
+            {
+                return (new {
+                    valida = false,
+                    error = "La clave de asociación no es válida para este vehículo."
+                });
+            }
+
+            return (new
+            {
+                valida = true,
+                esHuerfano = VehiculoService.EsHuerfanoReclamable(vehiculo),
+                vehiculo = new
+                {
+                    id = vehiculo.Id,
+                    patente = vehiculo.Patente,
+                    marca = vehiculo.Marca,
+                    modelo = vehiculo.Modelo,
+                    color = vehiculo.Color,
+                    tipoVehiculo = vehiculo.TipoVehiculo,
+                    clienteNombreCompleto = vehiculo.ClienteNombreCompleto
+                }
+            });
+    }
+
+    public async Task<(Vehiculo Vehiculo, Dictionary<string, string> CamposAntes)> EliminarConCaptura(string id)
+    {
+        var vehiculo = await ObtenerVehiculo(id);
+        var antes = AuditCampos.CapturarVehiculo(vehiculo);
+        await EliminarVehiculo(id);
+        return (vehiculo, antes);
+    }
+
+    public async Task<Vehiculo> PrepararEdicion(Vehiculo vehiculo)
+    {
+        var original = await ObtenerVehiculo(vehiculo.Id);
+        if (original == null) return null;
+
+        vehiculo.Patente = original.Patente;
+        vehiculo.TipoVehiculo = original.TipoVehiculo;
+        vehiculo.Marca = original.Marca;
+        vehiculo.ClienteId = original.ClienteId;
+        vehiculo.ClienteNombreCompleto = original.ClienteNombreCompleto;
+        vehiculo.ClientesIds = original.ClientesIds;
+        vehiculo.ClaveAsociacionHash = original.ClaveAsociacionHash;
+        vehiculo.Estado = original.Estado;
+        return original;
+    }
+
+    public record ResultadoDesactivacion(string Error, Vehiculo Antes = null,
+        Vehiculo Despues = null, Dictionary<string, string> CamposAntes = null);
+
+    public async Task<ResultadoDesactivacion> DesactivarSinClientes(string id)
+    {
+        var vehiculo = await ObtenerVehiculo(id);
+        if (vehiculo == null)
+            return new("Vehículo no encontrado.");
+        if (TieneClientesAsignados(vehiculo))
+            return new($"No se puede desactivar el vehículo porque está asignado al cliente: {vehiculo.ClienteNombreCompleto}. Para desactivarlo, primero remuévalo del cliente desde la edición del cliente.");
+
+        var antes = AuditCampos.CapturarVehiculo(vehiculo);
+        await CambiarEstadoVehiculo(id, "Inactivo");
+        var despues = await ObtenerVehiculo(id);
+        return new(null, vehiculo, despues, antes);
+    }
+
+    private static bool TieneClientesAsignados(Vehiculo vehiculo) =>
+        !string.IsNullOrEmpty(vehiculo.ClienteId) || (vehiculo.ClientesIds?.Any() ?? false);
+
     private readonly FirestoreDb _firestore;
 
     public VehiculoService(FirestoreDb firestore)
@@ -90,45 +242,7 @@ public class VehiculoService
         var vehiculos = snapshot.Documents.Select(d => d.ConvertTo<Vehiculo>()).ToList();
         await ActualizarNombresTitulares(vehiculos);
 
-        // Filtrado por estado (por defecto solo Activos)
-        if (estados != null && estados.Any())
-        {
-            vehiculos = vehiculos.Where(v => estados.Contains(v.Estado)).ToList();
-        }
-        else
-        {
-            vehiculos = vehiculos.Where(v => v.Estado == "Activo").ToList();
-        }
-
-        // Filtrado en memoria por búsqueda
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            string term = searchTerm.ToLowerInvariant();
-            vehiculos = vehiculos.Where(v =>
-                v.Patente.ToLowerInvariant().Contains(term) ||
-                v.Marca.ToLowerInvariant().Contains(term) ||
-                v.Modelo.ToLowerInvariant().Contains(term) ||
-                (v.ClienteNombreCompleto != null && v.ClienteNombreCompleto.ToLowerInvariant().Contains(term))
-            ).ToList();
-        }
-
-        // Filtrado por tipos de vehículo
-        if (tiposVehiculo != null && tiposVehiculo.Any())
-        {
-            vehiculos = vehiculos.Where(v => tiposVehiculo.Contains(v.TipoVehiculo)).ToList();
-        }
-
-        // Filtrado por marcas
-        if (marcas != null && marcas.Any())
-        {
-            vehiculos = vehiculos.Where(v => marcas.Contains(v.Marca)).ToList();
-        }
-
-        // Filtrado por colores
-        if (colores != null && colores.Any())
-        {
-            vehiculos = vehiculos.Where(v => colores.Contains(v.Color)).ToList();
-        }
+        vehiculos = FiltrarVehiculos(vehiculos, searchTerm, tiposVehiculo, marcas, colores, estados);
 
         // Ordenamiento
         vehiculos = sortOrder?.ToLower() == "desc"
@@ -149,6 +263,13 @@ public class VehiculoService
         var vehiculos = snapshot.Documents.Select(d => d.ConvertTo<Vehiculo>()).ToList();
         await ActualizarNombresTitulares(vehiculos);
 
+        vehiculos = FiltrarVehiculos(vehiculos, searchTerm, tiposVehiculo, marcas, colores, estados);
+
+        return vehiculos.Count;
+    }
+
+    private static List<Vehiculo> FiltrarVehiculos(List<Vehiculo> vehiculos, string searchTerm, List<string> tiposVehiculo, List<string> marcas, List<string> colores, List<string> estados)
+    {
         // Filtrado por estado
         if (estados != null && estados.Any())
         {
@@ -185,7 +306,7 @@ public class VehiculoService
             vehiculos = vehiculos.Where(v => colores.Contains(v.Color)).ToList();
         }
 
-        return vehiculos.Count;
+        return vehiculos;
     }
 
     public async Task<List<string>> ObtenerMarcasUnicas()

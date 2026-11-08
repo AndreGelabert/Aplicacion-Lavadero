@@ -15,14 +15,14 @@ namespace Firebase.Controllers
     public class TipoVehiculoController : Controller
     {
         private readonly TipoVehiculoService _tipoVehiculoService;
-        private readonly AuditService _auditService;
+        private readonly IAuditWriter _auditService;
 
         /// <summary>
         /// Constructor que inyecta las dependencias necesarias.
         /// </summary>
         /// <param name="tipoVehiculoService">Servicio para operaciones con tipos de vehículo.</param>
         /// <param name="auditService">Servicio para registro de auditoría.</param>
-        public TipoVehiculoController(TipoVehiculoService tipoVehiculoService, AuditService auditService)
+        public TipoVehiculoController(TipoVehiculoService tipoVehiculoService, IAuditWriter auditService)
         {
             _tipoVehiculoService = tipoVehiculoService;
             _auditService = auditService;

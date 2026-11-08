@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Firebase.Models;
+using Firebase.Services;
 using Google.Api.Gax;
 using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Http;
@@ -18,7 +19,7 @@ public class AuditClientCaptureTests
         var db = new FirestoreDbBuilder { ProjectId = "demo-lava-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var clients = new ClienteService(db); var vehicles = new VehiculoService(db);
         var identity = new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, "actor"), new Claim(ClaimTypes.Email, "actor@example.invalid"), new Claim("permiso", "Clientes.Crear"), new Claim("permiso", "Clientes.Modificar"), new Claim("permiso", "Vehiculos.Crear") }, "test");
-        var controller = new ClienteController(clients, new TipoDocumentoService(db), vehicles, new AuditService(db), NullLogger<ClienteController>.Instance) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) } } };
+        var controller = new ClienteController(clients, new TipoDocumentoService(db), vehicles, new AuditService(db), NullLogger<ClienteController>.Instance, new ClienteLifecycleService(clients, vehicles, new AuditService(db)), new ClienteVehicleService(clients, vehicles, new AuditService(db))) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) } } };
         var client = new Cliente { Id = "", Nombre = "Juan", Apellido = "Perez", TipoDocumento = "DNI", NumeroDocumento = "123", Telefono = "1234567890", Email = "juan@example.invalid" };
         const string input = "[{\"EsNuevo\":true,\"Patente\":\"abc123\",\"Marca\":\"Marca\",\"Modelo\":\"Modelo\",\"Color\":\"Azul\",\"TipoVehiculo\":\"Auto\"}]";
         Assert.IsType<PartialViewResult>(await controller.CrearClienteAjax(client, input));

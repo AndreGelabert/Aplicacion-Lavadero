@@ -17,7 +17,7 @@ namespace Firebase.Services
         #region Dependencias
         private readonly IConfiguration _configuration;
         private readonly FirestoreDb _firestore;
-        private readonly AuditService _auditService;
+        private readonly IAuditWriter _auditService;
         private readonly HttpClient _httpClient;
         private readonly string _firebaseApiKey;
 
@@ -28,7 +28,7 @@ namespace Firebase.Services
         /// <param name="firestore">Instancia de FirestoreDb.</param>
         /// <param name="auditService">Servicio de auditoría.</param>
         /// <param name="httpClient">Cliente HTTP para llamadas a Firebase.</param>
-        public AuthenticationService(IConfiguration configuration, FirestoreDb firestore, AuditService auditService, HttpClient httpClient)
+        public AuthenticationService(IConfiguration configuration, FirestoreDb firestore, IAuditWriter auditService, HttpClient httpClient)
         {
             _configuration = configuration;
             _firestore = firestore;

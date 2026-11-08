@@ -13,6 +13,19 @@ public class ClienteService
         _firestore = firestore;
     }
 
+    public async Task<List<Cliente>> ObtenerAsociadosVehiculo(Vehiculo vehiculo)
+    {
+        var ids = (vehiculo.ClientesIds ?? new List<string>()).Append(vehiculo.ClienteId)
+            .Where(x => !string.IsNullOrEmpty(x)).Distinct();
+        var clientes = new List<Cliente>();
+        foreach (var clienteId in ids)
+        {
+            var cliente = await ObtenerCliente(clienteId);
+            if (cliente != null) clientes.Add(cliente);
+        }
+        return clientes;
+    }
+
     /// <summary>
     /// Obtiene una lista paginada y filtrada de clientes.
     /// </summary>
@@ -28,27 +41,7 @@ public class ClienteService
         var snapshot = await clientesRef.GetSnapshotAsync();
         var clientes = snapshot.Documents.Select(d => d.ConvertTo<Cliente>()).ToList();
 
-        // Filtrado por estado (por defecto solo Activos)
-        if (estados != null && estados.Any())
-        {
-            clientes = clientes.Where(c => estados.Contains(c.Estado)).ToList();
-        }
-        else
-        {
-            clientes = clientes.Where(c => c.Estado == "Activo").ToList();
-        }
-
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            string term = searchTerm.ToLowerInvariant();
-            clientes = clientes.Where(c =>
-                c.Nombre.ToLowerInvariant().Contains(term) ||
-                c.Apellido.ToLowerInvariant().Contains(term) ||
-                c.NumeroDocumento.Contains(term) ||
-                c.Email.ToLowerInvariant().Contains(term) ||
-                (!string.IsNullOrEmpty(c.Telefono) && c.Telefono.Contains(term))
-            ).ToList();
-        }
+        clientes = AplicarFiltros(clientes, searchTerm, estados);
 
         // Ordenamiento
         clientes = sortOrder?.ToLower() == "desc"
@@ -71,7 +64,12 @@ public class ClienteService
         var snapshot = await clientesRef.GetSnapshotAsync();
         var clientes = snapshot.Documents.Select(d => d.ConvertTo<Cliente>()).ToList();
 
-        // Filtrado por estado
+        return AplicarFiltros(clientes, searchTerm, estados).Count;
+    }
+
+    private static List<Cliente> AplicarFiltros(List<Cliente> clientes, string searchTerm, List<string> estados)
+    {
+        // Filtrado compartido del listado y su contador
         if (estados != null && estados.Any())
         {
             clientes = clientes.Where(c => estados.Contains(c.Estado)).ToList();
@@ -93,7 +91,7 @@ public class ClienteService
             ).ToList();
         }
 
-        return clientes.Count;
+        return clientes;
     }
 
     /// <summary>

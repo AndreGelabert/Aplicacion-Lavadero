@@ -12,21 +12,26 @@ public class ClienteController : Controller
     private readonly ClienteService _clienteService;
     private readonly TipoDocumentoService _tipoDocumentoService;
     private readonly VehiculoService _vehiculoService;
-    private readonly AuditService _auditService;
+    private readonly IAuditWriter _auditService;
     private readonly ILogger<ClienteController> _logger;
+    private readonly ClienteLifecycleService _lifecycle;
+    private readonly ClienteVehicleService _clienteVehicles;
 
     public ClienteController(
         ClienteService clienteService,
         TipoDocumentoService tipoDocumentoService,
         VehiculoService vehiculoService,
-        AuditService auditService,
-        ILogger<ClienteController> logger)
+        IAuditWriter auditService,
+        ILogger<ClienteController> logger,
+        ClienteLifecycleService lifecycle, ClienteVehicleService clienteVehicles)
     {
         _clienteService = clienteService;
         _tipoDocumentoService = tipoDocumentoService;
         _vehiculoService = vehiculoService;
         _auditService = auditService;
         _logger = logger;
+        _lifecycle = lifecycle;
+        _clienteVehicles = clienteVehicles;
     }
 
     [HttpGet]
@@ -42,27 +47,7 @@ public class ClienteController : Controller
     {
         var puedeConsultar = User.TienePermiso("Clientes.Consultar");
 
-        // Si no se especifican estados, por defecto mostrar solo Activos
-        if (estados == null || !estados.Any())
-        {
-            estados = new List<string> { "Activo" };
-        }
-
-        var clientes = puedeConsultar
-            ? await _clienteService.ObtenerClientes(searchTerm, pageNumber, pageSize, sortBy, sortOrder, estados)
-            : new List<Cliente>();
-        var totalClientes = puedeConsultar
-            ? await _clienteService.ObtenerTotalClientes(searchTerm, estados)
-            : 0;
-        var totalPages = Math.Max((int)Math.Ceiling(totalClientes / (double)pageSize), 1);
-
-        ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = totalPages;
-        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-        ViewBag.SortBy = sortBy;
-        ViewBag.SortOrder = sortOrder;
-        ViewBag.SearchTerm = searchTerm;
-        ViewBag.Estados = estados;
+        var clientes = await PrepararListado(searchTerm, estados, pageNumber, pageSize, sortBy, sortOrder, puedeConsultar);
         ViewBag.PageSize = pageSize;
 
         await CargarListasForm();
@@ -81,22 +66,7 @@ public class ClienteController : Controller
         string sortBy = "Nombre",
         string sortOrder = "asc")
     {
-        if (estados == null || !estados.Any())
-        {
-            estados = new List<string> { "Activo" };
-        }
-
-        var clientes = await _clienteService.ObtenerClientes(searchTerm, pageNumber, pageSize, sortBy, sortOrder, estados);
-        var totalClientes = await _clienteService.ObtenerTotalClientes(searchTerm, estados);
-        var totalPages = Math.Max((int)Math.Ceiling(totalClientes / (double)pageSize), 1);
-
-        ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = totalPages;
-        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-        ViewBag.SortBy = sortBy;
-        ViewBag.SortOrder = sortOrder;
-        ViewBag.SearchTerm = searchTerm;
-        ViewBag.Estados = estados;
+        var clientes = await PrepararListado(searchTerm, estados, pageNumber, pageSize, sortBy, sortOrder);
 
         return PartialView("_ClienteTable", clientes);
     }
@@ -178,56 +148,15 @@ public class ClienteController : Controller
                 return await PrepararRespuestaAjax(false, cliente, null);
             }
 
-            List<VehiculoData>? vehiculosData = null;
-            
-            if (!string.IsNullOrWhiteSpace(vehiculosDataJson))
+            var vehiculosData = DeserializarVehiculos(vehiculosDataJson);
+            var validacion = await _clienteVehicles.Validar(cliente, vehiculosData, true);
+            if (validacion.ErrorMessage != null)
             {
-                try
-                {
-                    var options = new System.Text.Json.JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    };
-                    
-                    vehiculosData = System.Text.Json.JsonSerializer.Deserialize<List<VehiculoData>>(vehiculosDataJson, options);
-                }
-                catch (System.Text.Json.JsonException)
-                {
-                    vehiculosData = new List<VehiculoData>();
-                }
-            }
-
-            if (vehiculosData == null || !vehiculosData.Any())
-            {
-                ModelState.AddModelError("", "Debe agregar al menos un vehículo.");
+                ModelState.AddModelError(validacion.ErrorKey!, validacion.ErrorMessage);
                 return await PrepararRespuestaAjax(false, cliente, null);
             }
 
-            // Reject invalid manual proposals before persisting the client.
-            foreach (var data in vehiculosData.Where(item => item.EsNuevo))
-                _ = VehicleCatalogueProposal.FromClientInput(data.TipoVehiculo, data.Marca, data.MarcaId,
-                    data.Modelo, data.MarcaManual, data.ModeloManual);
-
-            foreach (var data in vehiculosData.Where(item => item.EsAsociacion))
-            {
-                if (await _vehiculoService.ValidarClaveYObtenerVehiculo(data.Patente.Trim().ToUpperInvariant(), data.ClaveAsociacion ?? "") is null)
-                {
-                    ModelState.AddModelError("", "La patente o la clave de asociación no son válidas.");
-                    return await PrepararRespuestaAjax(false, cliente, null);
-                }
-            }
-
-            foreach (var data in vehiculosData.Where(item => !item.EsNuevo && !item.EsAsociacion))
-            {
-                var vehiculo = string.IsNullOrWhiteSpace(data.Id) ? null : await _vehiculoService.ObtenerVehiculo(data.Id);
-                if (vehiculo is null || !PuedeVincularVehiculo(vehiculo, cliente.Id))
-                {
-                    ModelState.AddModelError("", "Uno o más vehículos ya están asociados a otro cliente.");
-                    return await PrepararRespuestaAjax(false, cliente, null);
-                }
-            }
-
-            return await GuardarAtomico(cliente, vehiculosData, true, new());
+            return await GuardarAtomico(cliente, vehiculosData!, true, new());
         }
         catch (Exception ex)
         {
@@ -237,65 +166,36 @@ public class ClienteController : Controller
         }
     }
 
-    private async Task<IActionResult> GuardarAtomico(Cliente cliente, List<VehiculoData> datos, bool crear, Dictionary<string, string> antes)
+    private async Task<IActionResult> GuardarAtomico(Cliente cliente, List<ClienteVehiculoInput> datos, bool crear, Dictionary<string, string> antes)
     {
-        var vinculos = new List<ClienteService.VinculoWeb>();
-        var claves = new List<string>();
-        foreach (var data in datos)
+        var resultado = await _clienteVehicles.Guardar(cliente, datos, crear,
+            User.FindFirstValue(ClaimTypes.NameIdentifier), User.FindFirstValue(ClaimTypes.Email));
+        if (resultado.ErrorMessage != null)
         {
-            var vinculo = new ClienteService.VinculoWeb { Id = data.Id ?? "", Patente = data.Patente, Clave = data.ClaveAsociacion ?? "", Asociacion = data.EsAsociacion, Color = data.Color, Tipo = data.TipoVehiculo };
-            if (data.EsAsociacion && string.IsNullOrWhiteSpace(data.ClaveAsociacion))
-            {
-                var clave = VehiculoService.GenerarClaveAsociacion();
-                vinculo.NuevaClaveHash = VehiculoService.HashClaveAsociacion(clave);
-                claves.Add($"{data.Patente.ToUpperInvariant()}: {clave}");
-            }
-            if (data.EsNuevo)
-            {
-                var clave = VehiculoService.GenerarClaveAsociacion();
-                vinculo.Nuevo = new Vehiculo { Id = "", Patente = data.Patente.ToUpperInvariant(), TipoVehiculo = data.TipoVehiculo, Marca = data.Marca, Modelo = data.Modelo, Color = data.Color, Estado = "Activo", ClaveAsociacionHash = VehiculoService.HashClaveAsociacion(clave) };
-                vinculo.Propuesta = VehicleCatalogueProposal.FromClientInput(data.TipoVehiculo, data.Marca, data.MarcaId, data.Modelo, data.MarcaManual, data.ModeloManual);
-                claves.Add($"{data.Patente.ToUpperInvariant()}: {clave}");
-            }
-            vinculos.Add(vinculo);
-        }
-        var auditorias = new List<ClienteService.AuditoriaVehiculo>();
-        var auditoriasCliente = new List<ClienteService.AuditoriaCliente>();
-        if (!await _clienteService.GuardarClienteConVehiculos(cliente, crear, vinculos, auditorias, auditoriasCliente))
-        {
-            ModelState.AddModelError("", "No se pudo guardar. Verifique la patente y la clave; para quitar un vehículo compartido del titular, primero los demás deben desvincularse.");
+            ModelState.AddModelError(resultado.ErrorKey!, resultado.ErrorMessage);
             return await PrepararRespuestaAjax(false, cliente, null);
         }
-        foreach (var auditoria in auditorias)
-            await RegistrarEvento(auditoria.Accion, auditoria.Id, "Vehiculo", auditoria.Antes, auditoria.Despues, auditoria.Nombre);
-        var auditoriaCliente = auditoriasCliente.Single();
-        await RegistrarEvento(crear ? "Creacion de cliente" : "Actualizacion de cliente", cliente.Id, "Cliente", auditoriaCliente.Antes, auditoriaCliente.Despues, auditoriaCliente.Nombre);
-        if (claves.Any())
+        if (resultado.Claves!.Any())
         {
-            ViewBag.AssociationKeys = System.Text.Json.JsonSerializer.Serialize(claves);
-            // Match the policy applied when the returned form issues an antiforgery token.
+            ViewBag.AssociationKeys = System.Text.Json.JsonSerializer.Serialize(resultado.Claves);
             Response.Headers.CacheControl = "no-cache, no-store";
             Response.Headers.Pragma = "no-cache";
         }
         return await PrepararRespuestaAjax(true, cliente, crear ? "Creacion de cliente" : "Actualizacion de cliente", antes, auditoriaRegistrada: true);
     }
 
-    // Clase auxiliar para deserializar datos de vehículos
-    private class VehiculoData
+    private static List<ClienteVehiculoInput>? DeserializarVehiculos(string? json)
     {
-        public string? Id { get; set; }
-        public string Patente { get; set; } = "";
-        public string Marca { get; set; } = "";
-        public string Modelo { get; set; } = "";
-        public string MarcaId { get; set; } = "";
-        public string Color { get; set; } = "";
-        public string TipoVehiculo { get; set; } = "";
-        public bool EsNuevo { get; set; }
-        public bool MarcaManual { get; set; }
-        public bool ModeloManual { get; set; }
-        public bool EsReasignacion { get; set; } // Para indicar reasignación de vehículo sin dueño
-        public bool EsAsociacion { get; set; } // Para indicar asociación a vehículo existente con clave
-        public string? ClaveAsociacion { get; set; } // Clave de asociación para vehículos compartidos
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<List<ClienteVehiculoInput>>(json,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return new List<ClienteVehiculoInput>();
+        }
     }
 
     [HttpPost]
@@ -319,56 +219,16 @@ public class ClienteController : Controller
                 return await PrepararRespuestaAjax(false, cliente, null);
             }
 
-            List<VehiculoData>? vehiculosData = null;
-            
-            if (!string.IsNullOrWhiteSpace(vehiculosDataJson))
+            var vehiculosData = DeserializarVehiculos(vehiculosDataJson);
+            var validacion = await _clienteVehicles.Validar(cliente, vehiculosData, false);
+            if (validacion.ErrorMessage != null)
             {
-                try
-                {
-                    var options = new System.Text.Json.JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    };
-                    
-                    vehiculosData = System.Text.Json.JsonSerializer.Deserialize<List<VehiculoData>>(vehiculosDataJson, options);
-                }
-                catch (System.Text.Json.JsonException)
-                {
-                    vehiculosData = new List<VehiculoData>();
-                }
-            }
-
-            if (vehiculosData == null || !vehiculosData.Any())
-            {
-                ModelState.AddModelError("", "Debe tener al menos un vehículo.");
+                ModelState.AddModelError(validacion.ErrorKey!, validacion.ErrorMessage);
                 return await PrepararRespuestaAjax(false, cliente, null);
             }
 
-            foreach (var data in vehiculosData.Where(item => item.EsNuevo))
-                _ = VehicleCatalogueProposal.FromClientInput(data.TipoVehiculo, data.Marca, data.MarcaId,
-                    data.Modelo, data.MarcaManual, data.ModeloManual);
-
-            foreach (var data in vehiculosData.Where(item => item.EsAsociacion))
-            {
-                if (await _vehiculoService.ValidarClaveYObtenerVehiculo(data.Patente.Trim().ToUpperInvariant(), data.ClaveAsociacion ?? "") is null)
-                {
-                    ModelState.AddModelError("", "La patente o la clave de asociación no son válidas.");
-                    return await PrepararRespuestaAjax(false, cliente, null);
-                }
-            }
-
-            foreach (var data in vehiculosData.Where(item => !item.EsNuevo && !item.EsAsociacion))
-            {
-                var vehiculo = string.IsNullOrWhiteSpace(data.Id) ? null : await _vehiculoService.ObtenerVehiculo(data.Id);
-                if (vehiculo is null || !PuedeVincularVehiculo(vehiculo, cliente.Id))
-                {
-                    ModelState.AddModelError("", "Uno o más vehículos ya están asociados a otro cliente.");
-                    return await PrepararRespuestaAjax(false, cliente, null);
-                }
-            }
-
             var antesCliente = AuditCampos.CapturarCliente(clienteActual);
-            return await GuardarAtomico(cliente, vehiculosData, false, antesCliente);
+            return await GuardarAtomico(cliente, vehiculosData!, false, antesCliente);
         }
         catch (Exception ex)
         {
@@ -385,76 +245,8 @@ public class ClienteController : Controller
     {
         try
         {
-            // Obtener vehículos del cliente
-            var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(id);
-            
-            int vehiculosDesactivados = 0;
-            int vehiculosCompartidosNoDesactivados = 0;
-            
-            // Procesar cada vehículo activo
-            foreach (var vehiculo in vehiculos.Where(v => v.Estado == "Activo"))
-            {
-                // Verificar si el vehículo es compartido (tiene otros clientes activos)
-                bool tieneOtrosClientesActivos = false;
-                
-                if (vehiculo.ClientesIds != null && vehiculo.ClientesIds.Any())
-                {
-                    // Verificar si hay otros clientes activos que usan este vehículo
-                    foreach (var clienteId in vehiculo.ClientesIds.Where(c => c != id))
-                    {
-                        var otroCliente = await _clienteService.ObtenerCliente(clienteId);
-                        if (otroCliente != null && otroCliente.Estado == "Activo")
-                        {
-                            tieneOtrosClientesActivos = true;
-                            break;
-                        }
-                    }
-                }
-                
-                // También verificar ClienteId principal si es diferente
-                if (!tieneOtrosClientesActivos && !string.IsNullOrEmpty(vehiculo.ClienteId) && vehiculo.ClienteId != id)
-                {
-                    var clientePrincipal = await _clienteService.ObtenerCliente(vehiculo.ClienteId);
-                    if (clientePrincipal != null && clientePrincipal.Estado == "Activo")
-                    {
-                        tieneOtrosClientesActivos = true;
-                    }
-                }
-                
-                if (tieneOtrosClientesActivos)
-                {
-                    // No desactivar el vehículo porque otros clientes activos lo usan
-                    vehiculosCompartidosNoDesactivados++;
-                }
-                else
-                {
-                    // Desactivar el vehículo porque es exclusivo de este cliente (o compartido solo con clientes inactivos)
-                    var antesVehiculo = AuditCampos.CapturarVehiculo(vehiculo);
-                    await _vehiculoService.CambiarEstadoVehiculo(vehiculo.Id, "Inactivo");
-                    await RegistrarVehiculo("Desactivacion de vehiculo (por desactivacion de cliente)", vehiculo.Id, antesVehiculo);
-                    vehiculosDesactivados++;
-                }
-            }
-            
-            // Desactivar el cliente
-            var antesCliente = AuditCampos.CapturarCliente(await _clienteService.ObtenerCliente(id));
-            await _clienteService.CambiarEstadoCliente(id, "Inactivo");
-            await RegistrarCliente("Desactivacion de cliente", id, antesCliente);
-            
-            // Construir mensaje informativo
-            var mensajeParts = new List<string> { "Cliente desactivado correctamente." };
-            
-            if (vehiculosDesactivados > 0)
-            {
-                mensajeParts.Add($"Se desactivaron {vehiculosDesactivados} vehículo(s) exclusivo(s).");
-            }
-            
-            if (vehiculosCompartidosNoDesactivados > 0)
-            {
-                mensajeParts.Add($"{vehiculosCompartidosNoDesactivados} vehículo(s) compartido(s) permanecen activos (usados por otros clientes).");
-            }
-            
-            return Json(new { success = true, message = string.Join(" ", mensajeParts) });
+            var message = await _lifecycle.Desactivar(id, User.FindFirstValue(ClaimTypes.NameIdentifier), User.FindFirstValue(ClaimTypes.Email));
+            return Json(new { success = true, message });
         }
         catch (Exception ex)
         {
@@ -470,76 +262,8 @@ public class ClienteController : Controller
     {
         try
         {
-            // Obtener vehículos del cliente
-            var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(id);
-            
-            int vehiculosReactivados = 0;
-            int vehiculosYaActivos = 0;
-            
-            // Procesar cada vehículo inactivo
-            foreach (var vehiculo in vehiculos.Where(v => v.Estado == "Inactivo"))
-            {
-                // Solo reactivar si el vehículo tenía algún dueño (no quedó huérfano)
-                bool tieneAlgunCliente = !string.IsNullOrEmpty(vehiculo.ClienteId) || 
-                                         (vehiculo.ClientesIds != null && vehiculo.ClientesIds.Any());
-                
-                if (tieneAlgunCliente)
-                {
-                    // Verificar si algún otro cliente activo ya está usando este vehículo
-                    bool tieneOtroClienteActivo = false;
-                    
-                    if (vehiculo.ClientesIds != null)
-                    {
-                        foreach (var clienteId in vehiculo.ClientesIds.Where(c => c != id))
-                        {
-                            var otroCliente = await _clienteService.ObtenerCliente(clienteId);
-                            if (otroCliente != null && otroCliente.Estado == "Activo")
-                            {
-                                tieneOtroClienteActivo = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (!tieneOtroClienteActivo && !string.IsNullOrEmpty(vehiculo.ClienteId) && vehiculo.ClienteId != id)
-                    {
-                        var clientePrincipal = await _clienteService.ObtenerCliente(vehiculo.ClienteId);
-                        if (clientePrincipal != null && clientePrincipal.Estado == "Activo")
-                        {
-                            tieneOtroClienteActivo = true;
-                        }
-                    }
-                    
-                    // Reactivar el vehículo (ya sea porque es exclusivo de este cliente o compartido)
-                    var antesVehiculo = AuditCampos.CapturarVehiculo(vehiculo);
-                    await _vehiculoService.CambiarEstadoVehiculo(vehiculo.Id, "Activo");
-                    await RegistrarVehiculo("Reactivacion de vehiculo (por reactivacion de cliente)", vehiculo.Id, antesVehiculo);
-                    vehiculosReactivados++;
-                }
-            }
-            
-            // Contar vehículos que ya estaban activos (compartidos con otros clientes activos)
-            vehiculosYaActivos = vehiculos.Count(v => v.Estado == "Activo");
-            
-            // Reactivar el cliente
-            var antesCliente = AuditCampos.CapturarCliente(await _clienteService.ObtenerCliente(id));
-            await _clienteService.CambiarEstadoCliente(id, "Activo");
-            await RegistrarCliente("Reactivacion de cliente", id, antesCliente);
-            
-            // Construir mensaje informativo
-            var mensajeParts = new List<string> { "Cliente reactivado correctamente." };
-            
-            if (vehiculosReactivados > 0)
-            {
-                mensajeParts.Add($"Se reactivaron {vehiculosReactivados} vehículo(s).");
-            }
-            
-            if (vehiculosYaActivos > 0)
-            {
-                mensajeParts.Add($"{vehiculosYaActivos} vehículo(s) ya estaban activos (compartidos con otros clientes).");
-            }
-            
-            return Json(new { success = true, message = string.Join(" ", mensajeParts) });
+            var message = await _lifecycle.Reactivar(id, User.FindFirstValue(ClaimTypes.NameIdentifier), User.FindFirstValue(ClaimTypes.Email));
+            return Json(new { success = true, message });
         }
         catch (Exception ex)
         {
@@ -557,61 +281,9 @@ public class ClienteController : Controller
 
         try
         {
-            var cliente = await _clienteService.ObtenerCliente(clienteId);
-            if (cliente == null)
-            {
+            var vehiculosConInfo = await _clienteVehicles.ObtenerVehiculos(clienteId);
+            if (vehiculosConInfo == null)
                 return Json(new { success = false, message = "Cliente no encontrado" });
-            }
-
-            var vehiculos = await _vehiculoService.ObtenerVehiculosPorCliente(clienteId);
-            
-            // Para cada vehículo, determinar si es compartido con otros clientes activos
-            var vehiculosConInfo = new List<object>();
-            foreach (var v in vehiculos)
-            {
-                bool esCompartido = false;
-                int cantidadOtrosClientesActivos = 0;
-                
-                // Verificar si hay otros clientes activos que usan este vehículo
-                if (v.ClientesIds != null && v.ClientesIds.Any())
-                {
-                    foreach (var otroClienteId in v.ClientesIds.Where(c => c != clienteId))
-                    {
-                        var otroCliente = await _clienteService.ObtenerCliente(otroClienteId);
-                        if (otroCliente != null && otroCliente.Estado == "Activo")
-                        {
-                            esCompartido = true;
-                            cantidadOtrosClientesActivos++;
-                        }
-                    }
-                }
-                
-                // También verificar ClienteId principal si es diferente
-                if (!esCompartido && !string.IsNullOrEmpty(v.ClienteId) && v.ClienteId != clienteId)
-                {
-                    var clientePrincipal = await _clienteService.ObtenerCliente(v.ClienteId);
-                    if (clientePrincipal != null && clientePrincipal.Estado == "Activo")
-                    {
-                        esCompartido = true;
-                        cantidadOtrosClientesActivos++;
-                    }
-                }
-                
-                vehiculosConInfo.Add(new
-                {
-                    id = v.Id,
-                    patente = v.Patente,
-                    marca = v.Marca,
-                    modelo = v.Modelo,
-                    color = v.Color,
-                    tipoVehiculo = v.TipoVehiculo,
-                    estado = v.Estado,
-                    esCompartido = esCompartido,
-                    esTitular = v.ClienteId == clienteId,
-                    tieneOtrosAsociados = v.ClientesIds?.Any(id => !string.IsNullOrWhiteSpace(id) && id != clienteId) == true,
-                    cantidadOtrosClientesActivos = cantidadOtrosClientesActivos
-                });
-            }
             
             return Json(new
             {
@@ -705,6 +377,34 @@ public class ClienteController : Controller
         return PartialView("_ClienteForm", null);
     }
 
+    private async Task<List<Cliente>> PrepararListado(
+        string searchTerm, List<string> estados, int pageNumber, int pageSize,
+        string sortBy, string sortOrder, bool puedeConsultar = true)
+    {
+        // Si no se especifican estados, por defecto mostrar solo Activos
+        if (estados == null || !estados.Any())
+        {
+            estados = new List<string> { "Activo" };
+        }
+
+        var clientes = puedeConsultar
+            ? await _clienteService.ObtenerClientes(searchTerm, pageNumber, pageSize, sortBy, sortOrder, estados)
+            : new List<Cliente>();
+        var totalClientes = puedeConsultar
+            ? await _clienteService.ObtenerTotalClientes(searchTerm, estados)
+            : 0;
+        var totalPages = Math.Max((int)Math.Ceiling(totalClientes / (double)pageSize), 1);
+
+        ViewBag.CurrentPage = pageNumber;
+        ViewBag.TotalPages = totalPages;
+        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
+        ViewBag.SortBy = sortBy;
+        ViewBag.SortOrder = sortOrder;
+        ViewBag.SearchTerm = searchTerm;
+        ViewBag.Estados = estados;
+        return clientes;
+    }
+
     private List<int> GetVisiblePages(int currentPage, int totalPages, int range = 2)
     {
         var start = Math.Max(1, currentPage - range);
@@ -738,11 +438,4 @@ public class ClienteController : Controller
         await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad);
     }
 
-    private static bool PuedeVincularVehiculo(Vehiculo vehiculo, string clienteId)
-    {
-        var asociadoACliente = vehiculo.ClienteId == clienteId || vehiculo.ClientesIds?.Contains(clienteId) == true;
-        var sinPropietario = string.IsNullOrEmpty(vehiculo.ClienteId) &&
-            (vehiculo.ClientesIds == null || vehiculo.ClientesIds.Count == 0);
-        return asociadoACliente || sinPropietario;
-    }
 }

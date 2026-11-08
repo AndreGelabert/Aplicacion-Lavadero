@@ -23,7 +23,7 @@ public class ClienteVehicleCatalogueProposalTests
         }.Build();
         var controller = new ClienteController(
             new ClienteService(db), new TipoDocumentoService(db), new VehiculoService(db), new AuditService(db),
-            NullLogger<ClienteController>.Instance);
+            NullLogger<ClienteController>.Instance, new ClienteLifecycleService(new ClienteService(db), new VehiculoService(db), new AuditService(db)), new ClienteVehicleService(new ClienteService(db), new VehiculoService(db), new AuditService(db)));
         var context = new DefaultHttpContext();
         context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
@@ -87,7 +87,7 @@ public class ClienteVehicleCatalogueProposalTests
             new Claim("permiso", "Vehiculos.Crear")
         }, "test"));
         var controller = new ClienteController(clients, new TipoDocumentoService(db), new VehiculoService(db), new AuditService(db),
-            NullLogger<ClienteController>.Instance)
+            NullLogger<ClienteController>.Instance, new ClienteLifecycleService(clients, new VehiculoService(db), new AuditService(db)), new ClienteVehicleService(clients, new VehiculoService(db), new AuditService(db)))
         {
             ControllerContext = new ControllerContext { HttpContext = context }
         };
@@ -128,7 +128,7 @@ public class ClienteVehicleCatalogueProposalTests
         };
         await vehicles.CrearVehiculo(existingVehicle);
         var controller = new ClienteController(new ClienteService(db), new TipoDocumentoService(db), vehicles,
-            new AuditService(db), NullLogger<ClienteController>.Instance);
+            new AuditService(db), NullLogger<ClienteController>.Instance, new ClienteLifecycleService(new ClienteService(db), vehicles, new AuditService(db)), new ClienteVehicleService(new ClienteService(db), vehicles, new AuditService(db)));
         var context = new DefaultHttpContext();
         context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
@@ -166,7 +166,7 @@ public class ClienteVehicleCatalogueProposalTests
             EmulatorDetection = EmulatorDetection.EmulatorOnly
         }.Build();
         var controller = new ClienteController(new ClienteService(db), new TipoDocumentoService(db),
-            new VehiculoService(db), new AuditService(db), NullLogger<ClienteController>.Instance);
+            new VehiculoService(db), new AuditService(db), NullLogger<ClienteController>.Instance, new ClienteLifecycleService(new ClienteService(db), new VehiculoService(db), new AuditService(db)), new ClienteVehicleService(new ClienteService(db), new VehiculoService(db), new AuditService(db)));
         var context = new DefaultHttpContext();
         context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
@@ -214,7 +214,7 @@ public class ClienteVehicleCatalogueProposalTests
         };
         await vehicles.CrearVehiculo(existingVehicle);
         var controller = new ClienteController(new ClienteService(db), new TipoDocumentoService(db), vehicles,
-            new AuditService(db), NullLogger<ClienteController>.Instance);
+            new AuditService(db), NullLogger<ClienteController>.Instance, new ClienteLifecycleService(new ClienteService(db), vehicles, new AuditService(db)), new ClienteVehicleService(new ClienteService(db), vehicles, new AuditService(db)));
         var context = new DefaultHttpContext();
         context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {

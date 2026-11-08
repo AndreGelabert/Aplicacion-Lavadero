@@ -11,7 +11,7 @@ public class VehiculoController : Controller
     private readonly VehiculoService _vehiculoService;
     private readonly TipoVehiculoService _tipoVehiculoService;
     private readonly ClienteService _clienteService;
-    private readonly AuditService _auditService;
+    private readonly IAuditWriter _auditService;
     private readonly ICarQueryService _carQueryService;
     private readonly ILogger<VehiculoController> _logger; // Agregado el logger
 
@@ -19,7 +19,7 @@ public class VehiculoController : Controller
         VehiculoService vehiculoService,
         TipoVehiculoService tipoVehiculoService,
         ClienteService clienteService,
-        AuditService auditService,
+        IAuditWriter auditService,
         ICarQueryService carQueryService,
         ILogger<VehiculoController> logger) // Inyectado el logger
     {
@@ -55,26 +55,7 @@ public class VehiculoController : Controller
             return View(new List<Vehiculo>());
         }
 
-        // Si no se especifican estados, por defecto mostrar solo Activos
-        if (estados == null || !estados.Any())
-        {
-            estados = new List<string> { "Activo" };
-        }
-
-        var vehiculos = await _vehiculoService.ObtenerVehiculos(searchTerm, tiposVehiculo, marcas, colores, pageNumber, pageSize, sortBy, sortOrder, estados);
-        var totalVehiculos = await _vehiculoService.ObtenerTotalVehiculos(searchTerm, tiposVehiculo, marcas, colores, estados);
-        var totalPages = Math.Max((int)Math.Ceiling(totalVehiculos / (double)pageSize), 1);
-
-        ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = totalPages;
-        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-        ViewBag.SortBy = sortBy;
-        ViewBag.SortOrder = sortOrder;
-        ViewBag.SearchTerm = searchTerm;
-        ViewBag.TiposVehiculoFiltrados = tiposVehiculo;
-        ViewBag.MarcasFiltradas = marcas;
-        ViewBag.ColoresFiltrados = colores;
-        ViewBag.Estados = estados;
+        var vehiculos = await PrepararListado(searchTerm, tiposVehiculo, marcas, colores, estados, pageNumber, pageSize, sortBy, sortOrder);
         ViewBag.PageSize = pageSize;
 
         await CargarListasForm();
@@ -110,6 +91,21 @@ public class VehiculoController : Controller
         string sortBy = "Patente",
         string sortOrder = "asc")
     {
+        var vehiculos = await PrepararListado(searchTerm, tiposVehiculo, marcas, colores, estados, pageNumber, pageSize, sortBy, sortOrder);
+        return PartialView("_VehiculoTable", vehiculos);
+    }
+
+    private async Task<List<Vehiculo>> PrepararListado(
+        string searchTerm,
+        List<string> tiposVehiculo,
+        List<string> marcas,
+        List<string> colores,
+        List<string> estados,
+        int pageNumber,
+        int pageSize,
+        string sortBy,
+        string sortOrder)
+    {
         if (estados == null || !estados.Any())
         {
             estados = new List<string> { "Activo" };
@@ -130,7 +126,7 @@ public class VehiculoController : Controller
         ViewBag.ColoresFiltrados = colores;
         ViewBag.Estados = estados;
 
-        return PartialView("_VehiculoTable", vehiculos);
+        return vehiculos;
     }
 
     [HttpGet]
@@ -185,14 +181,7 @@ public class VehiculoController : Controller
         if (!User.TienePermiso("Clientes.Consultar")) return Forbid();
         var vehiculo = await _vehiculoService.ObtenerVehiculo(id);
         if (vehiculo == null) return NotFound();
-        var ids = (vehiculo.ClientesIds ?? new List<string>()).Append(vehiculo.ClienteId)
-            .Where(x => !string.IsNullOrEmpty(x)).Distinct();
-        var clientes = new List<Cliente>();
-        foreach (var clienteId in ids)
-        {
-            var cliente = await _clienteService.ObtenerCliente(clienteId);
-            if (cliente != null) clientes.Add(cliente);
-        }
+        var clientes = await _clienteService.ObtenerAsociadosVehiculo(vehiculo);
         ViewBag.Patente = vehiculo.Patente;
         ViewBag.TitularId = vehiculo.ClienteId;
         return PartialView("_Asociados", clientes);
@@ -238,69 +227,7 @@ public class VehiculoController : Controller
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(patente))
-            {
-                return Json(new { existe = false });
-            }
-
-            var vehiculoExistente = await _vehiculoService.ObtenerVehiculoPorPatente(patente.ToUpper());
-            
-            // CASO 1: No existe ningún vehículo con esa patente → OK, puede crear
-            if (vehiculoExistente == null)
-            {
-                return Json(new { existe = false });
-            }
-            
-            if (VehiculoService.EsHuerfanoReclamable(vehiculoExistente))
-                return Json(new { existe = false, asociable = true });
-
-            // CASO 2: Existe vehículo ACTIVO → ERROR, patente duplicada
-            if (vehiculoExistente.Estado == "Activo")
-            {
-                return Json(new 
-                { 
-                    existe = false,
-                    asociable = !string.IsNullOrEmpty(vehiculoExistente.ClienteId) || (vehiculoExistente.ClientesIds?.Any() ?? false),
-                    error = $"Ya existe un vehículo activo con la patente {vehiculoExistente.Patente} ({vehiculoExistente.TipoVehiculo} - {vehiculoExistente.Marca} {vehiculoExistente.Modelo}). No se pueden registrar patentes duplicadas."
-                });
-            }
-            
-            // CASO 3: Existe vehículo INACTIVO pero CON DUEÑO → ERROR, no se puede reasignar
-            if (!string.IsNullOrEmpty(vehiculoExistente.ClienteId) || (vehiculoExistente.ClientesIds?.Any() ?? false))
-            {
-                return Json(new 
-                { 
-                    existe = false, 
-                    error = $"Ya existe un vehículo con la patente {vehiculoExistente.Patente} asignado al cliente {vehiculoExistente.ClienteNombreCompleto}. No se pueden registrar patentes duplicadas."
-                });
-            }
-            
-            // CASO 4: Existe vehículo INACTIVO, SIN DUEÑO, con misma marca y modelo → REASIGNACIÓN
-            if (VehiculoService.EsHuerfanoReclamable(vehiculoExistente) && vehiculoExistente.Marca.Equals(marca, StringComparison.OrdinalIgnoreCase) &&
-                vehiculoExistente.Modelo.Equals(modelo, StringComparison.OrdinalIgnoreCase))
-            {
-                return Json(new
-                {
-                    existe = true,
-                    vehiculo = new
-                    {
-                        id = vehiculoExistente.Id,
-                        patente = vehiculoExistente.Patente,
-                        marca = vehiculoExistente.Marca,
-                        modelo = vehiculoExistente.Modelo,
-                        color = vehiculoExistente.Color,
-                        tipoVehiculo = vehiculoExistente.TipoVehiculo
-                    }
-                });
-            }
-            
-            // CASO 5: Existe vehículo INACTIVO, SIN DUEÑO, pero DIFERENTE marca/modelo → ERROR
-            // Esto indica que la misma patente perteneció a un vehículo distinto
-            return Json(new 
-            { 
-                existe = false, 
-                error = $"Ya existe un vehículo registrado con la patente {vehiculoExistente.Patente}, pero es un {vehiculoExistente.TipoVehiculo} {vehiculoExistente.Marca} {vehiculoExistente.Modelo}. Está ingresando datos de un {marca} {modelo}. Verifique la patente."
-            });
+            return Json(await _vehiculoService.EvaluarDisponibilidadPatente(patente, marca, modelo));
         }
         catch (Exception ex)
         {
@@ -315,23 +242,8 @@ public class VehiculoController : Controller
     {
         try
         {
-            // Validaciones de solo lectura (Patente, Tipo, Marca no editables)
-            // Debemos obtener el original para comparar o restaurar
-            var original = await _vehiculoService.ObtenerVehiculo(vehiculo.Id);
+            var original = await _vehiculoService.PrepararEdicion(vehiculo);
             if (original == null) return NotFound();
-
-            // Restaurar campos no editables para asegurar integridad si el binder los trajo modificados (o validar que sean iguales)
-            vehiculo.Patente = original.Patente;
-            vehiculo.TipoVehiculo = original.TipoVehiculo;
-            vehiculo.Marca = original.Marca;
-            vehiculo.ClienteId = original.ClienteId; // El dueño no se cambia desde aquí según requerimiento implícito de "solo lectura"
-            vehiculo.ClienteNombreCompleto = original.ClienteNombreCompleto;
-            vehiculo.ClientesIds = original.ClientesIds;
-            vehiculo.ClaveAsociacionHash = original.ClaveAsociacionHash;
-            vehiculo.Estado = original.Estado;
-
-            // Solo Modelo y Color son editables según "Una vez registrado el vehículo, no se puede editar patente, tipo vehículo y marca"
-            // El usuario no mencionó Modelo y Color como NO editables, así que asumimos que sí.
 
             ModelState.Remove("ClienteNombreCompleto");
             if (!ModelState.IsValid) return await PrepararRespuestaAjax(false, vehiculo, null);
@@ -354,24 +266,13 @@ public class VehiculoController : Controller
     {
         try
         {
-            // Verificar si el vehículo tiene dueño
-            var vehiculo = await _vehiculoService.ObtenerVehiculo(id);
-            if (vehiculo == null)
-            {
-                return Json(new { success = false, message = "Vehículo no encontrado." });
-            }
+            var resultado = await _vehiculoService.DesactivarSinClientes(id);
+            if (resultado.Error != null)
+                return Json(new { success = false, message = resultado.Error });
 
-            if (!string.IsNullOrEmpty(vehiculo.ClienteId) || (vehiculo.ClientesIds?.Any() ?? false))
-            {
-                return Json(new { 
-                    success = false, 
-                    message = $"No se puede desactivar el vehículo porque está asignado al cliente: {vehiculo.ClienteNombreCompleto}. Para desactivarlo, primero remuévalo del cliente desde la edición del cliente." 
-                });
-            }
-
-            var antes = AuditCampos.CapturarVehiculo(vehiculo);
-            await _vehiculoService.CambiarEstadoVehiculo(id, "Inactivo");
-            var despues = await _vehiculoService.ObtenerVehiculo(id);
+            var vehiculo = resultado.Antes;
+            var antes = resultado.CamposAntes;
+            var despues = resultado.Despues;
             await RegistrarEvento("Desactivacion de vehiculo", id, "Vehiculo", antes, AuditCampos.CapturarVehiculo(despues), despues?.Patente ?? vehiculo.Patente);
             return Json(new { success = true, message = "Vehículo desactivado correctamente." });
         }
@@ -392,10 +293,9 @@ public class VehiculoController : Controller
     {
         try
         {
-            // Borrado físico - solo si realmente es necesario
-            var vehiculo = await _vehiculoService.ObtenerVehiculo(id);
-            var antes = AuditCampos.CapturarVehiculo(vehiculo);
-            await _vehiculoService.EliminarVehiculo(id);
+            var resultado = await _vehiculoService.EliminarConCaptura(id);
+            var vehiculo = resultado.Vehiculo;
+            var antes = resultado.CamposAntes;
             await RegistrarEvento("Eliminacion fisica de vehiculo", id, "Vehiculo", antes, new(), vehiculo?.Patente);
             return Json(new { success = true, message = "Vehículo eliminado correctamente." });
         }
@@ -633,42 +533,7 @@ public class VehiculoController : Controller
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(request?.Patente))
-            {
-                return Json(new { 
-                    valida = false, 
-                    error = "La patente y la clave de asociación son obligatorias." 
-                });
-            }
-
-            var vehiculo = await _vehiculoService.ValidarClaveYObtenerVehiculo(
-                request.Patente.ToUpper(), 
-                request.ClaveAsociacion ?? ""
-            );
-
-            if (vehiculo == null)
-            {
-                return Json(new { 
-                    valida = false, 
-                    error = "La clave de asociación no es válida para este vehículo." 
-                });
-            }
-
-            return Json(new
-            {
-                valida = true,
-                esHuerfano = VehiculoService.EsHuerfanoReclamable(vehiculo),
-                vehiculo = new
-                {
-                    id = vehiculo.Id,
-                    patente = vehiculo.Patente,
-                    marca = vehiculo.Marca,
-                    modelo = vehiculo.Modelo,
-                    color = vehiculo.Color,
-                    tipoVehiculo = vehiculo.TipoVehiculo,
-                    clienteNombreCompleto = vehiculo.ClienteNombreCompleto
-                }
-            });
+            return Json(await _vehiculoService.EvaluarClaveAsociacion(request?.Patente, request?.ClaveAsociacion));
         }
         catch (Exception ex)
         {

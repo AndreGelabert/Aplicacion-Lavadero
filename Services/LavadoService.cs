@@ -45,6 +45,129 @@ namespace Firebase.Services
         }
         #endregion
 
+        public ServicioEnLavado CrearServicioEnLavado(Servicio servicio, int orden, string? paqueteId, string? paqueteNombre)
+        {
+            var servicioEnLavado = new ServicioEnLavado
+            {
+                ServicioId = servicio.Id,
+                ServicioNombre = servicio.Nombre,
+                TipoServicio = servicio.Tipo,
+                Precio = servicio.Precio,
+                TiempoEstimado = servicio.TiempoEstimado,
+                Estado = "Pendiente",
+                Orden = orden,
+                PaqueteId = paqueteId,
+                PaqueteNombre = paqueteNombre
+            };
+
+            // Agregar etapas si las tiene
+            if (servicio.Etapas != null && servicio.Etapas.Any())
+            {
+                foreach (var etapa in servicio.Etapas)
+                {
+                    servicioEnLavado.Etapas.Add(new EtapaEnLavado
+                    {
+                        EtapaId = etapa.Id,
+                        Nombre = etapa.Nombre,
+                        Estado = "Pendiente"
+                    });
+                }
+            }
+
+            return servicioEnLavado;
+        }
+
+        public async Task IniciarPrimerServicioCreacion(Lavado lavadoCreado)
+        {
+            if (lavadoCreado.Servicios.Any())
+            {
+                var primerServicio = lavadoCreado.Servicios.OrderBy(s => s.Orden).First();
+                await IniciarServicio(lavadoCreado.Id, primerServicio.ServicioId);
+
+                if (primerServicio.Etapas.Any())
+                {
+                    var primeraEtapa = primerServicio.Etapas.First();
+                    await IniciarEtapa(lavadoCreado.Id, primerServicio.ServicioId, primeraEtapa.EtapaId);
+                }
+            }
+        }
+
+        public record ResultadoPrecioCreacion(decimal PrecioOriginal, decimal Precio, string? Error = null);
+
+        public ResultadoPrecioCreacion CalcularPrecioCreacion(
+            List<ServicioEnLavado> serviciosEnLavado,
+            Dictionary<string, PaqueteServicio> paquetesPorId,
+            decimal descuento)
+        {
+            decimal precioTotal = 0;
+            var paquetesUnicos = serviciosEnLavado
+                .Where(s => !string.IsNullOrEmpty(s.PaqueteId))
+                .Select(s => s.PaqueteId)
+                .Distinct()
+                .ToList();
+
+            foreach (var paqueteId in paquetesUnicos)
+            {
+                var paquete = paquetesPorId[paqueteId!];
+                var serviciosSeleccionadosPaquete = serviciosEnLavado
+                    .Where(servicio => string.Equals(servicio.PaqueteId, paqueteId, StringComparison.Ordinal));
+                if (PaqueteServicioService.TryCalcularPrecioSeleccionado(
+                    paquete,
+                    serviciosSeleccionadosPaquete,
+                    out var precioPaqueteConDescuento))
+                {
+                    precioTotal += precioPaqueteConDescuento;
+                }
+                else
+                {
+                    return new ResultadoPrecioCreacion(0, 0, "Los servicios seleccionados no corresponden al paquete indicado.");
+                }
+            }
+
+            var serviciosIndividuales = serviciosEnLavado.Where(s => string.IsNullOrEmpty(s.PaqueteId));
+            foreach (var servIndiv in serviciosIndividuales)
+            {
+                precioTotal += servIndiv.Precio;
+            }
+
+            var precioConDescuento = precioTotal - (precioTotal * descuento / 100);
+            return new ResultadoPrecioCreacion(precioTotal, precioConDescuento);
+        }
+
+        public record ResultadoRetiro(string? Error = null, Dictionary<string, string>? CamposAntes = null);
+
+        public async Task<ResultadoRetiro> RegistrarRetiro(string lavadoId)
+        {
+            var lavado = await ObtenerLavado(lavadoId);
+            if (lavado == null)
+            {
+                return new ResultadoRetiro("Lavado no encontrado.");
+            }
+
+            // Verificar si ya fue retirado
+            if (lavado.EstadoRetiro == Lavado.EstadosRetiro.Retirado)
+            {
+                return new ResultadoRetiro("El vehículo ya fue retirado.");
+            }
+
+            // Verificar si el lavado fue pagado o cancelado
+            var estadoPago = lavado.Pago?.Estado ?? "Pendiente";
+            var estadoLavado = lavado.Estado;
+
+            if (estadoLavado != "Cancelado" && estadoPago != "Pagado")
+            {
+                return new ResultadoRetiro("El lavado debe estar pagado antes de permitir el retiro del vehículo.");
+            }
+
+            var antes = AuditCampos.CapturarLavado(lavado);
+            // Registrar el retiro
+            lavado.EstadoRetiro = Lavado.EstadosRetiro.Retirado;
+            lavado.FechaRetiro = DateTime.UtcNow;
+
+            await ActualizarLavado(lavado);
+            return new ResultadoRetiro(CamposAntes: antes);
+        }
+
         #region Operaciones de Consulta
 
         /// <summary>
@@ -650,6 +773,21 @@ namespace Firebase.Services
         #endregion
 
         #region Asignación de Empleados
+
+        public record ResultadoAsignacionCreacion(int CantidadEmpleadosRequeridos, List<Empleado> EmpleadosAsignados);
+
+        public async Task<ResultadoAsignacionCreacion> PrepararAsignacionCreacion(int? cantidadRequerida)
+        {
+            var cantidad = cantidadRequerida ?? 1;
+            var config = await _configuracionService.ObtenerConfiguracion();
+            if (cantidad > config.EmpleadosMaximosPorLavado)
+            {
+                cantidad = config.EmpleadosMaximosPorLavado;
+            }
+
+            var empleados = await AsignarEmpleadosAleatorios(cantidad);
+            return new ResultadoAsignacionCreacion(cantidad, empleados);
+        }
 
         /// <summary>
         /// Asigna empleados aleatoriamente a un lavado basándose en disponibilidad.

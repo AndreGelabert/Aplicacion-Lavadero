@@ -1,3 +1,4 @@
+using Firebase.Services;
 using Firebase.Models;
 using Firebase.Security;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +14,7 @@ public class ConfiguracionController : Controller
 {
     #region Dependencias
     private readonly ConfiguracionService _configuracionService;
-    private readonly AuditService _auditService;
+    private readonly IAuditWriter _auditService;
 
     /// <summary>
     /// Crea una nueva instancia del controlador de configuración.
@@ -22,7 +23,7 @@ public class ConfiguracionController : Controller
     /// <param name="auditService">Servicio de auditoría.</param>
     public ConfiguracionController(
         ConfiguracionService configuracionService,
-        AuditService auditService)
+        IAuditWriter auditService)
     {
         _configuracionService = configuracionService;
         _auditService = auditService;

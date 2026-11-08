@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-05T18:22:51.685Z",
+  "title": "Design System: LavaFácil",
+  "extensions": {
+    "colorMeta": {
+      "azul-operativo": {"role":"primary","displayName":"Azul operativo","rampSource":"synthesized-preview","tonalRamp":["oklch(15% .03 260)","oklch(25% .08 260)","oklch(35% .13 260)","oklch(45% .18 260)","oklch(55% .19 260)","oklch(70% .13 260)","oklch(85% .07 260)","oklch(95% .02 260)"]},
+      "superficie": {"role":"neutral","displayName":"Superficie","rampSource":"synthesized-preview","tonalRamp":["oklch(15% 0 0)","oklch(25% 0 0)","oklch(35% 0 0)","oklch(45% 0 0)","oklch(55% 0 0)","oklch(70% 0 0)","oklch(85% 0 0)","oklch(95% 0 0)"]},
+      "neutro-suave": {"role":"neutral","displayName":"Neutro suave","rampSource":"synthesized-preview","tonalRamp":["oklch(15% .004 260)","oklch(25% .008 260)","oklch(35% .01 260)","oklch(45% .01 260)","oklch(55% .01 260)","oklch(70% .008 260)","oklch(85% .006 260)","oklch(95% .003 260)"]},
+      "borde": {"role":"neutral","displayName":"Borde","rampSource":"synthesized-preview","tonalRamp":["oklch(15% .004 260)","oklch(25% .008 260)","oklch(35% .01 260)","oklch(45% .01 260)","oklch(55% .01 260)","oklch(70% .008 260)","oklch(85% .006 260)","oklch(95% .003 260)"]},
+      "texto": {"role":"neutral","displayName":"Texto","rampSource":"synthesized-preview","tonalRamp":["oklch(15% .004 260)","oklch(25% .008 260)","oklch(35% .01 260)","oklch(45% .01 260)","oklch(55% .01 260)","oklch(70% .008 260)","oklch(85% .006 260)","oklch(95% .003 260)"]},
+      "texto-secundario": {"role":"neutral","displayName":"Texto secundario","rampSource":"synthesized-preview","tonalRamp":["oklch(15% .004 260)","oklch(25% .008 260)","oklch(35% .01 260)","oklch(45% .01 260)","oklch(55% .01 260)","oklch(70% .008 260)","oklch(85% .006 260)","oklch(95% .003 260)"]},
+      "aviso-error": {"role":"tertiary","displayName":"Error","rampSource":"synthesized-preview","tonalRamp":["oklch(15% .03 25)","oklch(25% .07 25)","oklch(35% .12 25)","oklch(45% .16 25)","oklch(55% .17 25)","oklch(70% .12 25)","oklch(85% .06 25)","oklch(95% .02 25)"]},
+      "aviso-exito": {"role":"tertiary","displayName":"Éxito","rampSource":"synthesized-preview","tonalRamp":["oklch(15% .03 145)","oklch(25% .06 145)","oklch(35% .1 145)","oklch(45% .13 145)","oklch(55% .14 145)","oklch(70% .11 145)","oklch(85% .06 145)","oklch(95% .02 145)"]},
+      "aviso-advertencia": {"role":"tertiary","displayName":"Advertencia","rampSource":"synthesized-preview","tonalRamp":["oklch(15% .03 85)","oklch(25% .05 85)","oklch(35% .07 85)","oklch(45% .09 85)","oklch(55% .1 85)","oklch(70% .09 85)","oklch(85% .06 85)","oklch(95% .02 85)"]}
+    },
+    "typographyMeta": {"body":{"displayName":"Texto pequeño","purpose":"Controles y tabla."},"title":{"displayName":"Título","purpose":"Encabezado de Lavados."}},
+    "shadows": [
+      {"name":"menu","value":"0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)","purpose":"Menús desplegables."},
+      {"name":"dialogo","value":"0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)","purpose":"Diálogos."},
+      {"name":"aviso","value":"0 10px 15px -3px rgb(0 0 0 / .1)","purpose":"Notificaciones personalizadas."}
+    ],
+    "motion": [{"name":"transition","value":"150ms cubic-bezier(0.4, 0, 0.2, 1)","purpose":"Transiciones de utilidades emitidas."}],
+    "breakpoints": [{"name":"sm","value":"640px"},{"name":"md","value":"768px"},{"name":"lg","value":"1024px"}]
+  },
+  "components": [
+    {"name":"Botón principal","kind":"button","refersTo":"button-primary","description":"Botón azul de ayuda; el foco replica el anillo declarado en la vista.","html":"<button class=\"ds-primary\" type=\"button\" aria-label=\"Ayuda\">?</button>","css":".ds-primary{background:rgb(26 86 219);color:white;border:0;border-radius:.5rem;padding:.5rem;font:500 .875rem/1.25rem ui-sans-serif,system-ui,sans-serif;cursor:pointer}.ds-primary:hover{background:rgb(30 66 159)}.ds-primary:focus-visible{outline:0;box-shadow:0 0 0 4px rgb(164 202 254)}"},
+    {"name":"Botón secundario","kind":"button","refersTo":"button-secondary","description":"Control de filtros con borde y fondo claro.","html":"<button class=\"ds-secondary\" type=\"button\">Filtros</button>","css":".ds-secondary{background:white;color:rgb(17 24 39);border:1px solid rgb(229 231 235);border-radius:.5rem;padding:.5rem 1rem;font:500 .875rem/1.25rem ui-sans-serif,system-ui,sans-serif;cursor:pointer}.ds-secondary:hover{background:rgb(243 244 246)}.ds-secondary:focus-visible{outline:0;box-shadow:0 0 0 4px rgb(229 231 235)}"},
+    {"name":"Campo","kind":"input","refersTo":"input","description":"Campo de formulario; se conserva el foco nativo porque primary no está confirmado.","html":"<label class=\"ds-label\" for=\"ds-campo\">Monto</label><input class=\"ds-input\" id=\"ds-campo\" type=\"number\" placeholder=\"0.00\">","css":".ds-label{display:block;margin-bottom:.5rem;color:rgb(17 24 39);font:500 .875rem/1.25rem ui-sans-serif,system-ui,sans-serif}.ds-input{background:rgb(249 250 251);border:1px solid rgb(209 213 219);color:rgb(17 24 39);border-radius:.5rem;padding:.625rem;font:.875rem/1.25rem ui-sans-serif,system-ui,sans-serif}"},
+    {"name":"Navegación","kind":"nav","refersTo":"nav-active","description":"Módulo seleccionado en el menú lateral; foco nativo del navegador.","html":"<nav aria-label=\"Menú lateral\"><a class=\"ds-nav\" href=\"#\" aria-current=\"page\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 21a9 9 0 0 0 9-9c0-4.97-9-12-9-12S3 7.03 3 12a9 9 0 0 0 9 9Z\"/></svg><span>Lavados</span></a></nav>","css":".ds-nav{display:flex;align-items:center;gap:.75rem;padding:.5rem;border-radius:.5rem;background:rgb(235 245 255);color:rgb(26 86 219);font:500 1rem/1.5rem ui-sans-serif,system-ui,sans-serif;text-decoration:none}"},
+    {"name":"Etiqueta de estado","kind":"chip","refersTo":"chip","description":"Estado de pago Pagado, no interactivo.","html":"<span class=\"ds-chip\">Pagado</span>","css":".ds-chip{background:rgb(222 247 236);color:rgb(3 84 63);font:500 .75rem/1rem ui-sans-serif,system-ui,sans-serif;padding:.125rem .625rem;border-radius:.25rem}"},
+    {"name":"Contenedor","kind":"card","refersTo":"card","description":"Panel de Lavados; redondeado desde sm.","html":"<section class=\"ds-card\"><header class=\"ds-card-header\"><strong>Lavados</strong></header><div class=\"ds-card-body\">Registros del lavadero</div></section>","css":".ds-card{background:white;color:rgb(17 24 39)}@media (min-width:640px){.ds-card{border-radius:.5rem}}.ds-card-header{padding:.5rem;border-bottom:1px solid rgb(229 231 235);font:600 1.5rem/2rem ui-sans-serif,system-ui,sans-serif}.ds-card-body{padding:1rem;font:.875rem/1.25rem ui-sans-serif,system-ui,sans-serif}"}
+  ],
+  "narrative": {
+    "northStar":"El libro diario del lavadero",
+    "overview":"Una interfaz accesible, cercana y ordenada para el trabajo cotidiano: información fácil de recorrer y controles familiares para personas con distinta experiencia digital.\n\nLas superficies, bordes y sombras organizan la operación sin cambiar la identidad existente. Esta descripción proviene del código, no de una validación visual en navegador ni de una auditoría de accesibilidad.",
+    "keyCharacteristics":["Azul operativo y grises neutros.","Capas para organizar.","Componentes familiares, claros y amables."],
+    "rules":[],
+    "dos":["Do conservar etiquetas textuales para identificar estados.","Do organizar controles y datos con superficies, bordes y sombras existentes.","Do mantener los componentes familiares, claros y amables."],
+    "donts":["Don't tratar la configuración separada de `primary` o Inter como prueba de que está activa.","Don't presentar las rampas sintetizadas del sidecar como tokens de producción."]
+  }
+}

@@ -220,9 +220,10 @@ public class LogoutHttpIntegrationTests
                 services.AddControllersWithViews().AddApplicationPart(typeof(LoginController).Assembly).AddControllersAsServices();
                 Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions.RemoveAll<LoginController>(services);
                 services.AddTransient(provider => ActivatorUtilities.CreateInstance<LoginController>(provider));
-                services.AddTransient(_ => new FirebaseLoginCustom.Controllers.LavadosController(null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!));
+                services.AddTransient(_ => new FirebaseLoginCustom.Controllers.LavadosController(null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!));
                 // No Firestore instance or network access: these instances deliberately fail on use.
                 services.AddSingleton((AuditService)RuntimeHelpers.GetUninitializedObject(typeof(AuditService)));
+                services.AddScoped<Firebase.Services.IAuditWriter>(provider => provider.GetRequiredService<AuditService>());
                 services.AddSingleton((ConfiguracionService)RuntimeHelpers.GetUninitializedObject(typeof(ConfiguracionService)));
                 services.AddSingleton((Firebase.Services.AuthenticationService)RuntimeHelpers.GetUninitializedObject(typeof(Firebase.Services.AuthenticationService)));
                 services.AddSingleton((PersonalService)RuntimeHelpers.GetUninitializedObject(typeof(PersonalService)));

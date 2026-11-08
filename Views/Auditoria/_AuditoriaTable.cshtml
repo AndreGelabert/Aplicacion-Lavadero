@@ -1,9 +1,9 @@
-@model List<Firebase.Models.AuditLogConNombre>
+@model Firebase.Models.AuditoriaViewModel
 
-<input type="hidden" id="current-page-value" value="@ViewBag.CurrentPage" />
-<input type="hidden" id="current-sort-by" value="@(ViewBag.SortBy ?? "Timestamp")" />
-<input type="hidden" id="current-sort-order" value="@(ViewBag.SortOrder ?? "desc")" />
-<input type="hidden" id="current-search-term" value="@(ViewBag.SearchTerm ?? "")" />
+<input type="hidden" id="current-page-value" value="@Model.CurrentPage" />
+<input type="hidden" id="current-sort-by" value="@(Model.Filters.SortBy ?? "Timestamp")" />
+<input type="hidden" id="current-sort-order" value="@(Model.Filters.SortOrder ?? "desc")" />
+<input type="hidden" id="current-search-term" value="@(Model.Filters.SearchTerm ?? "")" />
 
 <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
     <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -12,7 +12,7 @@
                 <div class="flex items-center gap-1">
                     <span>Fecha y Hora</span>
                     <div class="sort-icon-container cursor-pointer" onclick="sortTable('Timestamp')">
-                        <svg class="w-4 h-4 @(ViewBag.SortBy == "Timestamp" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                        <svg class="w-4 h-4 @(Model.Filters.SortBy == "Timestamp" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
                              fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
                         </svg>
@@ -23,7 +23,7 @@
                 <div class="flex items-center gap-1">
                     <span>Usuario</span>
                     <div class="sort-icon-container cursor-pointer" onclick="sortTable('UserEmail')">
-                        <svg class="w-4 h-4 @(ViewBag.SortBy == "UserEmail" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                        <svg class="w-4 h-4 @(Model.Filters.SortBy == "UserEmail" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
                              fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
                         </svg>
@@ -34,7 +34,7 @@
                 <div class="flex items-center gap-1">
                     <span>Acción</span>
                     <div class="sort-icon-container cursor-pointer" onclick="sortTable('Action')">
-                        <svg class="w-4 h-4 @(ViewBag.SortBy == "Action" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                        <svg class="w-4 h-4 @(Model.Filters.SortBy == "Action" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
                              fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
                         </svg>
@@ -45,7 +45,7 @@
                 <div class="flex items-center gap-1">
                     <span>Tipo de Objeto</span>
                     <div class="sort-icon-container cursor-pointer" onclick="sortTable('TargetType')">
-                        <svg class="w-4 h-4 @(ViewBag.SortBy == "TargetType" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                        <svg class="w-4 h-4 @(Model.Filters.SortBy == "TargetType" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
                              fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
                         </svg>
@@ -56,7 +56,7 @@
                 <div class="flex items-center gap-1">
                     <span>Objeto</span>
                     <div class="sort-icon-container cursor-pointer" onclick="sortTable('TargetName')">
-                        <svg class="w-4 h-4 @(ViewBag.SortBy == "TargetName" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                        <svg class="w-4 h-4 @(Model.Filters.SortBy == "TargetName" ? "text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-500") hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
                              fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z"></path>
                         </svg>
@@ -67,9 +67,9 @@
         </tr>
     </thead>
     <tbody>
-        @if (Model.Any())
+        @if (Model.Registros.Any())
         {
-            @foreach (var registro in Model)
+            @foreach (var registro in Model.Registros)
             {
                 <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap dark:text-white">
@@ -133,17 +133,17 @@
 <nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">
     <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
         Mostrando página
-        <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.CurrentPage</span>
+        <span class="font-semibold text-gray-900 dark:text-white">@Model.CurrentPage</span>
         de
-        <span class="font-semibold text-gray-900 dark:text-white">@ViewBag.TotalPages</span>
+        <span class="font-semibold text-gray-900 dark:text-white">@Model.TotalPages</span>
     </span>
 
     <ul class="inline-flex items-stretch -space-x-px">
         <!-- Botón Anterior -->
         <li>
-            @if (ViewBag.CurrentPage > 1)
+            @if (Model.CurrentPage > 1)
             {
-                <button onclick="reloadAuditoriaTable(@(ViewBag.CurrentPage - 1))"
+                <button onclick="reloadAuditoriaTable(@(Model.CurrentPage - 1))"
                         class="flex items-center justify-center h-full py-1.5 px-3 ml-0 text-gray-500 bg-white rounded-l-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
                     <span class="sr-only">Anterior</span>
                     <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
@@ -162,10 +162,10 @@
         </li>
 
         <!-- Números de página -->
-        @foreach (var pageNum in (IEnumerable<int>)ViewBag.VisiblePages)
+        @foreach (var pageNum in (IEnumerable<int>)Model.VisiblePages)
         {
             <li>
-                @if (pageNum == (int)ViewBag.CurrentPage)
+                @if (pageNum == (int)Model.CurrentPage)
                 {
                     <span class="flex items-center justify-center text-sm z-10 py-2 px-3 leading-tight text-primary-600 bg-primary-50 border border-primary-300 dark:border-gray-700 dark:bg-gray-700 dark:text-white">
                         @pageNum
@@ -183,9 +183,9 @@
 
         <!-- Botón Siguiente -->
         <li>
-            @if (ViewBag.CurrentPage < ViewBag.TotalPages)
+            @if (Model.CurrentPage < Model.TotalPages)
             {
-                <button onclick="reloadAuditoriaTable(@(ViewBag.CurrentPage + 1))"
+                <button onclick="reloadAuditoriaTable(@(Model.CurrentPage + 1))"
                         class="flex items-center justify-center h-full py-1.5 px-3 leading-tight text-gray-500 bg-white rounded-r-lg border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
                     <span class="sr-only">Siguiente</span>
                     <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">

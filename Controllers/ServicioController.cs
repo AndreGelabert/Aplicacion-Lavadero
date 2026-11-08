@@ -1,3 +1,4 @@
+using Firebase.Services;
 using Firebase.Models;
 using Firebase.Security;
 using Microsoft.AspNetCore.Authorization;
@@ -14,10 +15,13 @@ public class ServicioController : Controller
 {
     #region Dependencias
     private readonly ServicioService _servicioService;
-    private readonly AuditService _auditService;
+    private readonly ServicioQueryService _queries;
+    private readonly IAuditWriter _auditService;
     private readonly TipoServicioService _tipoServicioService;
     private readonly TipoVehiculoService _tipoVehiculoService;
-    private readonly PaqueteServicioService _paqueteServicioService;
+    private readonly ServicioLifecycleService _lifecycle;
+    private readonly ServicioFormService _form;
+    private readonly ServicioTypeService _types;
     private readonly VehiculoService _vehiculoService; // ✅ NUEVO
 
     /// <summary>
@@ -25,17 +29,23 @@ public class ServicioController : Controller
     /// </summary>
     public ServicioController(
         ServicioService servicioService,
-        AuditService auditService,
+        IAuditWriter auditService,
         TipoServicioService tipoServicioService,
         TipoVehiculoService tipoVehiculoService,
-        PaqueteServicioService paqueteServicioService,
-        VehiculoService vehiculoService) // ✅ NUEVO
+        VehiculoService vehiculoService,
+        ServicioQueryService queries,
+        ServicioLifecycleService lifecycle,
+        ServicioFormService form,
+        ServicioTypeService types)
     {
         _servicioService = servicioService;
+        _queries = queries;
         _auditService = auditService;
         _tipoServicioService = tipoServicioService;
         _tipoVehiculoService = tipoVehiculoService;
-        _paqueteServicioService = paqueteServicioService;
+        _lifecycle = lifecycle;
+        _form = form;
+        _types = types;
         _vehiculoService = vehiculoService; // ✅ NUEVO
     }
     #endregion
@@ -165,22 +175,12 @@ public class ServicioController : Controller
         sortBy ??= "Nombre";
         sortOrder ??= "asc";
 
-        var servicios = await _servicioService.BuscarServicios(
-            searchTerm, estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
+        var resultado = await _queries.Buscar(searchTerm, estados, tipos, tiposVehiculo,
+            precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
+        var servicios = resultado.Servicios;
+        var totalPages = resultado.TotalPages;
 
-        var totalServicios = await _servicioService.ObtenerTotalServiciosBusqueda(
-            searchTerm, estados, tipos, tiposVehiculo, precioDesde, precioHasta);
-
-        var totalPages = Math.Max((int)Math.Ceiling(totalServicios / (double)pageSize), 1);
-
-        ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = totalPages;
-        ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
-        ViewBag.Estados = estados;
-        ViewBag.Tipos = tipos;
-        ViewBag.TiposVehiculo = tiposVehiculo;
-        ViewBag.SortBy = sortBy;
-        ViewBag.SortOrder = sortOrder;
+        ConfigurarMetadataTabla(pageNumber, totalPages, estados, tipos, tiposVehiculo, sortBy, sortOrder);
         ViewBag.SearchTerm = searchTerm;
 
         return PartialView("_ServicioTable", servicios);
@@ -207,10 +207,21 @@ public class ServicioController : Controller
         sortBy ??= "Nombre";
         sortOrder ??= "asc";
 
-        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
-        var totalPages = await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageSize);
-        totalPages = Math.Max(totalPages, 1);
+        var resultado = await _queries.ObtenerListado(estados, tipos, tiposVehiculo,
+            precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
+        var servicios = resultado.Servicios;
+        var totalPages = resultado.TotalPages;
 
+        ConfigurarMetadataTabla(pageNumber, totalPages, estados, tipos, tiposVehiculo, sortBy, sortOrder);
+
+        return PartialView("_ServicioTable", servicios);
+    }
+    #endregion
+
+    private void ConfigurarMetadataTabla(int pageNumber, int totalPages,
+        List<string> estados, List<string> tipos, List<string> tiposVehiculo,
+        string sortBy, string sortOrder)
+    {
         ViewBag.CurrentPage = pageNumber;
         ViewBag.TotalPages = totalPages;
         ViewBag.VisiblePages = GetVisiblePages(pageNumber, totalPages);
@@ -219,10 +230,7 @@ public class ServicioController : Controller
         ViewBag.TiposVehiculo = tiposVehiculo;
         ViewBag.SortBy = sortBy;
         ViewBag.SortOrder = sortOrder;
-
-        return PartialView("_ServicioTable", servicios);
     }
-    #endregion
 
     #region Cambio de Estado
 
@@ -257,22 +265,10 @@ public class ServicioController : Controller
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(nombreTipo))
-                {
-                    return Json(new { success = false, message = "El nombre del tipo de servicio es obligatorio." });
-                }
-
-                if (nombreTipo.Length < 3)
-                {
-                    return Json(new { success = false, message = "El nombre debe tener al menos 3 caracteres." });
-                }
-
-                if (await _tipoServicioService.ExisteTipoServicio(nombreTipo))
-                {
-                    return Json(new { success = false, message = "Ya existe un tipo de servicio con el mismo nombre." });
-                }
-
-                var docId = await _tipoServicioService.CrearTipoServicio(nombreTipo);
+                var resultado = await _types.CrearServicioAjax(nombreTipo);
+                if (resultado.Error != null)
+                    return Json(new { success = false, message = resultado.Error });
+                var docId = resultado.Id!;
                 await RegistrarCreacionTipo("Creacion de tipo de servicio", docId, "TipoServicio");
 
                 var tiposActualizados = await _tipoServicioService.ObtenerTiposServicio();
@@ -291,13 +287,8 @@ public class ServicioController : Controller
         }
 
         // Fallback (mantener por si se usa fuera de AJAX)
-        return await GestionarTipoConId(
-            nombreTipo,
-            () => _tipoServicioService.ExisteTipoServicio(nombreTipo),
-            () => _tipoServicioService.CrearTipoServicio(nombreTipo),
-            "TipoServicio",
-            "Creacion de tipo de servicio"
-        );
+        return await ResponderCreacionTipo(await _types.CrearServicioFallback(nombreTipo),
+            "TipoServicio", "Creacion de tipo de servicio");
     }
 
     /// <summary>
@@ -312,22 +303,10 @@ public class ServicioController : Controller
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(nombreTipo))
-                {
-                    return Json(new { success = false, message = "Debe seleccionar un tipo de servicio." });
-                }
-
-                var serviciosUsandoTipo = await _servicioService.ObtenerServiciosPorTipo(nombreTipo);
-                if (serviciosUsandoTipo.Any())
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        message = "No se puede eliminar el tipo de servicio porque hay servicios que lo utilizan."
-                    });
-                }
-
-                var idsEliminados = await _tipoServicioService.EliminarTipoServicio(nombreTipo);
+                var resultado = await _types.EliminarServicioAjax(nombreTipo);
+                if (resultado.Error != null)
+                    return Json(new { success = false, message = resultado.Error });
+                var idsEliminados = resultado.Ids!;
                 foreach (var id in idsEliminados)
                 {
                     await RegistrarEvento("Eliminacion de tipo de servicio", id, "TipoServicio", new() { ["Nombre"] = nombreTipo }, new(), nombreTipo);
@@ -349,13 +328,8 @@ public class ServicioController : Controller
         }
 
         // Fallback
-        return await EliminarTipoConIds(
-            nombreTipo,
-            () => _servicioService.ObtenerServiciosPorTipo(nombreTipo),
-            _ => _tipoServicioService.EliminarTipoServicio(nombreTipo),
-            "TipoServicio",
-            "Eliminacion de tipo de servicio"
-        );
+        return await ResponderEliminacionTipo(await _types.EliminarServicioFallback(nombreTipo),
+            nombreTipo, "TipoServicio", "Eliminacion de tipo de servicio");
     }
 
     /// <summary>
@@ -369,45 +343,10 @@ public class ServicioController : Controller
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
             try {
-                if (string.IsNullOrWhiteSpace(nombreTipo))
-                {
-                    return Json(new { success = false, message = "El nombre del tipo de vehículo es obligatorio." });
-                }
-
-                if (nombreTipo.Length < 3)
-                {
-                    return Json(new { success = false, message = "El nombre debe tener al menos 3 caracteres." });
-                }
-
-                // ✅ Validar que el formato sea obligatorio
-                if (string.IsNullOrWhiteSpace(formatoPatente))
-                {
-                    return Json(new { success = false, message = "El formato de patente es obligatorio." });
-                }
-
-                if (formatoPatente.Length < 3)
-                {
-                    return Json(new { success = false, message = "El formato debe tener al menos 3 caracteres." });
-                }
-
-                // ✅ Validar que el formato solo contenga caracteres permitidos
-                if (!System.Text.RegularExpressions.Regex.IsMatch(formatoPatente, @"^[nl.\-|]{3,}$"))
-                {
-                    return Json(new { success = false, message = "El formato solo puede contener 'n' (números), 'l' (letras), '.' '-' y '|'. Mínimo 3 caracteres." });
-                }
-
-                // Validar cantidad de empleados
-                if (cantidadEmpleadosRequeridos < 1 || cantidadEmpleadosRequeridos > 10)
-                {
-                    return Json(new { success = false, message = "La cantidad de empleados debe estar entre 1 y 10." });
-                }
-
-                if (await _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo))
-                {
-                    return Json(new { success = false, message = "Ya existe un tipo de vehículo con el mismo nombre." });
-                }
-
-                var vehDocId = await _tipoVehiculoService.CrearTipoVehiculo(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos);
+                var resultado = await _types.CrearVehiculoAjax(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos);
+                if (resultado.Error != null)
+                    return Json(new { success = false, message = resultado.Error });
+                var vehDocId = resultado.Id!;
                 await RegistrarCreacionTipo("Creacion de tipo de vehiculo", vehDocId, "TipoVehiculo");
 
                 var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculosCompletos();
@@ -433,13 +372,8 @@ public class ServicioController : Controller
         }
 
         // Fallback
-        return await GestionarTipoConId(
-            nombreTipo,
-            () => _tipoVehiculoService.ExisteTipoVehiculo(nombreTipo),
-            () => _tipoVehiculoService.CrearTipoVehiculo(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos),
-            "TipoVehiculo",
-            "Creacion de tipo de vehiculo"
-        );
+        return await ResponderCreacionTipo(await _types.CrearVehiculoFallback(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos),
+            "TipoVehiculo", "Creacion de tipo de vehiculo");
     }
 
     /// <summary>
@@ -496,35 +430,11 @@ public class ServicioController : Controller
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(nombreTipo))
-                {
-                    return Json(new { success = false, message = "Debe seleccionar un tipo de vehículo." });
-                }
-
-                // ✅ Validar si hay servicios usando este tipo
-                var serviciosUsandoTipo = await _servicioService.ObtenerServiciosPorTipoVehiculo(nombreTipo);
-                if (serviciosUsandoTipo.Any())
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        message = $"No se puede eliminar el tipo '{nombreTipo}' porque hay servicios que lo utilizan."
-                    });
-                }
-
-                // ✅ NUEVO: Validar si hay vehículos usando este tipo
-                var vehiculosUsandoTipo = await _vehiculoService.ExisteTipoVehiculoEnUso(nombreTipo);
-                if (vehiculosUsandoTipo)
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        message = $"No se puede eliminar el tipo '{nombreTipo}' porque está en uso por uno o más vehículos."
-                    });
-                }
-
-                var capturas = await CapturarTiposVehiculo(nombreTipo);
-                var vehIdsEliminados = await _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo, capturas.Keys.ToHashSet());
+                var resultado = await _types.EliminarVehiculoAjax(nombreTipo);
+                if (resultado.Error != null)
+                    return Json(new { success = false, message = resultado.Error });
+                var capturas = resultado.Capturas!;
+                var vehIdsEliminados = resultado.Ids!;
                 foreach (var id in vehIdsEliminados)
                 {
                     await RegistrarEliminacionTipoVehiculo(id, capturas);
@@ -546,13 +456,8 @@ public class ServicioController : Controller
         }
 
         // Fallback
-        return await EliminarTipoConIds(
-            nombreTipo,
-            () => _servicioService.ObtenerServiciosPorTipoVehiculo(nombreTipo),
-            ids => _tipoVehiculoService.EliminarTipoVehiculo(nombreTipo, ids),
-            "TipoVehiculo",
-            "Eliminacion de tipo de vehiculo"
-        );
+        return await ResponderEliminacionTipo(await _types.EliminarVehiculoFallback(nombreTipo),
+            nombreTipo, "TipoVehiculo", "Eliminacion de tipo de vehiculo");
     }
     #endregion
 
@@ -606,8 +511,10 @@ public class ServicioController : Controller
         ObtenerDatosServicios(List<string> estados, List<string> tipos, List<string> tiposVehiculo,
         decimal? precioDesde, decimal? precioHasta, int pageNumber, int pageSize, string sortBy, string sortOrder)
     {
-        var servicios = await _servicioService.ObtenerServicios(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
-        var totalPages = Math.Max(await _servicioService.ObtenerTotalPaginas(estados, tipos, tiposVehiculo, precioDesde, precioHasta, pageSize), 1);
+        var resultado = await _queries.ObtenerListado(estados, tipos, tiposVehiculo,
+            precioDesde, precioHasta, pageNumber, pageSize, sortBy, sortOrder);
+        var servicios = resultado.Servicios;
+        var totalPages = resultado.TotalPages;
         var currentPage = Math.Clamp(pageNumber, 1, totalPages);
         var visiblePages = GetVisiblePages(currentPage, totalPages);
 
@@ -669,16 +576,7 @@ public class ServicioController : Controller
             return ResultadoOperacion.CrearError("Por favor, complete todos los campos obligatorios correctamente.");
         }
 
-        if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo))
-        {
-            var mensaje = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'.";
-            ModelState.AddModelError("Nombre", $"Ya existe un servicio con este nombre para vehículos tipo '{servicio.TipoVehiculo}'.");
-            return ResultadoOperacion.CrearError(mensaje);
-        }
-
-        servicio.Estado = "Activo";
-        await _servicioService.CrearServicio(servicio);
-        return ResultadoOperacion.CrearExito("Servicio creado correctamente.");
+        return AplicarResultadoFormulario(await _form.Crear(servicio));
     }
 
     /// <summary>
@@ -694,37 +592,14 @@ public class ServicioController : Controller
             return ResultadoOperacion.CrearError("Por favor, complete todos los campos obligatorios correctamente.");
         }
 
-        var servicioActual = await _servicioService.ObtenerServicio(servicio.Id);
-        if (servicioActual == null)
-        {
-            ModelState.AddModelError("", "No se pudo encontrar el servicio a actualizar.");
-            return ResultadoOperacion.CrearError("No se pudo encontrar el servicio a actualizar.");
-        }
+        return AplicarResultadoFormulario(await _form.Actualizar(servicio));
+    }
 
-        // Validación: Prevenir cambio de tipo de vehículo
-        if (!string.Equals(servicioActual.TipoVehiculo, servicio.TipoVehiculo, StringComparison.OrdinalIgnoreCase))
-        {
-            ModelState.AddModelError("TipoVehiculo", "No se puede cambiar el tipo de vehículo de un servicio existente.");
-            return ResultadoOperacion.CrearError("No se puede cambiar el tipo de vehículo de un servicio existente. Si necesita cambiar el tipo de vehículo, debe crear un nuevo servicio.");
-        }
-
-        // NUEVA VALIDACIÓN: Prevenir cambio de tipo de servicio
-        if (!string.Equals(servicioActual.Tipo, servicio.Tipo, StringComparison.OrdinalIgnoreCase))
-        {
-            ModelState.AddModelError("Tipo", "No se puede cambiar el tipo de servicio de un servicio existente.");
-            return ResultadoOperacion.CrearError("No se puede cambiar el tipo de servicio de un servicio existente. Si necesita cambiar el tipo, debe crear un nuevo servicio.");
-        }
-
-        if (await _servicioService.ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id))
-        {
-            var mensaje = $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'.";
-            ModelState.AddModelError("Nombre", $"Ya existe un servicio con este nombre para vehículos tipo '{servicio.TipoVehiculo}'.");
-            return ResultadoOperacion.CrearError(mensaje);
-        }
-
-        servicio.Estado = servicioActual.Estado;
-        await _servicioService.ActualizarServicio(servicio);
-        return ResultadoOperacion.CrearExito("Servicio actualizado correctamente.");
+    private ResultadoOperacion AplicarResultadoFormulario(ServicioFormService.ResultadoFormulario resultado)
+    {
+        if (resultado.Error != null)
+            ModelState.AddModelError(resultado.Error.Campo, resultado.Error.Mensaje);
+        return resultado.Operacion;
     }
 
     /// <summary>
@@ -738,23 +613,12 @@ public class ServicioController : Controller
     {
         try
         {
-            if (nuevoEstado == "Inactivo")
-            {
-                var paquetesActivos = await _paqueteServicioService.ObtenerPaquetes(new List<string> { "Activo" }, null, 1, int.MaxValue, "Nombre", "asc");
-                var paquetesConServicio = paquetesActivos
-                    .Where(p => p.ServiciosIds != null && p.ServiciosIds.Contains(id))
-                       .ToList();
+            var resultado = await _lifecycle.CambiarEstado(id, nuevoEstado);
+            if (resultado.Error != null)
+                return Json(new { success = false, message = resultado.Error });
 
-                if (paquetesConServicio.Any())
-                {
-                    var nombresPaquetes = string.Join(", ", paquetesConServicio.Select(p => p.Nombre));
-                    return Json(new { success = false, message = $"No se puede desactivar el servicio porque está siendo usado en los siguientes paquetes activos: {nombresPaquetes}" });
-                }
-            }
-
-            var servicioAntesCambio = await ObtenerServicioParaAuditoria(id);
-            var antesCambio = AuditCampos.CapturarServicio(servicioAntesCambio);
-            await _servicioService.CambiarEstadoServicio(id, nuevoEstado);
+            var servicioAntesCambio = resultado.ServicioAntes;
+            var antesCambio = resultado.Antes;
             TempData["StateChangeEvent_UserId"] = id;
             TempData["StateChangeEvent_NewState"] = nuevoEstado;
             var despuesCambio = AuditCampos.CapturarServicio(await ObtenerServicioParaAuditoria(id));
@@ -836,20 +700,8 @@ public class ServicioController : Controller
     /// <param name="servicio">Modelo a validar.</param>
     private void ValidateServicio(Servicio servicio)
     {
-        if (!string.IsNullOrEmpty(servicio.Nombre) && !System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
-        {
-            ModelState.AddModelError("Nombre", "El nombre solo puede contener letras y espacios.");
-        }
-
-        if (servicio.Precio < 0)
-        {
-            ModelState.AddModelError("Precio", "El precio debe ser igual o mayor a 0.");
-        }
-
-        if (servicio.TiempoEstimado <= 0)
-        {
-            ModelState.AddModelError("TiempoEstimado", "El tiempo estimado debe ser mayor a 0.");
-        }
+        foreach (var error in _form.Validar(servicio))
+            ModelState.AddModelError(error.Campo, error.Mensaje);
     }
 
     /// <summary>
@@ -955,9 +807,6 @@ public class ServicioController : Controller
         await RegistrarEvento(accion, id, entidad, new(), despues, nombre);
     }
 
-    private async Task<Dictionary<string, TipoVehiculo>> CapturarTiposVehiculo(string nombre) =>
-        (await _tipoVehiculoService.ObtenerParaAuditoriaPorNombre(nombre)).ToDictionary(t => t.Id);
-
     private async Task RegistrarEliminacionTipoVehiculo(string id, Dictionary<string, TipoVehiculo> capturas)
     {
         if (!capturas.TryGetValue(id, out var tipo))
@@ -985,74 +834,33 @@ public class ServicioController : Controller
         ViewBag.TodosLosTiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
     }
 
-    /// <summary>
-    /// Fallback no-AJAX: crea un tipo (servicio o vehículo), registra auditoría y redirige a Index.
-    /// </summary>
-    /// <param name="nombreTipo">Nombre del tipo a crear.</param>
-    /// <param name="verificarExistencia">Función que verifica existencia previa del tipo.</param>
-    /// <param name="crearConId">Función que crea el tipo y devuelve el ID creado.</param>
-    /// <param name="entidad">Etiqueta de entidad para auditoría (por ejemplo, "TipoServicio").</param>
-    /// <param name="accionAuditoria">Acción a registrar en auditoría.</param>
-    /// <returns>Redirección a <c>Index</c>.</returns>
-    private async Task<IActionResult> GestionarTipoConId(
-        string nombreTipo,
-        Func<Task<bool>> verificarExistencia,
-        Func<Task<string>> crearConId,
-        string entidad,
-        string accionAuditoria)
+    private async Task<IActionResult> ResponderCreacionTipo(ServicioTypeService.Creacion resultado, string entidad, string accionAuditoria)
     {
-        if (!string.IsNullOrWhiteSpace(nombreTipo))
+        if (resultado.Error != null)
+            TempData["Error"] = resultado.Error;
+        else if (resultado.Id != null)
         {
-            if (await verificarExistencia())
-            {
-                TempData["Error"] = $"Ya existe un {entidad} con el mismo nombre.";
-            }
-            else
-            {
-                var id = await crearConId();
-                await RegistrarCreacionTipo(accionAuditoria, id, entidad);
-                TempData["Success"] = $"{entidad} creado correctamente.";
-            }
+            await RegistrarCreacionTipo(accionAuditoria, resultado.Id, entidad);
+            TempData["Success"] = $"{entidad} creado correctamente.";
         }
         return RedirectToAction("Index");
     }
 
-    /// <summary>
-    /// Fallback no-AJAX: elimina un tipo (servicio o vehículo), registra auditoría y redirige a Index.
-    /// </summary>
-    /// <param name="nombreTipo">Nombre del tipo a eliminar.</param>
-    /// <param name="obtenerServiciosUsandoTipo">Función que obtiene servicios que usan el tipo (para impedir eliminación si hay uso).</param>
-    /// <param name="eliminarConIds">Función que elimina el tipo y devuelve los IDs eliminados.</param>
-    /// <param name="entidad">Etiqueta de entidad para auditoría (por ejemplo, "TipoVehiculo").</param>
-    /// <param name="accionAuditoria">Acción a registrar en auditoría.</param>
-    /// <returns>Redirección a <c>Index</c>.</returns>
-    private async Task<IActionResult> EliminarTipoConIds(
-        string nombreTipo,
-        Func<Task<List<Servicio>>> obtenerServiciosUsandoTipo,
-        Func<IReadOnlySet<string>, Task<List<string>>> eliminarConIds,
-        string entidad,
-        string accionAuditoria)
+    private async Task<IActionResult> ResponderEliminacionTipo(ServicioTypeService.Eliminacion resultado,
+        string nombreTipo, string entidad, string accionAuditoria)
     {
-        if (!string.IsNullOrWhiteSpace(nombreTipo))
+        if (resultado.Error != null)
+            TempData["Error"] = resultado.Error;
+        else if (resultado.Ids != null)
         {
-            var serviciosUsandoTipo = await obtenerServiciosUsandoTipo();
-            if (serviciosUsandoTipo.Any())
+            foreach (var id in resultado.Ids)
             {
-                TempData["Error"] = $"No se puede eliminar {entidad} porque hay servicios que lo utilizan.";
+                if (entidad == "TipoVehiculo")
+                    await RegistrarEliminacionTipoVehiculo(id, resultado.Capturas!);
+                else
+                    await RegistrarEvento(accionAuditoria, id, entidad, new() { ["Nombre"] = nombreTipo }, new(), nombreTipo);
             }
-            else
-            {
-                var capturas = entidad == "TipoVehiculo" ? await CapturarTiposVehiculo(nombreTipo) : null;
-                var ids = await eliminarConIds(capturas?.Keys.ToHashSet());
-                foreach (var id in ids)
-                {
-                    if (entidad == "TipoVehiculo")
-                        await RegistrarEliminacionTipoVehiculo(id, capturas);
-                    else
-                        await RegistrarEvento(accionAuditoria, id, entidad, new() { ["Nombre"] = nombreTipo }, new(), nombreTipo);
-                }
-                TempData["Success"] = $"{entidad} eliminado correctamente.";
-            }
+            TempData["Success"] = $"{entidad} eliminado correctamente.";
         }
         return RedirectToAction("Index");
     }

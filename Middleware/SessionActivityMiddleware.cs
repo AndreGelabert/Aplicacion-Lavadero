@@ -1,3 +1,4 @@
+using Firebase.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Security.Claims;
@@ -6,8 +7,8 @@ using Firebase.Security;
 namespace Firebase.Middleware
 {
     /// <summary>
-    /// Middleware para gestionar el cierre de sesi�n por duraci�n m�xima e inactividad.
-    /// La sesi�n se cierra autom�ticamente al cerrar el navegador (cookie NO persistente).
+    /// Middleware para gestionar el cierre de sesión por duración máxima e inactividad.
+    /// La sesión se cierra automáticamente al cerrar el navegador (cookie NO persistente).
     /// </summary>
     public class SessionActivityMiddleware
     {
@@ -22,9 +23,9 @@ namespace Firebase.Middleware
             _sessionRegistry = sessionRegistry;
         }
 
-        public async Task InvokeAsync(HttpContext context, ConfiguracionService configuracionService, AuditService auditService)
+        public async Task InvokeAsync(HttpContext context, ConfiguracionService configuracionService, IAuditWriter auditService)
         {
-            // Saltar verificaci�n en rutas de autenticaci�n
+            // Saltar verificación en rutas de autenticación
             var path = context.Request.Path.Value?.ToLower() ?? "";
             if (path.StartsWith("/login") || path.StartsWith("/account"))
             {
@@ -32,7 +33,7 @@ namespace Firebase.Middleware
                 return;
             }
 
-            // Solo procesar si el usuario est� autenticado
+            // Solo procesar si el usuario está autenticado
             if (context.User?.Identity?.IsAuthenticated == true)
             {
                 try
@@ -67,11 +68,11 @@ namespace Firebase.Middleware
                         return;
                     }
 
-                    // Obtener datos del usuario para auditor�a
+                    // Obtener datos del usuario para auditoría
                     var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                     var userEmail = context.User.FindFirst(ClaimTypes.Email)?.Value;
 
-                    // VALIDACI�N 1: Verificar duraci�n m�xima de la sesi�n (usando datos de sesi�n)
+                    // VALIDACIÓN 1: Verificar duración máxima de la sesión (usando datos de sesión)
                     if (!string.IsNullOrEmpty(loginTime) && !string.IsNullOrEmpty(maxDuration))
                     {
                         var loginDateTime = DateTimeOffset.Parse(loginTime);
@@ -81,43 +82,20 @@ namespace Firebase.Middleware
                         if (sessionDuration > duracionMaximaMinutos)
                         {
                             _logger.LogInformation(
-                                $"Sesi�n expirada por duraci�n m�xima para usuario: {context.User.Identity.Name} " +
-                                $"(Duraci�n: {sessionDuration:F2} minutos, L�mite: {duracionMaximaMinutos} minutos)"
+                                $"Sesión expirada por duración máxima para usuario: {context.User.Identity.Name} " +
+                                $"(Duración: {sessionDuration:F2} minutos, Límite: {duracionMaximaMinutos} minutos)"
                             );
 
-                            // Registrar evento de auditor�a ANTES de cerrar la sesi�n
-                            if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(userEmail))
-                            {
-                                try
-                                {
-                                    await auditService.LogSessionEvent(
-                                        userId,
-                                        userEmail,
-                                        "Cerrar Sesi�n por Duraci�n M�xima",
-                                        userId,
-                                        "Empleado"
-                                    );
-                                    _logger.LogInformation($"Auditor�a registrada - Sesi�n cerrada por duraci�n m�xima: {userEmail}");
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogError("Error al registrar auditor�a de cierre por duraci�n.");
-                                }
-                            }
-
-                            _sessionRegistry.Revoke(authenticationSessionClaim);
-                            context.Session.Clear();
-                            await context.Session.CommitAsync();
-                            if (context.Response.HasStarted)
-                                throw new InvalidOperationException("Cannot complete session expiration after the response has started.");
-
-                            await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                            context.Response.Redirect("/Login/Index?expired=duration");
+                            await ExpireSessionAsync(context, auditService, authenticationSessionClaim, userId, userEmail,
+                                "Cerrar Sesión por Duración Máxima",
+                                $"Auditoría registrada - Sesión cerrada por duración máxima: {userEmail}",
+                                "Error al registrar auditoría de cierre por duración.",
+                                "/Login/Index?expired=duration");
                             return;
                         }
                     }
 
-                    // VALIDACI�N 2: Verificar inactividad
+                    // VALIDACIÓN 2: Verificar inactividad
                     if (!string.IsNullOrEmpty(lastActivity) && !string.IsNullOrEmpty(loginTime))
                     {
                         var lastActivityTime = DateTimeOffset.Parse(lastActivity);
@@ -130,45 +108,22 @@ namespace Firebase.Middleware
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning("Error al obtener configuraci�n de inactividad.");
+                            _logger.LogWarning("Error al obtener configuración de inactividad.");
                             tiempoInactividad = 15;
                         }
 
                         if (inactivityTime.TotalMinutes > tiempoInactividad)
                         {
                             _logger.LogInformation(
-                                $"Sesi�n expirada por inactividad para usuario: {context.User.Identity.Name} " +
-                                $"(Inactivo por {inactivityTime.TotalMinutes:F2} minutos, l�mite: {tiempoInactividad} min)"
+                                $"Sesión expirada por inactividad para usuario: {context.User.Identity.Name} " +
+                                $"(Inactivo por {inactivityTime.TotalMinutes:F2} minutos, límite: {tiempoInactividad} min)"
                             );
 
-                            // Registrar evento de auditor�a ANTES de cerrar la sesi�n
-                            if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(userEmail))
-                            {
-                                try
-                                {
-                                    await auditService.LogSessionEvent(
-                                        userId,
-                                        userEmail,
-                                        "Cerrar Sesi�n por Inactividad",
-                                        userId,
-                                        "Empleado"
-                                    );
-                                    _logger.LogInformation($"Auditor�a registrada - Sesi�n cerrada por inactividad: {userEmail}");
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogError("Error al registrar auditor�a de cierre por inactividad.");
-                                }
-                            }
-
-                            _sessionRegistry.Revoke(authenticationSessionClaim);
-                            context.Session.Clear();
-                            await context.Session.CommitAsync();
-                            if (context.Response.HasStarted)
-                                throw new InvalidOperationException("Cannot complete session expiration after the response has started.");
-
-                            await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                            context.Response.Redirect("/Login/Index?expired=inactivity");
+                            await ExpireSessionAsync(context, auditService, authenticationSessionClaim, userId, userEmail,
+                                "Cerrar Sesión por Inactividad",
+                                $"Auditoría registrada - Sesión cerrada por inactividad: {userEmail}",
+                                "Error al registrar auditoría de cierre por inactividad.",
+                                "/Login/Index?expired=inactivity");
                             return;
                         }
 
@@ -180,7 +135,7 @@ namespace Firebase.Middleware
                         // Inicializar tracking si no existe
                         _logger.LogInformation($"Inicializando tracking para usuario: {context.User.Identity.Name}");
 
-                        // Obtener duraci�n desde configuraci�n
+                        // Obtener duración desde configuración
                         int duracionSesionMinutos;
                         try
                         {
@@ -220,10 +175,36 @@ namespace Firebase.Middleware
 
             await _next(context);
         }
+
+        private async Task ExpireSessionAsync(HttpContext context, IAuditWriter auditService, string? authenticationSessionClaim,
+            string? userId, string? userEmail, string auditAction, string successLog, string errorLog, string redirectLocation)
+        {
+            if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(userEmail))
+            {
+                try
+                {
+                    await auditService.LogSessionEvent(userId, userEmail, auditAction, userId, "Empleado");
+                    _logger.LogInformation(successLog);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(errorLog);
+                }
+            }
+
+            _sessionRegistry.Revoke(authenticationSessionClaim);
+            context.Session.Clear();
+            await context.Session.CommitAsync();
+            if (context.Response.HasStarted)
+                throw new InvalidOperationException("Cannot complete session expiration after the response has started.");
+
+            await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            context.Response.Redirect(redirectLocation);
+        }
     }
 
     /// <summary>
-    /// Extensi�n para agregar el middleware f�cilmente.
+    /// Extensión para agregar el middleware fácilmente.
     /// </summary>
     public static class SessionActivityMiddlewareExtensions
     {

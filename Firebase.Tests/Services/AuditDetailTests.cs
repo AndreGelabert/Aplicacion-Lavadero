@@ -25,14 +25,14 @@ public class AuditDetailTests
     [InlineData("..")]
     public async Task InvalidIdsReturn404WithoutBackend(string id)
     {
-        var controller = new AuditoriaController(null!, null!, null!, null!, null!, null!, null!, null!, null!);
+        var controller = new AuditoriaController(null!, null!);
         Assert.IsType<NotFoundResult>(await controller.Detalle(id));
     }
 
     [Fact]
     public async Task BackendFailureReturnsGenericError()
     {
-        var controller = new AuditoriaController(null!, null!, null!, null!, null!, null!, null!, null!, null!);
+        var controller = new AuditoriaController(null!, null!);
         var result = Assert.IsType<ObjectResult>(await controller.Detalle("valid"));
         Assert.Equal(500, result.StatusCode);
         Assert.Equal("No se pudo cargar el detalle de auditoría.", result.Value);

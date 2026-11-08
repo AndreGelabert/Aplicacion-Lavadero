@@ -314,7 +314,7 @@ public class LoginController : Controller
             // Registrar evento de auditoría ANTES de cerrar la sesión
             if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(userEmail))
             {
-                var auditService = HttpContext.RequestServices.GetRequiredService<AuditService>();
+                var auditService = HttpContext.RequestServices.GetRequiredService<IAuditWriter>();
                 await auditService.LogSessionEvent(
                     userId,
                     userEmail,
