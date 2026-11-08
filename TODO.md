@@ -1,6 +1,6 @@
 # Mejoras futuras del sistema
 
-Este archivo conserva trabajo pospuesto. Las tareas siguientes pertenecen a la **integración del bot de WhatsApp con el sistema del lavadero**. No están implementadas ni autorizadas para comenzar automáticamente.
+Este archivo conserva trabajo pospuesto de la integración del bot de WhatsApp y del mantenimiento técnico del sistema. Las tareas no están implementadas ni autorizadas para comenzar automáticamente. La corrección de credenciales queda pospuesta: primero se priorizan las refactorizaciones.
 
 ## Contexto técnico
 
@@ -71,3 +71,26 @@ Los resultados explícitos de los servicios y los logs correlacionados son mejor
 - Pruebas aisladas con datos sintéticos cubren éxito, fallo antes del guardado, conflicto de destino y repetición/interrupción: nunca se pierden los datos originales ni se mezclan identidades.
 - Se demuestra la conservación de los campos y referencias definidos, sin autenticación real ni eliminación de cuentas reales.
 - La corrección tiene verificación independiente por afectar identidad y persistencia; su revisión y entrega se mantienen separadas de los refactors mecánicos.
+
+## [ ] SEC-01 — Reemplazar las APIs obsoletas de carga de credenciales de Google
+
+**Prioridad:** pospuesta por decisión del usuario; terminar primero las refactorizaciones.
+
+**Problema que resuelve:** cuatro llamadas a `GoogleCredential.FromJson` y `GoogleCredential.FromFile` en `Program.cs` generan advertencias `CS0618`. La biblioteca las depreca por un posible riesgo de seguridad al aceptar tipos de credencial inesperados; esto no demuestra por sí solo una vulnerabilidad en la aplicación.
+
+**Componentes que revisar:** inicialización de `FirestoreDb` y `FirebaseApp` en `Program.cs`. La versión resuelta `Google.Apis.Auth` 1.72.0 ya dispone de `CredentialFactory`; no se propone actualizar dependencias.
+
+**Decisión pendiente antes de implementar:** confirmar si el JSON explícito de `FIREBASE_CREDENTIALS` y el archivo de desarrollo `Utils/loginmvc.json` son de tipo `service_account`. Confirmar únicamente el tipo, sin copiar claves ni contenido secreto. Si se usa otro tipo, definir su compatibilidad antes de restringirlo.
+
+**Trabajo propuesto:**
+- Reemplazar las cuatro llamadas obsoletas por `CredentialFactory.FromJson` / `CredentialFactory.FromFile` con un tipo esperado explícito y previamente confirmado.
+- No tomar el tipo del propio JSON como política de aceptación: eso puede silenciar la advertencia sin resolver el motivo de seguridad.
+- Preservar la selección actual: JSON configurado; en su ausencia, archivo existente en desarrollo; en los demás casos, `GoogleCredential.GetApplicationDefault()`.
+- Mantener intactos el bypass de emuladores, las credenciales predeterminadas de Google y las diferencias de inicialización y manejo de errores entre ambos consumidores.
+- No modificar rutas, permisos ni formatos de configuración, ni registrar credenciales o tokens.
+
+**Criterios de aceptación:**
+- Desaparecen las cuatro advertencias de estas llamadas sin suprimir `CS0618`.
+- Pruebas aisladas con credenciales sintéticas válidas cubren la carga desde JSON y archivo, el rechazo de tipos incompatibles y entradas inválidas; no usan secretos ni realizan llamadas reales a Google.
+- Se verifica la prioridad de fuentes, el fallback a credenciales predeterminadas y el bypass de emuladores sin autenticar contra servicios reales.
+- La corrección recibe verificación independiente por afectar la carga de credenciales; cualquier revisión RDD aplicable se limita a su propia unidad de cambio.
