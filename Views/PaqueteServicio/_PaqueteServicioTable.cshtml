@@ -188,8 +188,8 @@ if (tiempoRender >= 60)
         else
         {
             <tr>
-                <td colspan="9" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                    No se encontraron paquetes de servicios con los filtros aplicados.
+                <td colspan="9" class="p-0">
+                    @await Html.PartialAsync("_TableEmptyState", ("No se encontraron paquetes de servicios con los filtros aplicados.", ""))
                 </td>
             </tr>
         }

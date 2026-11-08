@@ -169,8 +169,8 @@
         else
         {
             <tr>
-                <td colspan="8" class="text-center py-4 text-gray-500 dark:text-gray-400">
-                    No hay datos para mostrar.
+                <td colspan="8" class="p-0">
+                    @await Html.PartialAsync("_TableEmptyState", ("No hay datos para mostrar.", ""))
                 </td>
             </tr>
         }

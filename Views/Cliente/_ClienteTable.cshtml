@@ -141,8 +141,8 @@
         else
         {
             <tr>
-                <td colspan="8" class="text-center py-4 text-gray-500 dark:text-gray-400">
-                    No hay clientes registrados.
+                <td colspan="8" class="p-0">
+                    @await Html.PartialAsync("_TableEmptyState", ("No hay clientes registrados.", ""))
                 </td>
             </tr>
         }

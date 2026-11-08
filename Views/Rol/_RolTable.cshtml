@@ -139,8 +139,8 @@
         else
         {
             <tr>
-                <td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                    No se encontraron roles registrados que coincidan con la búsqueda
+                <td colspan="6" class="p-0">
+                    @await Html.PartialAsync("_TableEmptyState", ("No se encontraron roles registrados que coincidan con la búsqueda", ""))
                 </td>
             </tr>
         }
