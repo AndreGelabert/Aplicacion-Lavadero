@@ -1,8 +1,31 @@
-<label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-    <span>Tema</span>
-    <select data-theme-selector class="rounded-lg border border-gray-300 bg-white px-2 py-1 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-        <option value="system">Sistema</option>
-        <option value="light">Claro</option>
-        <option value="dark">Oscuro</option>
-    </select>
-</label>
+<button type="button"
+        role="switch"
+        data-theme-toggle
+        aria-checked="false"
+        aria-label="Cambiar tema: modo claro/oscuro"
+        class="flex items-center justify-center w-11 h-11 rounded-lg text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors">
+    @* Sol: visible en modo claro (estado actual); al hacer clic cambia a oscuro *@
+    <svg aria-hidden="true" focusable="false"
+         class="block dark:hidden w-5 h-5"
+         xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+         fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4"/>
+        <line x1="12" y1="2"  x2="12" y2="4"/>
+        <line x1="12" y1="20" x2="12" y2="22"/>
+        <line x1="4.22"  y1="4.22"  x2="5.64"  y2="5.64"/>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="2"  y1="12" x2="4"  y2="12"/>
+        <line x1="20" y1="12" x2="22" y2="12"/>
+        <line x1="4.22"  y1="19.78" x2="5.64"  y2="18.36"/>
+        <line x1="18.36" y1="5.64"  x2="19.78" y2="4.22"/>
+    </svg>
+    @* Luna: visible en modo oscuro (estado actual); al hacer clic cambia a claro *@
+    <svg aria-hidden="true" focusable="false"
+         class="hidden dark:block w-5 h-5"
+         xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+         fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+</button>
