@@ -10,98 +10,25 @@ const LoginModule = {
     init() {
         this.setupPasswordToggle();
         this.setupFormValidation();
-        this.setupRealTimeValidation();
     },
 
-    /**
-     * Configura validación en tiempo real para el formulario de login
-     */
-    setupRealTimeValidation() {
+    /** Configura la validación compartida sin cambiar los requisitos del login. */
+    setupFormValidation() {
+        const form = document.getElementById('loginForm');
+        if (!form) return;
+        const validation = window.FormValidation;
         const email = document.getElementById('email');
         const password = document.getElementById('password');
-
-        // Validación en tiempo real para email
-        if (email) {
-            email.addEventListener('input', () => this.validateEmailField(email));
-            email.addEventListener('blur', () => this.validateEmailField(email));
-        }
-
-        // Validación en tiempo real para password
-        if (password) {
-            password.addEventListener('input', () => this.validatePasswordField(password));
-            password.addEventListener('blur', () => this.validatePasswordField(password));
-        }
-    },
-
-    /**
-     * Valida el campo de email en tiempo real
-     * @param {HTMLElement} field - Campo de email
-     */
-    validateEmailField(field) {
-        const value = field.value.trim();
-        const errorContainer = document.getElementById('email-validation-error');
-        
-        if (!value) {
-            this.showFieldErrorWithContainer(field, errorContainer, 'El correo electrónico es obligatorio');
-            return false;
-        }
-        
-        if (!this.isValidEmail(value)) {
-            this.showFieldErrorWithContainer(field, errorContainer, 'Ingrese un correo electrónico válido');
-            return false;
-        }
-        
-        this.clearFieldErrorWithContainer(field, errorContainer);
-        return true;
-    },
-
-    /**
-     * Valida el campo de contraseña en tiempo real
-     * @param {HTMLElement} field - Campo de contraseña
-     */
-    validatePasswordField(field) {
-        const value = field.value.trim();
-        const errorContainer = document.getElementById('password-validation-error');
-        
-        if (!value) {
-            this.showFieldErrorWithContainer(field, errorContainer, 'La contraseña es obligatoria');
-            return false;
-        }
-        
-        this.clearFieldErrorWithContainer(field, errorContainer);
-        return true;
-    },
-
-    /**
-     * Configura validación del formulario de login
-     */
-    setupFormValidation() {
-        const loginForm = document.getElementById('loginForm');
-        if (!loginForm) return;
-
-        loginForm.addEventListener('submit', (e) => {
-            const email = document.getElementById('email');
-            const password = document.getElementById('password');
-
-            let hasErrors = false;
-
-            // Validar email
-            if (!this.validateEmailField(email)) {
-                hasErrors = true;
-            }
-
-            // Validar contraseña
-            if (!this.validatePasswordField(password)) {
-                hasErrors = true;
-            }
-
-            // Si hay errores, prevenir envío
-            if (hasErrors) {
-                e.preventDefault();
-                return;
-            }
-
-            // Dejar que el formulario se envíe normalmente
+        validation.registerCustomValidator('email', () => {
+            const value = email.value.trim();
+            return { isValid: !!value && this.isValidEmail(value), message: value ? 'Ingrese un correo electrónico válido' : 'El correo electrónico es obligatorio' };
+        });
+        validation.registerCustomValidator('password', () => ({
+            isValid: !!password.value.trim(), message: 'La contraseña es obligatoria'
+        }));
+        validation.init(form, { inputDebounceMs: 0, requiredErrorTimeoutMs: 0 });
+        form.addEventListener('submit', e => {
+            if (!validation.validateForm(form)) e.preventDefault();
         });
     },
 
@@ -134,39 +61,6 @@ const LoginModule = {
     isValidEmail(email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
-    },
-
-    /**
-     * Muestra error en un campo usando un contenedor específico
-     * @param {HTMLElement} field - Campo con error
-     * @param {HTMLElement} container - Contenedor del mensaje de error
-     * @param {string} message - Mensaje de error
-     */
-    showFieldErrorWithContainer(field, container, message) {
-        field.classList.add('border-red-500');
-        field.classList.remove('border-gray-300');
-        
-        if (container) {
-            container.textContent = message;
-            container.classList.remove('hidden');
-            container.style.display = 'block';
-        }
-    },
-
-    /**
-     * Limpia error de un campo usando un contenedor específico
-     * @param {HTMLElement} field - Campo a limpiar
-     * @param {HTMLElement} container - Contenedor del mensaje de error
-     */
-    clearFieldErrorWithContainer(field, container) {
-        field.classList.remove('border-red-500');
-        field.classList.add('border-gray-300');
-        
-        if (container) {
-            container.textContent = '';
-            container.classList.add('hidden');
-            container.style.display = 'none';
-        }
     },
 
     /**
