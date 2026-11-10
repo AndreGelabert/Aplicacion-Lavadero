@@ -102,6 +102,16 @@
         document.getElementById('rol-estado')?.addEventListener('change', () => applyRolFilters());
     }
 
+    function getCurrentSortState() {
+        if (!window.SiteModule?.getSortState) {
+            return {
+                sortBy: document.getElementById('current-sort-by')?.value || 'Nombre',
+                sortOrder: document.getElementById('current-sort-order')?.value || 'asc'
+            };
+        }
+        return window.SiteModule.getSortState('Nombre', 'asc');
+    }
+
     /**
      * Construye los parámetros de consulta de la tabla.
      * @returns {URLSearchParams}
@@ -110,8 +120,9 @@
         const params = new URLSearchParams();
         params.set('searchTerm', document.getElementById('rol-search')?.value.trim() || '');
         params.set('estado', document.getElementById('rol-estado')?.value || '');
-        params.set('sortBy', document.getElementById('current-sort-by')?.value || 'Nombre');
-        params.set('sortOrder', document.getElementById('current-sort-order')?.value || 'asc');
+        const { sortBy, sortOrder } = getCurrentSortState();
+        params.set('sortBy', sortBy);
+        params.set('sortOrder', sortOrder);
         return params;
     }
 
@@ -183,8 +194,7 @@
      * @param {string} sortBy
      */
     window.sortRolTable = function (sortBy) {
-        const currentSortBy = document.getElementById('current-sort-by')?.value || 'Nombre';
-        const currentSortOrder = document.getElementById('current-sort-order')?.value || 'asc';
+        const { sortBy: currentSortBy, sortOrder: currentSortOrder } = getCurrentSortState();
         const newOrder = currentSortBy === sortBy
             ? (currentSortOrder === 'asc' ? 'desc' : 'asc')
             : 'asc';
@@ -527,6 +537,11 @@
 
     // ===================== Eliminación =====================
 
+    function setRolConfirmationLabel(title, confirm, label) {
+        if (title) title.textContent = label;
+        if (confirm) confirm.textContent = label;
+    }
+
     /**
      * Abre el modal de confirmación de eliminación o muestra el bloqueo correspondiente.
      * @param {HTMLButtonElement} button
@@ -561,9 +576,8 @@
         if (modal) modal.dataset.action = 'desactivar';
         const title = document.getElementById('rol-state-title');
         const confirm = document.getElementById('rol-delete-confirm-btn');
-        if (title) title.textContent = 'Confirmar desactivación';
+        setRolConfirmationLabel(title, confirm, 'Confirmar desactivación');
         if (confirm) {
-            confirm.textContent = 'Confirmar desactivación';
             confirm.className = 'py-2 px-3 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900';
         }
         const iconWrapper = document.getElementById('rol-state-icon-wrapper');
@@ -584,9 +598,8 @@
         const confirm = document.getElementById('rol-delete-confirm-btn');
         if (idInput) idInput.value = button.dataset.id;
         if (text) text.textContent = `¿Está seguro de que desea reactivar el rol ${button.dataset.nombre}?`;
-        if (title) title.textContent = 'Confirmar reactivación';
+        setRolConfirmationLabel(title, confirm, 'Confirmar reactivación');
         if (confirm) {
-            confirm.textContent = 'Confirmar reactivación';
             confirm.className = 'py-2 px-3 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900';
         }
         const iconWrapper = document.getElementById('rol-state-icon-wrapper');

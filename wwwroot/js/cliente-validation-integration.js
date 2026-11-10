@@ -86,7 +86,8 @@
 
         // Hacer disponible globalmente la validación del formulario
         window.validateClienteForm = function () {
-            return window.FormValidation.validateForm(form);
+            const currentForm = document.getElementById('cliente-form');
+            return currentForm ? window.FormValidation.validateForm(currentForm) : false;
         };
 
         console.log('ClienteValidation: Inicialización completada');

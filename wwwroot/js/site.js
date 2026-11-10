@@ -266,6 +266,49 @@ const SiteModule = {
     },
 
     /**
+     * Escapa texto usando el parser DOM y conserva el contrato de las vistas
+     * que convierten valores falsy en una cadena vacía.
+     * @param {unknown} text - Valor a escapar
+     * @returns {string} Texto escapado
+     */
+    escapeHtmlText(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+
+    /**
+     * Copia todos los valores de un formulario a URLSearchParams.
+     * append conserva entradas repetidas, como los checkboxes de estado.
+     */
+    appendFormDataToParams(params, form) {
+        if (!params || !form) return params;
+        for (const [key, value] of new FormData(form).entries()) {
+            params.append(key, value);
+        }
+        return params;
+    },
+
+    /**
+     * Lee el estado de ordenamiento desde los campos ocultos de una tabla.
+     */
+    getSortState(defaultSortBy, defaultSortOrder) {
+        return {
+            sortBy: document.getElementById('current-sort-by')?.value || defaultSortBy,
+            sortOrder: document.getElementById('current-sort-order')?.value || defaultSortOrder
+        };
+    },
+
+    /** Formatea importes en pesos argentinos. */
+    formatCurrency(value) {
+        return new Intl.NumberFormat('es-AR', {
+            style: 'currency',
+            currency: 'ARS'
+        }).format(value);
+    },
+
+    /**
      * Hace crecer automáticamente un textarea según su contenido
      * @param {HTMLElement} element - Elemento textarea
      */

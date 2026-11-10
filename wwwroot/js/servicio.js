@@ -13,6 +13,14 @@
     let searchTimeout = null;
     let currentSearchTerm = '';
 
+    function appendFormDataToParams(params, form) {
+        if (window.SiteModule?.appendFormDataToParams) {
+            return window.SiteModule.appendFormDataToParams(params, form);
+        }
+        for (const [key, value] of new FormData(form).entries()) params.append(key, value);
+        return params;
+    }
+
     // =====================================
     // INICIALIZACIÓN DEL MÓDULO
     // =====================================
@@ -198,12 +206,9 @@
      * Obtiene los parámetros de ordenamiento actuales
      */
     function getCurrentSort() {
-        const sortByInput = document.getElementById('current-sort-by');
-        const sortOrderInput = document.getElementById('current-sort-order');
-
-        return {
-            sortBy: sortByInput?.value || 'Nombre',
-            sortOrder: sortOrderInput?.value || 'asc'
+        return window.SiteModule?.getSortState?.('Nombre', 'asc') || {
+            sortBy: document.getElementById('current-sort-by')?.value || 'Nombre',
+            sortOrder: document.getElementById('current-sort-order')?.value || 'asc'
         };
     }
 
@@ -221,10 +226,7 @@
         const params = new URLSearchParams();
 
         if (filterForm) {
-            const formData = new FormData(filterForm);
-            for (const [key, value] of formData.entries()) {
-                params.append(key, value);
-            }
+            appendFormDataToParams(params, filterForm);
         }
 
         // Orden actual
@@ -1172,6 +1174,8 @@
         .then(html => {
     document.getElementById('servicio-form-container').innerHTML = html;
             setupFormValidation();
+            const form = document.querySelector('#servicio-form-container form[data-validate="true"]');
+            if (form && window.FormValidation) window.FormValidation.init(form);
 
             const desc = document.getElementById('Descripcion');
     if (desc) window.SiteModule?.autoGrow(desc);
@@ -1228,6 +1232,8 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
             .then(result => {
                 document.getElementById('servicio-form-container').innerHTML = result.html;
                 setupFormValidation();
+                const replacementForm = document.querySelector('#servicio-form-container form[data-validate="true"]');
+                if (replacementForm && window.FormValidation) window.FormValidation.init(replacementForm);
 
                 const desc = document.getElementById('Descripcion');
                 if (desc) window.SiteModule?.autoGrow(desc);

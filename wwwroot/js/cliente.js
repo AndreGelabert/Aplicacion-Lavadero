@@ -14,6 +14,15 @@
 (function () {
     'use strict';
 
+    const escapeHtml = text => window.SiteModule?.escapeHtmlText
+        ? window.SiteModule.escapeHtmlText(text)
+        : (() => {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        })();
+
     // ===================== Estado interno =====================
     let currentPage = 1;
     let currentSearchTerm = "";
@@ -23,6 +32,14 @@
     let tableSequence = 0;
     let clienteMsgTimeout = null;
     let tableMsgTimeout = null;
+
+    function appendFormDataToParams(params, form) {
+        if (window.SiteModule?.appendFormDataToParams) {
+            return window.SiteModule.appendFormDataToParams(params, form);
+        }
+        for (const [key, value] of new FormData(form).entries()) params.append(key, value);
+        return params;
+    }
 
     // Variables para gestión de vehículos
     let vehiculosSeleccionados = [];
@@ -510,10 +527,7 @@
         const form = document.getElementById('filterForm');
         const params = new URLSearchParams();
         if (form) {
-            const formData = new FormData(form);
-            for (const [key, value] of formData.entries()) {
-                params.append(key, value);
-            }
+            appendFormDataToParams(params, form);
         }
         return params;
     }
@@ -639,6 +653,8 @@
 
             // Reconfigurar validación de documento
             await setupDocumentoValidation();
+            const form = document.querySelector('#cliente-form-container form[data-validate="true"]');
+            if (form && window.FormValidation) window.FormValidation.init(form);
 
             const accordionBtn = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
             const accordionBody = document.getElementById("accordion-flush-body-1");
@@ -742,6 +758,8 @@
 
             // CRÍTICO: Esperar setup de vehículos
             await setupVehiculoSelector();
+            const replacementForm = document.querySelector('#cliente-form-container form[data-validate="true"]');
+            if (replacementForm && window.FormValidation) window.FormValidation.init(replacementForm);
 
             const isEdit = !!document.getElementById('Id')?.value;
             const titleSpan = document.getElementById('form-title');
@@ -2976,10 +2994,7 @@
         const params = new URLSearchParams();
 
         if (filterForm) {
-            const formData = new FormData(filterForm);
-            for (const [key, value] of formData.entries()) {
-                params.append(key, value);
-            }
+            appendFormDataToParams(params, filterForm);
         }
 
         // Agregar término de búsqueda y ordenamiento
@@ -3007,13 +3022,6 @@
     function showTipoDocumentoModalMessage(type, message, disappearMs = 5000) {
         return window.Notificaciones.mostrar(message, type);
     }
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
     async function parseJsonSafe(response) {
         try {
             const ct = response.headers.get('content-type') || '';

@@ -48,11 +48,11 @@
 
     window.abrirModalPago = function (lavadoId, precioTotal, pagado) {
         document.getElementById('pagoLavadoId').value = lavadoId;
-        document.getElementById('pagoTotal').textContent = formatCurrency(precioTotal);
-        document.getElementById('pagoPagado').textContent = formatCurrency(pagado);
+        document.getElementById('pagoTotal').textContent = window.SiteModule.formatCurrency(precioTotal);
+        document.getElementById('pagoPagado').textContent = window.SiteModule.formatCurrency(pagado);
 
         const restante = precioTotal - pagado;
-        document.getElementById('pagoRestante').textContent = formatCurrency(restante);
+        document.getElementById('pagoRestante').textContent = window.SiteModule.formatCurrency(restante);
 
         // Configurar el input para no permitir más del restante
         const montoInput = document.getElementById('montoInput');
@@ -340,6 +340,8 @@
             document.body.appendChild(backdrop);
         }
 
+        backdrop.style.zIndex = '51';
+        modal.style.zIndex = '52';
         modal.classList.remove('hidden');
         modal.classList.add('z-50'); // Asegurar que el modal esté encima del backdrop
         modal.setAttribute('aria-hidden', 'false');
@@ -366,13 +368,6 @@
         window.Notificaciones.mostrar(msg, type);
     }
 
-
-    function formatCurrency(value) {
-        return new Intl.NumberFormat('es-AR', {
-            style: 'currency',
-            currency: 'ARS'
-        }).format(value);
-    }
 
     // Exportar funciones necesarias
     window.cerrarModal = cerrarModal;
