@@ -31,7 +31,9 @@ const modules = path.join(realSource, 'node_modules');
 const slash = value => value.split(String.fromCharCode(92)).join('/');
 const excluded = name => {
   const parts = slash(name).split('/');
-  return parts.some(part => ['.git', 'node_modules', 'bin', 'obj', '.local'].includes(part)) ||
+  return parts.some(part => ['.git', 'node_modules', 'bin', 'obj', '.local'].includes(part) ||
+    /^appsettings.*\.json$/i.test(part) || /^\.env(?:\..*)?$/i.test(part) ||
+    /^(?:credentials?|secrets?)(?:\..*)?$/i.test(part)) ||
     slash(name) === 'odd/tasks/google-authentication-safety.md';
 };
 function command(exe, argv, options = {}) {
