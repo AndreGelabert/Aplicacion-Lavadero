@@ -7,8 +7,16 @@ for (const name of ['Cliente', 'Rol', 'Vehiculo', 'PaqueteServicio', 'Servicio',
   test(`${name}: acciones reales conservan envío y clic`, async ({ page }) => {
     const file = name === 'Configuracion' ? 'Views/Configuracion/Index.cshtml' : `Views/${name}/_${name === 'Lavados' ? 'Lavado' : name}Form.cshtml`;
     const source = fs.readFileSync(path.join(root, file), 'utf8');
-    const formTag = source.match(/<form\b[^>]*>/)[0];
-    const actions = [...source.matchAll(/<(?:button|a)\b[^>]*class="app-button app-button--(?:success|danger|primary|secondary)"[^>]*>[\s\S]*?<\/(?:button|a)>/g)].map(m => m[0]);
+    let actionSource = source;
+    if (name === 'Configuracion') {
+      const forms = [...source.matchAll(/<form\b[^>]*\bid="configuracion-form"[^>]*>[\s\S]*?<\/form\s*>/g)];
+      expect(forms).toHaveLength(1);
+      actionSource = forms[0][0];
+      expect(actionSource.slice(actionSource.indexOf('>') + 1)).not.toMatch(/<form\b/);
+    }
+    const formTag = actionSource.match(/<form\b[^>]*>/)[0];
+    const actions = [...actionSource.matchAll(/<(?:button|a)\b[^>]*class="app-button app-button--(?:success|danger|primary|secondary)"[^>]*>[\s\S]*?<\/(?:button|a)>/g)].map(m => m[0]);
+    if (name === 'Configuracion') expect(actions).toHaveLength(2);
     // Resolve only the create-mode Razor expression; leave event handlers intact.
     const create = actions.join('').replace(/onclick="@\(edit \? "[^"]*" : "([^"]*)"\)"/g, 'onclick="$1"')
       .replace(/onclick="@\(Model == null \? "([^"]*)" : "[^"]*"\)"/g, 'onclick="$1"')
@@ -17,7 +25,7 @@ for (const name of ['Cliente', 'Rol', 'Vehiculo', 'PaqueteServicio', 'Servicio',
     await page.evaluate(() => {
       window.calls = [];
       for (const fn of ['submitClienteAjax', 'submitRolAjax', 'submitVehiculoAjax', 'submitPaqueteAjax', 'submitServicioAjax', 'cancelRolForm', 'limpiarFormularioPaquete', 'limpiarFormularioLavado']) window[fn] = () => { window.calls.push(fn); return false; };
-      document.querySelector('form').addEventListener('submit', e => { window.calls.push('submit'); e.preventDefault(); });
+      document.querySelector('form').addEventListener('submit', e => { window.calls.push('submit'); window.payload = [...new FormData(e.currentTarget).entries()]; e.preventDefault(); });
     });
     const submit = page.locator('.app-button--success, .app-button--primary');
     const clear = page.locator('.app-button--danger, .app-button--secondary');
@@ -37,6 +45,9 @@ for (const name of ['Cliente', 'Rol', 'Vehiculo', 'PaqueteServicio', 'Servicio',
       if (['Cliente', 'Vehiculo', 'Servicio'].includes(name)) await expect(page.locator('input[name="example"]')).toHaveValue('original');
       else expect(calls).toContain({ Rol: 'cancelRolForm', PaqueteServicio: 'limpiarFormularioPaquete', Lavados: 'limpiarFormularioLavado' }[name]);
     } else {
+      await expect(submit).toHaveAttribute('type', 'submit');
+      expect(await page.evaluate(() => window.calls)).toEqual(['submit']);
+      expect(await page.evaluate(() => window.payload)).toEqual([['example', 'original']]);
       await expect(clear).toHaveAttribute('href', '/Lavados');
     }
   });

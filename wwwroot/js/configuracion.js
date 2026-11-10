@@ -297,7 +297,12 @@
         try {
             const inst = getFlowbiteModal(modal);
             if (inst && typeof inst.show === 'function') {
+                const previousChildren = new Set(document.body.children);
                 inst.show();
+                modal.style.zIndex = '52';
+                Array.from(document.body.children).forEach(child => {
+                    if (!previousChildren.has(child)) child.style.zIndex = '51';
+                });
                 return;
             }
         } catch (e) {

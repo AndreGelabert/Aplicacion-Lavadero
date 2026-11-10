@@ -46,11 +46,15 @@ for (const [name, expected] of Object.entries(contracts)) {
 }
 test('configuración conserva atributos y permisos de acciones', () => {
   const source = fs.readFileSync('Views/Configuracion/Index.cshtml', 'utf8');
-  const form = source.match(/<form\b[^>]*>/)[0];
-  const actions = [...source.matchAll(/<(?:a|button)\b[^>]*class="app-button app-button--(?:primary|secondary)"[^>]*>/g)].map(m => m[0]);
+  const forms = [...source.matchAll(/<form\b[^>]*\bid="configuracion-form"[^>]*>[\s\S]*?<\/form\s*>/g)];
+  assert.equal(forms.length, 1, 'expected one configuración main form');
+  const mainForm = forms[0][0];
+  assert.doesNotMatch(mainForm.slice(mainForm.indexOf('>') + 1), /<form\b/);
+  const form = mainForm.match(/<form\b[^>]*>/)[0];
+  const actions = [...mainForm.matchAll(/<(?:a|button)\b[^>]*class="app-button app-button--(?:primary|secondary)"[^>]*>/g)].map(m => m[0]);
   assert.deepEqual([form, ...actions].map(business), ['id="configuracion-form" data-validate="true" asp-action="Actualizar" method="post"', 'href="@Url.Action("Index", "Lavados")"', 'type="submit"']);
-  assert.match(source, /@if \(puedeConsultarLavados\)\s*\{\s*<a/);
-  assert.match(source, /@if \(puedeModificar\)\s*\{\s*<button type="submit"/);
+  assert.match(mainForm, /@if \(puedeConsultarLavados\)\s*\{\s*<a/);
+  assert.match(mainForm, /@if \(puedeModificar\)\s*\{\s*<button type="submit"/);
 });
 test('celdas vacías no añaden padding exterior', () => {
   for (const name of ['Auditoria', 'Cliente', 'Personal', 'Lavados', 'Rol', 'PaqueteServicio', 'Vehiculo', 'Servicio']) {
