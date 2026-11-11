@@ -26,6 +26,14 @@
     let searchTimeout = null;
 
     let currentSearchTerm = '';
+
+    function appendFormDataToParams(params, form) {
+        if (window.SiteModule?.appendFormDataToParams) {
+            return window.SiteModule.appendFormDataToParams(params, form);
+        }
+        for (const [key, value] of new FormData(form).entries()) params.append(key, value);
+        return params;
+    }
     let serviciosDisponibles = [];
     let serviciosSeleccionados = [];
     let servicioSeleccionadoDropdown = null;
@@ -124,7 +132,7 @@
      * Obtiene el orden actual de la tabla desde inputs ocultos.
      */
     function getCurrentSort() {
-        return {
+        return window.SiteModule?.getSortState?.('Nombre', 'asc') || {
             sortBy: document.getElementById('current-sort-by')?.value || 'Nombre',
             sortOrder: document.getElementById('current-sort-order')?.value || 'asc'
         };
@@ -152,10 +160,7 @@
         const form = document.getElementById('filterForm');
         const params = new URLSearchParams();
         if (!form) return params;
-        const fd = new FormData(form);
-        for (const [k, v] of fd.entries()) {
-            params.append(k, v); // preserva múltiples valores (checkboxes 'estados')
-        }
+        appendFormDataToParams(params, form);
         return params;
     }
 
@@ -334,6 +339,8 @@
             protegerTipoVehiculoEnEdicion();
             setupTipoVehiculoChangeHandler();
             initializeFormFromHidden();
+            const form = cont?.querySelector('form[data-validate="true"]');
+            if (form && window.FormValidation) window.FormValidation.init(form);
 
             document.getElementById('accordion-flush-body-1')?.classList.add('hidden');
             hideFormMessage();
@@ -1213,12 +1220,14 @@ if (helpMin) helpMin.textContent = '';
                 setupTipoVehiculoChangeHandler();
                 initializeFormFromHidden();
 
+                const replacementForm = cont?.querySelector('form[data-validate="true"]');
+                if (replacementForm && window.FormValidation) window.FormValidation.init(replacementForm);
+
                 if (!result.ok) {
                     console.error('HTTP error submitPaqueteAjax:', result.status);
                     showFormMessage('Error al procesar la solicitud.', 'error');
                     return;
                 }
-
                 if (result.isValid) {
                     showFormMessage(result.msg || 'Operación exitosa.', 'success');
                     const searchEl = document.getElementById('simple-search');
@@ -1278,6 +1287,8 @@ const srvTitle = r.headers.get('X-Form-Title');
         protegerTipoVehiculoEnEdicion();
 setupTipoVehiculoChangeHandler();
    initializeFormFromHidden();
+        const form = cont?.querySelector('form[data-validate="true"]');
+        if (form && window.FormValidation) window.FormValidation.init(form);
 
          const accBody = document.getElementById('accordion-flush-body-1');
         if (accBody) accBody.classList.remove('hidden');

@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .app-button { @apply inline-flex min-h-10 items-center justify-center rounded-lg px-4 py-2 text-center text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50; }
+  .app-button--primary { @apply bg-blue-700 text-white hover:bg-blue-800 focus-visible:outline-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700; }
+  .app-button--secondary { @apply border border-gray-300 bg-white text-gray-900 hover:bg-gray-100 focus-visible:outline-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700; }
+  .app-button--danger { @apply bg-red-600 text-white hover:bg-red-700 focus-visible:outline-red-600 dark:bg-red-500 dark:hover:bg-red-600; }
+  .app-button--success { @apply bg-green-600 text-white hover:bg-green-700 focus-visible:outline-green-600 dark:bg-green-500 dark:hover:bg-green-600; }
+}
+
+:root { color-scheme: light; }
+:root.dark { color-scheme: dark; }

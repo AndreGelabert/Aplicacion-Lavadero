@@ -153,7 +153,7 @@
      * Obtiene los parámetros de ordenamiento actuales
      */
     function getCurrentSort() {
-        return {
+        return window.SiteModule?.getSortState?.('NombreCompleto', 'asc') || {
             sortBy: document.getElementById('current-sort-by')?.value || 'NombreCompleto',
             sortOrder: document.getElementById('current-sort-order')?.value || 'asc'
         };
@@ -186,8 +186,11 @@
         const params = new URLSearchParams();
         if (!form) return params;
 
-        const fd = new FormData(form);
-        for (const [k, v] of fd.entries()) params.append(k, v);
+        if (window.SiteModule?.appendFormDataToParams) {
+            window.SiteModule.appendFormDataToParams(params, form);
+        } else {
+            for (const [k, v] of new FormData(form).entries()) params.append(k, v);
+        }
 
         return params;
     }
@@ -216,6 +219,11 @@
         return loadTablePartial(url, callback);
     }
 
+    function refreshPersonalTableControls() {
+        window.CommonUtils?.setupDefaultFilterForm?.();
+        if (typeof initDropdowns === 'function') initDropdowns();
+    }
+
     /**
      * Carga la tabla parcial vía fetch
      * @param {string} url - URL de la tabla parcial
@@ -241,8 +249,7 @@
                 const cp = document.getElementById('current-page-value')?.value;
                 if (cp && container) container.dataset.currentPage = cp;
 
-                window.CommonUtils?.setupDefaultFilterForm?.();
-                if (typeof initDropdowns === 'function') initDropdowns();
+                refreshPersonalTableControls();
 
                 if (typeof callback === 'function') callback();
             })
@@ -373,8 +380,7 @@
         const dropdown = document.getElementById('filterDropdown');
         if (dropdown) dropdown.classList.add('hidden');
 
-        window.CommonUtils?.setupDefaultFilterForm?.();
-        if (typeof initDropdowns === 'function') initDropdowns();
+        refreshPersonalTableControls();
 
         reloadPersonalTable(1).finally(() => { form.dataset.clearing = 'false'; });
     };

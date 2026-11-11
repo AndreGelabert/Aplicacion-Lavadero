@@ -13,6 +13,7 @@
 <input type="hidden" id="current-sort-by" value="@(ViewBag.SortBy ?? "NombreCompleto")" />
 <input type="hidden" id="current-sort-order" value="@(ViewBag.SortOrder ?? "asc")" />
 
+<div class="overflow-x-auto" role="region" aria-label="Tabla de personal" tabindex="0">
 <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
     <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
    <tr>
@@ -176,13 +177,14 @@ else
         else
         {
             <tr>
-  <td colspan="5" class="text-center py-4 text-gray-500 dark:text-gray-400">
- No hay datos para mostrar.
+  <td colspan="5" class="p-0">
+ @await Html.PartialAsync("_TableEmptyState", ("No hay datos para mostrar.", ""))
           </td>
          </tr>
         }
     </tbody>
 </table>
+</div>
 
 <!-- Paginación de la tabla -->
 <nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">

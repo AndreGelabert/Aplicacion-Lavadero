@@ -14,6 +14,15 @@
 (function () {
     'use strict';
 
+    const escapeHtml = text => window.SiteModule?.escapeHtmlText
+        ? window.SiteModule.escapeHtmlText(text)
+        : (() => {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        })();
+
     // ===================== Estado interno =====================
     let currentPage = 1;
     let currentSearchTerm = "";
@@ -32,6 +41,14 @@
     
     // Cache de formatos de tipos de vehículo para validación de patente
     let tiposVehiculoFormatos = {};
+
+    function appendFormDataToParams(params, form) {
+        if (window.SiteModule?.appendFormDataToParams) {
+            return window.SiteModule.appendFormDataToParams(params, form);
+        }
+        for (const [key, value] of new FormData(form).entries()) params.append(key, value);
+        return params;
+    }
 
     // ===================== Inicialización del módulo =====================
     window.PageModules = window.PageModules || {};
@@ -858,6 +875,8 @@
             .then(response => response.text())
             .then(html => {
                 document.getElementById("vehiculo-form-container").innerHTML = html;
+                const form = document.querySelector('#vehiculo-form-container form[data-validate="true"]');
+                if (form && window.FormValidation) window.FormValidation.init(form);
                 document.getElementById('form-title').textContent = 'Editando Vehículo';
 
                 // Mostrar el acordeón completo
@@ -962,6 +981,8 @@
             })
             .then (result => {
                 document.getElementById('vehiculo-form-container').innerHTML = result.html;
+                const replacementForm = document.querySelector('#vehiculo-form-container form[data-validate="true"]');
+                if (replacementForm && window.FormValidation) window.FormValidation.init(replacementForm);
 
                 if (result.valid) {
                     showFormMessage('success', result.msg || 'Vehículo actualizado correctamente.', 4000);
@@ -1171,13 +1192,6 @@
 
     // ===================== Utilidades =====================
 
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
     function getFlowbiteModal(modalEl) {
         if (!modalEl || typeof window !== 'object' || typeof window.Modal === 'undefined') return null;
         
@@ -1350,18 +1364,14 @@
         const params = new URLSearchParams();
 
         if (filterForm) {
-            const formData = new FormData(filterForm);
-            for (const [key, value] of formData.entries()) {
-                params.append(key, value);
-            }
+            appendFormDataToParams(params, filterForm);
         }
 
         // Agregar término de búsqueda y ordenamiento
-        const currentSort = getCurrentSort();
         params.set('searchTerm', searchTerm);
         params.set('pageNumber', '1');
-        params.set('sortBy', currentSort.sortBy);
-        params.set('sortOrder', currentSort.sortOrder);
+        params.set('sortBy', currentSortBy);
+        params.set('sortOrder', currentSortOrder);
 
         const url = `/Vehiculo/SearchPartial?${params.toString()}`;
 

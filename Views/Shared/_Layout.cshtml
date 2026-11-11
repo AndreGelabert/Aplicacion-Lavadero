@@ -33,6 +33,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - @nombreLavadero</title>
     <base href="~/" />
+    @await Html.PartialAsync("_ThemeAssets")
     <link href="~/css/app.min.css" rel="stylesheet" asp-append-version="true" />
     <link rel="stylesheet" href="~/Firebase.styles.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/notifications.css" asp-append-version="true" />
@@ -49,7 +50,7 @@
 </head>
 <body>
     @await Html.PartialAsync("_NotificationMessages")
-    <div class="antialiased bg-gray-50 dark:bg-gray-900">
+    <div class="antialiased min-h-screen bg-gray-50 dark:bg-gray-900">
         <!-- Barra de navegación -->
         <nav class="bg-white border-b border-gray-200 px-4 py-2.5 dark:bg-gray-800 dark:border-gray-700 fixed left-0 right-0 top-0 z-50">
             <div class="flex flex-wrap justify-between items-center">
@@ -87,6 +88,7 @@
                 </div>
                 <!-- Menu del usuario -->
                 <div class="flex items-center lg:order-2">
+                    @await Html.PartialAsync("_ThemeSelector")
                     <button type="button"
                             class="flex mx-3 text-sm bg-transparent rounded-full md:mr-0 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
                             id="user-menu-button"
@@ -117,7 +119,7 @@
             </div>
         </nav>
         <!-- Barra Lateral -->
-        <aside class="fixed top-0 left-0 z-40 w-64 h-screen pt-14 transition-transform -translate-x-full bg-white border-r border-gray-200 md:translate-x-0 dark:bg-gray-800 dark:border-gray-700"
+        <aside class="fixed top-0 left-0 z-40 w-64 h-screen pt-14 transition-transform -translate-x-full bg-white border-r border-gray-200 dark:bg-gray-800 dark:border-gray-700"
                aria-label="Menú lateral"
                id="drawer-navigation">
             <div class="overflow-y-auto py-5 px-3 h-full bg-white dark:bg-gray-800">
@@ -168,7 +170,7 @@
             </div>
         </aside>
         <!-- Vista -->
-        <main role="main" class="p-4 md:ml-64 h-auto pt-20">
+        <main role="main" class="p-4 h-auto pt-20">
             @RenderBody()
         </main>
     </div>

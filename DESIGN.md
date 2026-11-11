@@ -61,7 +61,7 @@ components:
 
 Una interfaz accesible, cercana y ordenada para el trabajo cotidiano: información fácil de recorrer y controles familiares para personas con distinta experiencia digital.
 
-Las superficies, bordes y sombras organizan la operación sin cambiar la identidad existente. Esta descripción proviene del código, no de una validación visual en navegador ni de una auditoría de accesibilidad.
+Las superficies, bordes y sombras organizan la operación sin cambiar la identidad existente. La descripción combina código con la evidencia acotada de navegador indicada abajo; no es una auditoría completa de accesibilidad ni una revisión visual píxel por píxel.
 
 **Key Characteristics:**
 - Azul operativo y grises neutros.
@@ -89,7 +89,7 @@ La fuente base emitida es una pila sans del sistema; Inter figura en la asignaci
 
 ## Layout
 
-La aplicación combina barra superior fija, navegación lateral y contenido principal. La barra lateral mide 16rem y se desplaza fuera de pantalla en tamaños pequeños; desde `md` (768px) queda visible y el contenido recibe margen lateral. El contenido usa 1rem de relleno, con separación superior para la barra. En Lavados los filtros pasan de columna a fila en `md`; la cuadrícula de filtros pasa de una a dos columnas en `md` y cuatro en `lg` (1024px).
+La aplicación combina barra superior fija, navegación lateral y contenido principal. La barra lateral mide 16rem, permanece cerrada inicialmente en todos los tamaños y se despliega sobre el contenido sin reservar margen lateral. El contenido usa 1rem de relleno, con separación superior para la barra. En Lavados los filtros pasan de columna a fila en `md`; la cuadrícula de filtros pasa de una a dos columnas en `md` y cuatro en `lg` (1024px).
 
 ## Elevation & Depth
 
@@ -103,12 +103,12 @@ Los controles y paneles recurren a esquinas suavemente redondeadas de 0.5rem; la
 
 - **Botones:** el botón azul de ayuda usa texto blanco, radio 0.5rem y relleno 0.5rem; las acciones secundarias combinan blanco, borde gris y cambio de fondo al pasar el puntero. Se observan anillos de foco en las vistas; su resultado efectivo depende de las hojas cargadas.
 - **Campos:** superficies grises claras, borde, texto oscuro y radio 0.5rem; los campos de formulario usan 0.625rem de relleno. Algunas clases de foco `primary` no están en el CSS emitido inspeccionado.
-- **Navegación:** elementos con icono y etiqueta; el módulo actual se distingue con fondo azul claro y texto azul. El menú lateral se despliega en pantallas pequeñas.
+- **Navegación:** elementos con icono y etiqueta; el módulo actual se distingue con fondo azul claro y texto azul. El menú lateral se despliega sobre el contenido en todos los tamaños.
 - **Etiquetas:** estado legible en texto pequeño, con fondo y texto coloreados; por ejemplo, «Pagado» en verde y «En Proceso» en azul.
-- **Contenedores y tablas:** panel blanco con encabezado separado y tabla compacta; filas y columnas presentan datos de trabajo y acciones.
+- **Contenedores y tablas:** panel blanco con encabezado separado y tabla compacta; filas y columnas presentan datos de trabajo y acciones. Las tablas anchas usan una región de desplazamiento horizontal enfocada con teclado, con paginación fuera. T20 verificó 39/39 casos sintéticos y 36/36 casos reales, con auditoría independiente del alcance y evidencia; no implica revisión píxel por píxel de todas las pantallas.
 - **Avisos:** tarjetas apiladas arriba a la derecha, con borde lateral acentuado, texto de estado y botón de cierre con foco visible.
 
-La disposición principal carga `app.min.css`, `Firebase.styles.css`, `notifications.css` y después Flowbite por CDN. El acceso usa otra disposición y carga `Firebase.styles.css` antes de `app.min.css`. Hay clases oscuras en las vistas, pero no se verificó un modo oscuro completo ni la cascada remota en ejecución.
+La disposición principal carga `app.min.css`, `Firebase.styles.css`, `notifications.css` y después Flowbite por CDN. El acceso usa otra disposición y carga `Firebase.styles.css` antes de `app.min.css`. El selector real de tema se comprobó en nueve vistas a 1440/390 en claro y oscuro; también se verificaron 12 aperturas y cierres reales de tres modales en esas combinaciones. Es evidencia acotada, no una revisión píxel por píxel de todas las páginas ni prueba completa de la cascada remota. Persisten advertencias conocidas de inicialización de Flowbite.
 
 ## Do's and Don'ts
 

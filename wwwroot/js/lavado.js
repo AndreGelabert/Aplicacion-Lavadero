@@ -6,11 +6,28 @@
 
 (function () {
     'use strict';
+
+    const escapeHtml = text => window.SiteModule?.escapeHtmlText
+        ? window.SiteModule.escapeHtmlText(text)
+        : (() => {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        })();
     let tableSequence = 0;
 
     let searchTimeout = null;
     let currentSearchTerm = '';
     let tableMsgTimeout = null;
+
+    function appendFormDataToParams(params, form) {
+        if (window.SiteModule?.appendFormDataToParams) {
+            return window.SiteModule.appendFormDataToParams(params, form);
+        }
+        for (const [key, value] of new FormData(form).entries()) params.append(key, value);
+        return params;
+    }
 
     // =====================================
     // INICIALIZACIÓN DEL MÓDULO
@@ -111,10 +128,7 @@
         const params = new URLSearchParams();
 
         if (filterForm) {
-            const formData = new FormData(filterForm);
-            for (const [key, value] of formData.entries()) {
-                params.append(key, value);
-            }
+            appendFormDataToParams(params, filterForm);
         }
 
         const currentSort = getCurrentSort();
@@ -676,7 +690,7 @@
                         ${paquetes.map(p => {
                 const precioOriginal = p.precioOriginal || 0;
                 const precioConDescuento = precioOriginal - (precioOriginal * p.descuento / 100);
-                return `<option value="${p.id}" data-precio="${precioOriginal}">${escapeHtml(p.nombre)} - ${formatCurrency(precioOriginal)} (${p.descuento}% desc.) = ${formatCurrency(precioConDescuento)}</option>`;
+                return `<option value="${p.id}" data-precio="${precioOriginal}">${escapeHtml(p.nombre)} - ${window.SiteModule.formatCurrency(precioOriginal)} (${p.descuento}% desc.) = ${window.SiteModule.formatCurrency(precioConDescuento)}</option>`;
             }).join('')}
                     </select>
                 </div>
@@ -687,7 +701,7 @@
                     <select id="servicios-select-${vehiculoId}" onchange="agregarServicio('${vehiculoId}', this.value)"
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                         <option value="">Agregar servicio...</option>
-                        ${servicios.map(s => `<option value="${s.id}" data-tipo="${s.tipo}">${escapeHtml(s.nombre)} - ${formatCurrency(s.precio)} (${s.tiempoEstimado} min)</option>`).join('')}
+                        ${servicios.map(s => `<option value="${s.id}" data-tipo="${s.tipo}">${escapeHtml(s.nombre)} - ${window.SiteModule.formatCurrency(s.precio)} (${s.tiempoEstimado} min)</option>`).join('')}
                     </select>
                 </div>
                 
@@ -1026,7 +1040,7 @@
                                 <span class="text-gray-400 dark:text-gray-500 font-medium text-sm">${grupo.indiceInicial + idx + 1}.</span>
                                 <div class="flex-1">
                                     <div class="font-medium text-gray-900 dark:text-white text-sm">${escapeHtml(s.nombre)}</div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(s.tipo)} • ${s.tiempoEstimado} min • ${formatCurrency(s.precio)}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(s.tipo)} • ${s.tiempoEstimado} min • ${window.SiteModule.formatCurrency(s.precio)}</div>
                                 </div>
                             </div>
                         `).join('')}
@@ -1043,7 +1057,7 @@
                             <span class="text-gray-400 dark:text-gray-500 font-medium">${grupo.indice + 1}.</span>
                             <div>
                                 <div class="font-medium text-gray-900 dark:text-white">${escapeHtml(s.nombre)}</div>
-                                <div class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(s.tipo)} • ${s.tiempoEstimado} min • ${formatCurrency(s.precio)}</div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(s.tipo)} • ${s.tiempoEstimado} min • ${window.SiteModule.formatCurrency(s.precio)}</div>
                             </div>
                         </div>
                         <div class="flex items-center gap-1">
@@ -1099,8 +1113,8 @@
         const descuento = parseFloat(document.getElementById('descuento')?.value || 0);
         const precioConDescuento = precioTotal - (precioTotal * descuento / 100);
 
-        document.getElementById('precioOriginal').textContent = descuento > 0 ? formatCurrency(precioTotal) : '';
-        document.getElementById('precioFinal').textContent = formatCurrency(precioConDescuento);
+        document.getElementById('precioOriginal').textContent = descuento > 0 ? window.SiteModule.formatCurrency(precioTotal) : '';
+        document.getElementById('precioFinal').textContent = window.SiteModule.formatCurrency(precioConDescuento);
         document.getElementById('tiempoTotal').textContent = tiempoTotal > 60 ? `${(tiempoTotal / 60).toFixed(1)} hs` : `${tiempoTotal} min`;
     };
 
@@ -1254,11 +1268,11 @@
 
     window.abrirModalPago = function (lavadoId, precioTotal, pagado) {
         document.getElementById('pagoLavadoId').value = lavadoId;
-        document.getElementById('pagoTotal').textContent = formatCurrency(precioTotal);
-        document.getElementById('pagoPagado').textContent = formatCurrency(pagado);
+        document.getElementById('pagoTotal').textContent = window.SiteModule.formatCurrency(precioTotal);
+        document.getElementById('pagoPagado').textContent = window.SiteModule.formatCurrency(pagado);
 
         const restante = precioTotal - pagado;
-        document.getElementById('pagoRestante').textContent = formatCurrency(restante);
+        document.getElementById('pagoRestante').textContent = window.SiteModule.formatCurrency(restante);
 
         // Configurar el input para no permitir más del restante
         const montoInput = document.getElementById('montoInput');
@@ -1693,20 +1707,6 @@
         });
     }
 
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function formatCurrency(value) {
-        return new Intl.NumberFormat('es-AR', {
-            style: 'currency',
-            currency: 'ARS'
-        }).format(value);
-    }
-
     function abrirModal(modalId) {
         const modal = document.getElementById(modalId);
         if (!modal) return;
@@ -1728,9 +1728,11 @@
             backdrop.id = 'modal-backdrop';
             backdrop.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 z-40';
             backdrop.style.backgroundColor = 'rgba(17, 24, 39, 0.5)';
+            backdrop.style.zIndex = '51';
             document.body.appendChild(backdrop);
         }
 
+        modal.style.zIndex = '52';
         modal.classList.remove('hidden');
         modal.classList.add('z-50');
         modal.setAttribute('aria-hidden', 'false');

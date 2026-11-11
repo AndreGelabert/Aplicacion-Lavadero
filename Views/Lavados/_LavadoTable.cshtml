@@ -6,6 +6,7 @@
 <input type="hidden" id="current-sort-by" value="@(ViewBag.SortBy ?? "FechaCreacion")" />
 <input type="hidden" id="current-sort-order" value="@(ViewBag.SortOrder ?? "desc")" />
 
+<div class="overflow-x-auto" role="region" aria-label="Tabla de lavados" tabindex="0">
 <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
     <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
         <tr>
@@ -239,13 +240,14 @@
         else
         {
             <tr>
-                <td colspan="9" class="text-center py-4 text-gray-500 dark:text-gray-400">
-                    No hay lavados para mostrar.
+                <td colspan="9" class="p-0">
+                    @await Html.PartialAsync("_TableEmptyState", ("No hay lavados para mostrar.", ""))
                 </td>
             </tr>
         }
     </tbody>
 </table>
+</div>
 
 <!-- Paginación -->
 <nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">

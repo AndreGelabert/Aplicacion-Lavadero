@@ -43,19 +43,16 @@
                 return;
             }
 
-            // Verificar si ya fue inicializado
-            if (form.dataset.formValidationInitialized === 'true') {
-                console.log('FormValidation: Formulario ya inicializado, saltando...', form.id || form.className);
-                return;
-            }
-
-            // Marcar como inicializado
+            // Marcar el formulario; los campos se inicializan individualmente.
+            // Una llamada posterior también puede encontrar campos agregados.
             form.dataset.formValidationInitialized = 'true';
 
             const config = {
                 validateOnBlur: true,
                 validateOnInput: true,
                 showAsterisk: true,
+                inputDebounceMs: 300,
+                requiredErrorTimeoutMs: 3000,
                 ...options
             };
 
@@ -80,20 +77,24 @@
                 const label = field.labels ? field.labels[0] : document.querySelector(`label[for="${field.id}"]`);
                 
                 if (label) {
-                    // Verificar si ya tiene asterisco (rojo o en texto)
-                    const hasRedAsterisk = label.querySelector('.text-red-600, .text-red-500');
-                    const hasTextAsterisk = label.textContent.includes('*');
-                    
-                    if (!hasRedAsterisk && !hasTextAsterisk) {
-                        // Agregar asterisco rojo
-                        const asterisk = document.createElement('span');
-                        asterisk.className = 'text-red-600 ml-1';
-                        asterisk.textContent = '*';
-                        label.appendChild(asterisk);
-                    } else if (hasTextAsterisk && !hasRedAsterisk) {
-                        // Reemplazar asterisco de texto por uno rojo
-                        label.innerHTML = label.innerHTML.replace(/\*/, '<span class="text-red-600 ml-1">*</span>');
+                    let marker = Array.from(label.querySelectorAll('span')).find(span => span.textContent.trim() === '*');
+                    if (!marker) {
+                        const walker = document.createTreeWalker(label, NodeFilter.SHOW_TEXT);
+                        let textNode;
+                        while ((textNode = walker.nextNode()) && !textNode.textContent.includes('*')) { /* buscar marcador existente */ }
+                        marker = document.createElement('span');
+                        marker.textContent = '*';
+                        if (textNode) {
+                            const tail = textNode.splitText(textNode.textContent.indexOf('*'));
+                            tail.deleteData(0, 1);
+                            tail.parentNode.insertBefore(marker, tail);
+                        } else {
+                            label.appendChild(marker);
+                        }
                     }
+                    marker.classList.remove('text-red-500', 'text-red-600');
+                    marker.classList.add('text-red-600', 'dark:text-red-400', 'ml-1');
+                    marker.setAttribute('aria-hidden', 'true');
                 }
             });
         },
@@ -114,6 +115,7 @@
                 
                 // Marcar como inicializado
                 field.dataset.formValidationInitialized = 'true';
+                field._requiredErrorTimeoutMs = config.requiredErrorTimeoutMs;
                 
                 // Crear contenedor de error si no existe
                 this.ensureErrorContainer(field);
@@ -126,9 +128,13 @@
                     field.addEventListener('input', () => {
                         // Pequeño debounce para mejorar rendimiento
                         clearTimeout(field._validationTimeout);
-                        field._validationTimeout = setTimeout(() => {
+                        if (config.inputDebounceMs === 0) {
                             this.validateField(field);
-                        }, 300);
+                        } else {
+                            field._validationTimeout = setTimeout(() => {
+                                this.validateField(field);
+                            }, config.inputDebounceMs);
+                        }
                     });
                 }
 
@@ -337,7 +343,8 @@
                                          message.toLowerCase().includes('requerido') ||
                                          message.toLowerCase().includes('seleccione');
                 
-                if (isRequiredMessage) {
+                const timeoutMs = field._requiredErrorTimeoutMs ?? 3000;
+                if (isRequiredMessage && timeoutMs > 0) {
                     errorContainer._hideTimeout = setTimeout(() => {
                         // Solo ocultar si el campo sigue vacío y el mensaje no cambió
                         const currentValue = field.value?.trim() || '';
@@ -349,7 +356,7 @@
                             field.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
                             field.classList.add('border-gray-300', 'focus:border-primary-600', 'focus:ring-primary-600');
                         }
-                    }, 3000); // 3 segundos
+                    }, timeoutMs);
                 }
             } else {
                 // Ocultar error

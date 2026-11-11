@@ -7,6 +7,7 @@
 <input type="hidden" id="current-sort-by" value="@(ViewBag.SortBy ?? "Nombre")" />
 <input type="hidden" id="current-sort-order" value="@(ViewBag.SortOrder ?? "asc")" />
 
+<div class="overflow-x-auto" role="region" aria-label="Tabla de paquetes de servicios" tabindex="0">
 <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
     <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
         <tr>
@@ -188,13 +189,14 @@ if (tiempoRender >= 60)
         else
         {
             <tr>
-                <td colspan="9" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                    No se encontraron paquetes de servicios con los filtros aplicados.
+                <td colspan="9" class="p-0">
+                    @await Html.PartialAsync("_TableEmptyState", ("No se encontraron paquetes de servicios con los filtros aplicados.", ""))
                 </td>
             </tr>
         }
     </tbody>
 </table>
+</div>
 <!-- Paginación -->
 <nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">
     <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
