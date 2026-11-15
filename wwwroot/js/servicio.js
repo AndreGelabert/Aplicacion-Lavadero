@@ -1674,9 +1674,16 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
         // the hidden JSON and would discard the unsaved stage draft.
         if (recetaEditorStageId) cerrarModal('etapasModal');
         abrirModal('recetaEditorModal');
-        document.getElementById('recetaEditorModal')?.classList.add('flex');
         document.getElementById('recetaModalidad')?.focus();
     }
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && recetaEditorTarget) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            window.closeRecipeEditor(false);
+        }
+    }, true);
 
     window.closeRecipeEditor = function (save) {
         if (!recetaEditorTarget) return;
@@ -1696,7 +1703,6 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
             recetaEditorTarget.Receta = recetaEditorOriginal;
         }
         cerrarModal('recetaEditorModal');
-        document.getElementById('recetaEditorModal')?.classList.remove('flex');
         // Discard uncommitted controls on either exit so they cannot leak into
         // another recipe, including when the user cancels.
         document.getElementById('recetaModalidad').value = 'Producto';
@@ -1719,8 +1725,8 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
 
     window.cambiarModalidadReceta = function () {
         const tipo = document.getElementById('recetaModalidad').value === 'Tipo';
-        document.getElementById('recetaTipo').classList.toggle('hidden', !tipo);
-        document.getElementById('recetaInsumo').classList.toggle('hidden', tipo);
+        document.getElementById('recetaTipoGrupo').classList.toggle('hidden', !tipo);
+        document.getElementById('recetaInsumoGrupo').classList.toggle('hidden', tipo);
         actualizarUnidadesReceta();
     };
     window.actualizarUnidadesReceta = function () {
@@ -1730,7 +1736,14 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
         let unidades = {}; try { unidades = JSON.parse(document.getElementById('unidades-receta-json').value || '{}'); } catch { }
         const unidad = document.getElementById('recetaUnidad');
         unidad.replaceChildren(new Option('Seleccionar unidad', ''));
-        (unidades[categoria] || []).forEach(u => unidad.add(new Option(u, u)));
+        (unidades[categoria] || []).forEach(u => unidad.add(new Option(etiquetaUnidadReceta(u), u)));
+    };
+    function etiquetaUnidadReceta(unidad) {
+        return ({ ml: 'Mililitro (mL)', l: 'Litro (L)', mg: 'Miligramo (mg)', g: 'Gramo (g)', kg: 'Kilogramo (kg)', unidad: 'Unidad (u)' })[unidad] || unidad;
+    }
+    // La etiqueta es solo presentación; el valor sigue siendo la unidad canónica.
+    function unidadRecetaVisible(unidad) {
+        return etiquetaUnidadReceta(unidad || '');
     };
     function addRecipeItem() {
         const modalidad = document.getElementById('recetaModalidad').value;
@@ -1767,8 +1780,8 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
         if (!container) return;
         container.innerHTML = (recetaEditorTarget?.Receta || []).map((item, index) =>
             `<div class="flex justify-between items-center rounded border p-2 dark:border-gray-600 dark:text-white">
-                <span>${escapeHtml(item.NombreTipo || item.NombreInsumo || item.TipoId || item.InsumoId)} - ${item.DosisTeorica} ${escapeHtml(item.UnidadMedida || '')}</span>
-                <button type="button" onclick="removeRecipeItem(${index})" class="text-red-600">Quitar</button>
+                <span>${escapeHtml(item.NombreTipo || item.NombreInsumo || item.TipoId || item.InsumoId)} - ${item.DosisTeorica} ${escapeHtml(unidadRecetaVisible(item.UnidadMedida))}</span>
+                <button type="button" onclick="removeRecipeItem(${index})" class="inline-flex items-center gap-1 text-red-600 hover:text-red-700"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>Quitar</button>
             </div>`).join('') || '<p class="text-sm text-gray-500">No hay insumos configurados.</p>';
     }
 
@@ -1778,7 +1791,7 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
         let receta = [];
         try { receta = JSON.parse(document.getElementById('RecetaJson')?.value || '[]'); } catch { }
         container.innerHTML = receta.map(x =>
-            `<div class="text-sm text-gray-700 dark:text-gray-300">${escapeHtml(x.NombreTipo || x.NombreInsumo || x.TipoId || x.InsumoId)}: ${x.DosisTeorica} ${escapeHtml(x.UnidadMedida || '')}</div>`).join('') ||
+            `<div class="text-sm text-gray-700 dark:text-gray-300">${escapeHtml(x.NombreTipo || x.NombreInsumo || x.TipoId || x.InsumoId)}: ${x.DosisTeorica} ${escapeHtml(unidadRecetaVisible(x.UnidadMedida))}</div>`).join('') ||
             '<p class="text-sm text-gray-500">No hay insumos configurados.</p>';
     }
 
@@ -1855,12 +1868,12 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
                     <span class="text-sm text-gray-900 dark:text-white">${escapeHtml(etapa.Nombre)}</span>
                 </div>
                 <button type="button" onclick="editarRecetaEtapa('${etapa.Id}')"
-                        class="text-blue-600 hover:text-blue-700 mr-3">
-                    Receta
+                        class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 mr-3">
+                    <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> Receta
                 </button>
-                <button type="button" onclick="eliminarEtapa('${etapa.Id}')"
+                <button type="button" onclick="eliminarEtapa('${etapa.Id}')" aria-label="Eliminar etapa ${escapeHtml(etapa.Nombre)}"
                         class="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <svg aria-hidden="true" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>
