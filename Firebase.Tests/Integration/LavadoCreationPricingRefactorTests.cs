@@ -202,7 +202,7 @@ public class LavadoCreationPricingRefactorTests
     }
 
     [LocalFirestoreFact]
-    public async Task SecondVehicleFailureLeavesFirstWashStartedAndAudited()
+    public async Task SecondVehicleFailureLeavesNoWashOrAudit()
     {
         using var fixture = await Fixture.Create();
         SetAuditActor(fixture);
@@ -210,24 +210,8 @@ public class LavadoCreationPricingRefactorTests
         request.VehiculosServicios.Add(new VehiculoServiciosRequest { VehiculoId = "missing", Servicios = new() { Item("one") } });
 
         AssertError(Json(await fixture.Controller.CrearLavadoAjax(request)), "Vehículo con ID missing no encontrado.");
-        var document = Assert.Single((await fixture.Db.Collection("lavados").GetSnapshotAsync()).Documents);
-        var lavado = await fixture.Washes.ObtenerLavado(document.Id);
-        Assert.NotNull(lavado);
-        Assert.Equal("vehicle", lavado.VehiculoId);
-        Assert.Equal("EnProceso", lavado.Estado);
-        var servicio = Assert.Single(lavado.Servicios);
-        Assert.Equal("one", servicio.ServicioId);
-        Assert.Equal("EnProceso", servicio.Estado);
-        Assert.NotNull(servicio.TiempoInicio);
-        var auditDoc = Assert.Single((await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Documents);
-        var audit = await new AuditService(fixture.Db).ObtenerDetalle(auditDoc.Id);
-        Assert.Equal("actor", audit.UserId);
-        Assert.Equal("actor@example.com", audit.UserEmail);
-        Assert.Equal("Creación de lavado", audit.Action);
-        Assert.Equal(document.Id, audit.TargetId);
-        Assert.Equal("Lavado", audit.TargetType);
-        Assert.Empty(audit.Antes);
-        Assert.Equal(AuditCampos.CapturarLavado(lavado).OrderBy(x => x.Key), audit.Despues.OrderBy(x => x.Key));
+        Assert.Empty((await fixture.Db.Collection("lavados").GetSnapshotAsync()).Documents);
+        Assert.Empty((await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Documents);
     }
 
     [LocalFirestoreFact]
@@ -241,6 +225,106 @@ public class LavadoCreationPricingRefactorTests
         AssertError(Json(await fixture.Controller.CrearLavadoAjax(request)), "Uno de los paquetes seleccionados ya no está disponible.");
         Assert.Empty((await fixture.Db.Collection("lavados").GetSnapshotAsync()).Documents);
         Assert.Empty((await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Documents);
+    }
+
+    [LocalFirestoreFact]
+    public async Task CreationRejectsUnavailableInitialResourcesWithoutPartialReservation()
+    {
+        foreach (var staged in new[] { false, true })
+        foreach (var shortage in new[] { false, true })
+        {
+            using var fixture = await Fixture.Create();
+            var stock = new StockService(fixture.Db);
+            var insumos = new InsumoService(fixture.Db);
+            await new TipoInsumoService(fixture.Db).AsegurarTipoHerramienta("fixture", "fixture");
+            var tool = new Insumo { Nombre = "Hidro", Tipo = "Herramienta", UnidadMedida = "unidad" };
+            var chemical = new Insumo { Nombre = "Jabon", Tipo = "Quimico" };
+            Assert.True((await insumos.Guardar(tool, true)).EsExitoso);
+            Assert.True((await insumos.Guardar(chemical, true)).EsExitoso);
+            Assert.True((await stock.Ajustar(tool.Id, 1, true, "Ingreso", "actor")).EsExitoso);
+            if (!shortage)
+            {
+                Assert.True((await stock.Ajustar(chemical.Id, 1, true, "Ingreso", "actor")).EsExitoso);
+                Assert.True((await stock.ReservarHerramienta("ocupada", tool.Id, 1)).EsExitoso);
+            }
+            var recipe = new[] { new RecetaInsumo { InsumoId = tool.Id, DosisTeorica = 1 }, new RecetaInsumo { InsumoId = chemical.Id, DosisTeorica = 1 } };
+            await fixture.Db.Collection("servicios").Document("one").UpdateAsync(staged
+                ? new Dictionary<string, object> { ["Etapas"] = new[] { new Etapa { Id = "e", Nombre = "Etapa", Receta = recipe.ToList() } } }
+                : new Dictionary<string, object> { ["Receta"] = recipe });
+            var auditsPrevios = (await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Documents;
+            Assert.Equal(shortage ? 4 : 5, auditsPrevios.Count);
+            Assert.Single(auditsPrevios.Where(d => d.GetValue<string>("TargetType") == "TipoInsumo"));
+            Assert.Equal(shortage ? 3 : 4, auditsPrevios.Count(d => d.GetValue<string>("TargetType") == "Insumo"));
+            var response = Json(await fixture.Controller.CrearLavadoAjax(Request(new[] { Item("one") }, 0m)));
+            AssertError(response, "No se pudo crear el lavado. Inténtalo nuevamente.");
+            Assert.Empty((await fixture.Db.Collection("lavados").GetSnapshotAsync()).Documents);
+            var auditsPost = (await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Documents;
+            Assert.Equal(auditsPrevios.Select(d => (d.Id, d.GetValue<string>("Action"), d.GetValue<string>("TargetId"))).OrderBy(x => x.Id),
+                auditsPost.Select(d => (d.Id, d.GetValue<string>("Action"), d.GetValue<string>("TargetId"))).OrderBy(x => x.Id));
+            Assert.DoesNotContain(auditsPost, d => d.GetValue<string>("TargetType") == "Lavado");
+            Assert.Equal(shortage ? 0 : 1, (await fixture.Db.Collection("reservasHerramientas").GetSnapshotAsync()).Count);
+            Assert.Equal(shortage ? 0 : 1, (await insumos.Obtener(chemical.Id))!.StockActual);
+            Assert.Equal(1, (await insumos.Obtener(tool.Id))!.StockActual);
+            if (shortage) Assert.True((await stock.ReservarHerramienta("libre", tool.Id, 1)).EsExitoso);
+            else Assert.False((await stock.ReservarHerramienta("extra", tool.Id, 1)).EsExitoso);
+        }
+    }
+
+    [LocalFirestoreFact]
+    public async Task BatchAssignsDistinctAvailableEmployees()
+    {
+        using var fixture = await Fixture.Create();
+        await fixture.AddSecondVehicle();
+        await fixture.AddSecondEmployee();
+        var response = Json(await fixture.Controller.CrearLavadoAjax(TwoVehicles()));
+        Assert.True(response.GetProperty("success").GetBoolean(), response.GetRawText());
+        var ids = response.GetProperty("lavadosIds").EnumerateArray().Select(x => x.GetString()!).ToArray();
+        Assert.Equal(2, ids.Length);
+        var lavados = new[] { (await fixture.Washes.ObtenerLavado(ids[0]))!, (await fixture.Washes.ObtenerLavado(ids[1]))! };
+        Assert.Equal(new[] { "staff", "staff2" }, lavados.SelectMany(l => l.EmpleadosAsignadosIds).OrderBy(x => x));
+        Assert.All(lavados, l => Assert.Single(l.EmpleadosAsignadosIds));
+        Assert.Equal(2, (await fixture.Db.Collection("lavados").GetSnapshotAsync()).Count);
+    }
+
+    [LocalFirestoreFact]
+    public async Task BatchRejectsInsufficientEmployeesWithoutEffects()
+    {
+        using var fixture = await Fixture.Create();
+        SetAuditActor(fixture);
+        await fixture.AddSecondVehicle();
+        var response = Json(await fixture.Controller.CrearLavadoAjax(TwoVehicles()));
+        Assert.False(response.GetProperty("success").GetBoolean());
+        Assert.Empty((await fixture.Db.Collection("lavados").GetSnapshotAsync()).Documents);
+        Assert.Empty((await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Documents);
+        Assert.Empty((await fixture.Db.Collection("reservasHerramientas").GetSnapshotAsync()).Documents);
+    }
+
+    [LocalFirestoreFact]
+    public async Task BatchAuditFailureReportsCreatedAndContinuesOtherAudits()
+    {
+        using var fixture = await Fixture.Create(failFirstAudit: true);
+        SetAuditActor(fixture);
+        await fixture.AddSecondVehicle();
+        await fixture.AddSecondEmployee();
+        var response = Json(await fixture.Controller.CrearLavadoAjax(TwoVehicles()));
+        Assert.True(response.GetProperty("success").GetBoolean(), response.GetRawText());
+        Assert.Contains("auditoría", response.GetProperty("message").GetString()!, StringComparison.OrdinalIgnoreCase);
+        var ids = response.GetProperty("lavadosIds").EnumerateArray().Select(x => x.GetString()!).ToArray();
+        Assert.Equal(2, ids.Length);
+        Assert.Equal(2, ids.Distinct().Count());
+        Assert.Equal(ids.OrderBy(x => x), (await fixture.Db.Collection("lavados").GetSnapshotAsync()).Documents.Select(x => x.Id).OrderBy(x => x));
+        var auditoria = Assert.Single((await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Documents).ConvertTo<AuditLog>();
+        Assert.Equal(ids[1], auditoria.TargetId);
+        Assert.Equal("actor", auditoria.UserId);
+        Assert.Equal("actor@example.com", auditoria.UserEmail);
+        Assert.Equal("Creación de lavado", auditoria.Action);
+    }
+
+    private static CrearLavadoRequest TwoVehicles()
+    {
+        var request = Request(new[] { Item("one") }, 0m);
+        request.VehiculosServicios.Add(new VehiculoServiciosRequest { VehiculoId = "vehicle2", Servicios = new() { Item("one") } });
+        return request;
     }
 
     private static void SetAuditActor(Fixture fixture) => fixture.Controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
@@ -263,6 +347,18 @@ public class LavadoCreationPricingRefactorTests
     };
     private static JsonElement Json(IActionResult result) => JsonSerializer.SerializeToElement(Assert.IsType<JsonResult>(result).Value);
 
+    private sealed class FailFirstAudit(IAuditWriter inner) : IAuditWriter
+    {
+        private bool _failed;
+        public Task LogEvent(string userId, string userEmail, string action, string targetId, string targetType) => inner.LogEvent(userId, userEmail, action, targetId, targetType);
+        public Task LogSessionEvent(string userId, string userEmail, string action, string targetId, string targetType) => inner.LogSessionEvent(userId, userEmail, action, targetId, targetType);
+        public Task LogEvent(string userId, string userEmail, string action, string targetId, string targetType, Dictionary<string, string> antes, Dictionary<string, string> despues, string nombreHistorico = null!)
+        {
+            if (!_failed) { _failed = true; throw new InvalidOperationException("Fallo simulado de auditoría"); }
+            return inner.LogEvent(userId, userEmail, action, targetId, targetType, antes, despues, nombreHistorico);
+        }
+    }
+
     private sealed class Fixture : IDisposable
     {
         private readonly MemoryCache _cache = new(new MemoryCacheOptions());
@@ -270,7 +366,7 @@ public class LavadoCreationPricingRefactorTests
         public LavadoService Washes { get; }
         public LavadosController Controller { get; }
 
-        private Fixture(FirestoreDb db)
+        private Fixture(FirestoreDb db, bool failFirstAudit)
         {
             Db = db;
             var services = new ServicioService(db);
@@ -279,7 +375,9 @@ public class LavadoCreationPricingRefactorTests
             var config = new ConfiguracionService(db, _cache);
             _cache.Set("system_configuration", new Configuracion { HorariosOperacion = new(), CapacidadMaximaConcurrente = 10 });
             Washes = new LavadoService(db, services, packages, staff, config);
-            Controller = new LavadosController(NullLogger<LavadosController>.Instance, new AuditService(db), Washes,
+            IAuditWriter audit = new AuditService(db);
+            if (failFirstAudit) audit = new FailFirstAudit(audit);
+            Controller = new LavadosController(NullLogger<LavadosController>.Instance, audit, Washes,
                 services, packages, new ClienteService(db), new VehiculoService(db), staff, config,
                 new TipoVehiculoService(db), new TipoDocumentoService(db),
                 new LavadoCreationService(new ClienteService(db), new VehiculoService(db), services, packages, new TipoVehiculoService(db), Washes),
@@ -297,9 +395,12 @@ public class LavadoCreationPricingRefactorTests
             HorariosOperacion = new(), CapacidadMaximaConcurrente = 10, EmpleadosMaximosPorLavado = maximum
         });
 
-        public static async Task<Fixture> Create()
+        public Task AddSecondVehicle() => Db.Collection("vehiculos").Document("vehicle2").SetAsync(new Vehiculo { Id = "vehicle2", Patente = "DEF456", TipoVehiculo = "Auto", Marca = "Marca", Modelo = "Modelo", Color = "Azul", ClienteId = "client" });
+        public Task AddSecondEmployee() => Db.Collection("empleados").Document("staff2").SetAsync(new Dictionary<string, object> { ["Nombre"] = "Segundo", ["Email"] = "staff2@example.com", ["Rol"] = "Empleado", ["Estado"] = "Activo" });
+
+        public static async Task<Fixture> Create(bool failFirstAudit = false)
         {
-            var fixture = new Fixture(new FirestoreDbBuilder { ProjectId = "demo-washprice-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build());
+            var fixture = new Fixture(new FirestoreDbBuilder { ProjectId = "demo-washprice-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build(), failFirstAudit);
             var db = fixture.Db;
             await db.Collection("clientes").Document("client").SetAsync(new Cliente { Id = "client", TipoDocumento = "DNI", NumeroDocumento = "123", Nombre = "Ana", Apellido = "Perez", Telefono = "1234567890", Email = "ana@example.com" });
             await db.Collection("vehiculos").Document("vehicle").SetAsync(new Vehiculo { Id = "vehicle", Patente = "ABC123", TipoVehiculo = "Auto", Marca = "Marca", Modelo = "Modelo", Color = "Azul", ClienteId = "client" });

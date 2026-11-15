@@ -44,6 +44,14 @@ namespace Firebase.Models
 
         #endregion
 
+        [FirestoreProperty(ConverterType = typeof(DecimalConverter))]
+        [Range(typeof(decimal), "0", "79228162514264337593543950335", ErrorMessage = "El porcentaje de alerta debe ser no negativo")]
+        public decimal PorcentajeAlertaStock { get; set; } = 20;
+
+        [FirestoreProperty]
+        [Range(0, int.MaxValue, ErrorMessage = "La vigencia de compra reciente debe ser no negativa")]
+        public int VigenciaCompraRecienteDias { get; set; } = 14;
+
         #region Configuración de Pasos de Descuento
 
         /// <summary>

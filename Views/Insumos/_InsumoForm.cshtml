@@ -1,0 +1,42 @@
+@model Firebase.Models.Insumo
+@{
+    var crear = string.IsNullOrEmpty(Model.Id);
+    var proveedores = (ViewBag.Proveedores as List<Firebase.Models.Proveedor>) ?? new();
+    var tipos = (ViewBag.Tipos as List<Firebase.Models.TipoInsumo>) ?? new();
+}
+<form method="post" asp-action="Guardar" class="grid md:grid-cols-4 gap-3 mt-3">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="crear" value="@crear.ToString().ToLowerInvariant()" />
+    <input type="hidden" name="Id" value="@Model.Id" />
+    <input name="Nombre" value="@Model.Nombre" required placeholder="Nombre" aria-label="Nombre" class="rounded border p-2" />
+    @if (crear)
+    {
+        <select name="TipoId" required aria-label="Tipo" class="rounded border p-2" onchange="window.actualizarUnidadesInsumo(this)">
+            <option value="">Seleccionar tipo</option>
+            @foreach (var tipo in tipos) { <option value="@tipo.Id" data-categoria="@tipo.Categoria">@tipo.Nombre</option> }
+        </select>
+        <select name="UnidadMedida" required aria-label="Unidad" class="rounded border p-2"><option value="">Seleccionar unidad</option></select>
+        <script src="~/js/tipos-insumo.js" asp-append-version="true"></script>
+    }
+    else
+    {
+        <input type="hidden" name="TipoId" value="@Model.TipoId" /><input type="hidden" name="Tipo" value="@Model.Tipo" /><input type="hidden" name="UnidadMedida" value="@Model.UnidadMedida" />
+        <span>Tipo: @Model.Tipo · Unidad: @Model.UnidadMedida</span>
+    }
+    <input name="StockMinimo" value="@Model.StockMinimo" type="number" min="0" step="0.01" placeholder="Stock mínimo" aria-label="Stock mínimo" class="rounded border p-2" />
+    <input name="CantidadReabastecimiento" value="@Model.CantidadReabastecimiento" type="number" min="0" step="0.01" placeholder="Cantidad de reposición" aria-label="Cantidad de reposición" class="rounded border p-2" />
+    <label class="flex items-center gap-2"><input name="ReabastecimientoAutomatico" type="checkbox" value="true" checked="@Model.ReabastecimientoAutomatico" /> Reabastecimiento automático</label>
+    <fieldset class="rounded border p-2 md:col-span-2">
+        <legend>Proveedores (obligatorio si el reabastecimiento automático está activo)</legend>
+        @foreach (var proveedor in proveedores)
+        {
+            <label class="flex items-center gap-2"><input type="checkbox" name="ProveedoresIds" value="@proveedor.Id" checked="@Model.ProveedoresIds.Contains(proveedor.Id)" /> @proveedor.RazonSocial</label>
+        }
+        @foreach (var id in Model.ProveedoresIds.Where(id => !proveedores.Any(p => p.Id == id)))
+        {
+            <label class="flex items-center gap-2"><input type="checkbox" name="ProveedoresIds" value="@id" checked /> Proveedor no disponible (@id)</label>
+        }
+        @if (proveedores.Count == 0) { <p>No hay proveedores activos disponibles.</p> }
+    </fieldset>
+    <button class="app-button app-button--success">@(crear ? "Crear insumo" : "Guardar cambios")</button>
+</form>

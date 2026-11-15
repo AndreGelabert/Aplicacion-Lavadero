@@ -78,12 +78,30 @@
         }
     };
 
-    window.abrirModalFinalizar = function (lavadoId, servicioId, etapaId, tipo, nombre) {
+    window.abrirModalFinalizar = function (lavadoId, servicioId, etapaId, tipo, nombre, sourceButton) {
         document.getElementById('finalizarLavadoId').value = lavadoId;
         document.getElementById('finalizarLavadoIdAlt').value = lavadoId;
         document.getElementById('finalizarServicioId').value = servicioId || '';
         document.getElementById('finalizarEtapaId').value = etapaId || '';
         document.getElementById('finalizarTipo').value = tipo;
+        const consumoFields = document.getElementById('consumoRealFields');
+        const consumoJson = document.getElementById('consumoRealJson');
+        const justificacion = document.getElementById('justificacionDesvio');
+        if (consumoFields) consumoFields.classList.toggle('hidden', tipo !== 'etapa');
+        if (consumoJson) consumoJson.value = '';
+        if (justificacion) justificacion.value = '';
+        const inputs = document.getElementById('consumoRealInputs');
+        if (inputs) {
+            let receta = [];
+            try { receta = JSON.parse(sourceButton?.dataset.receta || '[]'); } catch { receta = []; }
+            inputs.innerHTML = receta.map(item =>
+                `<label class="flex items-center justify-between gap-2 text-sm dark:text-gray-300">
+                    <span>${item.NombreInsumo || item.InsumoId} (${item.UnidadMedida || ''})</span>
+                    <input type="number" min="0" step="0.0001" value="${item.DosisTeorica}" data-insumo-id="${item.InsumoId}" class="consumo-real-input w-28 rounded border p-1 dark:bg-gray-700 dark:text-white" />
+                </label>`).join('');
+            inputs.querySelectorAll('.consumo-real-input').forEach(input => input.addEventListener('input', actualizarConsumoRealJson));
+            actualizarConsumoRealJson();
+        }
 
         const title = tipo === 'lavado' ? 'Finalizar Lavado' :
             tipo === 'servicio' ? 'Finalizar Servicio' : 'Finalizar Etapa';
@@ -107,12 +125,42 @@
         abrirModal('finalizarModal');
     };
 
+    function actualizarConsumoRealJson() {
+        const output = document.getElementById('consumoRealJson');
+        if (!output) return;
+        const result = {};
+        document.querySelectorAll('.consumo-real-input').forEach(input => {
+            result[input.dataset.insumoId] = Number(input.value || 0);
+        });
+        output.value = JSON.stringify(result);
+    }
+
+    async function elegirProductos(params) {
+        const respuesta = await window.Peticiones.enviar('/Lavados/RecursosInicio?' + new URLSearchParams(params));
+        if (!respuesta.ok) throw new Error('No se pudieron consultar los productos.');
+        const datos = await respuesta.json();
+        if (!datos.success || !Array.isArray(datos.items)) throw new Error('No se pudieron consultar los productos.');
+        const seleccion = {};
+        for (const item of datos.items) {
+            if (!item.opciones.length) throw new Error('No hay productos elegibles para ' + item.nombre);
+            const opciones = item.opciones.map((o, i) => `${i + 1}. ${o.nombre} (${o.unidad})`).join('\n');
+            const respuesta = window.prompt(`Seleccione explícitamente un producto para ${item.nombre}:\n${opciones}`, '');
+            if (respuesta === null) return null;
+            if (!/^[1-9]\d*$/.test(respuesta.trim()) || Number(respuesta) > item.opciones.length) throw new Error('Seleccione un producto válido.');
+            seleccion[item.indice] = item.opciones[Number(respuesta) - 1].id;
+        }
+        return seleccion;
+    }
+
     window.iniciarServicioDesdeDetalle = async function (lavadoId, servicioId) {
         try {
             const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
             const formData = new FormData();
             formData.append('lavadoId', lavadoId);
             formData.append('servicioId', servicioId);
+            const seleccion = await elegirProductos({ lavadoId, servicioId });
+            if (seleccion === null) return;
+            formData.append('seleccionJson', JSON.stringify(seleccion));
 
             const response = await window.Peticiones.enviar('/Lavados/IniciarServicio', {
                 method: 'POST',
@@ -129,7 +177,7 @@
             }
         } catch (e) {
             console.error('Error:', e);
-            showMessage('error', 'Error al iniciar el servicio.');
+            showMessage('error', e.message || 'Error al iniciar el servicio.');
         }
     };
 
@@ -140,6 +188,9 @@
             formData.append('lavadoId', lavadoId);
             formData.append('servicioId', servicioId);
             formData.append('etapaId', etapaId);
+            const seleccion = await elegirProductos({ lavadoId, servicioId, etapaId });
+            if (seleccion === null) return;
+            formData.append('seleccionJson', JSON.stringify(seleccion));
 
             const response = await window.Peticiones.enviar('/Lavados/IniciarEtapa', {
                 method: 'POST',
@@ -156,7 +207,7 @@
             }
         } catch (e) {
             console.error('Error:', e);
-            showMessage('error', 'Error al iniciar la etapa.');
+            showMessage('error', e.message || 'Error al iniciar la etapa.');
         }
     };
 
@@ -236,6 +287,27 @@
                 }
 
                 const formData = new FormData(this);
+                const tipo = document.getElementById('cancelarTipo').value;
+                if (tipo !== 'etapa') {
+                    try {
+                        const params = new URLSearchParams({ lavadoId: document.getElementById('cancelarLavadoId').value });
+                        if (tipo === 'servicio') params.set('servicioId', document.getElementById('cancelarServicioId').value);
+                        const consulta = await window.Peticiones.enviar('/Lavados/RecursosCancelacion?' + params);
+                        if (!consulta.ok) throw new Error('No se pudieron consultar los consumos.');
+                        const recursos = await consulta.json();
+                        if (!recursos.success) throw new Error('No se pudieron consultar los consumos.');
+                        const registrados = recursos.registrados.map(x => `${x.nombre}: ${x.cantidad} ${x.unidad}`).join('\n') || 'Ninguno';
+                        const confirma = window.confirm(`Ya registrado (no editable):\n${registrados}\n\n¿Hubo consumo adicional NO registrado?`);
+                        const consumos = {};
+                        if (confirma) for (const producto of recursos.productos) {
+                            const valor = window.prompt(`Consumo adicional NO registrado de ${producto.nombre} (${producto.unidad}):`, '0');
+                            if (valor === null) return;
+                            if (!/^\d+(\.\d+)?$/.test(valor.trim()) || !Number.isFinite(Number(valor))) throw new Error('Cantidad inválida.');
+                            if (Number(valor) > 0) consumos[producto.id] = Number(valor);
+                        }
+                        formData.append('consumosNoRegistradosJson', JSON.stringify(consumos));
+                    } catch (error) { showMessage('error', error.message); return; }
+                }
 
                 try {
                     const response = await window.Peticiones.enviar(this.action, {

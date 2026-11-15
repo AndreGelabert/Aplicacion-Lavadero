@@ -172,12 +172,23 @@
                     : "[]";
             }
             <input type="hidden" id="etapas-json" name="EtapasJson" value='@etapasJson' />
+            <input type="hidden" id="unidades-receta-json" value='@System.Text.Json.JsonSerializer.Serialize((ViewBag.UnidadesReceta as Dictionary<string, string[]>) ?? new Dictionary<string, string[]>())' />
+
         </div>
         <div class="col-span-3">
             <label for="Descripcion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Descripción <span class="text-red-600">*</span></label>
-            <textarea id="Descripcion" name="Descripcion" rows="1" style="min-height: 2.5rem; overflow-y: hidden;" oninput="autoGrow(this)" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Descripción del servicio" required>@(Model?.Descripcion)</textarea>
+            <textarea id="Descripcion" name="Descripcion" rows="1" style="min-height: 2.5rem; overflow-y: hidden;" oninput="window.SiteModule.autoGrow(this)" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Descripción del servicio" required>@(Model?.Descripcion)</textarea>
             <span asp-validation-for="Descripcion" class="text-red-600 text-xs"></span>
         </div>
+        @{
+            var recetaJson = System.Text.Json.JsonSerializer.Serialize(Model?.Receta ?? new List<Firebase.Models.RecetaInsumo>());
+            <div id="servicio-receta-container" class="col-span-5">
+                <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Receta de insumos (servicios sin etapas)</label>
+                <input type="hidden" id="RecetaJson" name="RecetaJson" value='@recetaJson' />
+                <div id="servicio-receta-list" class="space-y-2 mb-2"></div>
+                <button type="button" onclick="openServicioRecipeEditor()" class="px-3 py-2 text-sm text-white bg-blue-600 rounded-lg">Configurar receta</button>
+            </div>
+        }
     </div>
     <div class="flex justify-end m-4 gap-2">
         <button type="submit" id="submit-button" class="app-button app-button--success">
@@ -199,3 +210,34 @@
     <!-- Mensajes AJAX (éxito / error general) -->
     <div id="ajax-form-messages" class="mb-4"></div>
 </form>
+
+<div id="recetaEditorModal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50">
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-5 w-full max-w-xl">
+        <h3 class="text-lg font-semibold dark:text-white mb-4">Configurar receta</h3>
+        <p class="text-sm dark:text-white mb-2">Elija producto o tipo y una unidad compatible. El producto para una receta por tipo se elegirá durante la ejecución.</p>
+        <div class="grid grid-cols-3 gap-2 mb-4">
+            <select id="recetaModalidad" onchange="cambiarModalidadReceta()" class="rounded border p-2 dark:bg-gray-700 dark:text-white"><option value="Producto">Producto</option><option value="Tipo">Tipo</option></select>
+            <select id="recetaInsumo" onchange="actualizarUnidadesReceta()" class="col-span-2 rounded border p-2 dark:bg-gray-700 dark:text-white">
+                <option value="">Seleccionar insumo</option>
+                @foreach (var insumo in (ViewBag.InsumosDisponibles as List<ServicioController.InsumoRecetaOpcion>) ?? new List<ServicioController.InsumoRecetaOpcion>())
+                {
+                    <option value="@insumo.Id" data-nombre="@insumo.Nombre" data-unidad="@insumo.UnidadMedida" data-categoria="@Firebase.Models.TipoInsumo.ObtenerCategoriaDeUnidad(insumo.UnidadMedida)">@insumo.Nombre (@insumo.UnidadMedida)</option>
+                }
+            </select>
+            <select id="recetaTipo" onchange="actualizarUnidadesReceta()" class="hidden col-span-2 rounded border p-2 dark:bg-gray-700 dark:text-white">
+                <option value="">Seleccionar tipo</option>
+                @foreach (var tipo in (ViewBag.TiposInsumoDisponibles as List<Firebase.Models.TipoInsumo>) ?? new List<Firebase.Models.TipoInsumo>())
+                {
+                    <option value="@tipo.Id" data-nombre="@tipo.Nombre" data-categoria="@tipo.Categoria">@tipo.Nombre</option>
+                }
+            </select>
+            <select id="recetaUnidad" class="rounded border p-2 dark:bg-gray-700 dark:text-white"><option value="">Seleccionar unidad</option></select>
+            <input id="recetaDosis" type="number" min="0.0001" step="0.0001" placeholder="Dosis" class="rounded border p-2 dark:bg-gray-700 dark:text-white" />
+        </div>
+        <div id="receta-editor-list" class="space-y-2 max-h-60 overflow-y-auto mb-4"></div>
+        <div class="flex justify-end gap-2">
+            <button type="button" onclick="closeRecipeEditor(false)" class="px-3 py-2 text-gray-600">Cancelar</button>
+            <button type="button" onclick="closeRecipeEditor(true)" class="px-3 py-2 text-white bg-green-600 rounded">Guardar</button>
+        </div>
+    </div>
+</div>

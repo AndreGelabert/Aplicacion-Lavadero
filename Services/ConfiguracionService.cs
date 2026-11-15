@@ -175,27 +175,107 @@ public class ConfiguracionService
         _cache.Remove(CACHE_KEY);
     }
 
+    public Action<AuditLog>? InterceptorAuditoria { get; set; }
+
     /// <summary>
     /// Actualiza la configuración del sistema.
     /// </summary>
     /// <param name="config">Configuración actualizada.</param>
     /// <param name="userEmail">Email del usuario que realiza la actualización.</param>
-    public async Task ActualizarConfiguracion(Configuracion config, string userEmail)
+    public Task ActualizarConfiguracion(Configuracion config, string userEmail) =>
+        ActualizarConfiguracion(config, userEmail, string.Empty);
+
+    /// <summary>
+    /// Actualiza la configuración del sistema con registro de auditoría transaccional.
+    /// </summary>
+    /// <param name="config">Configuración actualizada.</param>
+    /// <param name="userEmail">Email del usuario que realiza la actualización.</param>
+    /// <param name="userId">Identificador del usuario que realiza la actualización.</param>
+    public async Task ActualizarConfiguracion(Configuracion config, string userEmail, string userId)
     {
         if (config == null)
             throw new ArgumentNullException(nameof(config));
 
-        config.Id = CONFIG_ID;
-        config.FechaActualizacion = DateTime.UtcNow;
-        config.ActualizadoPor = userEmail;
+        if (config.PorcentajeAlertaStock < 0)
+            throw new ArgumentException("El porcentaje de alerta debe ser no negativo");
 
-        // Validar horarios de operación
-        ValidarHorariosOperacion(config.HorariosOperacion);
+        if (config.VigenciaCompraRecienteDias < 0)
+            throw new ArgumentException("La vigencia de compra reciente debe ser no negativa");
+
+        if (config.HorariosOperacion != null && config.HorariosOperacion.Count > 0)
+        {
+            ValidarHorariosOperacion(config.HorariosOperacion);
+        }
 
         var docRef = _firestore.Collection(COLLECTION_NAME).Document(CONFIG_ID);
-        await docRef.SetAsync(config, SetOptions.Overwrite);
 
-        // Invalidar caché
+        await _firestore.RunTransactionAsync(async transaction =>
+        {
+            var snapshot = await transaction.GetSnapshotAsync(docRef);
+
+            Configuracion existente;
+            Dictionary<string, string> antes;
+            if (snapshot.Exists)
+            {
+                existente = snapshot.ConvertTo<Configuracion>();
+                antes = AuditCampos.CapturarConfiguracion(existente);
+            }
+            else
+            {
+                existente = CrearConfiguracionPorDefecto();
+                antes = new Dictionary<string, string>();
+            }
+
+            // Preservar campos no enviados o no solicitados
+            if (config.TiempoNotificacionMinutos <= 0)
+                config.TiempoNotificacionMinutos = existente.TiempoNotificacionMinutos;
+            if (config.TiempoToleranciaMinutos <= 0)
+                config.TiempoToleranciaMinutos = existente.TiempoToleranciaMinutos;
+            if (config.IntervaloPreguntas <= 0)
+                config.IntervaloPreguntas = existente.IntervaloPreguntas;
+
+            if (config.HorariosOperacion == null || config.HorariosOperacion.Count == 0)
+                config.HorariosOperacion = existente.HorariosOperacion;
+
+            ValidarHorariosOperacion(config.HorariosOperacion);
+
+            config.Id = CONFIG_ID;
+            config.FechaActualizacion = DateTime.UtcNow;
+            config.ActualizadoPor = userEmail;
+
+            var despues = AuditCampos.CapturarConfiguracion(config);
+
+            var hayCambios = !snapshot.Exists
+                || AuditCampos.HayCambios(antes, despues);
+
+            if (!hayCambios)
+            {
+                return;
+            }
+
+            transaction.Set(docRef, config, SetOptions.MergeAll);
+
+            var auditLog = new AuditLog
+            {
+                UserId = userId ?? string.Empty,
+                UserEmail = userEmail ?? string.Empty,
+                Action = "Actualización de configuración del sistema",
+                TargetId = CONFIG_ID,
+                TargetType = "Configuracion",
+                NombreHistorico = !string.IsNullOrWhiteSpace(config.NombreLavadero) ? config.NombreLavadero : existente.NombreLavadero,
+                Antes = antes,
+                Despues = despues,
+                Timestamp = DateTime.UtcNow
+            };
+
+            InterceptorAuditoria?.Invoke(auditLog);
+
+            var auditDocRef = _firestore.Collection("registros_auditoria").Document();
+            auditLog.DocId = auditDocRef.Id;
+            transaction.Create(auditDocRef, auditLog);
+        });
+
+        // Invalidar caché tras éxito de la transacción
         _cache.Remove(CACHE_KEY);
     }
     #endregion

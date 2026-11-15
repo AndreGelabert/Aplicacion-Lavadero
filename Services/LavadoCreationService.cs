@@ -60,7 +60,10 @@ public class LavadoCreationService
         return new(new Contexto(cliente, vehiculosConServicios, paquetesPorId));
     }
 
-    public async Task<ResultadoVehiculo> CrearVehiculo(CrearLavadoRequest request, Contexto contexto, VehiculoServiciosRequest vehiculoServicios)
+    public Task CrearLavadosConInicio(IReadOnlyList<(Lavado Lavado, IReadOnlyDictionary<int, string>? Seleccion)> entradas) =>
+        _lavadoService.CrearLavadosConInicio(entradas);
+
+    public async Task<ResultadoVehiculo> CrearVehiculo(CrearLavadoRequest request, Contexto contexto, VehiculoServiciosRequest vehiculoServicios, IReadOnlyDictionary<int, string>? seleccion = null, IReadOnlySet<string>? empleadosExcluidos = null)
     {
         var cliente = contexto.Cliente;
         var vehiculo = await _vehiculoService.ObtenerVehiculo(vehiculoServicios.VehiculoId);
@@ -93,7 +96,7 @@ public class LavadoCreationService
         var precioConDescuento = resultadoPrecio.Precio;
 
         var tipoVehiculo = await _tipoVehiculoService.ObtenerTipoVehiculoPorNombre(vehiculo.TipoVehiculo);
-        var asignacion = await _lavadoService.PrepararAsignacionCreacion(tipoVehiculo?.CantidadEmpleadosRequeridos);
+        var asignacion = await _lavadoService.PrepararAsignacionCreacion(tipoVehiculo?.CantidadEmpleadosRequeridos, empleadosExcluidos);
         var cantidadEmpleadosPorTipo = asignacion.CantidadEmpleadosRequeridos;
         var empleadosAsignados = asignacion.EmpleadosAsignados;
 
@@ -127,8 +130,6 @@ public class LavadoCreationService
             ClienteRetiraNombre = clienteRetira?.NombreCompleto ?? cliente.NombreCompleto
         };
 
-        var lavadoCreado = await _lavadoService.CrearLavado(lavado);
-        await _lavadoService.IniciarPrimerServicioCreacion(lavadoCreado);
-        return new(lavadoCreado);
+        return new(lavado);
     }
 }

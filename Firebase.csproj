@@ -3,6 +3,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>Aplicacion-Lavadero-Development</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="FirebaseAdmin" Version="3.4.0" />

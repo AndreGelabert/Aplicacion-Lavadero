@@ -90,15 +90,14 @@ public class ConfiguracionController : Controller
                 return View("Index", configuracion);
             }
 
-            var antes = AuditCampos.CapturarConfiguracion(await _configuracionService.ObtenerConfiguracion());
+            var existente = await _configuracionService.ObtenerConfiguracion();
+            // Estos parámetros no forman parte del formulario de configuración.
+            configuracion.TiempoNotificacionMinutos = existente.TiempoNotificacionMinutos;
+            configuracion.TiempoToleranciaMinutos = existente.TiempoToleranciaMinutos;
+            configuracion.IntervaloPreguntas = existente.IntervaloPreguntas;
             var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? "Desconocido";
-            await _configuracionService.ActualizarConfiguracion(configuracion, userEmail);
-            var persistida = await _configuracionService.ObtenerConfiguracion();
-
-            // Registrar evento de auditoría
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _auditService.LogEvent(userId, userEmail, "Actualización de configuración del sistema", 
-                configuracion.Id, "Configuracion", antes, AuditCampos.CapturarConfiguracion(persistida), persistida.NombreLavadero);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            await _configuracionService.ActualizarConfiguracion(configuracion, userEmail, userId);
 
             TempData["SuccessMessage"] = "Configuración actualizada correctamente.";
             return RedirectToAction("Index");

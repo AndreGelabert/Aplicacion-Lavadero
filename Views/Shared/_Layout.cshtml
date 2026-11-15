@@ -1,4 +1,5 @@
 ﻿@inject ConfiguracionService ConfiguracionService
+@inject Firebase.Services.InsumoService InsumoService
 @{
     var configuracion = await ConfiguracionService.ObtenerConfiguracion();
     var nombreLavadero = string.IsNullOrWhiteSpace(configuracion?.NombreLavadero)
@@ -9,6 +10,9 @@
     var userEmail = user?.FindFirst(ClaimTypes.Email)?.Value;
     var userRole = user?.FindFirst(ClaimTypes.Role)?.Value;
     var controladorActual = ViewContext.RouteData.Values["controller"]?.ToString();
+    var stockCriticoGlobal = User.TienePermiso("Insumos.Consultar")
+        ? (await InsumoService.ObtenerTodos(false)).Count(x => x.StockActual <= x.StockMinimo)
+        : 0;
 }
 @functions {
     private static string IconoModulo(string controlador) => controlador switch
@@ -51,6 +55,13 @@
 <body>
     @await Html.PartialAsync("_NotificationMessages")
     <div class="antialiased min-h-screen bg-gray-50 dark:bg-gray-900">
+        @if (stockCriticoGlobal > 0 && !string.Equals(controladorActual, "Insumos", StringComparison.OrdinalIgnoreCase))
+        {
+            <div class="fixed top-16 right-4 z-40 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow dark:border-red-800 dark:bg-red-900/40 dark:text-red-200">
+                <strong>@stockCriticoGlobal</strong> insumo(s) en stock crítico.
+                <a href="/Insumos?soloBajoMinimo=true" class="ml-2 underline">Ver inventario</a>
+            </div>
+        }
         <!-- Barra de navegación -->
         <nav class="bg-white border-b border-gray-200 px-4 py-2.5 dark:bg-gray-800 dark:border-gray-700 fixed left-0 right-0 top-0 z-50">
             <div class="flex flex-wrap justify-between items-center">

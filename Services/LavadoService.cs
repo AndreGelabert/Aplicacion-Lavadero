@@ -26,6 +26,7 @@ namespace Firebase.Services
         private readonly PaqueteServicioService _paqueteServicioService;
         private readonly PersonalService _personalService;
         private readonly ConfiguracionService _configuracionService;
+        private readonly StockService _stockService;
 
         /// <summary>
         /// Inicializa una nueva instancia del servicio de lavados.
@@ -35,13 +36,25 @@ namespace Firebase.Services
             ServicioService servicioService,
             PaqueteServicioService paqueteServicioService,
             PersonalService personalService,
-            ConfiguracionService configuracionService)
+            ConfiguracionService configuracionService,
+            StockService stockService)
         {
             _firestore = firestore ?? throw new ArgumentNullException(nameof(firestore));
             _servicioService = servicioService ?? throw new ArgumentNullException(nameof(servicioService));
             _paqueteServicioService = paqueteServicioService ?? throw new ArgumentNullException(nameof(paqueteServicioService));
             _personalService = personalService ?? throw new ArgumentNullException(nameof(personalService));
             _configuracionService = configuracionService ?? throw new ArgumentNullException(nameof(configuracionService));
+            _stockService = stockService ?? throw new ArgumentNullException(nameof(stockService));
+        }
+
+        public LavadoService(
+            FirestoreDb firestore,
+            ServicioService servicioService,
+            PaqueteServicioService paqueteServicioService,
+            PersonalService personalService,
+            ConfiguracionService configuracionService)
+            : this(firestore, servicioService, paqueteServicioService, personalService, configuracionService, new StockService(firestore))
+        {
         }
         #endregion
 
@@ -57,7 +70,8 @@ namespace Firebase.Services
                 Estado = "Pendiente",
                 Orden = orden,
                 PaqueteId = paqueteId,
-                PaqueteNombre = paqueteNombre
+                PaqueteNombre = paqueteNombre,
+                Receta = servicio.Etapas.Any() ? new List<RecetaInsumo>() : servicio.Receta.Select(CopiarReceta).ToList()
             };
 
             // Agregar etapas si las tiene
@@ -69,7 +83,8 @@ namespace Firebase.Services
                     {
                         EtapaId = etapa.Id,
                         Nombre = etapa.Nombre,
-                        Estado = "Pendiente"
+                        Estado = "Pendiente",
+                        Receta = etapa.Receta.Select(CopiarReceta).ToList()
                     });
                 }
             }
@@ -90,6 +105,57 @@ namespace Firebase.Services
                     await IniciarEtapa(lavadoCreado.Id, primerServicio.ServicioId, primeraEtapa.EtapaId);
                 }
             }
+        }
+
+        public async Task<Lavado> CrearLavadoConInicio(Lavado lavado, IReadOnlyDictionary<int, string>? seleccion = null)
+        {
+            await CrearLavadosConInicio(new[] { (lavado, seleccion) });
+            return lavado;
+        }
+
+        public async Task CrearLavadosConInicio(IReadOnlyList<(Lavado Lavado, IReadOnlyDictionary<int, string>? Seleccion)> entradas)
+        {
+            await ValidarHorarioOperacion();
+            var config = await _configuracionService.ObtenerConfiguracion();
+            if (config != null && await ContarLavadosActivos() + entradas.Count > config.CapacidadMaximaConcurrente)
+                throw new InvalidOperationException($"Se ha alcanzado la capacidad máxima de {config.CapacidadMaximaConcurrente} lavados concurrentes.");
+            var referencias = entradas.Select(_ => _firestore.Collection(COLLECTION_NAME).Document()).ToList();
+            for (var i = 0; i < entradas.Count; i++)
+            {
+                var lavado = entradas[i].Lavado;
+                ValidarLavado(lavado);
+                lavado.Id = referencias[i].Id;
+                lavado.FechaCreacion = DateTime.UtcNow;
+                lavado.Estado = ESTADO_EN_PROCESO;
+                lavado.TiempoInicio = DateTime.UtcNow;
+                lavado.Pago ??= new PagoLavado();
+            }
+            await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
+            {
+                var recetas = new List<StockService.RecetaServicio>();
+                var pendientes = new Dictionary<string, decimal>(StringComparer.Ordinal);
+                foreach (var (lavado, seleccion) in entradas)
+                {
+                    var primero = lavado.Servicios.OrderBy(s => s.Orden).FirstOrDefault();
+                    if (primero == null) continue;
+                    var etapa = primero.Etapas.FirstOrDefault();
+                    var clave = $"{lavado.Id}_{primero.ServicioId}_{(etapa == null ? "servicio" : etapa.EtapaId)}";
+                    var receta = await _stockService.LeerRecetaServicio(transaction, clave, etapa?.Receta ?? primero.Receta, false, seleccion: seleccion, reservasPendientes: pendientes);
+                    recetas.Add(receta);
+                    foreach (var reserva in receta.Reservas.Where(r => !r.Existe))
+                        pendientes[reserva.Contador.Id] = StockPrecision.Sumar(pendientes.GetValueOrDefault(reserva.Contador.Id), reserva.Cantidad);
+                    primero.Estado = "EnProceso";
+                    primero.TiempoInicio = DateTime.UtcNow;
+                    if (etapa != null)
+                    {
+                        etapa.Estado = "EnProceso";
+                        etapa.TiempoInicio = DateTime.UtcNow;
+                    }
+                }
+                foreach (var receta in recetas) StockService.EscribirReservasServicio(transaction, receta, false);
+                for (var i = 0; i < entradas.Count; i++)
+                    transaction.Create(referencias[i], CrearDiccionarioLavado(entradas[i].Lavado));
+            });
         }
 
         public record ResultadoPrecioCreacion(decimal PrecioOriginal, decimal Precio, string? Error = null);
@@ -427,219 +493,272 @@ namespace Firebase.Services
         /// </summary>
         public async Task FinalizarServicio(string lavadoId, string servicioId)
         {
-            var lavado = await ObtenerLavado(lavadoId);
-            if (lavado == null)
-                throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
-
-            var servicio = lavado.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
-            if (servicio == null)
-                throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
-
-            // Si tiene etapas, verificar que todas estén finalizadas
-            if (servicio.Etapas.Any())
+            var referencia = _firestore.Collection(COLLECTION_NAME).Document(lavadoId);
+            var resultado = await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
             {
-                var etapasPendientes = servicio.Etapas.Where(e => e.Estado == "Pendiente" || e.Estado == "EnProceso").ToList();
-                if (etapasPendientes.Any())
-                {
+                var snapshot = await transaction.GetSnapshotAsync(referencia);
+                if (!snapshot.Exists) throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
+                var actual = MapearDocumentoALavado(snapshot);
+                var seleccionado = actual.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
+                if (seleccionado == null) throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
+                if (seleccionado.Estado is "Realizado" or "RealizadoParcialmente") return new List<StockService.ConsumoReceta>();
+                var conEtapas = seleccionado.Etapas.Any();
+                if (conEtapas && seleccionado.Etapas.Any(e => e.Estado is "Pendiente" or "EnProceso"))
                     throw new InvalidOperationException("No se puede finalizar el servicio porque hay etapas pendientes o en proceso.");
-                }
-
-                var etapasCanceladas = servicio.Etapas.Where(e => e.Estado == "Cancelado").ToList();
-                if (etapasCanceladas.Any())
+                if (!conEtapas && seleccionado.Estado != "EnProceso") throw new InvalidOperationException("El servicio no está en proceso.");
+                StockService.RecetaServicio? receta = null;
+                var consumos = new List<StockService.ConsumoReceta>();
+                if (!conEtapas)
                 {
-                    servicio.Estado = "RealizadoParcialmente";
+                    receta = await _stockService.LeerRecetaServicio(transaction, $"{lavadoId}_{servicioId}_servicio", seleccionado.Receta, true);
+                    consumos = receta.Consumos;
                 }
-                else
+                var siguiente = await LeerSiguienteServicio(transaction, actual, receta, consumos);
+                if (receta != null)
                 {
-                    servicio.Estado = "Realizado";
+                    await _stockService.ConsumirEnTransaccion(transaction, $"{lavadoId}_{servicioId}_servicio", consumos, "Consumo de servicio sin etapas", receta);
+                    StockService.EscribirReservasServicio(transaction, receta, true);
                 }
-            }
-            else
-            {
-                servicio.Estado = "Realizado";
-            }
-
-            servicio.TiempoFinalizacion = DateTime.UtcNow;
-            await ActualizarLavado(lavado);
-            
-            // Iniciar el siguiente servicio automáticamente
-            await IniciarSiguienteServicioAutomaticamente(lavado);
-            
-            // Verificar si todos los servicios están finalizados para finalizar el lavado
-            await FinalizarLavadoAutomaticamente(lavado);
+                seleccionado.Estado = conEtapas && seleccionado.Etapas.Any(e => e.Estado == "Cancelado") ? "RealizadoParcialmente" : "Realizado";
+                seleccionado.TiempoFinalizacion = DateTime.UtcNow;
+                AplicarSiguienteServicio(transaction, siguiente);
+                FinalizarLavadoSiCorresponde(actual);
+                ValidarLavado(actual);
+                var datos = CrearDiccionarioLavado(actual);
+                transaction.Update(referencia, new Dictionary<string, object>
+                {
+                    ["Servicios"] = datos["Servicios"],
+                    ["Estado"] = datos["Estado"],
+                    ["TiempoFinalizacion"] = datos["TiempoFinalizacion"]
+                });
+                return consumos;
+            });
+            await _stockService.EvaluarConsumos(resultado.Select(x => x.InsumoId));
         }
 
         /// <summary>
         /// Finaliza una etapa específica dentro de un servicio.
         /// </summary>
-        public async Task FinalizarEtapa(string lavadoId, string servicioId, string etapaId)
+        public async Task FinalizarEtapa(string lavadoId, string servicioId, string etapaId, string? consumoRealJson = null, string? justificacionDesvio = null)
         {
-            var lavado = await ObtenerLavado(lavadoId);
-            if (lavado == null)
-                throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
-
-            var servicio = lavado.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
-            if (servicio == null)
-                throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
-
-            var etapa = servicio.Etapas.FirstOrDefault(e => e.EtapaId == etapaId);
-            if (etapa == null)
-                throw new ArgumentException("No se encontró la etapa en el servicio", nameof(etapaId));
-
-            etapa.Estado = "Realizado";
-            etapa.TiempoFinalizacion = DateTime.UtcNow;
-
-            // Verificar si todas las etapas están finalizadas para finalizar el servicio automáticamente
-            var etapasPendientes = servicio.Etapas.Where(e => e.Estado == "Pendiente" || e.Estado == "EnProceso").ToList();
-            if (!etapasPendientes.Any())
+            var consumoReal = string.IsNullOrWhiteSpace(consumoRealJson)
+                ? null
+                : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, decimal>>(consumoRealJson);
+            var referencia = _firestore.Collection(COLLECTION_NAME).Document(lavadoId);
+            var consumidos = await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
             {
-                var etapasCanceladas = servicio.Etapas.Where(e => e.Estado == "Cancelado").ToList();
-                if (etapasCanceladas.Any())
+                var snapshot = await transaction.GetSnapshotAsync(referencia);
+                if (!snapshot.Exists) throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
+                var lavado = MapearDocumentoALavado(snapshot);
+                var servicio = lavado.Servicios.FirstOrDefault(s => s.ServicioId == servicioId)
+                    ?? throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
+                var etapa = servicio.Etapas.FirstOrDefault(e => e.EtapaId == etapaId)
+                    ?? throw new ArgumentException("No se encontró la etapa en el servicio", nameof(etapaId));
+                if (etapa.Estado == "Realizado") return new List<StockService.ConsumoReceta>();
+                if (etapa.Estado != "EnProceso") throw new InvalidOperationException("La etapa no está en proceso.");
+                if (consumoReal != null && consumoReal.Any(x => etapa.Receta.All(r => r.InsumoId != x.Key) || x.Value < 0))
+                    throw new InvalidOperationException("El consumo real contiene insumos o cantidades inválidas.");
+                var hayDesvio = consumoReal != null && etapa.Receta.Any(r =>
+                    consumoReal.TryGetValue(r.InsumoId, out var real) && real != r.DosisTeorica);
+                if (hayDesvio && string.IsNullOrWhiteSpace(justificacionDesvio))
+                    throw new InvalidOperationException("Debe informar la justificación del desvío.");
+                var clave = $"{lavadoId}_{servicioId}_{etapaId}";
+                var receta = await _stockService.LeerRecetaServicio(transaction, clave, etapa.Receta, true);
+                var realesConvertidos = consumoReal == null ? new List<StockService.ConsumoReceta>() : await _stockService.ConvertirConsumosReales(transaction, etapa.Receta, consumoReal);
+                var cantidades = receta.Consumos.Select(c => realesConvertidos.FirstOrDefault(r => r.InsumoId == c.InsumoId) ?? c).Where(c => c.Cantidad > 0).ToList();
+                var siguiente = servicio.Etapas.FirstOrDefault(e => e.Estado == "Pendiente");
+                StockService.RecetaServicio? recetaSiguiente = null;
+                if (siguiente != null && siguiente.Receta.All(r => r.Modalidad != "Tipo"))
                 {
-                    servicio.Estado = "RealizadoParcialmente";
+                    try
+                    {
+                        recetaSiguiente = await _stockService.LeerRecetaServicio(transaction,
+                            $"{lavadoId}_{servicioId}_{siguiente.EtapaId}", siguiente.Receta, false, receta, cantidades);
+                    }
+                    catch (StockService.DisponibilidadInsuficienteException) { }
+                }
+                var terminaServicio = siguiente == null && !servicio.Etapas.Any(e => e != etapa && e.Estado == "EnProceso");
+                var siguienteServicio = terminaServicio
+                    ? await LeerSiguienteServicio(transaction, lavado, receta, cantidades)
+                    : null;
+                await _stockService.ConsumirEnTransaccion(transaction, clave, cantidades, justificacionDesvio ?? string.Empty, receta);
+                StockService.EscribirReservasServicio(transaction, receta, true);
+                if (recetaSiguiente != null) StockService.EscribirReservasServicio(transaction, recetaSiguiente, false);
+                etapa.Estado = "Realizado";
+                etapa.TiempoFinalizacion = DateTime.UtcNow;
+                var pendientes = servicio.Etapas.Where(e => e.Estado is "Pendiente" or "EnProceso").ToList();
+                if (pendientes.Count == 0)
+                {
+                    servicio.Estado = servicio.Etapas.Any(e => e.Estado == "Cancelado") ? "RealizadoParcialmente" : "Realizado";
+                    servicio.TiempoFinalizacion = DateTime.UtcNow;
+                    AplicarSiguienteServicio(transaction, siguienteServicio);
                 }
                 else
                 {
-                    servicio.Estado = "Realizado";
+                    if (siguiente != null && recetaSiguiente != null)
+                    {
+                        siguiente.Estado = "EnProceso";
+                        siguiente.TiempoInicio = DateTime.UtcNow;
+                    }
                 }
-                servicio.TiempoFinalizacion = DateTime.UtcNow;
-                
-                // Iniciar el siguiente servicio automáticamente
-                await IniciarSiguienteServicioAutomaticamente(lavado);
-            }
-            else
-            {
-                // Iniciar la siguiente etapa automáticamente
-                var siguienteEtapa = servicio.Etapas
-                    .Where(e => e.Estado == "Pendiente")
-                    .OrderBy(e => servicio.Etapas.IndexOf(e))
-                    .FirstOrDefault();
-                    
-                if (siguienteEtapa != null)
+                FinalizarLavadoSiCorresponde(lavado);
+                ValidarLavado(lavado);
+                var datos = CrearDiccionarioLavado(lavado);
+                transaction.Update(referencia, new Dictionary<string, object>
                 {
-                    siguienteEtapa.Estado = "EnProceso";
-                    siguienteEtapa.TiempoInicio = DateTime.UtcNow;
-                }
-            }
-
-            await ActualizarLavado(lavado);
-            
-            // Verificar si todos los servicios están finalizados para finalizar el lavado
-            await FinalizarLavadoAutomaticamente(lavado);
+                    ["Servicios"] = datos["Servicios"], ["Estado"] = datos["Estado"],
+                    ["TiempoFinalizacion"] = datos["TiempoFinalizacion"]
+                });
+                return cantidades;
+            });
+            await _stockService.EvaluarConsumos(consumidos.Select(x => x.InsumoId));
         }
 
         /// <summary>
         /// Cancela un lavado completo.
         /// </summary>
-        public async Task CancelarLavado(string id, string motivo)
+        public async Task CancelarLavado(string id, string motivo, IReadOnlyDictionary<string, decimal>? consumosNoRegistrados = null)
         {
             if (string.IsNullOrWhiteSpace(motivo))
                 throw new ArgumentException("El motivo de cancelación es obligatorio", nameof(motivo));
 
-            var lavado = await ObtenerLavado(id);
-            if (lavado == null)
-                throw new ArgumentException("No se encontró el lavado", nameof(id));
-
-            lavado.Estado = ESTADO_CANCELADO;
-            lavado.MotivoCancelacion = motivo;
-            lavado.TiempoFinalizacion = DateTime.UtcNow;
-
-            // Cancelar el pago si existe y no está completamente pagado
-            if (lavado.Pago != null)
+            var referencia = _firestore.Collection(COLLECTION_NAME).Document(id);
+            var serviciosIds = await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
             {
-                if (lavado.Pago.Estado != "Pagado")
+                var snapshot = await transaction.GetSnapshotAsync(referencia);
+                if (!snapshot.Exists) throw new ArgumentException("No se encontró el lavado", nameof(id));
+                var lavado = MapearDocumentoALavado(snapshot);
+                var mermas = await _stockService.LeerMermasPendientes(transaction, ReferenciasConsumos(id, lavado.Servicios));
+                if (lavado.Estado == ESTADO_CANCELADO) { _stockService.EscribirMermasPendientes(transaction, mermas, motivo); return new List<string>(); }
+                var activos = lavado.Servicios.Where(s => s.Estado is "Pendiente" or "EnProceso").ToList();
+                var reservas = await LeerReservasCancelacion(transaction, id, activos);
+                ValidarProductosCancelacion(activos, consumosNoRegistrados);
+                if (consumosNoRegistrados != null)
+                    await _stockService.ConsumirMermaEnTransaccion(transaction, id, consumosNoRegistrados, motivo, reservas);
+                _stockService.EscribirMermasPendientes(transaction, mermas, motivo);
+                foreach (var servicio in activos) CancelarServicioEnMemoria(servicio, motivo);
+                lavado.Estado = ESTADO_CANCELADO;
+                lavado.MotivoCancelacion = motivo;
+                lavado.TiempoFinalizacion ??= DateTime.UtcNow;
+                lavado.Pago ??= new PagoLavado();
+                if (lavado.Pago.Estado != "Pagado") lavado.Pago.Estado = "Cancelado";
+                ValidarLavado(lavado);
+                StockService.EscribirReservasServicio(transaction, reservas, true);
+                var datos = CrearDiccionarioLavado(lavado);
+                transaction.Update(referencia, new Dictionary<string, object>
                 {
-                    lavado.Pago.Estado = "Cancelado";
-                }
-            }
-            else
-            {
-                // Inicializar pago como cancelado si no existía
-                lavado.Pago = new PagoLavado
-                {
-                    Estado = "Cancelado",
-                    MontoPagado = 0,
-                    Pagos = new List<DetallePago>()
-                };
-            }
-
-            // Cancelar todos los servicios pendientes
-            foreach (var servicio in lavado.Servicios.Where(s => s.Estado == "Pendiente" || s.Estado == "EnProceso"))
-            {
-                servicio.Estado = "Cancelado";
-                servicio.MotivoCancelacion = motivo;
-                servicio.TiempoFinalizacion = DateTime.UtcNow;
-
-                foreach (var etapa in servicio.Etapas.Where(e => e.Estado == "Pendiente" || e.Estado == "EnProceso"))
-                {
-                    etapa.Estado = "Cancelado";
-                    etapa.MotivoCancelacion = motivo;
-                    etapa.TiempoFinalizacion = DateTime.UtcNow;
-                }
-            }
-
-            await ActualizarLavado(lavado);
+                    ["Servicios"] = datos["Servicios"], ["Estado"] = datos["Estado"],
+                    ["MotivoCancelacion"] = datos["MotivoCancelacion"],
+                    ["TiempoFinalizacion"] = datos["TiempoFinalizacion"], ["Pago"] = datos["Pago"]
+                });
+                return lavado.Servicios.Select(s => s.ServicioId).ToList();
+            });
+            if (consumosNoRegistrados != null && serviciosIds.Count > 0)
+                await _stockService.EvaluarConsumos(consumosNoRegistrados.Where(x => x.Value > 0).Select(x => x.Key));
         }
 
         /// <summary>
         /// Cancela un servicio específico dentro de un lavado.
         /// </summary>
-        public async Task CancelarServicio(string lavadoId, string servicioId, string motivo)
+        public async Task CancelarServicio(string lavadoId, string servicioId, string motivo, IReadOnlyDictionary<string, decimal>? consumosNoRegistrados = null)
         {
             if (string.IsNullOrWhiteSpace(motivo))
                 throw new ArgumentException("El motivo de cancelación es obligatorio", nameof(motivo));
 
-            var lavado = await ObtenerLavado(lavadoId);
-            if (lavado == null)
-                throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
+            var referencia = _firestore.Collection(COLLECTION_NAME).Document(lavadoId);
+            var sinEtapas = await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
+            {
+                var snapshot = await transaction.GetSnapshotAsync(referencia);
+                if (!snapshot.Exists) throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
+                var actual = MapearDocumentoALavado(snapshot);
+                var seleccionado = actual.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
+                if (seleccionado == null) throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
+                var mermas = await _stockService.LeerMermasPendientes(transaction, ReferenciasConsumos(lavadoId, new[] { seleccionado }));
+                if (seleccionado.Estado == "Cancelado") { _stockService.EscribirMermasPendientes(transaction, mermas, motivo); return false; }
+                var receta = await LeerReservasCancelacion(transaction, lavadoId, new[] { seleccionado });
+                ValidarProductosCancelacion(new[] { seleccionado }, consumosNoRegistrados);
+                if (consumosNoRegistrados != null)
+                    await _stockService.ConsumirMermaEnTransaccion(transaction, $"{lavadoId}_{servicioId}", consumosNoRegistrados, motivo, receta);
+                _stockService.EscribirMermasPendientes(transaction, mermas, motivo);
+                StockService.EscribirReservasServicio(transaction, receta, true);
+                CancelarServicioEnMemoria(seleccionado, motivo);
+                if (actual.Servicios.All(s => s.Estado == "Cancelado"))
+                {
+                    actual.Estado = ESTADO_CANCELADO;
+                    actual.MotivoCancelacion = "Todos los servicios fueron cancelados";
+                    actual.TiempoFinalizacion = DateTime.UtcNow;
+                    actual.Pago ??= new PagoLavado();
+                    if (actual.Pago.Estado != "Pagado") actual.Pago.Estado = "Cancelado";
+                }
+                ValidarLavado(actual);
+                var datos = CrearDiccionarioLavado(actual);
+                transaction.Update(referencia, new Dictionary<string, object>
+                {
+                    ["Servicios"] = datos["Servicios"], ["Estado"] = datos["Estado"],
+                    ["MotivoCancelacion"] = datos["MotivoCancelacion"],
+                    ["TiempoFinalizacion"] = datos["TiempoFinalizacion"], ["Pago"] = datos["Pago"]
+                });
+                return true;
+            });
+            if (sinEtapas && consumosNoRegistrados != null)
+                await _stockService.EvaluarConsumos(consumosNoRegistrados.Where(x => x.Value > 0).Select(x => x.Key));
+        }
 
-            var servicio = lavado.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
-            if (servicio == null)
-                throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
+        private static IEnumerable<string> ReferenciasConsumos(string lavadoId, IEnumerable<ServicioEnLavado> servicios) =>
+            servicios.SelectMany(s => s.Etapas.Any()
+                ? s.Etapas.Select(e => $"{lavadoId}_{s.ServicioId}_{e.EtapaId}")
+                : new[] { $"{lavadoId}_{s.ServicioId}_servicio" });
 
+        private static void ValidarProductosCancelacion(IEnumerable<ServicioEnLavado> servicios, IReadOnlyDictionary<string, decimal>? cantidades)
+        {
+            if (cantidades == null) return;
+            var productos = servicios.Where(s => s.Estado == "EnProceso")
+                .SelectMany(s => s.Etapas.Any()
+                    ? s.Etapas.Where(e => e.Estado == "EnProceso").SelectMany(e => e.Receta)
+                    : s.Receta)
+                .Select(r => r.InsumoId).Where(id => !string.IsNullOrWhiteSpace(id))
+                .ToHashSet(StringComparer.Ordinal);
+            if (cantidades.Keys.Any(id => !productos.Contains(id)))
+                throw new InvalidOperationException("El consumo adicional contiene productos que no pertenecen a la operación activa.");
+        }
+
+        private async Task<StockService.RecetaServicio> LeerReservasCancelacion(
+            Transaction transaction, string lavadoId, IEnumerable<ServicioEnLavado> servicios)
+        {
+            var reservas = new List<StockService.ReservaServicio>();
+            foreach (var servicio in servicios)
+            {
+                var recetas = servicio.Etapas.Any()
+                    ? servicio.Etapas.Where(e => e.Estado is "Pendiente" or "EnProceso")
+                        .Select(e => (Clave: $"{lavadoId}_{servicio.ServicioId}_{e.EtapaId}", e.Receta))
+                    : new[] { (Clave: $"{lavadoId}_{servicio.ServicioId}_servicio", servicio.Receta) };
+                foreach (var (clave, receta) in recetas)
+                {
+                    var leida = await _stockService.LeerRecetaServicio(transaction, clave, receta, true);
+                    foreach (var reserva in leida.Reservas)
+                    {
+                        var anterior = reservas.Where(r => r.Contador.Id == reserva.Contador.Id && r.Existe && !r.Liberada)
+                            .Sum(r => r.Cantidad);
+                        if (reserva.Existe && !reserva.Liberada && reserva.Total - anterior < reserva.Cantidad)
+                            throw new InvalidOperationException("El contador de reservas es inconsistente.");
+                        reservas.Add(reserva with { Total = reserva.Total - anterior });
+                    }
+                }
+            }
+            return new StockService.RecetaServicio(new(), reservas);
+        }
+
+        private static void CancelarServicioEnMemoria(ServicioEnLavado servicio, string motivo)
+        {
             servicio.Estado = "Cancelado";
             servicio.MotivoCancelacion = motivo;
             servicio.TiempoFinalizacion = DateTime.UtcNow;
-
-            // Cancelar todas las etapas pendientes
-            foreach (var etapa in servicio.Etapas.Where(e => e.Estado == "Pendiente" || e.Estado == "EnProceso"))
+            foreach (var etapa in servicio.Etapas.Where(e => e.Estado is "Pendiente" or "EnProceso"))
             {
                 etapa.Estado = "Cancelado";
                 etapa.MotivoCancelacion = motivo;
                 etapa.TiempoFinalizacion = DateTime.UtcNow;
             }
-
-            // Verificar si todos los servicios han sido cancelados
-            var todosServiciosCancelados = lavado.Servicios.All(s => s.Estado == "Cancelado");
-            
-            if (todosServiciosCancelados)
-            {
-                // Si todos los servicios fueron cancelados, marcar el lavado como cancelado
-                lavado.Estado = ESTADO_CANCELADO;
-                lavado.MotivoCancelacion = "Todos los servicios fueron cancelados";
-                lavado.TiempoFinalizacion = DateTime.UtcNow;
-                
-                // Cancelar el pago si existe y no está completamente pagado
-                if (lavado.Pago != null)
-                {
-                    if (lavado.Pago.Estado != "Pagado")
-                    {
-                        lavado.Pago.Estado = "Cancelado";
-                    }
-                }
-                else
-                {
-                    // Inicializar pago como cancelado si no existía
-                    lavado.Pago = new PagoLavado
-                    {
-                        Estado = "Cancelado",
-                        MontoPagado = 0,
-                        Pagos = new List<DetallePago>()
-                    };
-                }
-            }
-
-            await ActualizarLavado(lavado);
         }
 
         /// <summary>
@@ -650,23 +769,25 @@ namespace Firebase.Services
             if (string.IsNullOrWhiteSpace(motivo))
                 throw new ArgumentException("El motivo de cancelación es obligatorio", nameof(motivo));
 
-            var lavado = await ObtenerLavado(lavadoId);
-            if (lavado == null)
-                throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
-
-            var servicio = lavado.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
-            if (servicio == null)
-                throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
-
-            var etapa = servicio.Etapas.FirstOrDefault(e => e.EtapaId == etapaId);
-            if (etapa == null)
-                throw new ArgumentException("No se encontró la etapa en el servicio", nameof(etapaId));
-
-            etapa.Estado = "Cancelado";
-            etapa.MotivoCancelacion = motivo;
-            etapa.TiempoFinalizacion = DateTime.UtcNow;
-
-            await ActualizarLavado(lavado);
+            var referencia = _firestore.Collection(COLLECTION_NAME).Document(lavadoId);
+            await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
+            {
+                var snapshot = await transaction.GetSnapshotAsync(referencia);
+                if (!snapshot.Exists) throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
+                var lavado = MapearDocumentoALavado(snapshot);
+                var servicio = lavado.Servicios.FirstOrDefault(s => s.ServicioId == servicioId)
+                    ?? throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
+                var etapa = servicio.Etapas.FirstOrDefault(e => e.EtapaId == etapaId)
+                    ?? throw new ArgumentException("No se encontró la etapa en el servicio", nameof(etapaId));
+                if (etapa.Estado == "Cancelado") return;
+                var receta = await _stockService.LeerRecetaServicio(transaction, $"{lavadoId}_{servicioId}_{etapaId}", etapa.Receta, true);
+                StockService.EscribirReservasServicio(transaction, receta, true);
+                etapa.Estado = "Cancelado";
+                etapa.MotivoCancelacion = motivo;
+                etapa.TiempoFinalizacion = DateTime.UtcNow;
+                ValidarLavado(lavado);
+                transaction.Update(referencia, "Servicios", CrearDiccionarioLavado(lavado)["Servicios"]);
+            });
         }
 
         /// <summary>
@@ -711,63 +832,63 @@ namespace Firebase.Services
         /// <summary>
         /// Inicia un servicio específico dentro de un lavado.
         /// </summary>
-        public async Task IniciarServicio(string lavadoId, string servicioId)
+        public async Task IniciarServicio(string lavadoId, string servicioId, IReadOnlyDictionary<int, string>? seleccion = null)
         {
-            var lavado = await ObtenerLavado(lavadoId);
-            if (lavado == null)
-                throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
-
-            var servicio = lavado.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
-            if (servicio == null)
-                throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
-
-            if (servicio.Estado != "Pendiente")
-                throw new InvalidOperationException("El servicio ya fue iniciado o finalizado.");
-
-            servicio.Estado = "EnProceso";
-            servicio.TiempoInicio = DateTime.UtcNow;
-
-            await ActualizarLavado(lavado);
+            var referencia = _firestore.Collection(COLLECTION_NAME).Document(lavadoId);
+            await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
+            {
+                var snapshot = await transaction.GetSnapshotAsync(referencia);
+                if (!snapshot.Exists) throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
+                var lavado = MapearDocumentoALavado(snapshot);
+                var servicio = lavado.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
+                if (servicio == null) throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
+                if (servicio.Estado == "EnProceso" && seleccion != null &&
+                    seleccion.Count == servicio.Receta.Count(r => r.Modalidad == "Tipo") &&
+                    seleccion.All(x => x.Key >= 0 && x.Key < servicio.Receta.Count && servicio.Receta[x.Key].Modalidad == "Tipo" && servicio.Receta[x.Key].InsumoId == x.Value)) return;
+                if (servicio.Estado != "Pendiente") throw new InvalidOperationException("El servicio ya fue iniciado o finalizado.");
+                var receta = await _stockService.LeerRecetaServicio(transaction, $"{lavadoId}_{servicioId}_servicio", servicio.Receta, false, seleccion: seleccion);
+                StockService.EscribirReservasServicio(transaction, receta, false);
+                servicio.Estado = "EnProceso";
+                servicio.TiempoInicio = DateTime.UtcNow;
+                ValidarLavado(lavado);
+                transaction.Update(referencia, "Servicios", CrearDiccionarioLavado(lavado)["Servicios"]);
+            });
         }
 
         /// <summary>
         /// Inicia una etapa específica dentro de un servicio.
         /// </summary>
-        public async Task IniciarEtapa(string lavadoId, string servicioId, string etapaId)
+        public async Task IniciarEtapa(string lavadoId, string servicioId, string etapaId, IReadOnlyDictionary<int, string>? seleccion = null)
         {
-            var lavado = await ObtenerLavado(lavadoId);
-            if (lavado == null)
-                throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
-
-            var servicio = lavado.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
-            if (servicio == null)
-                throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
-
-            var etapa = servicio.Etapas.FirstOrDefault(e => e.EtapaId == etapaId);
-            if (etapa == null)
-                throw new ArgumentException("No se encontró la etapa en el servicio", nameof(etapaId));
-
-            if (etapa.Estado != "Pendiente")
-                throw new InvalidOperationException("La etapa ya fue iniciada o finalizada.");
-
-            // Verificar que no haya otra etapa en proceso en este servicio
-            var etapaEnProceso = servicio.Etapas.FirstOrDefault(e => e.Estado == "EnProceso");
-            if (etapaEnProceso != null && etapaEnProceso.EtapaId != etapaId)
+            var referencia = _firestore.Collection(COLLECTION_NAME).Document(lavadoId);
+            await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
             {
-                throw new InvalidOperationException($"No se puede iniciar esta etapa porque la etapa '{etapaEnProceso.Nombre}' está en proceso. Las etapas deben completarse en orden.");
-            }
-
-            etapa.Estado = "EnProceso";
-            etapa.TiempoInicio = DateTime.UtcNow;
-
-            // Si es la primera etapa en iniciarse, iniciar el servicio también
-            if (servicio.Estado == "Pendiente")
-            {
-                servicio.Estado = "EnProceso";
-                servicio.TiempoInicio = DateTime.UtcNow;
-            }
-
-            await ActualizarLavado(lavado);
+                var snapshot = await transaction.GetSnapshotAsync(referencia);
+                if (!snapshot.Exists) throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
+                var lavado = MapearDocumentoALavado(snapshot);
+                var servicio = lavado.Servicios.FirstOrDefault(s => s.ServicioId == servicioId)
+                    ?? throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
+                var etapa = servicio.Etapas.FirstOrDefault(e => e.EtapaId == etapaId)
+                    ?? throw new ArgumentException("No se encontró la etapa en el servicio", nameof(etapaId));
+                if (etapa.Estado == "EnProceso" && seleccion != null &&
+                    seleccion.Count == etapa.Receta.Count(r => r.Modalidad == "Tipo") &&
+                    seleccion.All(x => x.Key >= 0 && x.Key < etapa.Receta.Count && etapa.Receta[x.Key].Modalidad == "Tipo" && etapa.Receta[x.Key].InsumoId == x.Value)) return;
+                if (etapa.Estado != "Pendiente") throw new InvalidOperationException("La etapa ya fue iniciada o finalizada.");
+                var etapaEnProceso = servicio.Etapas.FirstOrDefault(e => e.Estado == "EnProceso");
+                if (etapaEnProceso != null && etapaEnProceso.EtapaId != etapaId)
+                    throw new InvalidOperationException($"No se puede iniciar esta etapa porque la etapa '{etapaEnProceso.Nombre}' está en proceso. Las etapas deben completarse en orden.");
+                var receta = await _stockService.LeerRecetaServicio(transaction, $"{lavadoId}_{servicioId}_{etapaId}", etapa.Receta, false, seleccion: seleccion);
+                StockService.EscribirReservasServicio(transaction, receta, false);
+                etapa.Estado = "EnProceso";
+                etapa.TiempoInicio = DateTime.UtcNow;
+                if (servicio.Estado == "Pendiente")
+                {
+                    servicio.Estado = "EnProceso";
+                    servicio.TiempoInicio = DateTime.UtcNow;
+                }
+                ValidarLavado(lavado);
+                transaction.Update(referencia, "Servicios", CrearDiccionarioLavado(lavado)["Servicios"]);
+            });
         }
 
         #endregion
@@ -776,7 +897,7 @@ namespace Firebase.Services
 
         public record ResultadoAsignacionCreacion(int CantidadEmpleadosRequeridos, List<Empleado> EmpleadosAsignados);
 
-        public async Task<ResultadoAsignacionCreacion> PrepararAsignacionCreacion(int? cantidadRequerida)
+        public async Task<ResultadoAsignacionCreacion> PrepararAsignacionCreacion(int? cantidadRequerida, IReadOnlySet<string>? excluidos = null)
         {
             var cantidad = cantidadRequerida ?? 1;
             var config = await _configuracionService.ObtenerConfiguracion();
@@ -785,14 +906,14 @@ namespace Firebase.Services
                 cantidad = config.EmpleadosMaximosPorLavado;
             }
 
-            var empleados = await AsignarEmpleadosAleatorios(cantidad);
+            var empleados = await AsignarEmpleadosAleatorios(cantidad, excluidos);
             return new ResultadoAsignacionCreacion(cantidad, empleados);
         }
 
         /// <summary>
         /// Asigna empleados aleatoriamente a un lavado basándose en disponibilidad.
         /// </summary>
-        public async Task<List<Empleado>> AsignarEmpleadosAleatorios(int cantidad)
+        public async Task<List<Empleado>> AsignarEmpleadosAleatorios(int cantidad, IReadOnlySet<string>? excluidos = null)
         {
             var empleadosActivos = await _personalService.ObtenerEmpleados(
                 estados: new List<string> { "Activo" },
@@ -804,6 +925,7 @@ namespace Firebase.Services
             var empleadosDisponibles = new List<Empleado>();
             foreach (var empleado in empleadosActivos)
             {
+                if (excluidos?.Contains(empleado.Id) == true) continue;
                 var lavadosActivos = await ObtenerLavadosActivosPorEmpleado(empleado.Id);
                 if (!lavadosActivos.Any())
                 {
@@ -906,28 +1028,35 @@ namespace Firebase.Services
 
         #region Métodos Privados
 
-        private async Task IniciarSiguienteServicioAutomaticamente(Lavado lavado)
+        private async Task<(ServicioEnLavado Servicio, EtapaEnLavado? Etapa, StockService.RecetaServicio Receta)?> LeerSiguienteServicio(
+            Transaction transaction, Lavado lavado, StockService.RecetaServicio? liberacion, IReadOnlyCollection<StockService.ConsumoReceta> consumos)
         {
-            // Buscar el siguiente servicio pendiente en orden
-            var siguienteServicio = lavado.Servicios
-                .Where(s => s.Estado == "Pendiente")
-                .OrderBy(s => s.Orden)
-                .FirstOrDefault();
-                
-            if (siguienteServicio != null)
+            var servicio = lavado.Servicios.Where(s => s.Estado == "Pendiente").OrderBy(s => s.Orden).FirstOrDefault();
+            if (servicio == null) return null;
+            var etapa = servicio.Etapas.FirstOrDefault();
+            if ((etapa?.Receta ?? servicio.Receta).Any(r => r.Modalidad == "Tipo")) return null;
+            try
             {
-                siguienteServicio.Estado = "EnProceso";
-                siguienteServicio.TiempoInicio = DateTime.UtcNow;
-                
-                // Si el servicio tiene etapas, iniciar la primera
-                if (siguienteServicio.Etapas.Any())
-                {
-                    var primeraEtapa = siguienteServicio.Etapas.First();
-                    primeraEtapa.Estado = "EnProceso";
-                    primeraEtapa.TiempoInicio = DateTime.UtcNow;
-                }
-                
-                await ActualizarLavado(lavado);
+                var receta = await _stockService.LeerRecetaServicio(transaction,
+                    $"{lavado.Id}_{servicio.ServicioId}_{(etapa == null ? "servicio" : etapa.EtapaId)}",
+                    etapa?.Receta ?? servicio.Receta, false, liberacion, consumos);
+                return (servicio, etapa, receta);
+            }
+            catch (StockService.DisponibilidadInsuficienteException) { return null; }
+        }
+
+        private static void AplicarSiguienteServicio(Transaction transaction,
+            (ServicioEnLavado Servicio, EtapaEnLavado? Etapa, StockService.RecetaServicio Receta)? siguiente)
+        {
+            if (siguiente == null) return;
+            var (servicio, etapa, receta) = siguiente.Value;
+            StockService.EscribirReservasServicio(transaction, receta, false);
+            servicio.Estado = "EnProceso";
+            servicio.TiempoInicio = DateTime.UtcNow;
+            if (etapa != null)
+            {
+                etapa.Estado = "EnProceso";
+                etapa.TiempoInicio = DateTime.UtcNow;
             }
         }
 
@@ -936,7 +1065,12 @@ namespace Firebase.Services
             // Recargar el lavado para tener los datos más recientes
             var lavadoActualizado = await ObtenerLavado(lavado.Id);
             if (lavadoActualizado == null) return;
-            
+            if (FinalizarLavadoSiCorresponde(lavadoActualizado))
+                await ActualizarLavado(lavadoActualizado);
+        }
+
+        private static bool FinalizarLavadoSiCorresponde(Lavado lavadoActualizado)
+        {
             // Verificar si todos los servicios están finalizados o cancelados
             var serviciosPendientes = lavadoActualizado.Servicios
                 .Where(s => s.Estado == "Pendiente" || s.Estado == "EnProceso")
@@ -951,7 +1085,7 @@ namespace Firebase.Services
                 if (serviciosCancelados.Count == lavadoActualizado.Servicios.Count)
                 {
                     // Todos los servicios fueron cancelados - el lavado ya debería estar cancelado
-                    return;
+                    return false;
                 }
                 else if (serviciosRealizados.Any() && serviciosCancelados.Any())
                 {
@@ -971,8 +1105,9 @@ namespace Firebase.Services
                 }
                 
                 lavadoActualizado.TiempoFinalizacion = DateTime.UtcNow;
-                await ActualizarLavado(lavadoActualizado);
+                return true;
             }
+            return false;
         }
 
         private async Task<List<Lavado>> ObtenerLavadosFiltrados(
@@ -1163,6 +1298,17 @@ namespace Firebase.Services
                 ["MotivoCancelacion"] = s.MotivoCancelacion ?? string.Empty,
                 ["PaqueteId"] = s.PaqueteId ?? string.Empty,
                 ["PaqueteNombre"] = s.PaqueteNombre ?? string.Empty,
+                ["Receta"] = s.Receta.Select(r => new Dictionary<string, object>
+                {
+                    ["Modalidad"] = r.Modalidad,
+                    ["TipoId"] = r.TipoId,
+                    ["NombreTipo"] = r.NombreTipo,
+                    ["Categoria"] = r.Categoria,
+                    ["InsumoId"] = r.InsumoId,
+                    ["NombreInsumo"] = r.NombreInsumo,
+                    ["UnidadMedida"] = r.UnidadMedida,
+                    ["DosisTeorica"] = (double)r.DosisTeorica
+                }).ToList(),
                 ["Etapas"] = s.Etapas.Select(e => new Dictionary<string, object>
                 {
                     ["EtapaId"] = e.EtapaId,
@@ -1170,7 +1316,18 @@ namespace Firebase.Services
                     ["Estado"] = e.Estado,
                     ["TiempoInicio"] = e.TiempoInicio.HasValue ? Timestamp.FromDateTime(e.TiempoInicio.Value.ToUniversalTime()) : (object?)null!,
                     ["TiempoFinalizacion"] = e.TiempoFinalizacion.HasValue ? Timestamp.FromDateTime(e.TiempoFinalizacion.Value.ToUniversalTime()) : (object?)null!,
-                    ["MotivoCancelacion"] = e.MotivoCancelacion ?? string.Empty
+                    ["MotivoCancelacion"] = e.MotivoCancelacion ?? string.Empty,
+                    ["Receta"] = e.Receta.Select(r => new Dictionary<string, object>
+                    {
+                        ["Modalidad"] = r.Modalidad,
+                        ["TipoId"] = r.TipoId,
+                        ["NombreTipo"] = r.NombreTipo,
+                        ["Categoria"] = r.Categoria,
+                        ["InsumoId"] = r.InsumoId,
+                        ["NombreInsumo"] = r.NombreInsumo,
+                        ["UnidadMedida"] = r.UnidadMedida,
+                        ["DosisTeorica"] = (double)r.DosisTeorica
+                    }).ToList()
                 }).ToList()
             }).ToList();
 
@@ -1305,6 +1462,35 @@ namespace Firebase.Services
             return dict.TryGetValue(key, out var value) ? value : null;
         }
 
+        private static RecetaInsumo CopiarReceta(RecetaInsumo receta) => new()
+        {
+            Modalidad = receta.Modalidad,
+            TipoId = receta.TipoId,
+            NombreTipo = receta.NombreTipo,
+            Categoria = receta.Categoria,
+            InsumoId = receta.InsumoId,
+            NombreInsumo = receta.NombreInsumo,
+            UnidadMedida = receta.UnidadMedida,
+            DosisTeorica = receta.DosisTeorica
+        };
+
+        private static List<RecetaInsumo> LeerReceta(IDictionary<string, object> map, string campo)
+        {
+            if (!map.TryGetValue(campo, out var raw) || raw is not IList<object> lista)
+                return new();
+            return lista.OfType<IDictionary<string, object>>().Select(x => new RecetaInsumo
+            {
+                Modalidad = GetDictValue(x, "Modalidad")?.ToString() ?? "Producto",
+                TipoId = GetDictValue(x, "TipoId")?.ToString() ?? string.Empty,
+                NombreTipo = GetDictValue(x, "NombreTipo")?.ToString() ?? string.Empty,
+                Categoria = GetDictValue(x, "Categoria")?.ToString() ?? string.Empty,
+                InsumoId = GetDictValue(x, "InsumoId")?.ToString() ?? string.Empty,
+                NombreInsumo = GetDictValue(x, "NombreInsumo")?.ToString() ?? string.Empty,
+                UnidadMedida = GetDictValue(x, "UnidadMedida")?.ToString() ?? string.Empty,
+                DosisTeorica = GetDictValue(x, "DosisTeorica") == null ? 0m : Convert.ToDecimal(GetDictValue(x, "DosisTeorica"))
+            }).ToList();
+        }
+
         private static List<ServicioEnLavado> MapearServicios(DocumentSnapshot documento)
         {
             var servicios = new List<ServicioEnLavado>();
@@ -1327,6 +1513,7 @@ namespace Firebase.Services
                         PaqueteId = GetDictValue(map, "PaqueteId")?.ToString(),
                         PaqueteNombre = GetDictValue(map, "PaqueteNombre")?.ToString()
                     };
+                    servicio.Receta = LeerReceta(map, "Receta");
 
                     // Mapear tiempos
                     if (map.ContainsKey("TiempoInicio") && map["TiempoInicio"] is Timestamp tiempoInicio)
@@ -1353,6 +1540,7 @@ namespace Firebase.Services
                                     Estado = GetDictValue(etapaMap, "Estado")?.ToString() ?? "Pendiente",
                                     MotivoCancelacion = GetDictValue(etapaMap, "MotivoCancelacion")?.ToString()
                                 };
+                                etapa.Receta = LeerReceta(etapaMap, "Receta");
 
                                 if (etapaMap.ContainsKey("TiempoInicio") && etapaMap["TiempoInicio"] is Timestamp etapaInicio)
                                 {

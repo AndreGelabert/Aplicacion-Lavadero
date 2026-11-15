@@ -45,6 +45,7 @@
         window.CommonUtils?.setupDefaultFilterForm();
         protegerTipoVehiculoEnEdicion();
         protegerTipoServicioEnEdicion();
+        renderServicioRecipeList();
     }
 
     // IMPORTANTE: asegurar que init se ejecute siempre
@@ -1635,12 +1636,160 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
      * Elimina una etapa de la lista
      */
     window.eliminarEtapa = function (etapaId) {
+        const etapa = etapasEnMemoria.find(e => e.Id === etapaId);
+        if (etapa?.Receta?.length) {
+            showTableMessage('error', 'Quite la receta de la etapa antes de eliminarla.');
+            return;
+        }
         etapasEnMemoria = etapasEnMemoria.filter(e => e.Id !== etapaId);
         renderEtapasList();
     };
 
+    window.editarRecetaEtapa = function (etapaId) {
+        const etapa = etapasEnMemoria.find(e => e.Id === etapaId);
+        if (!etapa) return;
+        openRecipeEditor(etapa);
+    };
+
+    let recetaEditorTarget = null;
+    let recetaEditorOriginal = [];
+    let recetaEditorReturnFocus = null;
+    let recetaEditorStageId = null;
+
+    window.openServicioRecipeEditor = function () {
+        const input = document.getElementById('RecetaJson');
+        let receta = [];
+        try { receta = JSON.parse(input?.value || '[]'); } catch { receta = []; }
+        recetaEditorTarget = { Receta: receta };
+        openRecipeEditor(recetaEditorTarget);
+    };
+
+    function openRecipeEditor(target) {
+        recetaEditorTarget = target;
+        recetaEditorOriginal = JSON.parse(JSON.stringify(target.Receta || []));
+        recetaEditorReturnFocus = document.activeElement;
+        recetaEditorStageId = target.Id || null;
+        renderRecipeEditor();
+        // Suspend the stage modal without calling openEtapasModal again: that reloads
+        // the hidden JSON and would discard the unsaved stage draft.
+        if (recetaEditorStageId) cerrarModal('etapasModal');
+        abrirModal('recetaEditorModal');
+        document.getElementById('recetaEditorModal')?.classList.add('flex');
+        document.getElementById('recetaModalidad')?.focus();
+    }
+
+    window.closeRecipeEditor = function (save) {
+        if (!recetaEditorTarget) return;
+        if (save) {
+            const select = document.getElementById(document.getElementById('recetaModalidad')?.value === 'Tipo' ? 'recetaTipo' : 'recetaInsumo');
+            const dose = document.getElementById('recetaDosis')?.value;
+            if ((select?.value || dose) && !addRecipeItem()) return;
+            if (recetaEditorTarget.Receta) {
+                if (recetaEditorTarget.Id) renderEtapasList();
+                else {
+                    const input = document.getElementById('RecetaJson');
+                    if (input) input.value = JSON.stringify(recetaEditorTarget.Receta);
+                    renderServicioRecipeList();
+                }
+            }
+        } else {
+            recetaEditorTarget.Receta = recetaEditorOriginal;
+        }
+        cerrarModal('recetaEditorModal');
+        document.getElementById('recetaEditorModal')?.classList.remove('flex');
+        // Discard uncommitted controls on either exit so they cannot leak into
+        // another recipe, including when the user cancels.
+        document.getElementById('recetaModalidad').value = 'Producto';
+        document.getElementById('recetaInsumo').value = '';
+        document.getElementById('recetaTipo').value = '';
+        document.getElementById('recetaDosis').value = '';
+        cambiarModalidadReceta();
+        if (recetaEditorStageId) {
+            abrirModal('etapasModal');
+            const button = [...document.querySelectorAll('#etapas-list button[onclick^="editarRecetaEtapa("]')]
+                .find(el => el.getAttribute('onclick') === `editarRecetaEtapa('${recetaEditorStageId}')`);
+            (button || document.getElementById('nuevaEtapaNombre'))?.focus();
+        } else {
+            recetaEditorReturnFocus?.focus();
+        }
+        recetaEditorTarget = null;
+        recetaEditorStageId = null;
+        recetaEditorReturnFocus = null;
+    };
+
+    window.cambiarModalidadReceta = function () {
+        const tipo = document.getElementById('recetaModalidad').value === 'Tipo';
+        document.getElementById('recetaTipo').classList.toggle('hidden', !tipo);
+        document.getElementById('recetaInsumo').classList.toggle('hidden', tipo);
+        actualizarUnidadesReceta();
+    };
+    window.actualizarUnidadesReceta = function () {
+        const tipo = document.getElementById('recetaModalidad').value === 'Tipo';
+        const select = document.getElementById(tipo ? 'recetaTipo' : 'recetaInsumo');
+        const categoria = select.selectedOptions[0]?.dataset.categoria;
+        let unidades = {}; try { unidades = JSON.parse(document.getElementById('unidades-receta-json').value || '{}'); } catch { }
+        const unidad = document.getElementById('recetaUnidad');
+        unidad.replaceChildren(new Option('Seleccionar unidad', ''));
+        (unidades[categoria] || []).forEach(u => unidad.add(new Option(u, u)));
+    };
+    function addRecipeItem() {
+        const modalidad = document.getElementById('recetaModalidad').value;
+        const select = document.getElementById(modalidad === 'Tipo' ? 'recetaTipo' : 'recetaInsumo');
+        const unidad = document.getElementById('recetaUnidad').value;
+        const doseInput = document.getElementById('recetaDosis');
+        const dose = Number(doseInput?.value);
+        if (!select?.value || !unidad || !Number.isFinite(dose) || !(dose > 0)) {
+            showTableMessage('error', 'Seleccione producto o tipo, unidad compatible y dosis mayor a cero.');
+            return false;
+        }
+        const option = select.options[select.selectedIndex];
+        const item = { Modalidad: modalidad, InsumoId: modalidad === 'Producto' ? select.value : '', TipoId: modalidad === 'Tipo' ? select.value : '', NombreInsumo: modalidad === 'Producto' ? option.dataset.nombre : '', NombreTipo: modalidad === 'Tipo' ? option.dataset.nombre : '', Categoria: option.dataset.categoria || '', UnidadMedida: unidad, DosisTeorica: dose };
+        const items = recetaEditorTarget.Receta || [];
+        const index = items.findIndex(x => modalidad === 'Tipo' ? x.Modalidad === 'Tipo' && x.TipoId === select.value : x.InsumoId === select.value);
+        if (index >= 0) items[index] = item; else items.push(item);
+        recetaEditorTarget.Receta = items;
+        select.value = '';
+        doseInput.value = '';
+        actualizarUnidadesReceta();
+        renderRecipeEditor();
+        return true;
+    }
+
+    window.addRecipeItem = addRecipeItem;
+
+    window.removeRecipeItem = function (index) {
+        recetaEditorTarget.Receta.splice(index, 1);
+        renderRecipeEditor();
+    };
+
+    function renderRecipeEditor() {
+        const container = document.getElementById('receta-editor-list');
+        if (!container) return;
+        container.innerHTML = (recetaEditorTarget?.Receta || []).map((item, index) =>
+            `<div class="flex justify-between items-center rounded border p-2 dark:border-gray-600 dark:text-white">
+                <span>${escapeHtml(item.NombreTipo || item.NombreInsumo || item.TipoId || item.InsumoId)} - ${item.DosisTeorica} ${escapeHtml(item.UnidadMedida || '')}</span>
+                <button type="button" onclick="removeRecipeItem(${index})" class="text-red-600">Quitar</button>
+            </div>`).join('') || '<p class="text-sm text-gray-500">No hay insumos configurados.</p>';
+    }
+
+    function renderServicioRecipeList() {
+        const container = document.getElementById('servicio-receta-list');
+        if (!container) return;
+        let receta = [];
+        try { receta = JSON.parse(document.getElementById('RecetaJson')?.value || '[]'); } catch { }
+        container.innerHTML = receta.map(x =>
+            `<div class="text-sm text-gray-700 dark:text-gray-300">${escapeHtml(x.NombreTipo || x.NombreInsumo || x.TipoId || x.InsumoId)}: ${x.DosisTeorica} ${escapeHtml(x.UnidadMedida || '')}</div>`).join('') ||
+            '<p class="text-sm text-gray-500">No hay insumos configurados.</p>';
+    }
+
     // Guarda cambios y cierra
     window.saveEtapasModal = function () {
+        let receta = [];
+        try { receta = JSON.parse(document.getElementById('RecetaJson')?.value || '[]'); } catch { showTableMessage('error', 'Receta inválida.'); return; }
+        if (etapasEnMemoria.length && receta.length && !originalEtapasSnapshot.length) {
+            showTableMessage('error', 'Quite la receta del servicio antes de agregar etapas.');
+            return;
+        }
         // Guardar etapas en el input hidden
         const etapasJson = JSON.stringify(etapasEnMemoria);
         const hiddenInput = document.getElementById('etapas-json');
@@ -1705,7 +1854,11 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300">${index + 1}.</span>
                     <span class="text-sm text-gray-900 dark:text-white">${escapeHtml(etapa.Nombre)}</span>
                 </div>
-                <button type="button" onclick="eliminarEtapa('${etapa.Id}')" 
+                <button type="button" onclick="editarRecetaEtapa('${etapa.Id}')"
+                        class="text-blue-600 hover:text-blue-700 mr-3">
+                    Receta
+                </button>
+                <button type="button" onclick="eliminarEtapa('${etapa.Id}')"
                         class="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>

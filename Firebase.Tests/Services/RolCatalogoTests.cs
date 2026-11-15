@@ -9,10 +9,10 @@ namespace Firebase.Tests.Services
     public class RolCatalogoTests
     {
         [Fact]
-        public void TodosLosPermisos_ShouldHave28UniqueKeys()
+        public void TodosLosPermisos_ShouldHave35UniqueKeys()
         {
-            Assert.Equal(28, RolCatalogo.TodosLosPermisos.Count);
-            Assert.Equal(28, RolCatalogo.TodosLosPermisos.Distinct().Count());
+            Assert.Equal(35, RolCatalogo.TodosLosPermisos.Count);
+            Assert.Equal(35, RolCatalogo.TodosLosPermisos.Distinct().Count());
         }
 
         [Theory]
@@ -25,6 +25,7 @@ namespace Firebase.Tests.Services
         [InlineData("Configuracion", "Consultar,Modificar")]
         [InlineData("Auditoria", "Consultar")]
         [InlineData("Roles", "Consultar,Crear,Modificar,Eliminar")]
+        [InlineData("Insumos", "Consultar,Crear,Modificar,Eliminar,AjustarStock,Recepcionar,Kardex")]
         public void AccionesPara_ShouldReturnTheActionsThatExistForEachModule(string modulo, string expected)
         {
             var esperadas = expected.Split(',');
@@ -88,13 +89,31 @@ namespace Firebase.Tests.Services
         }
 
         [Fact]
+        public void RolesBase_Insumos_ShouldApplyTheConfirmedDefaultMatrix()
+        {
+            var admin = RolCatalogo.RolesBase.Single(r => r.Nombre == "Administrador");
+            var empleado = RolCatalogo.RolesBase.Single(r => r.Nombre == "Empleado");
+
+            Assert.Equal(RolCatalogo.TodosLosPermisos, admin.Permisos);
+            Assert.Equal(new[] { "Insumos.Consultar", "Insumos.Recepcionar" },
+                empleado.Permisos.Where(p => p.StartsWith("Insumos.")));
+            Assert.Equal(new[]
+            {
+                "Clientes.Consultar", "Clientes.Crear", "Clientes.Modificar",
+                "Vehiculos.Consultar", "Vehiculos.Crear", "Vehiculos.Modificar",
+                "Servicios.Consultar", "Paquetes.Consultar",
+                "Lavados.Consultar", "Lavados.Crear", "Lavados.Modificar"
+            }, empleado.Permisos.Where(p => !p.StartsWith("Insumos.")));
+        }
+
+        [Fact]
         public void RolesBase_ShouldContainAdministratorWithAllPermissions()
         {
             var admin = RolCatalogo.RolesBase.Single(r => r.Nombre == "Administrador");
             var empleado = RolCatalogo.RolesBase.Single(r => r.Nombre == "Empleado");
 
-            Assert.Equal(28, admin.Permisos.Count);
-            Assert.Equal(11, empleado.Permisos.Count);
+            Assert.Equal(35, admin.Permisos.Count);
+            Assert.Equal(13, empleado.Permisos.Count);
             Assert.DoesNotContain(empleado.Permisos, p => p.StartsWith("Roles."));
             Assert.All(RolCatalogo.PermisosCriticosAdministrador, p => Assert.Contains(p, admin.Permisos));
         }

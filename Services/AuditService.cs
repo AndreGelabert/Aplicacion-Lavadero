@@ -28,6 +28,14 @@ public class AuditService : Firebase.Services.IAuditWriter
 
     #region Operaciones de Registro
 
+    /// <summary>Enlists the event without committing outside the caller's transaction.</summary>
+    public void EnlistarEnTransaccion(Transaction transaction, AuditLog log)
+    {
+        var referencia = _firestore.Collection(COLLECTION_NAME).Document();
+        log.DocId = referencia.Id;
+        transaction.Create(referencia, log);
+    }
+
     /// <summary>
     /// Registra un evento de auditoría sin captura de antes/después (compatibilidad legada y eventos externos).
     /// </summary>

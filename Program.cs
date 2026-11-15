@@ -214,8 +214,19 @@ builder.Services.AddScoped<Firebase.Services.LavadoService>();
 builder.Services.AddScoped<Firebase.Services.LavadoCreationService>();
 builder.Services.AddScoped<Firebase.Services.LavadoAssociatedClientService>();
 builder.Services.AddScoped<Firebase.Services.LavaderoInfoService>();
+builder.Services.AddScoped<Firebase.Services.InsumoService>();
+builder.Services.AddScoped<Firebase.Services.TipoInsumoService>();
+builder.Services.AddScoped<Firebase.Services.ProveedorService>();
+builder.Services.AddScoped<Firebase.Services.StockService>();
+builder.Services.AddScoped<Firebase.Services.ComprasService>();
 builder.Services.AddHttpClient<Firebase.Services.AuthenticationService>();
 builder.Services.AddScoped<Firebase.Services.AuthenticationService>();
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Resend"));
+builder.Services.AddHttpClient<Firebase.Services.IEmailSender, Firebase.Services.ResendEmailSender>(client =>
+{
+    client.BaseAddress = new Uri("https://api.resend.com/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 // Configuración WhatsApp Business API
 builder.Services.Configure<WhatsAppSettings>(builder.Configuration.GetSection("WhatsApp"));

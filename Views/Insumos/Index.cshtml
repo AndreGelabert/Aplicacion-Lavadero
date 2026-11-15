@@ -1,0 +1,115 @@
+@model List<Firebase.Models.Insumo>
+@{
+    ViewData["Title"] = "Insumos y Stock";
+    var puedeAdministrar = (bool?)ViewBag.PuedeAdministrar == true;
+    var porcentajeAlerta = (decimal)ViewBag.PorcentajeAlertaStock;
+}
+<section class="bg-gray-50 dark:bg-gray-900">
+    <div class="mx-auto bg-white dark:bg-gray-800 shadow-md sm:rounded-lg p-4">
+        @if ((int?)ViewBag.Criticos > 0)
+        {
+            <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+                Hay <strong>@ViewBag.Criticos</strong> insumo(s) activo(s) en stock crítico.
+                <a asp-route-soloBajoMinimo="true" class="ml-2 underline">Ver críticos</a>
+            </div>
+        }
+        @foreach (var alerta in (ViewBag.AlertasStock as List<string>) ?? new List<string>())
+        {
+            <div class="mb-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200">@alerta</div>
+        }
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Insumos y Stock</h1>
+            <div class="flex flex-wrap gap-2 min-w-0">
+                <a asp-action="Kardex" class="app-button app-button--secondary">Kardex</a>
+                <a asp-action="Proveedores" class="app-button app-button--secondary">Proveedores</a>
+                @if (puedeAdministrar) { <a asp-controller="TiposInsumo" asp-action="Index" class="app-button app-button--secondary">Tipos de insumo</a> }
+                <a asp-action="Ordenes" class="app-button app-button--secondary">Órdenes</a>
+                @if (User.TienePermiso("Insumos.Modificar")) { <a asp-action="Cotizaciones" class="app-button app-button--secondary">Cotizaciones</a> }
+                @if (User.TienePermiso("Insumos.Modificar")) { <a asp-action="Configuracion" class="app-button app-button--secondary">Configuración</a> }
+            </div>
+        </div>
+        <form method="get" class="grid md:grid-cols-4 gap-3 mb-4">
+            <input name="search" value="@Context.Request.Query["search"]" placeholder="Buscar insumo" class="rounded-lg border p-2 dark:bg-gray-700 dark:text-white" />
+            <select name="tipo" class="rounded-lg border p-2 dark:bg-gray-700 dark:text-white">
+                <option value="">Todos los tipos</option>
+                @foreach (var t in (ViewBag.Tipos as List<Firebase.Models.TipoInsumo>) ?? new())
+                {
+                    <option value="@t.Nombre" selected="@(string.Equals(Context.Request.Query["tipo"], t.Nombre, StringComparison.OrdinalIgnoreCase))">@t.Nombre</option>
+                }
+                @if ((ViewBag.Tipos as List<Firebase.Models.TipoInsumo>) == null || !((List<Firebase.Models.TipoInsumo>)ViewBag.Tipos).Any())
+                {
+                    <option value="Quimico" selected="@(Context.Request.Query["tipo"] == "Quimico")">Químico</option>
+                    <option value="Fisico" selected="@(Context.Request.Query["tipo"] == "Fisico")">Físico</option>
+                    <option value="Herramienta" selected="@(Context.Request.Query["tipo"] == "Herramienta")">Herramienta</option>
+                }
+            </select>
+            <label class="flex items-center gap-2"><input type="checkbox" name="soloBajoMinimo" value="true" checked="@(Context.Request.Query["soloBajoMinimo"] == "true")" /> Solo bajo mínimo</label>
+            <button class="app-button app-button--primary">Filtrar</button>
+        </form>
+        @if (User.TienePermiso("Insumos.Crear"))
+        {
+            <details class="mb-5 border rounded-lg p-3">
+                <summary class="cursor-pointer font-medium">Nuevo insumo</summary>
+                <partial name="_InsumoForm" model="new Firebase.Models.Insumo()" />
+            </details>
+        }
+        <p class="mb-3 text-sm text-gray-500">El total físico incluye todos los productos del tipo, incluso inactivos y los que no coinciden con los filtros. Se paginan grupos completos; el detalle muestra todos los productos del grupo que coinciden con los filtros. Los productos no son necesariamente intercambiables; las reservas son informativas y pueden cambiar.</p>
+        @foreach (var grupo in (ViewBag.Grupos as List<Firebase.Models.InventarioAgrupadoViewModel>) ?? new())
+        {
+        <details class="mb-3 rounded border" open>
+            <summary class="cursor-pointer p-3 font-semibold">@grupo.Nombre — stock físico total: @if (grupo.TotalFisico.HasValue) { <span>@grupo.TotalFisico @grupo.UnidadResumen</span> } else { <span>No disponible (tipo o unidades inconsistentes)</span> }</summary>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700"><tr><th class="px-4 py-3">Nombre</th><th>Tipo</th><th>Unidad</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody>
+                @foreach (var producto in grupo.Productos)
+                {
+                    var item = producto.Insumo;
+                    var critico = item.StockActual <= item.StockMinimo;
+                    var alerta = false;
+                    if (!critico && item.StockMinimo > 0)
+                    {
+                        try { alerta = item.StockActual <= item.StockMinimo + item.StockMinimo * (porcentajeAlerta / 100); }
+                        catch (OverflowException) { alerta = true; }
+                    }
+                    <tr class="border-b dark:border-gray-700">
+                        <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">@item.Nombre</td>
+                        <td>@item.Tipo</td><td>@item.UnidadMedida</td>
+                        <td><span class="@(critico ? "text-red-600 font-bold" : "")">Físico: @item.StockActual</span> / mín. @item.StockMinimo<br />Reservado: @(producto.Reservado?.ToString() ?? "No disponible")<br />Disponible: @(producto.Disponible?.ToString() ?? "No disponible (reserva inconsistente o desconocida)") @if (critico) { <span class="ml-1 rounded bg-red-100 px-2 py-1 text-xs text-red-800">Crítico</span> } else if (alerta) { <span class="ml-1 rounded bg-yellow-100 px-2 py-1 text-xs text-yellow-800">Próximo al mínimo</span> }</td>
+                        <td>@item.Estado</td>
+                        <td class="flex gap-2 py-2">
+                            @if (User.TienePermiso("Insumos.AjustarStock"))
+                            {
+                                <details><summary class="cursor-pointer text-blue-600">Ajustar</summary><form method="post" asp-action="Ajustar" class="mt-2 space-y-1">@Html.AntiForgeryToken()<input type="hidden" name="insumoId" value="@item.Id" /><input name="cantidad" type="number" step="0.01" min="0.01" required class="w-24 rounded border p-1" placeholder="Cantidad" /><select name="ingreso" class="rounded border p-1"><option value="true">Ingreso</option><option value="false">Egreso</option></select><input name="justificacion" required class="rounded border p-1" placeholder="Justificación" /><button class="text-green-600">Guardar</button></form></details>
+                            }
+                            @if (User.TienePermiso("Insumos.Modificar"))
+                            {
+                                <details><summary class="cursor-pointer text-blue-600">Editar</summary><partial name="_InsumoForm" model="item" /></details>
+                                <form method="post" asp-action="CambiarEstado">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><input type="hidden" name="estado" value="@(item.Estado == "Activo" ? "Inactivo" : "Activo")" /><button class="text-orange-600">@(item.Estado == "Activo" ? "Desactivar" : "Reactivar")</button></form>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        </details>
+        }
+        @if ((int)ViewBag.TotalPages > 1)
+        {
+            <nav class="mt-4 flex items-center justify-between" aria-label="Paginación de grupos de insumos">
+                <span class="text-sm text-gray-500">Página @ViewBag.Page de @ViewBag.TotalPages</span>
+                <div class="flex gap-2">
+                    @if ((int)ViewBag.Page > 1)
+                    {
+                        <a class="app-button app-button--secondary" asp-route-search="@Context.Request.Query["search"]" asp-route-tipo="@Context.Request.Query["tipo"]" asp-route-soloBajoMinimo="@Context.Request.Query["soloBajoMinimo"]" asp-route-page="@((int)ViewBag.Page - 1)">Anterior</a>
+                    }
+                    @if ((int)ViewBag.Page < (int)ViewBag.TotalPages)
+                    {
+                        <a class="app-button app-button--secondary" asp-route-search="@Context.Request.Query["search"]" asp-route-tipo="@Context.Request.Query["tipo"]" asp-route-soloBajoMinimo="@Context.Request.Query["soloBajoMinimo"]" asp-route-page="@((int)ViewBag.Page + 1)">Siguiente</a>
+                    }
+                </div>
+            </nav>
+        }
+    </div>
+</section>

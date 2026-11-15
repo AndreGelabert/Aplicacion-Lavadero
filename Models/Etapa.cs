@@ -29,5 +29,22 @@ namespace Firebase.Models
         [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]{3,}$", 
         ErrorMessage = "El nombre debe contener al menos 3 letras")]
         public string Nombre { get; set; } = string.Empty;
+
+        [FirestoreProperty]
+        public List<RecetaInsumo> Receta { get; set; } = new();
+    }
+
+    [FirestoreData]
+    public class RecetaInsumo
+    {
+        // Los documentos anteriores sin modalidad representan productos concretos.
+        [FirestoreProperty] public string Modalidad { get; set; } = "Producto";
+        [FirestoreProperty] public string TipoId { get; set; } = string.Empty;
+        [FirestoreProperty] public string NombreTipo { get; set; } = string.Empty;
+        [FirestoreProperty] public string Categoria { get; set; } = string.Empty;
+        [FirestoreProperty] public string InsumoId { get; set; } = string.Empty;
+        [FirestoreProperty] public string NombreInsumo { get; set; } = string.Empty;
+        [FirestoreProperty] public string UnidadMedida { get; set; } = string.Empty;
+        [FirestoreProperty(ConverterType = typeof(Firebase.Converters.DecimalConverter))] public decimal DosisTeorica { get; set; }
     }
 }

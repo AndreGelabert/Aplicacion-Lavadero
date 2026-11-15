@@ -145,6 +145,7 @@ namespace Firebase.Models
         [FirestoreProperty]
         public string? MotivoCancelacion { get; set; }
 
+
         /// <summary>
         /// Notas adicionales sobre el lavado.
         /// </summary>
@@ -284,6 +285,9 @@ namespace Firebase.Models
         /// </summary>
         [FirestoreProperty]
         public string? PaqueteNombre { get; set; }
+
+        [FirestoreProperty]
+        public List<RecetaInsumo> Receta { get; set; } = new();
     }
 
     /// <summary>
@@ -327,6 +331,9 @@ namespace Firebase.Models
         /// </summary>
         [FirestoreProperty]
         public string? MotivoCancelacion { get; set; }
+
+        [FirestoreProperty]
+        public List<RecetaInsumo> Receta { get; set; } = new();
     }
 
     /// <summary>

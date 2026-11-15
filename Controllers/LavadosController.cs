@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace FirebaseLoginCustom.Controllers
 {
@@ -283,10 +284,20 @@ namespace FirebaseLoginCustom.Controllers
         /// <summary>
         /// Crea un nuevo lavado vía AJAX.
         /// </summary>
+        public class CrearLavadoConSeleccionRequest : CrearLavadoRequest
+        {
+            public Dictionary<string, Dictionary<int, string>>? Selecciones { get; set; }
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Permiso("Lavados.Crear")]
-        public async Task<IActionResult> CrearLavadoAjax([FromBody] CrearLavadoRequest request)
+        public Task<IActionResult> CrearLavadoAjax([FromBody] CrearLavadoConSeleccionRequest request) => CrearLavadoInterno(request, request.Selecciones);
+
+        [NonAction]
+        public Task<IActionResult> CrearLavadoAjax(CrearLavadoRequest request) => CrearLavadoInterno(request, (request as CrearLavadoConSeleccionRequest)?.Selecciones);
+
+        private async Task<IActionResult> CrearLavadoInterno(CrearLavadoRequest request, Dictionary<string, Dictionary<int, string>>? selecciones)
         {
             try
             {
@@ -296,26 +307,42 @@ namespace FirebaseLoginCustom.Controllers
                     return Json(new { success = false, message = preparacion.Error });
                 }
 
-                var lavadosCreados = new List<Lavado>();
+                var entradas = new List<(Lavado Lavado, IReadOnlyDictionary<int, string>? Seleccion)>();
+                var empleadosAsignados = new HashSet<string>(StringComparer.Ordinal);
                 var contexto = preparacion.Contexto!;
                 foreach (var vehiculoServicios in contexto.Vehiculos)
                 {
-                    var resultado = await _lavadoCreationService.CrearVehiculo(request, contexto, vehiculoServicios);
+                    var mapa = (request as CrearLavadoConSeleccionRequest)?.Selecciones ?? selecciones;
+                    var seleccion = mapa != null && mapa.TryGetValue(vehiculoServicios.VehiculoId, out var elegidos) ? elegidos : null;
+                    var resultado = await _lavadoCreationService.CrearVehiculo(request, contexto, vehiculoServicios, seleccion, empleadosAsignados);
                     if (resultado.Error != null)
                     {
                         return Json(new { success = false, message = resultado.Error });
                     }
-                    var lavadoCreado = resultado.Lavado!;
-                    lavadosCreados.Add(lavadoCreado);
-                    await RegistrarLavado("Creación de lavado", lavadoCreado.Id, new());
+                    entradas.Add((resultado.Lavado!, seleccion));
+                    empleadosAsignados.UnionWith(resultado.Lavado!.EmpleadosAsignadosIds);
                 }
+                await _lavadoCreationService.CrearLavadosConInicio(entradas);
+                var lavadosCreados = entradas.Select(e => e.Lavado).ToList();
+                var falloAuditoria = false;
+                foreach (var lavadoCreado in lavadosCreados)
+                {
+                    try { await RegistrarLavado("Creación de lavado", lavadoCreado.Id, new()); }
+                    catch (Exception ex)
+                    {
+                        falloAuditoria = true;
+                        _logger.LogError(ex, "No se pudo registrar la auditoría de creación del lavado {LavadoId}", lavadoCreado.Id);
+                    }
+                }
+                var mensaje = lavadosCreados.Count == 1
+                    ? "Lavado creado correctamente."
+                    : $"Se crearon {lavadosCreados.Count} lavados correctamente.";
+                if (falloAuditoria) mensaje += " No se pudo registrar toda la auditoría; contacte al administrador.";
 
                 return Json(new
                 {
                     success = true,
-                    message = lavadosCreados.Count == 1
-                        ? "Lavado creado correctamente."
-                        : $"Se crearon {lavadosCreados.Count} lavados correctamente.",
+                    message = mensaje,
                     lavadosIds = lavadosCreados.Select(l => l.Id).ToList()
                 });
             }
@@ -378,12 +405,12 @@ namespace FirebaseLoginCustom.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Permiso("Lavados.Modificar")]
-        public async Task<IActionResult> FinalizarEtapa(string lavadoId, string servicioId, string etapaId)
+        public async Task<IActionResult> FinalizarEtapa(string lavadoId, string servicioId, string etapaId, string? consumoRealJson = null, string? justificacionDesvio = null)
         {
             try
             {
                 var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
-                await _lavadoService.FinalizarEtapa(lavadoId, servicioId, etapaId);
+                await _lavadoService.FinalizarEtapa(lavadoId, servicioId, etapaId, consumoRealJson, justificacionDesvio);
                 await RegistrarLavado("Finalización de etapa en lavado", lavadoId, antes);
 
                 return Json(new { success = true, message = "Etapa finalizada correctamente." });
@@ -401,12 +428,12 @@ namespace FirebaseLoginCustom.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Permiso("Lavados.Modificar")]
-        public async Task<IActionResult> IniciarServicio(string lavadoId, string servicioId)
+        public async Task<IActionResult> IniciarServicio(string lavadoId, string servicioId, string? seleccionJson = null)
         {
             try
             {
                 var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
-                await _lavadoService.IniciarServicio(lavadoId, servicioId);
+                await _lavadoService.IniciarServicio(lavadoId, servicioId, LeerSeleccion(seleccionJson));
                 await RegistrarLavado("Inicio de servicio en lavado", lavadoId, antes);
 
                 return Json(new { success = true, message = "Servicio iniciado correctamente." });
@@ -424,12 +451,12 @@ namespace FirebaseLoginCustom.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Permiso("Lavados.Modificar")]
-        public async Task<IActionResult> IniciarEtapa(string lavadoId, string servicioId, string etapaId)
+        public async Task<IActionResult> IniciarEtapa(string lavadoId, string servicioId, string etapaId, string? seleccionJson = null)
         {
             try
             {
                 var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
-                await _lavadoService.IniciarEtapa(lavadoId, servicioId, etapaId);
+                await _lavadoService.IniciarEtapa(lavadoId, servicioId, etapaId, LeerSeleccion(seleccionJson));
                 await RegistrarLavado("Inicio de etapa en lavado", lavadoId, antes);
 
                 return Json(new { success = true, message = "Etapa iniciada correctamente." });
@@ -447,12 +474,12 @@ namespace FirebaseLoginCustom.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Permiso("Lavados.Modificar")]
-        public async Task<IActionResult> CancelarLavado(string id, string motivo)
+        public async Task<IActionResult> CancelarLavado(string id, string motivo, string? consumosNoRegistradosJson = null)
         {
             try
             {
                 var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(id))!);
-                await _lavadoService.CancelarLavado(id, motivo);
+                await _lavadoService.CancelarLavado(id, motivo, LeerConsumos(consumosNoRegistradosJson));
                 await RegistrarLavado("Cancelación de lavado", id, antes);
 
                 return Json(new { success = true, message = "Lavado cancelado correctamente." });
@@ -470,12 +497,12 @@ namespace FirebaseLoginCustom.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Permiso("Lavados.Modificar")]
-        public async Task<IActionResult> CancelarServicio(string lavadoId, string servicioId, string motivo)
+        public async Task<IActionResult> CancelarServicio(string lavadoId, string servicioId, string motivo, string? consumosNoRegistradosJson = null)
         {
             try
             {
                 var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
-                await _lavadoService.CancelarServicio(lavadoId, servicioId, motivo);
+                await _lavadoService.CancelarServicio(lavadoId, servicioId, motivo, LeerConsumos(consumosNoRegistradosJson));
                 await RegistrarLavado("Cancelación de servicio en lavado", lavadoId, antes);
 
                 return Json(new { success = true, message = "Servicio cancelado correctamente." });
@@ -562,6 +589,79 @@ namespace FirebaseLoginCustom.Controllers
         }
 
         #endregion
+
+        [HttpGet]
+        [Permiso("Lavados.Crear", "Lavados.Modificar")]
+        public async Task<IActionResult> RecursosInicio(string? lavadoId, string servicioId, string? etapaId, [FromServices] InsumoService insumos)
+        {
+            List<RecetaInsumo> receta;
+            if (!string.IsNullOrWhiteSpace(lavadoId))
+            {
+                if (!User.TienePermiso("Lavados.Modificar")) return Forbid();
+                var lavado = await _lavadoService.ObtenerLavado(lavadoId);
+                var servicio = lavado?.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
+                if (servicio == null) return NotFound();
+                if (string.IsNullOrEmpty(etapaId))
+                {
+                    if (servicio.Etapas.Any()) return BadRequest();
+                    receta = servicio.Receta;
+                }
+                else
+                {
+                    var etapa = servicio.Etapas.FirstOrDefault(e => e.EtapaId == etapaId);
+                    if (etapa == null) return NotFound();
+                    receta = etapa.Receta;
+                }
+            }
+            else
+            {
+                if (!User.TienePermiso("Lavados.Crear")) return Forbid();
+                var servicio = await _servicioService.ObtenerServicio(servicioId);
+                if (servicio == null || servicio.Estado != "Activo") return NotFound();
+                receta = servicio.Etapas.Any() ? servicio.Etapas.First().Receta : servicio.Receta;
+            }
+            var catalogo = await insumos.ObtenerTodos(false);
+            var conversor = new ConversionUnidadesService();
+            var items = receta.Select((r, indice) => new { r, indice }).Where(x => x.r.Modalidad == "Tipo")
+                .Select(x => new { x.indice, nombre = x.r.NombreTipo, unidad = x.r.UnidadMedida, dosis = x.r.DosisTeorica,
+                    opciones = catalogo.Where(i => i.TipoId == x.r.TipoId && conversor.SonCompatibles(x.r.UnidadMedida, i.UnidadMedida))
+                        .Select(i => new { id = i.Id, nombre = i.Nombre, unidad = i.UnidadMedida }).ToList() }).ToList();
+            return Json(new { success = true, items });
+        }
+
+        [HttpGet]
+        [Permiso("Lavados.Modificar")]
+        public async Task<IActionResult> RecursosCancelacion(string lavadoId, string? servicioId, [FromServices] InsumoService insumos, [FromServices] StockService stock)
+        {
+            var lavado = await _lavadoService.ObtenerLavado(lavadoId);
+            if (lavado == null) return NotFound();
+            var servicios = lavado.Servicios.Where(s => string.IsNullOrEmpty(servicioId) || s.ServicioId == servicioId).ToList();
+            if (!string.IsNullOrEmpty(servicioId) && servicios.Count != 1) return NotFound();
+            var recetasActivas = servicios.Where(s => s.Estado == "EnProceso").SelectMany(s => s.Etapas.Any()
+                ? s.Etapas.Where(e => e.Estado == "EnProceso").SelectMany(e => e.Receta)
+                : s.Receta).Where(r => !string.IsNullOrWhiteSpace(r.InsumoId)).ToList();
+            var ids = recetasActivas.Select(r => r.InsumoId).Distinct(StringComparer.Ordinal).ToList();
+            var productos = new List<object>();
+            foreach (var id in ids)
+            {
+                var item = await insumos.Obtener(id);
+                if (item == null) throw new InvalidOperationException("No se encontró un producto de la operación.");
+                if (!string.Equals(item.Tipo, "Herramienta", StringComparison.OrdinalIgnoreCase))
+                    productos.Add(new { id, nombre = item.Nombre, unidad = item.UnidadMedida });
+            }
+            var claves = servicios.SelectMany(s => s.Etapas.Any()
+                ? s.Etapas.Where(e => e.Estado == "Realizado").Select(e => $"{lavadoId}_{s.ServicioId}_{e.EtapaId}")
+                : s.Estado == "Realizado" ? new[] { $"{lavadoId}_{s.ServicioId}_servicio" } : Array.Empty<string>()).ToHashSet(StringComparer.Ordinal);
+            var movimientos = await stock.ObtenerMovimientos(tipo: "ConsumoEtapa");
+            var registrados = new List<object>();
+            foreach (var grupo in movimientos.Where(m => claves.Contains(m.ReferenciaId)).GroupBy(m => m.InsumoId))
+            {
+                var item = await insumos.Obtener(grupo.Key);
+                if (item == null) throw new InvalidOperationException("No se encontró un producto registrado.");
+                registrados.Add(new { nombre = item.Nombre, unidad = item.UnidadMedida, cantidad = -grupo.Sum(m => m.Cantidad) });
+            }
+            return Json(new { success = true, productos, registrados });
+        }
 
         #region APIs de datos
 
@@ -944,6 +1044,30 @@ namespace FirebaseLoginCustom.Controllers
         #endregion
 
         #region Métodos Privados
+
+        private static Dictionary<int, string>? LeerSeleccion(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) throw new ArgumentException("Selección inválida.");
+            var result = new Dictionary<int, string>();
+            foreach (var p in doc.RootElement.EnumerateObject())
+                if (!int.TryParse(p.Name, out var indice) || indice < 0 || p.Value.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(p.Value.GetString()) || !result.TryAdd(indice, p.Value.GetString()!))
+                    throw new ArgumentException("Selección inválida.");
+            return result;
+        }
+
+        private static Dictionary<string, decimal> LeerConsumos(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) throw new ArgumentException("Debe informar los consumos adicionales.");
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) throw new ArgumentException("Consumos inválidos.");
+            var result = new Dictionary<string, decimal>(StringComparer.Ordinal);
+            foreach (var p in doc.RootElement.EnumerateObject())
+                if (string.IsNullOrWhiteSpace(p.Name) || p.Value.ValueKind != JsonValueKind.Number || !p.Value.TryGetDecimal(out var value) || value < 0 || !result.TryAdd(p.Name, value))
+                    throw new ArgumentException("Consumos inválidos.");
+            return result;
+        }
 
         private static List<string> ConfigurarEstadosDefecto(List<string>? estados)
         {

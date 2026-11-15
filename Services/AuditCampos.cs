@@ -52,7 +52,39 @@ public static class AuditCampos
         "CancelacionAnticipadaValidezDias", "PaquetesDescuentoStep",
         "CapacidadMaximaConcurrente", "SesionDuracionHoras", "SesionInactividadMinutos",
         "NombreLavadero", "Ubicacion", "HorariosOperacion", "ConsiderarEmpleadosActivos",
-        "EmpleadosMaximosPorLavado", "TiempoNotificacionMinutos", "TiempoToleranciaMinutos", "IntervaloPreguntas"
+        "EmpleadosMaximosPorLavado", "TiempoNotificacionMinutos", "TiempoToleranciaMinutos", "IntervaloPreguntas",
+        "PorcentajeAlertaStock", "VigenciaCompraRecienteDias"
+    };
+
+    /// <summary>Campos auditables de Proveedor.</summary>
+    public static readonly IReadOnlyList<string> Proveedor = new[]
+    {
+        "IdentificacionTributaria", "RazonSocial", "Contacto", "EmailOrdenes", "Estado"
+    };
+
+    /// <summary>Campos auditables de Insumo.</summary>
+    public static readonly IReadOnlyList<string> Insumo = new[]
+    {
+        "Nombre", "Tipo", "UnidadMedida", "StockActual", "StockMinimo",
+        "CantidadReabastecimiento", "ReabastecimientoAutomatico", "ProveedoresIds", "Estado"
+    };
+
+    /// <summary>Campos auditables de OrdenCompra.</summary>
+    public static readonly IReadOnlyList<string> OrdenCompra = new[]
+    {
+        "ProveedorId", "FechaEmision", "Estado", "GrupoCotizacionId", "Items", "Notas", "MotivoCancelacion"
+    };
+
+    /// <summary>Campos auditables de SolicitudCotizacion.</summary>
+    public static readonly IReadOnlyList<string> SolicitudCotizacion = new[]
+    {
+        "GrupoId", "ProveedorId", "Estado", "Items", "Notas"
+    };
+
+    /// <summary>Campos auditables de TipoInsumo.</summary>
+    public static readonly IReadOnlyList<string> TipoInsumo = new[]
+    {
+        "Nombre", "Categoria", "UnidadResumen", "EsProtegido", "Estado"
     };
 
     // ── Capturadores ────────────────────────────────────────────────────────
@@ -171,7 +203,9 @@ public static class AuditCampos
             ["EmpleadosMaximosPorLavado"] = c.EmpleadosMaximosPorLavado.ToString(),
             ["TiempoNotificacionMinutos"] = c.TiempoNotificacionMinutos.ToString(),
             ["TiempoToleranciaMinutos"] = c.TiempoToleranciaMinutos.ToString(),
-            ["IntervaloPreguntas"] = c.IntervaloPreguntas.ToString()
+            ["IntervaloPreguntas"] = c.IntervaloPreguntas.ToString(),
+            ["PorcentajeAlertaStock"] = c.PorcentajeAlertaStock.ToString(),
+            ["VigenciaCompraRecienteDias"] = c.VigenciaCompraRecienteDias.ToString()
         };
     }
 
@@ -185,6 +219,96 @@ public static class AuditCampos
         ["Nombre"] = tipo.Nombre ?? "", ["FormatoPatente"] = tipo.FormatoPatente ?? "",
         ["CantidadEmpleadosRequeridos"] = tipo.CantidadEmpleadosRequeridos.ToString()
     };
+
+    /// <summary>Captura los campos auditables de un Proveedor.</summary>
+    public static Dictionary<string, string> CapturarProveedor(Proveedor? p)
+    {
+        if (p == null) return new Dictionary<string, string>();
+        return new Dictionary<string, string>
+        {
+            ["IdentificacionTributaria"] = p.IdentificacionTributaria ?? "",
+            ["RazonSocial"] = p.RazonSocial ?? "",
+            ["Contacto"] = p.Contacto ?? "",
+            ["EmailOrdenes"] = p.EmailOrdenes ?? "",
+            ["Estado"] = p.Estado ?? ""
+        };
+    }
+
+    /// <summary>Captura los campos auditables de un Insumo.</summary>
+    public static Dictionary<string, string> CapturarInsumo(Insumo? i)
+    {
+        if (i == null) return new Dictionary<string, string>();
+        return new Dictionary<string, string>
+        {
+            ["Nombre"] = i.Nombre ?? "",
+            ["Tipo"] = i.Tipo ?? "",
+            ["UnidadMedida"] = i.UnidadMedida ?? "",
+            ["StockActual"] = i.StockActual.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["StockMinimo"] = i.StockMinimo.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["CantidadReabastecimiento"] = i.CantidadReabastecimiento.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["ReabastecimientoAutomatico"] = i.ReabastecimientoAutomatico.ToString(),
+            ["ProveedoresIds"] = System.Text.Json.JsonSerializer.Serialize((i.ProveedoresIds ?? new()).OrderBy(p => p, StringComparer.Ordinal)),
+            ["Estado"] = i.Estado ?? ""
+        };
+    }
+
+    /// <summary>Captura los campos auditables de un TipoInsumo.</summary>
+    public static Dictionary<string, string> CapturarTipoInsumo(Firebase.Models.TipoInsumo? t)
+    {
+        if (t == null) return new Dictionary<string, string>();
+        return new Dictionary<string, string>
+        {
+            ["Nombre"] = t.Nombre ?? "",
+            ["Categoria"] = t.Categoria ?? "",
+            ["UnidadResumen"] = t.UnidadResumen ?? "",
+            ["EsProtegido"] = t.EsProtegido.ToString(),
+            ["Estado"] = t.Estado ?? ""
+        };
+    }
+
+    /// <summary>Captura los campos auditables de una OrdenCompra.</summary>
+    public static Dictionary<string, string> CapturarOrdenCompra(Firebase.Models.OrdenCompra? o)
+    {
+        if (o == null) return new Dictionary<string, string>();
+        return new Dictionary<string, string>
+        {
+            ["ProveedorId"] = o.ProveedorId ?? "",
+            ["FechaEmision"] = o.FechaEmision.ToUniversalTime().ToString("O"),
+            ["Estado"] = o.Estado ?? "",
+            ["GrupoCotizacionId"] = o.GrupoCotizacionId ?? "",
+            ["Items"] = System.Text.Json.JsonSerializer.Serialize((o.Items ?? new()).Select(i => new
+            {
+                InsumoId = i.InsumoId ?? "",
+                NombreInsumo = i.NombreInsumo ?? "",
+                i.Cantidad,
+                i.CantidadRecibida,
+                i.PrecioUnitario,
+                i.Disponible
+            })),
+            ["Notas"] = o.Notas ?? "",
+            ["MotivoCancelacion"] = o.MotivoCancelacion ?? ""
+        };
+    }
+
+    /// <summary>Captura los campos auditables de una SolicitudCotizacion.</summary>
+    public static Dictionary<string, string> CapturarSolicitudCotizacion(Firebase.Models.SolicitudCotizacion? s)
+    {
+        if (s == null) return new Dictionary<string, string>();
+        return new Dictionary<string, string>
+        {
+            ["GrupoId"] = s.GrupoId ?? "",
+            ["ProveedorId"] = s.ProveedorId ?? "",
+            ["Estado"] = s.Estado ?? "",
+            ["Items"] = System.Text.Json.JsonSerializer.Serialize((s.Items ?? new()).Select(i => new
+            {
+                InsumoId = i.InsumoId ?? "",
+                NombreInsumo = i.NombreInsumo ?? "",
+                i.Cantidad,
+                i.PrecioUnitario
+            })),
+            ["Notas"] = s.Notas ?? ""
+        };
+    }
 
     /// <summary>Captura explícita de los datos operativos del lavado, sin serializar entidades completas.</summary>
     public static Dictionary<string, string> CapturarLavado(Firebase.Models.Lavado l)
@@ -210,6 +334,17 @@ public static class AuditCampos
     }
 
     // ── Estado histórico ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Compara dos capturas para determinar si hay cambios efectivos en los valores auditables.
+    /// </summary>
+    public static bool HayCambios(IReadOnlyDictionary<string, string>? antes, IReadOnlyDictionary<string, string>? despues)
+    {
+        if (antes == null && despues == null) return false;
+        if (antes == null || despues == null) return true;
+        return antes.Count != despues.Count ||
+               antes.Any(kv => !despues.TryGetValue(kv.Key, out var valor) || !string.Equals(kv.Value, valor, StringComparison.Ordinal));
+    }
 
     /// <summary>
     /// Determina el estado histórico de un registro de auditoría.

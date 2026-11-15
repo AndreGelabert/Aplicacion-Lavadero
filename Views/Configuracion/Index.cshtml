@@ -101,6 +101,20 @@
             <input type="hidden" asp-for="FechaActualizacion" />
             <input type="hidden" asp-for="ActualizadoPor" />
 
+            <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <h2 class="text-xl font-semibold">Alerta de stock</h2>
+                <label asp-for="PorcentajeAlertaStock">Porcentaje sobre el stock mínimo (%)</label>
+                <input asp-for="PorcentajeAlertaStock" type="number" min="0" step="any" required class="block w-full rounded-lg border p-2 dark:bg-gray-700" />
+                <span asp-validation-for="PorcentajeAlertaStock" class="text-red-600 text-xs"></span>
+            </div>
+
+            <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <h2 class="text-xl font-semibold">Compras recientes</h2>
+                <label asp-for="VigenciaCompraRecienteDias">Vigencia de compra reciente (días)</label>
+                <input asp-for="VigenciaCompraRecienteDias" type="number" min="0" step="1" required class="block w-full rounded-lg border p-2 dark:bg-gray-700" />
+                <span asp-validation-for="VigenciaCompraRecienteDias" class="text-red-600 text-xs"></span>
+            </div>
+
             <!-- Sección 1: Descuentos por Cancelación Anticipada -->
             <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                 <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">

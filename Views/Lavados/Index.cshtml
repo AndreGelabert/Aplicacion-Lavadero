@@ -411,6 +411,13 @@
                         <input type="hidden" id="finalizarServicioId" name="servicioId" />
                         <input type="hidden" id="finalizarEtapaId" name="etapaId" />
                         <input type="hidden" id="finalizarTipo" name="tipo" />
+                        <div id="consumoRealFields" class="hidden mb-4 text-left">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Consumo real por insumo</label>
+                            <div id="consumoRealInputs" class="space-y-2"></div>
+                            <textarea id="consumoRealJson" name="consumoRealJson" class="hidden"></textarea>
+                            <label class="mt-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Justificación del desvío</label>
+                            <textarea id="justificacionDesvio" name="justificacionDesvio" rows="2" class="w-full rounded border p-2 text-sm dark:bg-gray-700 dark:text-white"></textarea>
+                        </div>
                         <div class="flex justify-center items-center space-x-4">
                             <button type="button"
                                     data-modal-hide="finalizarModal"

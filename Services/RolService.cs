@@ -232,6 +232,81 @@ public class RolService
     }
     #endregion
 
+    /// <summary>Agrega únicamente los permisos de insumos autorizados a los roles base existentes, con auditoría transaccional.</summary>
+    public Task AgregarPermisosInsumosRolesBaseAsync(string actor, string email, Firebase.Services.IAuditWriter auditoria) =>
+        AgregarPermisosInsumosCoreAsync(actor, email, auditoria, null, null);
+
+    /// <summary>Requiere versiones del respaldo y del empleado actor, verificadas en la transacción.</summary>
+    public Task AgregarPermisosInsumosRolesBaseAsync(string actor, string email, Firebase.Services.IAuditWriter auditoria,
+        IReadOnlyDictionary<string, Timestamp> versionesRoles, Timestamp versionActor)
+    {
+        ArgumentNullException.ThrowIfNull(versionesRoles);
+        if (versionesRoles.Count != 2) throw new ArgumentException("Se requieren dos versiones de roles.", nameof(versionesRoles));
+        return AgregarPermisosInsumosCoreAsync(actor, email, auditoria, new Dictionary<string, Timestamp>(versionesRoles), versionActor);
+    }
+
+    private async Task AgregarPermisosInsumosCoreAsync(string actor, string email, Firebase.Services.IAuditWriter auditoria,
+        IReadOnlyDictionary<string, Timestamp>? versionesRoles, Timestamp? versionActor)
+    {
+        if (string.IsNullOrWhiteSpace(actor)) throw new ArgumentException("El actor es obligatorio.", nameof(actor));
+        if (string.IsNullOrWhiteSpace(email)) throw new ArgumentException("El correo del actor es obligatorio.", nameof(email));
+        ArgumentNullException.ThrowIfNull(auditoria);
+        var requeridos = new Dictionary<string, string[]>
+        {
+            ["Administrador"] = new[] { "Insumos.Consultar", "Insumos.Crear", "Insumos.Modificar", "Insumos.Eliminar", "Insumos.AjustarStock", "Insumos.Recepcionar", "Insumos.Kardex" },
+            ["Empleado"] = new[] { "Insumos.Consultar", "Insumos.Recepcionar" }
+        };
+        await _firestore.RunTransactionAsync(async transaction =>
+        {
+            var roles = await transaction.GetSnapshotAsync(_firestore.Collection(COLLECTION_NAME));
+            var empleadoActor = versionesRoles == null ? null : await transaction.GetSnapshotAsync(_firestore.Collection(COLLECTION_EMPLEADOS).Document(actor));
+            if (versionesRoles != null && (!empleadoActor!.Exists || empleadoActor.UpdateTime != versionActor))
+                throw new InvalidOperationException("Los datos de respaldo o del actor cambiaron.");
+            var cambios = new List<(DocumentSnapshot Documento, List<string> Antes, List<string> Despues)>();
+            foreach (var (nombre, permisos) in requeridos)
+            {
+                var coincidencias = roles.Documents.Where(doc => doc.ToDictionary().TryGetValue("Nombre", out var valor)
+                    && valor is string texto && RolReglas.SonNombresIguales(texto, nombre)).ToList();
+                if (coincidencias.Count != 1) throw new InvalidOperationException("Los roles base deben existir y ser únicos.");
+                var documento = coincidencias[0];
+                var datos = documento.ToDictionary();
+                if (versionesRoles != null && (!versionesRoles.TryGetValue(documento.Id, out var version) || documento.UpdateTime != version))
+                    throw new InvalidOperationException("Los datos de respaldo o del actor cambiaron.");
+                if (!datos.TryGetValue("Estado", out var estado) || estado is not string estadoTexto
+                    || !string.Equals(estadoTexto, ESTADO_DEFECTO, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Los roles base deben estar activos.");
+                if (!datos.TryGetValue("Permisos", out var valorPermisos) || valorPermisos is not List<object> lista
+                    || lista.Any(p => p is not string || string.IsNullOrWhiteSpace((string)p)))
+                    throw new InvalidOperationException("Los permisos del rol base son inválidos.");
+                var antes = lista.Cast<string>().ToList();
+                if (versionesRoles != null && nombre == "Administrador")
+                {
+                    var datosActor = empleadoActor!.ToDictionary();
+                    if (!datosActor.TryGetValue("Estado", out var estadoActor) || estadoActor is not string textoEstado
+                        || !string.Equals(textoEstado, ESTADO_DEFECTO, StringComparison.OrdinalIgnoreCase)
+                        || !datosActor.TryGetValue("Rol", out var rolActor) || rolActor is not string textoRol
+                        || !RolReglas.SonNombresIguales(textoRol, "Administrador") || !antes.Contains("Roles.Modificar", StringComparer.Ordinal))
+                        throw new InvalidOperationException("El actor no está autorizado.");
+                }
+                if (antes.Distinct(StringComparer.Ordinal).Count() != antes.Count)
+                    throw new InvalidOperationException("Los permisos del rol base son inválidos.");
+                var despues = antes.Concat(permisos.Where(p => !antes.Contains(p, StringComparer.Ordinal))).ToList();
+                if (despues.Count != antes.Count) cambios.Add((documento, antes, despues));
+            }
+            foreach (var cambio in cambios)
+            {
+                transaction.Update(cambio.Documento.Reference, "Permisos", cambio.Despues);
+                auditoria.EnlistarEnTransaccion(transaction, new AuditLog
+                {
+                    UserId = actor, UserEmail = email, Action = "Actualización", TargetId = cambio.Documento.Id,
+                    TargetType = "Rol", NombreHistorico = cambio.Documento.GetValue<string>("Nombre"), Timestamp = DateTime.UtcNow,
+                    Antes = new Dictionary<string, string> { ["Permisos"] = System.Text.Json.JsonSerializer.Serialize(cambio.Antes) },
+                    Despues = new Dictionary<string, string> { ["Permisos"] = System.Text.Json.JsonSerializer.Serialize(cambio.Despues) }
+                });
+            }
+        });
+    }
+
     #region Operaciones CRUD
 
     /// <summary>

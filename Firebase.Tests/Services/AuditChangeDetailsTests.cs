@@ -371,6 +371,207 @@ namespace Firebase.Tests.Services
             Assert.Equal("Activo", campos["Estado"]);
         }
 
+        [Fact]
+        public void CamposAuditableProveedor_NoDebeIncluirSecretosYDebeIncluirCamposRelevantes()
+        {
+            var allowlist = AuditCampos.Proveedor;
+            Assert.Contains("IdentificacionTributaria", allowlist);
+            Assert.Contains("RazonSocial", allowlist);
+            Assert.Contains("Contacto", allowlist);
+            Assert.Contains("EmailOrdenes", allowlist);
+            Assert.Contains("Estado", allowlist);
+            Assert.DoesNotContain("PasswordHash", allowlist);
+            Assert.DoesNotContain("Token", allowlist);
+            Assert.DoesNotContain("Secret", allowlist);
+            Assert.DoesNotContain("ApiKey", allowlist);
+            Assert.DoesNotContain("Clave", allowlist);
+        }
+
+        [Fact]
+        public void CapturarCamposProveedor_DeberiaProducirDiccionarioConValoresCorrectos()
+        {
+            var proveedor = new Proveedor
+            {
+                Id = "prov-001",
+                IdentificacionTributaria = "30-99887766-1",
+                RazonSocial = "Insumos Norte",
+                Contacto = "María",
+                EmailOrdenes = "pedidos@example.invalid",
+                Estado = "Inactivo"
+            };
+
+            var campos = AuditCampos.CapturarProveedor(proveedor);
+
+            Assert.Equal("30-99887766-1", campos["IdentificacionTributaria"]);
+            Assert.Equal("Insumos Norte", campos["RazonSocial"]);
+            Assert.Equal("María", campos["Contacto"]);
+            Assert.Equal("pedidos@example.invalid", campos["EmailOrdenes"]);
+            Assert.Equal("Inactivo", campos["Estado"]);
+            Assert.Equal("ConCambios", AuditCampos.ObtenerEstadoHistorial(new Dictionary<string, string>(), campos));
+        }
+
+        [Fact]
+        public void CamposAuditableInsumo_NoDebeIncluirSecretosYDebeIncluirCamposRelevantes()
+        {
+            var allowlist = AuditCampos.Insumo;
+            Assert.Contains("Nombre", allowlist);
+            Assert.Contains("Tipo", allowlist);
+            Assert.Contains("UnidadMedida", allowlist);
+            Assert.Contains("StockActual", allowlist);
+            Assert.Contains("StockMinimo", allowlist);
+            Assert.Contains("CantidadReabastecimiento", allowlist);
+            Assert.Contains("ReabastecimientoAutomatico", allowlist);
+            Assert.Contains("ProveedoresIds", allowlist);
+            Assert.Contains("Estado", allowlist);
+            Assert.DoesNotContain("PasswordHash", allowlist);
+            Assert.DoesNotContain("Token", allowlist);
+            Assert.DoesNotContain("Secret", allowlist);
+            Assert.DoesNotContain("ApiKey", allowlist);
+            Assert.DoesNotContain("Clave", allowlist);
+        }
+
+        [Fact]
+        public void CapturarCamposInsumo_DeberiaProducirDiccionarioConValoresCorrectos()
+        {
+            var insumo = new Insumo
+            {
+                Id = "ins-001",
+                Nombre = "Shampoo PH Neutro",
+                Tipo = "Quimico",
+                UnidadMedida = "ml",
+                StockActual = 12.5m,
+                StockMinimo = 5m,
+                CantidadReabastecimiento = 20m,
+                ReabastecimientoAutomatico = true,
+                ProveedoresIds = new() { "prov-2", "prov-1" },
+                Estado = "Inactivo"
+            };
+
+            var campos = AuditCampos.CapturarInsumo(insumo);
+
+            Assert.Equal("Shampoo PH Neutro", campos["Nombre"]);
+            Assert.Equal("Quimico", campos["Tipo"]);
+            Assert.Equal("ml", campos["UnidadMedida"]);
+            Assert.Equal("12.5", campos["StockActual"]);
+            Assert.Equal("5", campos["StockMinimo"]);
+            Assert.Equal("20", campos["CantidadReabastecimiento"]);
+            Assert.Equal("True", campos["ReabastecimientoAutomatico"]);
+            Assert.Equal("[\"prov-1\",\"prov-2\"]", campos["ProveedoresIds"]);
+            Assert.Equal("Inactivo", campos["Estado"]);
+            Assert.Equal("ConCambios", AuditCampos.ObtenerEstadoHistorial(new Dictionary<string, string>(), campos));
+        }
+
+        [Fact]
+        public void CamposAuditableOrdenCompra_NoDebeIncluirSecretosYDebeIncluirCamposRelevantes()
+        {
+            var allowlist = AuditCampos.OrdenCompra;
+            Assert.Contains("ProveedorId", allowlist);
+            Assert.Contains("FechaEmision", allowlist);
+            Assert.Contains("Estado", allowlist);
+            Assert.Contains("GrupoCotizacionId", allowlist);
+            Assert.Contains("Items", allowlist);
+            Assert.Contains("Notas", allowlist);
+            Assert.Contains("MotivoCancelacion", allowlist);
+            Assert.DoesNotContain("PasswordHash", allowlist);
+            Assert.DoesNotContain("Token", allowlist);
+            Assert.DoesNotContain("Secret", allowlist);
+            Assert.DoesNotContain("ApiKey", allowlist);
+            Assert.DoesNotContain("Clave", allowlist);
+        }
+
+        [Fact]
+        public void CapturarCamposOrdenCompra_DeberiaProducirDiccionarioConValoresCorrectos()
+        {
+            var fecha = new DateTime(2025, 2, 3, 4, 5, 6, DateTimeKind.Utc);
+            var orden = new OrdenCompra
+            {
+                Id = "ord-001",
+                ProveedorId = "prov-1",
+                FechaEmision = fecha,
+                Estado = "PendienteAprobacion",
+                GrupoCotizacionId = "grp-1",
+                Items = new()
+                {
+                    new OrdenCompraItem
+                    {
+                        InsumoId = "ins-1",
+                        NombreInsumo = "Jabon",
+                        Cantidad = 4.5m,
+                        CantidadRecibida = 0m,
+                        PrecioUnitario = 12.25m,
+                        Disponible = true
+                    }
+                },
+                Notas = "Confirmar precio",
+                MotivoCancelacion = ""
+            };
+
+            var campos = AuditCampos.CapturarOrdenCompra(orden);
+
+            Assert.Equal("prov-1", campos["ProveedorId"]);
+            Assert.Equal("2025-02-03T04:05:06.0000000Z", campos["FechaEmision"]);
+            Assert.Equal("PendienteAprobacion", campos["Estado"]);
+            Assert.Equal("grp-1", campos["GrupoCotizacionId"]);
+            Assert.Contains("ins-1", campos["Items"]);
+            Assert.Contains("4.5", campos["Items"]);
+            Assert.Contains("12.25", campos["Items"]);
+            Assert.Equal("Confirmar precio", campos["Notas"]);
+            Assert.Equal("", campos["MotivoCancelacion"]);
+            Assert.Equal("ConCambios", AuditCampos.ObtenerEstadoHistorial(new Dictionary<string, string>(), campos));
+        }
+
+        [Fact]
+        public void CapturaDeCreacionOrdenCompra_ProduceAntesVacioYDespuesConCambios()
+        {
+            var orden = new OrdenCompra
+            {
+                Id = "ord-creada",
+                ProveedorId = "prov-1",
+                FechaEmision = new DateTime(2025, 3, 1, 10, 0, 0, DateTimeKind.Utc),
+                Estado = "Enviada",
+                Items = new()
+                {
+                    new OrdenCompraItem
+                    {
+                        InsumoId = "ins-1",
+                        NombreInsumo = "Detergente",
+                        Cantidad = 10m,
+                        PrecioUnitario = 15m
+                    }
+                }
+            };
+            var antes = new Dictionary<string, string>();
+            var despues = AuditCampos.CapturarOrdenCompra(orden);
+
+            Assert.Empty(antes);
+            Assert.Equal("Enviada", despues["Estado"]);
+            Assert.Equal("prov-1", despues["ProveedorId"]);
+            Assert.Equal("ConCambios", AuditCampos.ObtenerEstadoHistorial(antes, despues));
+        }
+
+        [Fact]
+        public void CapturaDeCambioEstadoOrdenCompra_ProduceAntesYDespuesConCambios()
+        {
+            var orden = new OrdenCompra
+            {
+                Id = "ord-estado",
+                ProveedorId = "prov-1",
+                FechaEmision = new DateTime(2025, 3, 1, 10, 0, 0, DateTimeKind.Utc),
+                Estado = "Enviada",
+                Items = new() { new OrdenCompraItem { InsumoId = "ins-1", Cantidad = 5m } }
+            };
+            var antes = AuditCampos.CapturarOrdenCompra(orden);
+            orden.Estado = "Cancelada";
+            orden.MotivoCancelacion = "Proveedor sin stock";
+            var despues = AuditCampos.CapturarOrdenCompra(orden);
+
+            Assert.Equal("Enviada", antes["Estado"]);
+            Assert.Equal("", antes["MotivoCancelacion"]);
+            Assert.Equal("Cancelada", despues["Estado"]);
+            Assert.Equal("Proveedor sin stock", despues["MotivoCancelacion"]);
+            Assert.Equal("ConCambios", AuditCampos.ObtenerEstadoHistorial(antes, despues));
+        }
+
         // ─── S4: Existing LogEvent overload compatibility ──────────────────────
 
         [Fact]
@@ -398,6 +599,25 @@ namespace Firebase.Tests.Services
         // ─── S1: Nombre histórico preserved from capture time ─────────────────
 
         [Fact]
+        public void HayCambios_ComparaCapturasCorrectamente()
+        {
+            Assert.False(AuditCampos.HayCambios(null, null));
+            Assert.True(AuditCampos.HayCambios(null, new Dictionary<string, string> { ["A"] = "1" }));
+            Assert.True(AuditCampos.HayCambios(new Dictionary<string, string> { ["A"] = "1" }, null));
+            Assert.False(AuditCampos.HayCambios(new Dictionary<string, string>(), new Dictionary<string, string>()));
+
+            var dic1 = new Dictionary<string, string> { ["Nombre"] = "X", ["Estado"] = "Activo" };
+            var dic2 = new Dictionary<string, string> { ["Nombre"] = "X", ["Estado"] = "Activo" };
+            Assert.False(AuditCampos.HayCambios(dic1, dic2));
+
+            var dic3 = new Dictionary<string, string> { ["Nombre"] = "Y", ["Estado"] = "Activo" };
+            Assert.True(AuditCampos.HayCambios(dic1, dic3));
+
+            var dic4 = new Dictionary<string, string> { ["Nombre"] = "X" };
+            Assert.True(AuditCampos.HayCambios(dic1, dic4));
+        }
+
+        [Fact]
         public void NombreHistorico_DeberiaPreservarseDesdeCapturaNoDesdeObjetoActual()
         {
             // NombreHistorico is captured at write time, not resolved dynamically later
@@ -406,6 +626,67 @@ namespace Firebase.Tests.Services
                 NombreHistorico = "Servicio Histórico (ya eliminado)"
             };
             Assert.Equal("Servicio Histórico (ya eliminado)", log.NombreHistorico);
+        }
+
+        [Fact]
+        public void CapturarConfiguracion_IncluyePorcentajeAlertaYVigenciaCompraRecienteSinExponerSecretos()
+        {
+            var allowlist = AuditCampos.Configuracion;
+            Assert.Contains("PorcentajeAlertaStock", allowlist);
+            Assert.Contains("VigenciaCompraRecienteDias", allowlist);
+
+            var config = new Configuracion
+            {
+                NombreLavadero = "Lavadero Demo",
+                PorcentajeAlertaStock = 35m,
+                VigenciaCompraRecienteDias = 21
+            };
+
+            var campos = AuditCampos.CapturarConfiguracion(config);
+            Assert.Equal("35", campos["PorcentajeAlertaStock"]);
+            Assert.Equal("21", campos["VigenciaCompraRecienteDias"]);
+            Assert.Equal("Lavadero Demo", campos["NombreLavadero"]);
+            Assert.DoesNotContain(campos.Keys, k => k.Contains("Password", StringComparison.OrdinalIgnoreCase) ||
+                                                    k.Contains("Secret", StringComparison.OrdinalIgnoreCase) ||
+                                                    k.Contains("Token", StringComparison.OrdinalIgnoreCase) ||
+                                                    k.Contains("Key", StringComparison.OrdinalIgnoreCase));
+        }
+
+        [Fact]
+        public void HayCambios_DetectaCambiosEnPorcentajeAlertaStockYVigenciaCompraReciente()
+        {
+            var baseConfig = new Configuracion
+            {
+                NombreLavadero = "Lavadero AutoClean",
+                PorcentajeAlertaStock = 20m,
+                VigenciaCompraRecienteDias = 14
+            };
+
+            var antes = AuditCampos.CapturarConfiguracion(baseConfig);
+
+            // No-op: misma configuración
+            var identico = AuditCampos.CapturarConfiguracion(baseConfig);
+            Assert.False(AuditCampos.HayCambios(antes, identico));
+
+            // Cambio solo en PorcentajeAlertaStock
+            var cambioPorcentaje = new Configuracion
+            {
+                NombreLavadero = "Lavadero AutoClean",
+                PorcentajeAlertaStock = 30m,
+                VigenciaCompraRecienteDias = 14
+            };
+            var despuesPorcentaje = AuditCampos.CapturarConfiguracion(cambioPorcentaje);
+            Assert.True(AuditCampos.HayCambios(antes, despuesPorcentaje));
+
+            // Cambio solo en VigenciaCompraRecienteDias
+            var cambioVigencia = new Configuracion
+            {
+                NombreLavadero = "Lavadero AutoClean",
+                PorcentajeAlertaStock = 20m,
+                VigenciaCompraRecienteDias = 28
+            };
+            var despuesVigencia = AuditCampos.CapturarConfiguracion(cambioVigencia);
+            Assert.True(AuditCampos.HayCambios(antes, despuesVigencia));
         }
     }
 

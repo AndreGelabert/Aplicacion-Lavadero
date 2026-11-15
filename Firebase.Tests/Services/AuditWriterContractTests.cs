@@ -20,20 +20,41 @@ public class AuditWriterContractTests
         writer.VerifyNoOtherCalls();
     }
 
+    private sealed class LegacyWriter : IAuditWriter
+    {
+        public Task LogEvent(string userId, string userEmail, string action, string targetId, string targetType) => Task.CompletedTask;
+        public Task LogEvent(string userId, string userEmail, string action, string targetId, string targetType,
+            Dictionary<string, string> antes, Dictionary<string, string> despues, string nombreHistorico = null!) => Task.CompletedTask;
+        public Task LogSessionEvent(string userId, string userEmail, string action, string targetId, string targetType) => Task.CompletedTask;
+    }
+
     [Fact]
     public void WriterContractExposesOnlyExistingEmissionOperations()
     {
         var contract = typeof(AuditService).Assembly.GetType("Firebase.Services.IAuditWriter");
         Assert.NotNull(contract);
         Assert.True(contract.IsAssignableFrom(typeof(AuditService)));
-        Assert.Equal(new[] { "LogEvent", "LogEvent", "LogSessionEvent" }, contract.GetMethods().Select(m => m.Name).OrderBy(n => n));
-        Assert.Equal(new[] { 5, 5, 8 }, contract.GetMethods().Select(m => m.GetParameters().Length).OrderBy(n => n));
-        foreach (var method in contract.GetMethods())
+        var methods = contract.GetMethods();
+        Assert.Equal(new[] { "EnlistarEnTransaccion", "LogEvent", "LogEvent", "LogSessionEvent" }, methods.Select(m => m.Name).OrderBy(n => n));
+        var legacy = methods.Where(m => m.Name is "LogEvent" or "LogSessionEvent").ToArray();
+        Assert.Equal(new[] { 5, 8 }, legacy.Where(m => m.Name == "LogEvent").Select(m => m.GetParameters().Length).OrderBy(n => n));
+        Assert.Equal(5, Assert.Single(legacy, m => m.Name == "LogSessionEvent").GetParameters().Length);
+        foreach (var method in legacy)
         {
             var original = typeof(AuditService).GetMethod(method.Name, method.GetParameters().Select(p => p.ParameterType).ToArray());
             Assert.NotNull(original);
+            Assert.Equal(typeof(Task), method.ReturnType);
             Assert.Equal(typeof(Task), original.ReturnType);
         }
+        var transactional = Assert.Single(methods, m => m.Name == "EnlistarEnTransaccion");
+        Assert.Equal(new[] { typeof(Google.Cloud.Firestore.Transaction), typeof(global::AuditLog) }, transactional.GetParameters().Select(p => p.ParameterType));
+        Assert.Equal(typeof(void), transactional.ReturnType);
+        var implementation = typeof(AuditService).GetMethod(transactional.Name, transactional.GetParameters().Select(p => p.ParameterType).ToArray());
+        Assert.NotNull(implementation);
+        Assert.Equal(typeof(void), implementation.ReturnType);
+        IAuditWriter legacyWriter = new LegacyWriter();
+        var error = Assert.Throws<NotSupportedException>(() => legacyWriter.EnlistarEnTransaccion(null!, null!));
+        Assert.Equal("El escritor de auditoría no admite transacciones.", error.Message);
     }
 
     [Fact]
