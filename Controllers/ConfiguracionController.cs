@@ -15,6 +15,7 @@ public class ConfiguracionController : Controller
     #region Dependencias
     private readonly ConfiguracionService _configuracionService;
     private readonly IAuditWriter _auditService;
+    private readonly ComprasService? _comprasService;
 
     /// <summary>
     /// Crea una nueva instancia del controlador de configuración.
@@ -23,10 +24,12 @@ public class ConfiguracionController : Controller
     /// <param name="auditService">Servicio de auditoría.</param>
     public ConfiguracionController(
         ConfiguracionService configuracionService,
-        IAuditWriter auditService)
+        IAuditWriter auditService,
+        ComprasService? comprasService = null)
     {
         _configuracionService = configuracionService;
         _auditService = auditService;
+        _comprasService = comprasService;
     }
     #endregion
 
@@ -43,6 +46,11 @@ public class ConfiguracionController : Controller
         try
         {
             var configuracion = await _configuracionService.ObtenerConfiguracion();
+            if (User.TienePermiso("Insumos.Modificar") && _comprasService != null)
+            {
+                try { ViewBag.DirectivaReabastecimiento = await _comprasService.ObtenerDirectiva(); }
+                catch (Exception ex) { TempData["ErrorMessage"] = $"Error al cargar la directiva de reabastecimiento: {ex.Message}"; }
+            }
             return View(configuracion);
         }
         catch (Exception ex)

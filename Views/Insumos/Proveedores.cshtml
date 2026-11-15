@@ -1,9 +1,53 @@
 @model List<Firebase.Models.Proveedor>
 @{ ViewData["Title"] = "Proveedores"; var puedeAdministrar = (bool?)ViewBag.PuedeAdministrar == true; }
-<section class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-    <div class="flex justify-between mb-4"><h1 class="text-2xl font-semibold dark:text-white">Proveedores</h1><a asp-action="Index" class="text-blue-600">Volver a insumos</a></div>
-    @if (puedeAdministrar) { <form method="post" asp-action="GuardarProveedor" class="grid md:grid-cols-5 gap-2 mb-5">@Html.AntiForgeryToken()<input type="hidden" name="crear" value="true" /><input name="IdentificacionTributaria" required placeholder="CUIT / identificación" class="rounded border p-2" /><input name="RazonSocial" required placeholder="Razón social" class="rounded border p-2" /><input name="Contacto" placeholder="Contacto" class="rounded border p-2" /><input name="EmailOrdenes" type="email" placeholder="Email de órdenes" class="rounded border p-2" /><button class="app-button app-button--success">Agregar</button></form> }
-    <table class="w-full text-sm"><thead><tr class="border-b"><th class="text-left p-2">Razón social</th><th class="text-left p-2">Identificación</th><th class="text-left p-2">Email</th><th></th></tr></thead><tbody>
-    @foreach (var p in Model) { <tr class="border-b"><td class="p-2">@p.RazonSocial</td><td>@p.IdentificacionTributaria</td><td>@p.EmailOrdenes</td><td>@if (User.TienePermiso("Insumos.Modificar")) { <details><summary class="cursor-pointer text-blue-600">Editar</summary><form method="post" asp-action="GuardarProveedor" class="mt-2 grid gap-2">@Html.AntiForgeryToken()<input type="hidden" name="crear" value="false" /><input type="hidden" name="Id" value="@p.Id" /><label>Identificación fiscal <input name="IdentificacionTributaria" value="@p.IdentificacionTributaria" readonly class="rounded border p-2" /></label><label>Razón social <input name="RazonSocial" value="@p.RazonSocial" required class="rounded border p-2" /></label><label>Contacto <input name="Contacto" value="@p.Contacto" class="rounded border p-2" /></label><label>Email de órdenes <input name="EmailOrdenes" type="email" value="@p.EmailOrdenes" class="rounded border p-2" /></label><button class="app-button app-button--success">Guardar</button></form></details> } @if (puedeAdministrar) { <form method="post" asp-action="EstadoProveedor">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@p.Id" /><input type="hidden" name="estado" value="@(p.Estado == "Activo" ? "Inactivo" : "Activo")" /><button class="text-orange-600">@(p.Estado == "Activo" ? "Desactivar" : "Reactivar")</button></form> }</td></tr> }
-    </tbody></table>
-</section>
+<section class="bg-gray-50 dark:bg-gray-900">
+<div class="mx-auto bg-white dark:bg-gray-800 shadow-md sm:rounded-lg p-4">
+    <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Proveedores</h1>
+        <a asp-action="Index" class="app-button app-button--secondary"><svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>Volver a insumos</a>
+    </div>
+    @if (puedeAdministrar)
+    {
+        <details class="mb-4 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <summary class="cursor-pointer font-medium text-blue-700 dark:text-blue-400"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>Registrar proveedor</summary>
+            <form method="post" asp-action="GuardarProveedor" class="grid gap-4 mt-4 sm:grid-cols-2">
+                @Html.AntiForgeryToken()<input type="hidden" name="crear" value="true" />
+                <label class="text-sm dark:text-white">CUIT / identificación <input name="IdentificacionTributaria" required class="block w-full rounded-lg border p-2 dark:bg-gray-700" /></label>
+                <label class="text-sm dark:text-white">Razón social <input name="RazonSocial" required class="block w-full rounded-lg border p-2 dark:bg-gray-700" /></label>
+                <label class="text-sm dark:text-white">Contacto <input name="Contacto" class="block w-full rounded-lg border p-2 dark:bg-gray-700" /></label>
+                <label class="text-sm dark:text-white">Email de órdenes <input name="EmailOrdenes" type="email" class="block w-full rounded-lg border p-2 dark:bg-gray-700" /></label>
+                <div><button class="app-button app-button--success"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>Agregar</button></div>
+            </form>
+        </details>
+    }
+    <div class="overflow-x-auto" role="region" aria-label="Tabla de proveedores" tabindex="0">
+    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th class="px-4 py-3">Razón social</th><th class="px-4 py-3">Identificación</th><th class="px-4 py-3">Email</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Acciones</th></tr></thead>
+        <tbody>
+        @foreach (var p in Model)
+        {
+            <tr class="border-b dark:border-gray-700 align-top">
+                <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">@p.RazonSocial</td><td class="px-4 py-3">@p.IdentificacionTributaria</td><td class="px-4 py-3">@p.EmailOrdenes</td><td class="px-4 py-3">@p.Estado</td>
+                <td class="px-4 py-3 space-y-2">
+                    @if (User.TienePermiso("Insumos.Modificar"))
+                    {
+                        <details><summary class="cursor-pointer text-blue-600"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1-9 3 3-9 9H9v-3z" /></svg>Editar</summary>
+                            <form method="post" asp-action="GuardarProveedor" class="mt-2 grid gap-2 min-w-48">@Html.AntiForgeryToken()<input type="hidden" name="crear" value="false" /><input type="hidden" name="Id" value="@p.Id" />
+                                <label>Identificación fiscal <input name="IdentificacionTributaria" value="@p.IdentificacionTributaria" readonly class="block w-full rounded border p-2 dark:bg-gray-700" /></label>
+                                <label>Razón social <input name="RazonSocial" value="@p.RazonSocial" required class="block w-full rounded border p-2 dark:bg-gray-700" /></label>
+                                <label>Contacto <input name="Contacto" value="@p.Contacto" class="block w-full rounded border p-2 dark:bg-gray-700" /></label>
+                                <label>Email de órdenes <input name="EmailOrdenes" type="email" value="@p.EmailOrdenes" class="block w-full rounded border p-2 dark:bg-gray-700" /></label>
+                                <button class="app-button app-button--success"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg>Guardar</button>
+                            </form>
+                        </details>
+                    }
+                    @if (puedeAdministrar)
+                    {
+                        <form method="post" asp-action="EstadoProveedor">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@p.Id" /><input type="hidden" name="estado" value="@(p.Estado == "Activo" ? "Inactivo" : "Activo")" /><button class="text-orange-600 hover:underline"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6M20 20v-6h-6M5 10a7 7 0 0112-3l3 3M19 14a7 7 0 01-12 3l-3-3" /></svg>@(p.Estado == "Activo" ? "Desactivar" : "Reactivar")</button></form>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+</div></section>

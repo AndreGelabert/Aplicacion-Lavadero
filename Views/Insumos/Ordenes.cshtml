@@ -1,13 +1,61 @@
 @model List<Firebase.Models.OrdenCompra>
 @{ ViewData["Title"] = "Órdenes de compra"; }
-@if (User.TienePermiso("Insumos.Crear") && User.TienePermiso("Insumos.Modificar")) {
-<p class="bg-white dark:bg-gray-800 rounded-lg p-4 mb-4">Para una compra nueva, <a asp-action="Cotizaciones" class="text-blue-600">solicite una cotización</a>. Las repeticiones recientes elegibles se preparan para aprobación.</p>
-}
-@foreach (var orden in Model) { <details class="p-2"><summary>Detalle de orden @orden.Id</summary><p>@orden.Notas</p><ul>@foreach (var item in orden.Items) { <li>@item.NombreInsumo: @item.Cantidad (recibido: @item.CantidadRecibida), precio: @item.PrecioUnitario</li> }</ul>
-@if (orden.Estado == "PendienteAprobacion" && User.TienePermiso("Insumos.Modificar")) {
-<p>El precio histórico es una referencia; el precio y la disponibilidad requieren confirmación del proveedor.</p>
-<form method="post" asp-action="AprobarOrden">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@orden.Id" /><button type="submit">Aprobar y enviar</button></form>
-@foreach (var item in orden.Items) { <form method="post" asp-action="EditarOrdenPendiente">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@orden.Id" /><input type="hidden" name="insumoId" value="@item.InsumoId" /><span>@item.NombreInsumo</span> <label>Cantidad <input name="cantidad" type="number" min="0.0001" step="0.0001" value="@item.Cantidad.ToString(System.Globalization.CultureInfo.InvariantCulture)" required /></label> <label>Precio <input name="precio" type="number" min="0" step="0.0001" value="@item.PrecioUnitario.ToString(System.Globalization.CultureInfo.InvariantCulture)" required /></label> <button type="submit">Editar orden</button></form> }
-}
-@if (orden.Estado == "RevisionManual") { <p>Resultado de envío incierto: requiere revisión manual. No se reenviará automáticamente.</p> }</details> }
-<section class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow"><div class="flex justify-between mb-4"><h1 class="text-2xl font-semibold dark:text-white">Órdenes de compra</h1><a asp-action="Index" class="text-blue-600">Volver</a></div><table class="w-full text-sm"><thead><tr class="border-b"><th class="text-left p-2">Fecha</th><th>Proveedor</th><th>Estado</th><th></th></tr></thead><tbody>@foreach (var o in Model) { <tr class="border-b align-top"><td class="p-2">@o.FechaEmision.ToLocalTime().ToString("g")</td><td>@o.ProveedorId</td><td>@o.Estado</td><td class="flex gap-2">@if (User.TienePermiso("Insumos.Modificar") && o.Estado == "Enviada") { <form method="post" asp-action="CambiarEstadoOrden">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><input type="hidden" name="estado" value="Confirmada" /><button class="text-blue-600">Confirmar</button></form> } @if (User.TienePermiso("Insumos.Modificar") && o.Estado == "Confirmada") { <form method="post" asp-action="CambiarEstadoOrden">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><input type="hidden" name="estado" value="Despachada" /><button class="text-indigo-600">Despachar</button></form> } @if (User.TienePermiso("Insumos.Recepcionar") && (o.Estado == "Enviada" || o.Estado == "Confirmada" || o.Estado == "Despachada")) { <form method="post" asp-action="RecibirOrden" class="space-y-1">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /> @foreach (var item in o.Items) { <div><input type="hidden" name="insumoIds" value="@item.InsumoId" /><label class="text-xs">@item.NombreInsumo (pend. @(item.Cantidad - item.CantidadRecibida))</label><input name="cantidades" type="number" min="0" max="@(item.Cantidad - item.CantidadRecibida)" step="0.0001" value="@(item.Cantidad - item.CantidadRecibida)" class="w-24 rounded border p-1" /></div> }@if (!string.IsNullOrWhiteSpace(o.GrupoCotizacionId)) { <label><input type="checkbox" name="cancelarConcurrentes" value="true" /> Cancelar órdenes concurrentes al completar la recepción</label> }<button class="text-green-600">Registrar recepción</button></form> } @if (User.TienePermiso("Insumos.Modificar") && o.Estado != "Recibida" && o.Estado != "Cancelada") { <form method="post" asp-action="CambiarEstadoOrden">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><input type="hidden" name="estado" value="Cancelada" /><input name="motivo" required placeholder="Motivo" class="w-32 rounded border p-1" /><button class="text-red-600">Cancelar</button></form> }</td></tr> }</tbody></table></section>
+<section class="bg-gray-50 dark:bg-gray-900">
+<div class="mx-auto bg-white dark:bg-gray-800 shadow-md sm:rounded-lg p-4">
+    <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Órdenes de compra</h1>
+        <a asp-action="Index" class="app-button app-button--secondary"><svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>Volver</a>
+    </div>
+    @if (User.TienePermiso("Insumos.Crear") && User.TienePermiso("Insumos.Modificar"))
+    {
+        <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">Para una compra nueva, <a asp-action="Cotizaciones" class="text-blue-600 underline">solicite una cotización</a>. Las repeticiones recientes elegibles se preparan para aprobación.</p>
+    }
+    <div class="overflow-x-auto" role="region" aria-label="Tabla de órdenes" tabindex="0">
+    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Proveedor</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Acciones</th></tr></thead>
+        <tbody>
+        @foreach (var o in Model)
+        {
+            <tr class="border-b dark:border-gray-700 align-top">
+                <td class="px-4 py-3">@o.FechaEmision.ToLocalTime().ToString("g")</td><td class="px-4 py-3">@o.ProveedorId</td><td class="px-4 py-3">@o.Estado</td>
+                <td class="px-4 py-3">
+                    <details class="min-w-64"><summary class="cursor-pointer text-blue-600"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zm10-3a3 3 0 100 6 3 3 0 000-6z" /></svg>Detalle y acciones</summary>
+                        <div class="space-y-3 mt-3 text-gray-700 dark:text-gray-300">
+                            <p class="font-medium">Orden @o.Id</p><p>@o.Notas</p>
+                            <ul class="list-disc pl-5">@foreach (var item in o.Items) { <li>@item.NombreInsumo: @item.Cantidad (recibido: @item.CantidadRecibida), precio: @item.PrecioUnitario</li> }</ul>
+                            @if (o.Estado == "PendienteAprobacion" && User.TienePermiso("Insumos.Modificar"))
+                            {
+                                <p>El precio histórico es una referencia; el precio y la disponibilidad requieren confirmación del proveedor.</p>
+                                <form method="post" asp-action="AprobarOrden">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><button type="submit" class="app-button app-button--success"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg>Aprobar y enviar</button></form>
+                                @foreach (var item in o.Items)
+                                {
+                                    <form method="post" asp-action="EditarOrdenPendiente" class="grid gap-2 border-t pt-2 dark:border-gray-700">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><input type="hidden" name="insumoId" value="@item.InsumoId" /><span>@item.NombreInsumo</span>
+                                        <label>Cantidad <input name="cantidad" type="number" min="0.0001" step="0.0001" value="@item.Cantidad.ToString(System.Globalization.CultureInfo.InvariantCulture)" required class="block w-full rounded border p-2 dark:bg-gray-700" /></label>
+                                        <label>Precio <input name="precio" type="number" min="0" step="0.0001" value="@item.PrecioUnitario.ToString(System.Globalization.CultureInfo.InvariantCulture)" required class="block w-full rounded border p-2 dark:bg-gray-700" /></label>
+                                        <div><button type="submit" class="app-button app-button--secondary"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1-9 3 3-9 9H9v-3z" /></svg>Editar orden</button></div>
+                                    </form>
+                                }
+                            }
+                            @if (o.Estado == "RevisionManual") { <p>Resultado de envío incierto: requiere revisión manual. No se reenviará automáticamente.</p> }
+                            @if (User.TienePermiso("Insumos.Modificar") && o.Estado == "Enviada") { <form method="post" asp-action="CambiarEstadoOrden">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><input type="hidden" name="estado" value="Confirmada" /><button class="app-button app-button--secondary"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg>Confirmar</button></form> }
+                            @if (User.TienePermiso("Insumos.Modificar") && o.Estado == "Confirmada") { <form method="post" asp-action="CambiarEstadoOrden">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><input type="hidden" name="estado" value="Despachada" /><button class="app-button app-button--secondary"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h12v10H3zM15 10h3l3 3v4h-6M7 20a2 2 0 100-4 2 2 0 000 4zm11 0a2 2 0 100-4 2 2 0 000 4z" /></svg>Despachar</button></form> }
+                            @if (User.TienePermiso("Insumos.Recepcionar") && (o.Estado == "Enviada" || o.Estado == "Confirmada" || o.Estado == "Despachada"))
+                            {
+                                <form method="post" asp-action="RecibirOrden" class="space-y-2">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" />
+                                    @foreach (var item in o.Items) { <div><input type="hidden" name="insumoIds" value="@item.InsumoId" /><label class="text-xs">@item.NombreInsumo (pend. @(item.Cantidad - item.CantidadRecibida)) <input name="cantidades" type="number" min="0" max="@(item.Cantidad - item.CantidadRecibida)" step="0.0001" value="@(item.Cantidad - item.CantidadRecibida)" class="block w-full rounded border p-2 dark:bg-gray-700" /></label></div> }
+                                    @if (!string.IsNullOrWhiteSpace(o.GrupoCotizacionId)) { <label class="block"><input type="checkbox" name="cancelarConcurrentes" value="true" /> Cancelar órdenes concurrentes al completar la recepción</label> }
+                                    <button class="app-button app-button--success"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg>Registrar recepción</button>
+                                </form>
+                            }
+                            @if (User.TienePermiso("Insumos.Modificar") && o.Estado != "Recibida" && o.Estado != "Cancelada")
+                            {
+                                <form method="post" asp-action="CambiarEstadoOrden" class="space-y-2">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><input type="hidden" name="estado" value="Cancelada" /><label>Motivo <input name="motivo" required class="block w-full rounded border p-2 dark:bg-gray-700" /></label><button class="app-button app-button--secondary"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18" /></svg>Cancelar orden</button></form>
+                            }
+                        </div>
+                    </details>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+</div></section>

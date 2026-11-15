@@ -30,9 +30,12 @@ public sealed class InsumosController(
         ViewBag.PuedeAdministrar = User.TieneAlgunPermiso("Insumos.Crear", "Insumos.Modificar");
         var todosTipos = tipos == null ? new List<TipoInsumo>() : await tipos.ObtenerTodos();
         if (tipos != null) ViewBag.Tipos = todosTipos.Where(x => x.Estado == "Activo").ToList();
-        var preliminar = ProyectarInventario(lista, todosTipos, new Dictionary<string, decimal?>(), search, tipo, soloBajoMinimo, page);
+        var filtros = Request.Query["tipos"].Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!.Trim()).ToArray();
+        if (filtros.Length == 0 && !string.IsNullOrWhiteSpace(tipo)) filtros = new[] { tipo.Trim() };
+        ViewBag.FiltrosTipos = filtros;
+        var preliminar = ProyectarInventarioMultiple(lista, todosTipos, new Dictionary<string, decimal?>(), search, filtros, soloBajoMinimo, page);
         var reservas = await stock.ObtenerReservasInventario(preliminar.Pagina.Select(x => x.Id));
-        var resultado = ProyectarInventario(lista, todosTipos, reservas, search, tipo, soloBajoMinimo, page);
+        var resultado = ProyectarInventarioMultiple(lista, todosTipos, reservas, search, filtros, soloBajoMinimo, page);
         ViewBag.Page = resultado.Page;
         ViewBag.PageSize = 20;
         ViewBag.TotalPages = resultado.TotalPages;
@@ -45,17 +48,19 @@ public sealed class InsumosController(
     [NonAction]
     public static ProyeccionInventario ProyectarInventario(List<Insumo> todos, IEnumerable<TipoInsumo> tipos,
         IReadOnlyDictionary<string, decimal?> reservas, string? search, string? tipo, bool soloBajoMinimo, int page)
+        => ProyectarInventarioMultiple(todos, tipos, reservas, search,
+            string.IsNullOrWhiteSpace(tipo) ? Array.Empty<string>() : new[] { tipo.Trim() }, soloBajoMinimo, page);
+
+    private static ProyeccionInventario ProyectarInventarioMultiple(List<Insumo> todos, IEnumerable<TipoInsumo> tipos,
+        IReadOnlyDictionary<string, decimal?> reservas, string? search, IReadOnlyList<string> filtros, bool soloBajoMinimo, int page)
     {
         var listaTipos = tipos.ToList();
         var identidad = new InventarioAgrupadoViewModel.IdentidadTipos(listaTipos);
         IEnumerable<Insumo> filtrados = todos;
         if (!string.IsNullOrWhiteSpace(search))
             filtrados = filtrados.Where(x => x.Nombre.Contains(search, StringComparison.OrdinalIgnoreCase));
-        if (!string.IsNullOrWhiteSpace(tipo))
-        {
-            var tipoFiltro = tipo.Trim();
-            filtrados = filtrados.Where(x => identidad.CoincideFiltro(x, tipoFiltro));
-        }
+        if (filtros.Count > 0)
+            filtrados = filtrados.Where(x => filtros.Any(filtro => identidad.CoincideFiltro(x, filtro)));
         if (soloBajoMinimo) filtrados = filtrados.Where(x => x.StockActual <= x.StockMinimo);
         var lista = filtrados.ToList();
         const int pageSize = 20;
@@ -202,15 +207,20 @@ public sealed class InsumosController(
 
     [HttpGet]
     [Permiso("Insumos.Modificar")]
-    public async Task<IActionResult> Configuracion() => View(await compras.ObtenerDirectiva());
+    public IActionResult Configuracion()
+    {
+        if (!User.TienePermiso("Configuracion.Consultar")) return Forbid();
+        return Redirect(Url.Action("Index", "Configuracion") + "#reabastecimiento");
+    }
 
     [HttpPost, ValidateAntiForgeryToken]
     [Permiso("Insumos.Modificar")]
     public async Task<IActionResult> GuardarConfiguracion(DirectivaReabastecimiento directiva)
     {
+        if (!User.TienePermiso("Configuracion.Modificar") || !User.TienePermiso("Configuracion.Consultar")) return Forbid();
         var resultado = await compras.GuardarDirectiva(directiva);
-        TempData[resultado.EsExitoso ? "Success" : "Error"] = resultado.EsExitoso ? resultado.MensajeExito : resultado.MensajeError;
-        return RedirectToAction(nameof(Configuracion));
+        TempData[resultado.EsExitoso ? "SuccessMessage" : "ErrorMessage"] = resultado.EsExitoso ? resultado.MensajeExito : resultado.MensajeError;
+        return Redirect(Url.Action("Index", "Configuracion") + "#reabastecimiento");
     }
 
     [HttpPost, ValidateAntiForgeryToken]

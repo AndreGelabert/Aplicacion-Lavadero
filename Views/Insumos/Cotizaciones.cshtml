@@ -4,33 +4,34 @@
     var proveedores = (ViewBag.Proveedores as List<Firebase.Models.Proveedor>) ?? new List<Firebase.Models.Proveedor>();
 }
 <section class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-    <div class="flex justify-between mb-4"><h1 class="text-2xl font-semibold dark:text-white">Solicitudes de cotización</h1><a asp-action="Index" class="text-blue-600">Volver</a></div>
-    <h2>Crear solicitud</h2>
+    <div class="flex justify-between mb-4"><h1 class="text-2xl font-semibold dark:text-white">Solicitudes de cotización</h1><a asp-action="Index" class="app-button app-button--secondary"><svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>Volver</a></div>
     @if ((bool)ViewBag.PuedeCrear)
     {
-        <form method="post" asp-action="CrearSolicitudes">@Html.AntiForgeryToken()
-            <fieldset><legend>Proveedores</legend>@foreach (var proveedor in (List<Firebase.Models.Proveedor>)ViewBag.Proveedores) { <label><input type="checkbox" name="proveedorIds" value="@proveedor.Id" /> @proveedor.RazonSocial</label> }</fieldset>
-            <fieldset><legend>Insumos y cantidades</legend>
+        <details class="mb-4 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+        <summary class="cursor-pointer font-medium text-blue-700 dark:text-blue-400"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>Crear solicitud</summary>
+        <form method="post" asp-action="CrearSolicitudes" class="mt-4 space-y-4 text-sm text-gray-700 dark:text-gray-300">@Html.AntiForgeryToken()
+            <fieldset class="border rounded-lg p-3 dark:border-gray-600"><legend>Proveedores</legend><div class="grid gap-2 sm:grid-cols-2">@foreach (var proveedor in proveedores) { <label class="flex items-center gap-2"><input type="checkbox" name="proveedorIds" value="@proveedor.Id" /> @proveedor.RazonSocial</label> }</div></fieldset>
+            <fieldset class="border rounded-lg p-3 dark:border-gray-600"><legend>Insumos y cantidades</legend>
             @{ var insumos = (List<Firebase.Models.Insumo>)ViewBag.Insumos; }
-            @for (var i = 0; i < insumos.Count; i++) { <label>@insumos[i].Nombre <input type="hidden" name="items[@i].InsumoId" value="@insumos[i].Id" /><input type="number" name="items[@i].Cantidad" min="0" step="any" value="0" /></label> }
-            </fieldset><label>Notas <input name="notas" /></label><button>Crear solicitud</button>
-        </form>
+            <div class="grid gap-2 sm:grid-cols-2">@for (var i = 0; i < insumos.Count; i++) { <label>@insumos[i].Nombre <input type="hidden" name="items[@i].InsumoId" value="@insumos[i].Id" /><input type="number" name="items[@i].Cantidad" min="0" step="any" value="0" class="block w-full rounded border p-2 dark:bg-gray-700" /></label> }</div>
+            </fieldset><label class="block">Notas <input name="notas" class="block w-full rounded border p-2 dark:bg-gray-700" /></label><button class="app-button app-button--primary"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>Crear solicitud</button>
+        </form></details>
     }
     <div class="overflow-x-auto">
-    <table class="w-full text-sm"><thead><tr class="border-b"><th class="text-left p-2">Grupo</th><th>Proveedor</th><th>Estado</th><th>Fecha</th><th></th></tr></thead><tbody>
+    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400"><thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700"><tr class="border-b"><th class="text-left p-2">Grupo</th><th>Proveedor</th><th>Estado</th><th>Fecha</th><th></th></tr></thead><tbody>
     @foreach (var solicitud in Model)
     {
         <tr class="border-b"><td class="p-2"><a asp-action="Cotizaciones" asp-route-grupoId="@solicitud.GrupoId" class="text-blue-600">@solicitud.GrupoId</a></td><td>@solicitud.ProveedorId</td><td>@solicitud.Estado</td><td>@solicitud.Fecha.ToLocalTime().ToString("g")</td><td>
             @if (solicitud.Estado == "PendienteAprobacion")
             {
-                <form method="post" asp-action="AprobarSolicitud">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@solicitud.Id" /><button class="text-orange-600">Aprobar</button></form>
+                <form method="post" asp-action="AprobarSolicitud">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@solicitud.Id" /><button class="text-orange-600 hover:underline"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg>Aprobar</button></form>
             }
             @if (solicitud.Estado == "Pendiente")
             {
-                <details><summary>Registrar respuesta</summary><form method="post" asp-action="RegistrarRespuesta">@Html.AntiForgeryToken()<input type="hidden" name="SolicitudId" value="@solicitud.Id" />
+                <details class="min-w-64"><summary class="cursor-pointer text-blue-600"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1-9 3 3-9 9H9v-3z" /></svg>Registrar respuesta</summary><form method="post" asp-action="RegistrarRespuesta" class="space-y-2 mt-2">@Html.AntiForgeryToken()<input type="hidden" name="SolicitudId" value="@solicitud.Id" />
                 @for (var i = 0; i < solicitud.Items.Count; i++) { <div>@solicitud.Items[i].NombreInsumo <input type="hidden" name="Items[@i].InsumoId" value="@solicitud.Items[i].InsumoId" /><label>Precio <input type="number" step="any" min="0" required name="Items[@i].PrecioUnitario" /></label><label>Disponibilidad <select name="Items[@i].Disponible"><option value="true">Disponible</option><option value="false">Sin disponibilidad</option></select></label></div> }
-                <label>Plazo (días) <input type="number" min="0" required name="PlazoEntrega" /></label><label>Notas <input name="Notas" /></label><button>Registrar respuesta</button></form></details>
-                <form method="post" asp-action="EnviarSolicitudEmail" class="ml-2">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@solicitud.Id" /><button class="text-blue-600">Enviar email</button></form>
+                <label>Plazo (días) <input type="number" min="0" required name="PlazoEntrega" /></label><label>Notas <input name="Notas" /></label><button class="app-button app-button--success"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg>Registrar respuesta</button></form></details>
+                <form method="post" asp-action="EnviarSolicitudEmail" class="ml-2">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@solicitud.Id" /><button class="text-blue-600 hover:underline"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6l9 7 9-7M4 5h16v14H4z" /></svg>Enviar email</button></form>
             }
         </td></tr>
     }
@@ -45,7 +46,7 @@
         @foreach (var item in comparaciones)
         {
             var proveedor = proveedores.FirstOrDefault(p => p.Id == item.Solicitud.ProveedorId);
-            <tr class="border-b dark:border-gray-700"><td class="px-4 py-3">@(proveedor?.RazonSocial ?? item.Solicitud.ProveedorId)</td><td>@item.Solicitud.Estado</td><td>@if (item.Respuesta != null) { foreach (var detalle in item.Respuesta.Items) { <div>@detalle.NombreInsumo — Cantidad: @detalle.Cantidad — Precio unitario: @detalle.PrecioUnitario.ToString("N2") — @(detalle.Disponible ? "Disponible" : "Sin disponibilidad")</div> } }</td><td>@(item.Total == 0 ? "-" : item.Total.ToString("N2"))</td><td>@item.Respuesta?.PlazoEntrega</td><td>@if (item.Respuesta != null && (item.Solicitud.Estado == "Pendiente" || item.Solicitud.Estado == "Respondida")) { <form method="post" asp-action="Adjudicar">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Solicitud.Id" /><input type="hidden" name="respuestaId" value="@item.Respuesta.Id" /><button class="text-green-600">Adjudicar esta</button></form> }</td></tr>
+            <tr class="border-b dark:border-gray-700"><td class="px-4 py-3">@(proveedor?.RazonSocial ?? item.Solicitud.ProveedorId)</td><td>@item.Solicitud.Estado</td><td>@if (item.Respuesta != null) { foreach (var detalle in item.Respuesta.Items) { <div>@detalle.NombreInsumo — Cantidad: @detalle.Cantidad — Precio unitario: @detalle.PrecioUnitario.ToString("N2") — @(detalle.Disponible ? "Disponible" : "Sin disponibilidad")</div> } }</td><td>@(item.Total == 0 ? "-" : item.Total.ToString("N2"))</td><td>@item.Respuesta?.PlazoEntrega</td><td>@if (item.Respuesta != null && (item.Solicitud.Estado == "Pendiente" || item.Solicitud.Estado == "Respondida")) { <form method="post" asp-action="Adjudicar">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Solicitud.Id" /><input type="hidden" name="respuestaId" value="@item.Respuesta.Id" /><button class="text-green-600 hover:underline"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg>Adjudicar esta</button></form> }</td></tr>
         }
         </tbody></table>
         </div>
