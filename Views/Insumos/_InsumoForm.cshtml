@@ -15,13 +15,13 @@
             <option value="">Seleccionar tipo</option>
             @foreach (var tipo in tipos) { <option value="@tipo.Id" data-categoria="@tipo.Categoria">@tipo.Nombre</option> }
         </select>
+        <button type="button" data-modal-target="tiposInsumoModal" data-open-tipos class="app-button app-button--secondary">Gestionar tipos</button>
         <select name="UnidadMedida" required aria-label="Unidad" class="rounded border p-2"><option value="">Seleccionar unidad</option></select>
-        <script src="~/js/tipos-insumo.js" asp-append-version="true"></script>
     }
     else
     {
         <input type="hidden" name="TipoId" value="@Model.TipoId" /><input type="hidden" name="Tipo" value="@Model.Tipo" /><input type="hidden" name="UnidadMedida" value="@Model.UnidadMedida" />
-        <span>Tipo: @Model.Tipo · Unidad: @Model.UnidadMedida</span>
+        <span>Tipo: @Model.Tipo · Unidad: <span data-unidad="@Model.UnidadMedida">@Model.UnidadMedida</span></span>
     }
     <input name="StockMinimo" value="@Model.StockMinimo" type="number" min="0" step="0.01" placeholder="Stock mínimo" aria-label="Stock mínimo" class="rounded border p-2" />
     <input name="CantidadReabastecimiento" value="@Model.CantidadReabastecimiento" type="number" min="0" step="0.01" placeholder="Cantidad de reposición" aria-label="Cantidad de reposición" class="rounded border p-2" />

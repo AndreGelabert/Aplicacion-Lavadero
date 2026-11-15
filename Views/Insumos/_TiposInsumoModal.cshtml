@@ -1,0 +1,21 @@
+@using Firebase.Security
+<div id="tiposInsumoModal" tabindex="-1" aria-hidden="true" aria-labelledby="tiposInsumoTitulo" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full"
+     data-list-url="@Url.Action("ModalDatos", "TiposInsumo")" data-save-url="@Url.Action("ModalGuardar", "TiposInsumo")" data-state-url="@Url.Action("ModalEstado", "TiposInsumo")" data-delete-url="@Url.Action("ModalEliminar", "TiposInsumo")" data-tool-url="@Url.Action("ModalInicializarHerramienta", "TiposInsumo")" data-can-edit="@User.TienePermiso("Insumos.Modificar").ToString().ToLowerInvariant()">
+    <div class="relative p-4 w-full max-w-2xl"><div class="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5" style="max-height: calc(100vh - 2rem); overflow-y: auto;">
+        <div class="flex justify-between items-center pb-4 mb-4 border-b dark:border-gray-600">
+            <h3 id="tiposInsumoTitulo" class="text-lg font-semibold text-gray-900 dark:text-white">Tipos de insumo</h3>
+            <button type="button" data-close-tipos class="text-gray-500" aria-label="Cerrar tipos de insumo"><svg aria-hidden="true" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M4.3 5.7 8.6 10l-4.3 4.3 1.4 1.4 4.3-4.3 4.3 4.3 1.4-1.4-4.3-4.3 4.3-4.3-1.4-1.4L10 8.6 5.7 4.3z" /></svg></button>
+        </div>
+        <p id="tiposInsumoMensaje" role="status" aria-live="polite" class="mb-3 text-sm dark:text-white"></p>
+        <form id="tipoInsumoForm" method="post" class="grid sm:grid-cols-2 gap-3 mb-4">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="crear" value="true" /><input type="hidden" name="Id" />
+            <label class="dark:text-white">Nombre <input name="Nombre" required maxlength="120" class="block w-full rounded border p-2 dark:bg-gray-700" /></label>
+            <label class="dark:text-white">Categoría <select name="Categoria" class="block w-full rounded border p-2 dark:bg-gray-700"><option value="Volumen">Volumen</option><option value="Masa">Masa</option><option value="Unidades">Unidades</option></select></label>
+            <label class="dark:text-white">Unidad resumen <select name="UnidadResumen" class="block w-full rounded border p-2 dark:bg-gray-700"><option value="ml">Mililitro (mL)</option><option value="l">Litro (L)</option><option value="mg">Miligramo (mg)</option><option value="g">Gramo (g)</option><option value="kg">Kilogramo (kg)</option><option value="unidad">Unidad (u)</option></select></label>
+            <div class="flex items-end gap-2"><button class="app-button app-button--success" type="submit">Guardar tipo</button><button class="app-button app-button--secondary" type="button" data-reset-tipo>Cancelar edición</button></div>
+        </form>
+        <button type="button" data-init-tool class="app-button app-button--secondary mb-3">Inicializar Herramienta</button>
+        <div class="overflow-x-auto"><table class="w-full text-sm text-left dark:text-gray-200"><thead class="bg-gray-50 dark:bg-gray-700"><tr><th>Nombre</th><th>Categoría</th><th>Unidad resumen</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tiposInsumoTabla"></tbody></table></div>
+    </div></div>
+</div>
