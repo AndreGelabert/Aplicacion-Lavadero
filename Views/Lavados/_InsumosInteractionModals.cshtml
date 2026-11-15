@@ -1,0 +1,86 @@
+<div id="insumosInteraction" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 p-4" role="dialog" aria-modal="true" aria-labelledby="insumosInteractionTitle" aria-hidden="true" tabindex="-1">
+    <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-lg bg-white shadow dark:bg-gray-800">
+        <div class="flex items-center justify-between border-b p-4 dark:border-gray-600">
+            <h3 id="insumosInteractionTitle" class="text-lg font-semibold text-gray-900 dark:text-white"></h3>
+            <button type="button" id="insumosInteractionClose" aria-label="Cerrar" class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 focus:ring-4 focus:ring-blue-300 dark:hover:bg-gray-700 dark:text-gray-300"><svg aria-hidden="true" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12" /></svg></button>
+        </div>
+        <form id="insumosInteractionForm" class="p-4 space-y-4">
+            <div id="insumosInteractionContent" class="space-y-3"></div>
+            <p id="insumosInteractionError" role="alert" class="text-sm text-red-600 dark:text-red-400"></p>
+            <div class="flex justify-end gap-2 border-t pt-4 dark:border-gray-600">
+                <button type="button" id="insumosInteractionCancel" class="rounded-lg border px-4 py-2 text-sm dark:border-gray-600 dark:text-gray-200">Volver</button>
+                <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:ring-4 focus:ring-blue-300"><svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>Continuar</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+(() => {
+    const unit = value => value === 'l' ? 'L' : (value || '');
+    const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    function open(title, html, collect) {
+        const modal = document.getElementById('insumosInteraction');
+        if (!modal) throw new Error('No se pudo abrir la selección de insumos.');
+        const form = document.getElementById('insumosInteractionForm');
+        const content = document.getElementById('insumosInteractionContent');
+        const error = document.getElementById('insumosInteractionError');
+        const previous = document.activeElement;
+        document.getElementById('insumosInteractionTitle').textContent = title;
+        content.innerHTML = html;
+        error.textContent = '';
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+        return new Promise(resolve => {
+            const close = value => {
+                modal.classList.add('hidden'); modal.setAttribute('aria-hidden', 'true');
+                form.onsubmit = null; modal.onkeydown = null;
+                document.getElementById('insumosInteractionClose').onclick = null;
+                document.getElementById('insumosInteractionCancel').onclick = null;
+                previous?.focus(); resolve(value);
+            };
+            document.getElementById('insumosInteractionClose').onclick = () => close(null);
+            document.getElementById('insumosInteractionCancel').onclick = () => close(null);
+            modal.onkeydown = event => {
+                if (event.key === 'Escape') { event.preventDefault(); close(null); }
+                if (event.key === 'Tab') {
+                    const controls = Array.from(modal.querySelectorAll('button, select, input:not([type="hidden"])')).filter(x => !x.disabled);
+                    if (!controls.length) return;
+                    if (event.shiftKey && document.activeElement === controls[0]) { event.preventDefault(); controls[controls.length - 1].focus(); }
+                    else if (!event.shiftKey && document.activeElement === controls[controls.length - 1]) { event.preventDefault(); controls[0].focus(); }
+                }
+            };
+            form.onsubmit = event => { event.preventDefault(); try { close(collect(content)); } catch (e) { error.textContent = e.message; } };
+            (content.querySelector('select, input') || document.getElementById('insumosInteractionCancel')).focus();
+        });
+    }
+    window.LavadoInsumos = {
+        async seleccionar(items) {
+            for (const item of items) if (!item.opciones.length) throw new Error('No hay productos elegibles para ' + item.nombre);
+            if (!items.length) return {};
+            const html = items.map((item, i) => `<label class="block rounded-lg border p-3 text-sm font-medium text-gray-900 dark:border-gray-600 dark:text-white">${escape(item.nombre)}<select data-selection="${i}" class="mt-2 block w-full rounded-lg border-gray-300 bg-gray-50 p-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"><option value="">Seleccione un producto</option>${item.opciones.map((o, j) => `<option value="${j}">${escape(o.nombre)} (${escape(unit(o.unidad))})</option>`).join('')}</select></label>`).join('');
+            return open('Seleccionar insumos', html, content => {
+                const result = {};
+                content.querySelectorAll('[data-selection]').forEach(select => {
+                    const item = items[Number(select.dataset.selection)];
+                    if (select.value === '' || !item.opciones[Number(select.value)]) throw new Error('Seleccione un producto válido.');
+                    result[item.indice] = item.opciones[Number(select.value)].id;
+                });
+                return result;
+            });
+        },
+        async consumos(recursos) {
+            const registrados = recursos.registrados.map(x => `<li class="flex justify-between gap-4"><span>${escape(x.nombre)}</span><span>${escape(x.cantidad)} ${escape(unit(x.unidad))}</span></li>`).join('') || '<li>Ninguno</li>';
+            const productos = recursos.productos.map((p, i) => `<label class="flex items-center justify-between gap-3 text-sm text-gray-900 dark:text-white"><span>${escape(p.nombre)} (${escape(unit(p.unidad))})</span><input data-consumo="${i}" type="number" min="0" step="any" value="0" class="w-28 rounded-lg border border-gray-300 p-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"></label>`).join('');
+            return open('Consumo al cancelar', `<div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-700"><h4 class="font-medium text-gray-900 dark:text-white">Ya registrado (no editable)</h4><ul class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-300">${registrados}</ul></div><h4 class="font-medium text-gray-900 dark:text-white">Consumo adicional no registrado</h4><p class="text-sm text-gray-500 dark:text-gray-400">Deje en cero si no hubo consumo adicional.</p>${productos}`, content => {
+                const result = {};
+                content.querySelectorAll('[data-consumo]').forEach(input => {
+                    const valor = input.value.trim();
+                    if (!/^\d+(\.\d+)?$/.test(valor) || !Number.isFinite(Number(valor))) throw new Error('Cantidad inválida.');
+                    if (Number(valor) > 0) result[recursos.productos[Number(input.dataset.consumo)].id] = Number(valor);
+                });
+                return result;
+            });
+        }
+    };
+})();
+</script>

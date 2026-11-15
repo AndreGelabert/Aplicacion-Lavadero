@@ -89,15 +89,15 @@
         const justificacion = document.getElementById('justificacionDesvio');
         if (consumoFields) consumoFields.classList.toggle('hidden', tipo !== 'etapa');
         if (consumoJson) consumoJson.value = '';
-        if (justificacion) justificacion.value = '';
+        if (justificacion) { justificacion.value = ''; justificacion.required = false; }
         const inputs = document.getElementById('consumoRealInputs');
         if (inputs) {
             let receta = [];
             try { receta = JSON.parse(sourceButton?.dataset.receta || '[]'); } catch { receta = []; }
             inputs.innerHTML = receta.map(item =>
-                `<label class="flex items-center justify-between gap-2 text-sm dark:text-gray-300">
-                    <span>${item.NombreInsumo || item.InsumoId} (${item.UnidadMedida || ''})</span>
-                    <input type="number" min="0" step="0.0001" value="${item.DosisTeorica}" data-insumo-id="${item.InsumoId}" class="consumo-real-input w-28 rounded border p-1 dark:bg-gray-700 dark:text-white" />
+                `<label class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                    <span>${escapeConsumo(item.NombreInsumo || item.InsumoId)} (${escapeConsumo(item.UnidadMedida === 'l' ? 'Litro (L)' : item.UnidadMedida || '')})</span>
+                    <input type="number" min="0" step="any" value="${item.DosisTeorica}" data-insumo-id="${escapeConsumo(item.InsumoId)}" data-teorica="${item.DosisTeorica}" class="consumo-real-input w-28 rounded-lg border border-gray-300 p-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
                 </label>`).join('');
             inputs.querySelectorAll('.consumo-real-input').forEach(input => input.addEventListener('input', actualizarConsumoRealJson));
             actualizarConsumoRealJson();
@@ -125,6 +125,8 @@
         abrirModal('finalizarModal');
     };
 
+    const escapeConsumo = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+
     function actualizarConsumoRealJson() {
         const output = document.getElementById('consumoRealJson');
         if (!output) return;
@@ -133,6 +135,8 @@
             result[input.dataset.insumoId] = Number(input.value || 0);
         });
         output.value = JSON.stringify(result);
+        const justificacion = document.getElementById('justificacionDesvio');
+        if (justificacion) justificacion.required = Array.from(document.querySelectorAll('.consumo-real-input')).some(input => Number(input.value || 0) !== Number(input.dataset.teorica));
     }
 
     async function elegirProductos(params) {
@@ -140,16 +144,7 @@
         if (!respuesta.ok) throw new Error('No se pudieron consultar los productos.');
         const datos = await respuesta.json();
         if (!datos.success || !Array.isArray(datos.items)) throw new Error('No se pudieron consultar los productos.');
-        const seleccion = {};
-        for (const item of datos.items) {
-            if (!item.opciones.length) throw new Error('No hay productos elegibles para ' + item.nombre);
-            const opciones = item.opciones.map((o, i) => `${i + 1}. ${o.nombre} (${o.unidad})`).join('\n');
-            const respuesta = window.prompt(`Seleccione explícitamente un producto para ${item.nombre}:\n${opciones}`, '');
-            if (respuesta === null) return null;
-            if (!/^[1-9]\d*$/.test(respuesta.trim()) || Number(respuesta) > item.opciones.length) throw new Error('Seleccione un producto válido.');
-            seleccion[item.indice] = item.opciones[Number(respuesta) - 1].id;
-        }
-        return seleccion;
+        return window.LavadoInsumos.seleccionar(datos.items);
     }
 
     window.iniciarServicioDesdeDetalle = async function (lavadoId, servicioId) {
@@ -277,9 +272,13 @@
         // Formulario de cancelar
         const formCancelar = document.getElementById('formCancelar');
         if (formCancelar) {
+            let cancelacionEnCurso = false;
             formCancelar.addEventListener('submit', async function (e) {
                 e.preventDefault();
-
+                if (cancelacionEnCurso) return;
+                cancelacionEnCurso = true;
+                let suspendido = false;
+                try {
                 const motivo = document.getElementById('motivoCancelacion').value;
                 if (!motivo.trim()) {
                     showMessage('error', 'Debe ingresar un motivo de cancelación.');
@@ -296,15 +295,10 @@
                         if (!consulta.ok) throw new Error('No se pudieron consultar los consumos.');
                         const recursos = await consulta.json();
                         if (!recursos.success) throw new Error('No se pudieron consultar los consumos.');
-                        const registrados = recursos.registrados.map(x => `${x.nombre}: ${x.cantidad} ${x.unidad}`).join('\n') || 'Ninguno';
-                        const confirma = window.confirm(`Ya registrado (no editable):\n${registrados}\n\n¿Hubo consumo adicional NO registrado?`);
-                        const consumos = {};
-                        if (confirma) for (const producto of recursos.productos) {
-                            const valor = window.prompt(`Consumo adicional NO registrado de ${producto.nombre} (${producto.unidad}):`, '0');
-                            if (valor === null) return;
-                            if (!/^\d+(\.\d+)?$/.test(valor.trim()) || !Number.isFinite(Number(valor))) throw new Error('Cantidad inválida.');
-                            if (Number(valor) > 0) consumos[producto.id] = Number(valor);
-                        }
+                        cerrarModal('cancelarModal');
+                        suspendido = true;
+                        const consumos = await window.LavadoInsumos.consumos(recursos);
+                        if (consumos === null) { abrirModal('cancelarModal'); suspendido = false; return; }
                         formData.append('consumosNoRegistradosJson', JSON.stringify(consumos));
                     } catch (error) { showMessage('error', error.message); return; }
                 }
@@ -316,7 +310,8 @@
                     });
 
                     const result = await response.json();
-                    cerrarModal('cancelarModal');
+                    if (!suspendido) cerrarModal('cancelarModal');
+                    suspendido = false;
 
                     if (result.success) {
                         showMessage('success', result.message);
@@ -327,6 +322,10 @@
                 } catch (e) {
                     console.error('Error:', e);
                     showMessage('error', 'Error al cancelar.');
+                }
+                } finally {
+                    if (suspendido) abrirModal('cancelarModal');
+                    cancelacionEnCurso = false;
                 }
             });
         }
@@ -347,6 +346,12 @@
                     return;
                 }
 
+                if (tipo === 'etapa') {
+                    const fields = document.querySelectorAll('.consumo-real-input');
+                    if (Array.from(fields).some(field => field.value !== '' && (!Number.isFinite(Number(field.value)) || Number(field.value) < 0))) { showMessage('error', 'Cantidad inválida.'); return; }
+                    const justification = document.getElementById('justificacionDesvio');
+                    if (Array.from(fields).some(field => Number(field.value || 0) !== Number(field.dataset.teorica)) && !justification?.value.trim()) { showMessage('error', 'Debe informar la justificación del desvío.'); return; }
+                }
                 const formData = new FormData(this);
 
                 try {
