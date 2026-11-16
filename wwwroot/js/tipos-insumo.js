@@ -4,7 +4,7 @@ window.etiquetaUnidadInsumo = function (unidad) {
 };
 window.actualizarUnidadesInsumo = function (selector) {
     const unidades = { Volumen: ['ml', 'l'], Masa: ['mg', 'g', 'kg'], Unidades: ['unidad'] };
-    const select = selector.form.querySelector('[name="UnidadMedida"]');
+    const select = selector.form.querySelector('select[name="UnidadMedida"]');
     const categoria = selector.selectedOptions[0]?.dataset.categoria;
     select.replaceChildren(new Option('Seleccionar unidad', ''));
     for (const unidad of unidades[categoria] || []) select.add(new Option(window.etiquetaUnidadInsumo(unidad), unidad));

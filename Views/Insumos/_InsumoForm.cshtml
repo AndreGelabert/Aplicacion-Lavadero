@@ -1,42 +1,23 @@
 @model Firebase.Models.Insumo
 @{
-    var crear = string.IsNullOrEmpty(Model.Id);
     var proveedores = (ViewBag.Proveedores as List<Firebase.Models.Proveedor>) ?? new();
     var tipos = (ViewBag.Tipos as List<Firebase.Models.TipoInsumo>) ?? new();
+    var puedeCrear = User.TienePermiso("Insumos.Crear");
 }
-<form method="post" asp-action="Guardar" class="grid md:grid-cols-4 gap-3 mt-3">
+<form id="insumo-form" method="post" asp-action="Guardar" data-can-create="@puedeCrear.ToString().ToLowerInvariant()" class="m-4">
     @Html.AntiForgeryToken()
-    <input type="hidden" name="crear" value="@crear.ToString().ToLowerInvariant()" />
-    <input type="hidden" name="Id" value="@Model.Id" />
-    <input name="Nombre" value="@Model.Nombre" required placeholder="Nombre" aria-label="Nombre" class="rounded border p-2" />
-    @if (crear)
-    {
-        <select name="TipoId" required aria-label="Tipo" class="rounded border p-2" onchange="window.actualizarUnidadesInsumo(this)">
-            <option value="">Seleccionar tipo</option>
-            @foreach (var tipo in tipos) { <option value="@tipo.Id" data-categoria="@tipo.Categoria">@tipo.Nombre</option> }
-        </select>
-        <button type="button" data-modal-target="tiposInsumoModal" data-open-tipos class="app-button app-button--secondary">Gestionar tipos</button>
-        <select name="UnidadMedida" required aria-label="Unidad" class="rounded border p-2"><option value="">Seleccionar unidad</option></select>
-    }
-    else
-    {
-        <input type="hidden" name="TipoId" value="@Model.TipoId" /><input type="hidden" name="Tipo" value="@Model.Tipo" /><input type="hidden" name="UnidadMedida" value="@Model.UnidadMedida" />
-        <span>Tipo: @Model.Tipo · Unidad: <span data-unidad="@Model.UnidadMedida">@Model.UnidadMedida</span></span>
-    }
-    <input name="StockMinimo" value="@Model.StockMinimo" type="number" min="0" step="0.01" placeholder="Stock mínimo" aria-label="Stock mínimo" class="rounded border p-2" />
-    <input name="CantidadReabastecimiento" value="@Model.CantidadReabastecimiento" type="number" min="0" step="0.01" placeholder="Cantidad de reposición" aria-label="Cantidad de reposición" class="rounded border p-2" />
-    <label class="flex items-center gap-2"><input name="ReabastecimientoAutomatico" type="checkbox" value="true" checked="@Model.ReabastecimientoAutomatico" /> Reabastecimiento automático</label>
-    <fieldset class="rounded border p-2 md:col-span-2">
-        <legend>Proveedores (obligatorio si el reabastecimiento automático está activo)</legend>
-        @foreach (var proveedor in proveedores)
-        {
-            <label class="flex items-center gap-2"><input type="checkbox" name="ProveedoresIds" value="@proveedor.Id" checked="@Model.ProveedoresIds.Contains(proveedor.Id)" /> @proveedor.RazonSocial</label>
-        }
-        @foreach (var id in Model.ProveedoresIds.Where(id => !proveedores.Any(p => p.Id == id)))
-        {
-            <label class="flex items-center gap-2"><input type="checkbox" name="ProveedoresIds" value="@id" checked /> Proveedor no disponible (@id)</label>
-        }
-        @if (proveedores.Count == 0) { <p>No hay proveedores activos disponibles.</p> }
-    </fieldset>
-    <button class="app-button app-button--success">@(crear ? "Crear insumo" : "Guardar cambios")</button>
+    <input type="hidden" name="crear" value="true" /><input type="hidden" name="Id" /><input type="hidden" name="Tipo" /><input type="hidden" name="TipoId" disabled /><input type="hidden" name="UnidadMedida" disabled />
+    <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div><label for="insumoNombre" class="block mb-2 text-sm font-medium dark:text-white">Nombre <span class="text-red-600">*</span></label><input id="insumoNombre" name="Nombre" required class="bg-gray-50 border border-gray-300 rounded-lg w-full p-2.5 dark:bg-gray-700 dark:text-white" /></div>
+        <div><label for="insumoTipo" class="block mb-2 text-sm font-medium dark:text-white">Tipo de Insumo <span class="text-red-600">*</span></label><div class="flex"><select id="insumoTipo" name="TipoId" required class="min-w-0 bg-gray-50 border border-gray-300 rounded-lg w-full p-2.5 dark:bg-gray-700 dark:text-white" onchange="window.actualizarUnidadesInsumo(this)"><option value="">Seleccionar tipo</option>@foreach (var tipo in tipos) { <option value="@tipo.Id" data-categoria="@tipo.Categoria">@tipo.Nombre</option> }</select>
+            @if (puedeCrear) { <button type="button" data-modal-target="tiposInsumoModal" data-open-tipos aria-label="Crear tipo" class="ml-2 px-2 text-white bg-blue-600 rounded-lg">+</button> }
+            @if (User.TienePermiso("Insumos.Modificar") && puedeCrear) { <button type="button" data-delete-tipo aria-label="Eliminar tipo seleccionado" class="ml-2 px-2 text-white bg-red-600 rounded-lg"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 6h16M10 11v6m4-6v6M6 6l1 14h10l1-14M9 6V4h6v2" /></svg></button> }
+        </div></div>
+        <div><label for="insumoUnidad" class="block mb-2 text-sm font-medium dark:text-white">Unidad <span class="text-red-600">*</span></label><select id="insumoUnidad" name="UnidadMedida" required class="bg-gray-50 border border-gray-300 rounded-lg w-full p-2.5 dark:bg-gray-700 dark:text-white"><option value="">Seleccionar unidad</option></select></div>
+        <div><label for="insumoMinimo" class="block mb-2 text-sm font-medium dark:text-white">Stock mínimo</label><input id="insumoMinimo" name="StockMinimo" type="number" min="0" step="0.01" class="bg-gray-50 border border-gray-300 rounded-lg w-full p-2.5 dark:bg-gray-700 dark:text-white" /></div>
+        <div><label for="insumoReposicion" class="block mb-2 text-sm font-medium dark:text-white">Cantidad de reposición</label><input id="insumoReposicion" name="CantidadReabastecimiento" type="number" min="0" step="0.01" class="bg-gray-50 border border-gray-300 rounded-lg w-full p-2.5 dark:bg-gray-700 dark:text-white" /></div>
+        <label class="flex items-center gap-2 dark:text-white"><input name="ReabastecimientoAutomatico" type="checkbox" value="true" /> Reabastecimiento automático</label>
+        <fieldset class="rounded border p-2 sm:col-span-2"><legend>Proveedores (obligatorio si el reabastecimiento automático está activo)</legend><div id="insumo-proveedores">@foreach (var proveedor in proveedores) { <label class="flex items-center gap-2"><input type="checkbox" name="ProveedoresIds" value="@proveedor.Id" /> @proveedor.RazonSocial</label> }</div>@if (proveedores.Count == 0) { <p>No hay proveedores activos disponibles.</p> }</fieldset>
+    </div>
+    <div class="flex justify-end gap-2 mt-4"><button type="submit" class="app-button app-button--primary">Guardar</button><button type="button" data-reset-insumo class="app-button app-button--secondary">Cancelar</button></div>
 </form>

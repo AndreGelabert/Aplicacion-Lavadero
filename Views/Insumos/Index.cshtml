@@ -22,22 +22,22 @@
         }
         <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
             <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Insumos y Stock</h1>
-            <div class="flex flex-wrap gap-2 min-w-0">
-                <a asp-action="Kardex" class="app-button app-button--secondary"><svg aria-hidden="true" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 4h16v16H4z M8 8h8M8 12h8M8 16h5" /></svg> Kardex</a>
-                <a asp-action="Proveedores" class="app-button app-button--secondary"><svg aria-hidden="true" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 5h12v11H3z M15 9h3l3 3v4h-6z M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z M18 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" /></svg> Proveedores</a>
-                <a asp-action="Ordenes" class="app-button app-button--secondary"><svg aria-hidden="true" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M5 3h14v18H5z M8 8h8M8 12h8M8 16h5" /></svg> Órdenes</a>
-                @if (User.TienePermiso("Insumos.Modificar")) { <a asp-action="Cotizaciones" class="app-button app-button--secondary"><svg aria-hidden="true" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M5 3h10l4 4v14H5z M14 3v5h5M8 12h8M8 16h6" /></svg> Cotizaciones</a> }
-            </div>
+            <button type="button" data-popover-target="insumos-ayuda" aria-label="Ayuda" class="bg-blue-700 text-white rounded-lg p-2">?</button><div data-popover id="insumos-ayuda" role="tooltip" class="invisible absolute z-10 bg-white dark:bg-gray-800 rounded-lg p-3">Consulte y administre el inventario.<div data-popper-arrow></div></div>
         </div>
-        <form method="get" class="flex flex-col md:flex-row items-stretch md:items-center gap-3 mb-4">
+        @if (User.TienePermiso("Insumos.Crear") || User.TienePermiso("Insumos.Modificar")) {
+        <div id="accordion-flush" data-accordion="collapse" data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white" data-inactive-classes="text-gray-500 dark:text-gray-400"><h2 id="accordion-flush-heading-1"><button type="button" class="flex items-center justify-between w-full p-2 py-5 font-medium text-gray-500 border-b border-gray-200 dark:border-gray-700 gap-3" data-accordion-target="#accordion-flush-body-1" aria-expanded="false" aria-controls="accordion-flush-body-1"><span id="form-title">Registrando un Insumo</span><svg data-accordion-icon class="w-3 h-3 rotate-180" fill="none" viewBox="0 0 10 6"><path stroke="currentColor" stroke-width="2" d="M9 5 5 1 1 5" /></svg></button></h2><div id="accordion-flush-body-1" class="hidden" aria-labelledby="accordion-flush-heading-1"><partial name="_InsumoForm" model="new Firebase.Models.Insumo()" /></div></div>
+        @if (User.TienePermiso("Insumos.Crear")) { <partial name="_TiposInsumoModal" /> }
+        }
+        <div data-insumos-toolbar class="flex flex-wrap items-center gap-3 mb-4">
+        <form method="get" class="flex flex-wrap items-center gap-3">
             <div class="relative w-full md:w-96">
                 <label for="insumos-search" class="sr-only">Buscar insumo</label>
                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><svg aria-hidden="true" class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" /></svg></div>
                 <input id="insumos-search" name="search" value="@Context.Request.Query["search"]" placeholder="Buscar insumo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
             </div>
-            <details data-insumos-filters class="relative">
-                <summary class="cursor-pointer list-none flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-900 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"><svg aria-hidden="true" class="h-4 w-4 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path d="M3 3h14v3l-5 5v4l-4 2v-6L3 6z" /></svg> Filtros</summary>
-                <div class="absolute z-50 mt-2 w-64 max-w-[80vw] p-4 bg-white rounded-lg shadow-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+            <div class="relative">
+                <button type="button" data-dropdown-toggle="insumosFiltros" class="flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-900 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"><svg aria-hidden="true" class="h-4 w-4 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path d="M3 3h14v3l-5 5v4l-4 2v-6L3 6z" /></svg> Filtros</button>
+                <div id="insumosFiltros" class="hidden absolute z-50 mt-2 w-64 max-w-[80vw] p-4 bg-white rounded-lg shadow-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
                     <fieldset class="text-sm text-gray-900 dark:text-white"><legend class="font-medium mb-2">Tipos</legend>
                         <div class="max-h-40 overflow-y-auto space-y-1">
                         @foreach (var nombre in tiposFiltro)
@@ -48,28 +48,23 @@
                     </fieldset>
                     <label class="flex items-center gap-2 mt-3 text-sm text-gray-900 dark:text-white"><input type="checkbox" name="soloBajoMinimo" value="true" checked="@(Context.Request.Query["soloBajoMinimo"] == "true")" /> Solo bajo mínimo</label>
                 </div>
-            </details>
+            </div>
             <button class="app-button app-button--primary">Filtrar</button>
         </form>
-        @if (User.TienePermiso("Insumos.Crear"))
-        {
-            <button type="button" data-modal-target="crearInsumoModal" data-open-insumo class="app-button app-button--primary mb-5"><svg aria-hidden="true" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H4a1 1 0 1 1 0-2h5V4a1 1 0 0 1 1-1z" /></svg> Nuevo insumo</button>
-            <div id="crearInsumoModal" tabindex="-1" aria-hidden="true" aria-labelledby="crearInsumoTitulo" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
-                <div class="relative p-4 w-full max-w-2xl h-full md:h-auto"><div class="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
-                    <div class="flex justify-between items-center pb-4 border-b dark:border-gray-600"><h3 id="crearInsumoTitulo" class="text-lg font-semibold dark:text-white">Nuevo insumo</h3><button type="button" data-close-insumo aria-label="Cerrar" class="text-gray-500"><svg aria-hidden="true" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M4.3 5.7 8.6 10l-4.3 4.3 1.4 1.4 4.3-4.3 4.3 4.3 1.4-1.4-4.3-4.3 4.3-4.3-1.4-1.4L10 8.6 5.7 4.3z" /></svg></button></div>
-                    <partial name="_InsumoForm" model="new Firebase.Models.Insumo()" />
-                </div></div>
-            </div>
-            <partial name="_TiposInsumoModal" />
-        }
+        <div class="flex flex-wrap gap-2">
+            <a asp-action="Kardex" class="text-white inline-flex items-center bg-purple-600 hover:bg-purple-700 rounded-lg px-3 py-2"><svg aria-hidden="true" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 4h16v16H4z M8 8h8M8 12h8" /></svg> Kardex</a>
+            <a asp-action="Proveedores" class="text-white inline-flex items-center bg-purple-600 hover:bg-purple-700 rounded-lg px-3 py-2"><svg aria-hidden="true" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 5h12v11H3z M15 9h3l3 3v4h-6z" /></svg> Proveedores</a>
+            <a asp-action="Ordenes" class="text-white inline-flex items-center bg-purple-600 hover:bg-purple-700 rounded-lg px-3 py-2"><svg aria-hidden="true" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M5 3h14v18H5z M8 8h8" /></svg> Órdenes</a>
+            @if (User.TienePermiso("Insumos.Modificar")) { <a asp-action="Cotizaciones" class="text-white inline-flex items-center bg-purple-600 hover:bg-purple-700 rounded-lg px-3 py-2"><svg aria-hidden="true" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M5 3h10l4 4v14H5z" /></svg> Cotizaciones</a> }
+        </div></div>
         <p class="mb-3 text-sm text-gray-500">El total físico incluye todos los productos del tipo, incluso inactivos y los que no coinciden con los filtros. Se paginan grupos completos; el detalle muestra todos los productos del grupo que coinciden con los filtros. Los productos no son necesariamente intercambiables; las reservas son informativas y pueden cambiar.</p>
         @foreach (var grupo in (ViewBag.Grupos as List<Firebase.Models.InventarioAgrupadoViewModel>) ?? new())
         {
-        <details class="mb-3 rounded border" open>
-            <summary class="cursor-pointer p-3 font-semibold">@grupo.Nombre — stock físico total: @if (grupo.TotalFisico.HasValue) { <span>@grupo.TotalFisico <span data-unidad="@grupo.UnidadResumen">@grupo.UnidadResumen</span></span> } else { <span>No disponible (tipo o unidades inconsistentes)</span> }</summary>
+        <section class="mb-3 rounded border">
+            <h2 class="p-3 font-semibold">@grupo.Nombre — stock físico total: @if (grupo.TotalFisico.HasValue) { <span>@grupo.TotalFisico <span data-unidad="@grupo.UnidadResumen">@grupo.UnidadResumen</span></span> } else { <span>No disponible (tipo o unidades inconsistentes)</span> }</h2>
         <div class="overflow-x-auto">
             <table class="min-w-[800px] w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                <thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700"><tr><th class="px-4 py-3">Nombre</th><th>Tipo</th><th>Unidad</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700"><tr><th class="px-4 py-3"><button type="button" data-sort-insumos="nombre" aria-label="Ordenar productos dentro de este grupo por nombre">Nombre ⇅</button></th><th>Tipo</th><th>Unidad</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr></thead>
                 <tbody>
                 @foreach (var producto in grupo.Productos)
                 {
@@ -85,16 +80,16 @@
                         <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">@item.Nombre</td>
                         <td>@item.Tipo</td><td><span data-unidad="@item.UnidadMedida">@item.UnidadMedida</span></td>
                         <td><span class="@(critico ? "text-red-600 font-bold" : "")">Físico: @item.StockActual</span> / mín. @item.StockMinimo<br />Reservado: @(producto.Reservado?.ToString() ?? "No disponible")<br />Disponible: @(producto.Disponible?.ToString() ?? "No disponible (reserva inconsistente o desconocida)") @if (critico) { <span class="ml-1 rounded bg-red-100 px-2 py-1 text-xs text-red-800">Crítico</span> } else if (alerta) { <span class="ml-1 rounded bg-yellow-100 px-2 py-1 text-xs text-yellow-800">Próximo al mínimo</span> }</td>
-                        <td>@item.Estado</td>
+                        <td><span class="rounded-full px-2.5 py-0.5 text-xs font-medium @(item.Estado == "Activo" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300")">@item.Estado</span></td>
                         <td class="flex gap-2 py-2">
                             @if (User.TienePermiso("Insumos.AjustarStock"))
                             {
-                                <details><summary class="cursor-pointer inline-flex items-center gap-1 text-blue-600"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 4v16M4 12h16" /></svg> Ajustar</summary><form method="post" asp-action="Ajustar" class="mt-2 space-y-1">@Html.AntiForgeryToken()<input type="hidden" name="insumoId" value="@item.Id" /><input name="cantidad" type="number" step="0.01" min="0.01" required class="w-24 rounded border p-1" placeholder="Cantidad" /><select name="ingreso" class="rounded border p-1"><option value="true">Ingreso</option><option value="false">Egreso</option></select><input name="justificacion" required class="rounded border p-1" placeholder="Justificación" /><button class="text-green-600">Guardar</button></form></details>
+                                <button type="button" data-ajustar-insumo data-id="@item.Id" data-nombre="@item.Nombre" aria-label="Ajustar stock" class="p-2 text-white bg-purple-600 rounded-lg"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 4v16M4 12h16" /></svg></button>
                             }
                             @if (User.TienePermiso("Insumos.Modificar"))
                             {
-                                <details><summary class="cursor-pointer inline-flex items-center gap-1 text-blue-600"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 20h4L19 9l-4-4L4 16z" /></svg> Editar</summary><partial name="_InsumoForm" model="item" /></details>
-                                <form method="post" asp-action="CambiarEstado">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><input type="hidden" name="estado" value="@(item.Estado == "Activo" ? "Inactivo" : "Activo")" /><button class="inline-flex items-center gap-1 text-orange-600"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3v9M6 6a9 9 0 1 0 12 0" /></svg> @(item.Estado == "Activo" ? "Desactivar" : "Reactivar")</button></form>
+                                <button type="button" data-edit-insumo data-record="@System.Text.Json.JsonSerializer.Serialize(item)" aria-label="Editar" class="p-2 text-white bg-blue-600 rounded-lg"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 20h4L19 9l-4-4L4 16z" /></svg></button>
+                                <button type="button" data-estado-insumo data-id="@item.Id" data-nombre="@item.Nombre" data-estado="@(item.Estado == "Activo" ? "Inactivo" : "Activo")" aria-label="@(item.Estado == "Activo" ? "Desactivar" : "Reactivar")" class="p-2 text-white bg-red-600 rounded-lg"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 6h16M10 11v6m4-6v6M6 6l1 14h10l1-14" /></svg></button>
                             }
                         </td>
                     </tr>
@@ -102,22 +97,26 @@
                 </tbody>
             </table>
         </div>
-        </details>
+        </section>
         }
+        <div id="insumoAjusteModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true"><div class="w-full max-w-md m-4 p-5 bg-white dark:bg-gray-800 rounded-lg"><h3 class="text-lg font-semibold">Ajustar stock</h3><form method="post" asp-action="Ajustar" class="space-y-3 mt-4">@Html.AntiForgeryToken()<input type="hidden" name="insumoId" /><label>Cantidad <input name="cantidad" type="number" step="0.01" min="0.01" required class="block w-full rounded border p-2" /></label><label>Movimiento <select name="ingreso" class="block w-full rounded border p-2"><option value="true">Ingreso</option><option value="false">Egreso</option></select></label><label>Justificación <input name="justificacion" required class="block w-full rounded border p-2" /></label><button type="button" data-close-dialog class="app-button app-button--secondary">Cancelar</button><button class="app-button app-button--primary">Guardar</button></form></div></div>
+        <div id="insumoConfirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true"><div class="w-full max-w-md m-4 p-5 bg-white dark:bg-gray-800 rounded-lg text-center"><div class="w-12 h-12 rounded-full bg-red-100 text-red-600 mx-auto mb-3 flex items-center justify-center text-3xl">×</div><h3 id="insumoConfirmTitle" class="text-lg font-semibold">Desactivar Insumo</h3><p id="insumoConfirmMessage" class="my-4"></p><form method="post" asp-action="CambiarEstado">@Html.AntiForgeryToken()<input type="hidden" name="id" /><input type="hidden" name="estado" /><button type="button" data-close-dialog class="app-button app-button--secondary">Cancelar</button> <button type="submit" class="app-button app-button--danger" id="insumoConfirmSubmit">Desactivar</button></form></div></div>
         @if ((int)ViewBag.TotalPages > 1)
         {
             <nav class="mt-4 flex items-center justify-between" aria-label="Paginación de grupos de insumos">
-                <span class="text-sm text-gray-500">Página @ViewBag.Page de @ViewBag.TotalPages</span>
-                <div class="flex gap-2">
+                <span class="text-sm text-gray-500">Mostrando página @ViewBag.Page de @ViewBag.TotalPages</span>
+                <div class="inline-flex items-stretch -space-x-px">
+                    @if ((int)ViewBag.Page > 1) { <a aria-label="Página anterior" data-page="@((int)ViewBag.Page - 1)" href="?page=@((int)ViewBag.Page - 1)" class="px-3 py-2 border rounded-l-lg bg-white dark:bg-gray-800">‹</a> } else { <span aria-label="Página anterior" aria-disabled="true" class="px-3 py-2 border rounded-l-lg text-gray-400">‹</span> }
                     @for (var numero = 1; numero <= (int)ViewBag.TotalPages; numero++)
                     {
-                        if (numero == (int)ViewBag.Page) { <span class="app-button app-button--primary" aria-current="page">@numero</span> }
+                        if (numero == (int)ViewBag.Page) { <span class="px-3 py-2 border bg-blue-100 text-blue-700" aria-current="page">@numero</span> }
                         else {
                             var parametros = Context.Request.Query.Where(q => !string.Equals(q.Key, "page", StringComparison.OrdinalIgnoreCase)).SelectMany(q => q.Value.Select(v => new KeyValuePair<string, string?>(q.Key, v))).ToList();
                             parametros.Add(new KeyValuePair<string, string?>("page", numero.ToString()));
-                            <a class="app-button app-button--secondary" href="@Microsoft.AspNetCore.Http.QueryString.Create(parametros)" data-page="@numero">@numero</a>
+                            <a class="px-3 py-2 border bg-white dark:bg-gray-800" href="@Microsoft.AspNetCore.Http.QueryString.Create(parametros)" data-page="@numero">@numero</a>
                         }
                     }
+                    @if ((int)ViewBag.Page < (int)ViewBag.TotalPages) { <a aria-label="Página siguiente" data-page="@((int)ViewBag.Page + 1)" href="?page=@((int)ViewBag.Page + 1)" class="px-3 py-2 border rounded-r-lg bg-white dark:bg-gray-800">›</a> } else { <span aria-label="Página siguiente" aria-disabled="true" class="px-3 py-2 border rounded-r-lg text-gray-400">›</span> }
                 </div>
             </nav>
         }

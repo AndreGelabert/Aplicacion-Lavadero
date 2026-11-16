@@ -1,5 +1,66 @@
 (() => {
-    const createModal = document.getElementById('crearInsumoModal');
+    const createModal = document.getElementById('insumo-form');
+    const inventoryForm = createModal;
+    const title = document.getElementById('form-title');
+    const accordion = document.getElementById('accordion-flush-body-1');
+    const accordionButton = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
+    function resetInventory() {
+        if (!inventoryForm) return;
+        inventoryForm.reset();
+        inventoryForm.elements.crear.value = 'true';
+        inventoryForm.elements.Id.value = '';
+        const type = inventoryForm.querySelector('select[name="TipoId"]');
+        const unit = inventoryForm.querySelector('select[name="UnidadMedida"]');
+        const hiddenType = inventoryForm.querySelector('input[name="TipoId"]');
+        const hiddenUnit = inventoryForm.querySelector('input[name="UnidadMedida"]');
+        type.disabled = unit.disabled = false; hiddenType.disabled = hiddenUnit.disabled = true;
+        inventoryForm.querySelectorAll('[data-open-tipos], [data-delete-tipo]').forEach(b => b.disabled = false);
+        inventoryForm.querySelectorAll('[data-missing-provider]').forEach(el => el.remove());
+        inventoryForm.querySelector('[type="submit"]').disabled = inventoryForm.dataset.canCreate !== 'true';
+        title.textContent = 'Registrando un Insumo';
+    }
+    inventoryForm?.querySelector('[data-reset-insumo]')?.addEventListener('click', resetInventory);
+    if (inventoryForm && inventoryForm.dataset.canCreate !== 'true') resetInventory();
+    document.querySelectorAll('[data-edit-insumo]').forEach(button => button.addEventListener('click', () => {
+        const record = JSON.parse(button.dataset.record);
+        resetInventory();
+        inventoryForm.elements.crear.value = 'false'; inventoryForm.elements.Id.value = record.Id;
+        inventoryForm.elements.Nombre.value = record.Nombre;
+        inventoryForm.elements.StockMinimo.value = record.StockMinimo;
+        inventoryForm.elements.CantidadReabastecimiento.value = record.CantidadReabastecimiento;
+        inventoryForm.elements.ReabastecimientoAutomatico.checked = record.ReabastecimientoAutomatico;
+        inventoryForm.elements.Tipo.value = record.Tipo || '';
+        const type = inventoryForm.querySelector('select[name="TipoId"]'), unit = inventoryForm.querySelector('select[name="UnidadMedida"]');
+        const hiddenType = inventoryForm.querySelector('input[name="TipoId"]'), hiddenUnit = inventoryForm.querySelector('input[name="UnidadMedida"]');
+        type.value = record.TipoId || ''; window.actualizarUnidadesInsumo(type); unit.value = record.UnidadMedida || '';
+        hiddenType.value = record.TipoId || ''; hiddenUnit.value = record.UnidadMedida || '';
+        type.disabled = unit.disabled = true; hiddenType.disabled = hiddenUnit.disabled = false;
+        inventoryForm.querySelectorAll('[data-open-tipos], [data-delete-tipo]').forEach(b => b.disabled = true);
+        const providers = inventoryForm.querySelector('#insumo-proveedores');
+        for (const id of record.ProveedoresIds || []) {
+            let checkbox = [...providers.querySelectorAll('input')].find(x => x.value === id);
+            if (!checkbox) { const label = document.createElement('label'); label.dataset.missingProvider = 'true'; checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'ProveedoresIds'; checkbox.value = id; label.append(checkbox, document.createTextNode(' Proveedor no disponible (' + id + ')')); providers.append(label); }
+            checkbox.checked = true;
+        }
+        inventoryForm.querySelector('[type="submit"]').disabled = false;
+        title.textContent = 'Editando un Insumo';
+        if (accordion.classList.contains('hidden')) accordionButton.click();
+        inventoryForm.scrollIntoView({ block: 'start' }); inventoryForm.elements.Nombre.focus();
+    }));
+    let dialogTrigger = null;
+    function openDialog(id, trigger) { dialogTrigger = trigger; const modal = document.getElementById(id); modal.classList.remove('hidden'); modal.querySelector('input:not([type="hidden"]), button')?.focus(); }
+    document.querySelectorAll('[data-ajustar-insumo]').forEach(button => button.addEventListener('click', () => { const modal = document.getElementById('insumoAjusteModal'); modal.querySelector('form').reset(); modal.querySelector('[name="insumoId"]').value = button.dataset.id; openDialog('insumoAjusteModal', button); }));
+    document.querySelectorAll('[data-estado-insumo]').forEach(button => button.addEventListener('click', () => { const modal = document.getElementById('insumoConfirmModal'), deactivate = button.dataset.estado === 'Inactivo'; modal.querySelector('[name="id"]').value = button.dataset.id; modal.querySelector('[name="estado"]').value = button.dataset.estado; document.getElementById('insumoConfirmTitle').textContent = deactivate ? 'Desactivar Insumo' : 'Reactivar Insumo'; document.getElementById('insumoConfirmMessage').textContent = `¿Confirma ${deactivate ? 'desactivar' : 'reactivar'} el insumo ${button.dataset.nombre}?`; document.getElementById('insumoConfirmSubmit').textContent = deactivate ? 'Desactivar' : 'Reactivar'; openDialog('insumoConfirmModal', button); }));
+    document.querySelectorAll('[data-close-dialog]').forEach(button => button.addEventListener('click', () => { button.closest('[role="dialog"]').classList.add('hidden'); dialogTrigger?.focus(); }));
+    document.querySelectorAll('[data-sort-insumos]').forEach(button => button.addEventListener('click', () => {
+        const table = button.closest('table'), body = table.tBodies[0];
+        const ascending = button.dataset.order !== 'asc';
+        const rows = [...body.rows];
+        rows.sort((a, b) => (ascending ? 1 : -1) * a.cells[0].textContent.trim().localeCompare(b.cells[0].textContent.trim(), 'es', { sensitivity: 'base', numeric: true }));
+        rows.forEach(row => body.appendChild(row));
+        button.dataset.order = ascending ? 'asc' : 'desc';
+        button.closest('th').setAttribute('aria-sort', ascending ? 'ascending' : 'descending');
+    }));
     const typesModal = document.getElementById('tiposInsumoModal');
     document.querySelectorAll('[data-unidad]').forEach(el => { el.textContent = window.etiquetaUnidadInsumo(el.dataset.unidad); });
     document.querySelectorAll('[data-page]').forEach(link => {
@@ -12,8 +73,17 @@
     const form = document.getElementById('tipoInsumoForm');
     const message = document.getElementById('tiposInsumoMensaje');
     const table = document.getElementById('tiposInsumoTabla');
-    const createForm = createModal.querySelector('form');
-    const selector = createForm.querySelector('[name="TipoId"]');
+    const createForm = createModal;
+    const selector = createForm.querySelector('select[name="TipoId"]');
+    const deleteDialog = document.getElementById('confirmarEliminarTipoInsumo');
+    let deleteId = '', deleteTrigger = null;
+    function closeDelete() { deleteDialog.classList.add('hidden'); deleteId = ''; deleteTrigger?.focus(); }
+    deleteDialog.querySelector('[data-cancel-delete-tipo]').addEventListener('click', closeDelete);
+    deleteDialog.querySelector('[data-confirm-delete-tipo]').addEventListener('click', async () => {
+        const result = await mutate(typesModal.dataset.deleteUrl, { id: deleteId });
+        if (result) closeDelete();
+        else document.getElementById('confirmarEliminarTipoError').textContent = message.textContent;
+    });
     const canEdit = typesModal.dataset.canEdit === 'true';
     let activeModal = null;
     let returnFocus = null;
@@ -39,12 +109,9 @@
         if (modal) modal.hide(); else { el.classList.add('hidden'); el.setAttribute('aria-hidden', 'true'); }
         activeModal = null;
     }
-    function closeTypes() { hide(typesModal); show(createModal, returnFocus); }
-    document.querySelector('[data-open-insumo]').addEventListener('click', e => { returnFocus = e.currentTarget; show(createModal); });
-    document.querySelector('[data-close-insumo]').addEventListener('click', () => { hide(createModal); document.querySelector('[data-open-insumo]').focus(); });
+    function closeTypes() { hide(typesModal); returnFocus?.focus(); }
     createModal.querySelector('[data-open-tipos]').addEventListener('click', e => {
         returnFocus = e.currentTarget;
-        hide(createModal);
         show(typesModal);
         refresh();
     });
@@ -53,7 +120,7 @@
         if (e.key === 'Escape' && activeModal) {
             e.preventDefault();
             if (activeModal === typesModal) closeTypes();
-            else { hide(createModal); document.querySelector('[data-open-insumo]').focus(); }
+            else hide(activeModal);
         } else if (e.key === 'Tab' && activeModal) {
             const items = [...activeModal.querySelectorAll('button:not([disabled]), input:not([type="hidden"]):not([disabled]), select:not([disabled]), a[href]')].filter(el => el.offsetParent !== null);
             if (!items.length) return;
@@ -108,6 +175,14 @@
         } catch (error) { message.textContent = error.message; }
     }
     selector.addEventListener('change', () => { previousType = selector.value; });
+    createModal.querySelector('[data-delete-tipo]')?.addEventListener('click', e => {
+        if (!selector.value) { window.alert('Seleccione un tipo de insumo.'); return; }
+        deleteId = selector.value; deleteTrigger = e.currentTarget;
+        document.getElementById('confirmarEliminarTipoMensaje').textContent = `¿Confirma eliminar el tipo de insumo ${selector.selectedOptions[0].textContent}?`;
+        document.getElementById('confirmarEliminarTipoError').textContent = '';
+        deleteDialog.classList.remove('hidden');
+        deleteDialog.querySelector('[data-cancel-delete-tipo]').focus();
+    });
     async function mutate(url, values) {
         const data = new FormData();
         data.set('__RequestVerificationToken', form.querySelector('[name="__RequestVerificationToken"]').value);
@@ -119,7 +194,8 @@
             message.textContent = result.mensaje;
             resetForm();
             await refresh(result.id);
-        } catch (error) { message.textContent = error.message || 'No se pudo completar la operación.'; }
+            return true;
+        } catch (error) { message.textContent = error.message || 'No se pudo completar la operación.'; return false; }
     }
     form.addEventListener('submit', e => {
         e.preventDefault();
