@@ -11,15 +11,20 @@
         <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">Para una compra nueva, <a asp-action="Cotizaciones" class="text-blue-600 underline">solicite una cotización</a>. Las repeticiones recientes elegibles se preparan para aprobación.</p>
     }
     <div class="overflow-x-auto" role="region" aria-label="Tabla de órdenes" tabindex="0">
-    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Proveedor</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Acciones</th></tr></thead>
+    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400" data-finite-table>
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th class="px-4 py-3 select-none"><button type="button" data-sort-column="0" data-sort-type="date" class="flex items-center gap-1">Fecha <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l4 5H6l4-5zm0 14-4-5h8l-4 5z" /></svg></button></th><th class="px-4 py-3 select-none"><button type="button" data-sort-column="1" class="flex items-center gap-1">Proveedor <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M10 3l4 5H6l4-5zm0 14-4-5h8l-4 5z" /></svg></button></th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Acciones</th></tr></thead>
         <tbody>
         @foreach (var o in Model)
         {
             <tr class="border-b dark:border-gray-700 align-top">
-                <td class="px-4 py-3">@o.FechaEmision.ToLocalTime().ToString("g")</td><td class="px-4 py-3">@o.ProveedorId</td><td class="px-4 py-3">@o.Estado</td>
+                <td class="px-4 py-3" data-sort-value="@o.FechaEmision.ToUniversalTime().ToString("O")">@o.FechaEmision.ToLocalTime().ToString("g")</td><td class="px-4 py-3">@o.ProveedorId</td><td class="px-4 py-3"><span class="@(o.Estado == "Recibida" ? "bg-green-100 text-green-800" : o.Estado == "Cancelada" ? "bg-red-100 text-red-800" : o.Estado == "Enviada" || o.Estado == "PendienteAprobacion" ? "bg-yellow-100 text-yellow-800" : "bg-blue-100 text-blue-800") text-xs font-medium px-2.5 py-0.5 rounded-full">@o.Estado</span></td>
                 <td class="px-4 py-3">
-                    <details class="min-w-64"><summary class="cursor-pointer text-blue-600"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zm10-3a3 3 0 100 6 3 3 0 000-6z" /></svg>Detalle y acciones</summary>
+                    <button type="button" data-open-modal="order-modal-@o.Id" class="p-1.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700" aria-label="Ver detalle de orden"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zm10-3a3 3 0 100 6 3 3 0 000-6z" /></svg></button>
+                </td></tr>
+        }
+        </tbody></table></div>
+        @foreach (var o in Model) {
+        <div id="order-modal-@o.Id" data-order-modal role="dialog" aria-modal="true" aria-hidden="true" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50"><div class="relative p-4 w-full max-w-2xl max-h-full overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg"><button type="button" data-close-modal class="float-right text-gray-500" aria-label="Cerrar">✕</button><h2 class="text-lg font-semibold dark:text-white">Detalle de la orden</h2>
                         <div class="space-y-3 mt-3 text-gray-700 dark:text-gray-300">
                             <p class="font-medium">Orden @o.Id</p><p>@o.Notas</p>
                             <ul class="list-disc pl-5">@foreach (var item in o.Items) { <li>@item.NombreInsumo: @item.Cantidad (recibido: @item.CantidadRecibida), precio: @item.PrecioUnitario</li> }</ul>
@@ -52,10 +57,7 @@
                                 <form method="post" asp-action="CambiarEstadoOrden" class="space-y-2">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><input type="hidden" name="estado" value="Cancelada" /><label>Motivo <input name="motivo" required class="block w-full rounded border p-2 dark:bg-gray-700" /></label><button class="app-button app-button--secondary"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18" /></svg>Cancelar orden</button></form>
                             }
                         </div>
-                    </details>
-                </td>
-            </tr>
+                    </div></div>
         }
-        </tbody>
-    </table></div>
 </div></section>
+<script src="~/js/insumos-secondary.js" asp-append-version="true"></script>
