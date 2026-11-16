@@ -218,6 +218,12 @@ public sealed class InsumosController(
     public async Task<IActionResult> GuardarConfiguracion(DirectivaReabastecimiento directiva)
     {
         if (!User.TienePermiso("Configuracion.Modificar") || !User.TienePermiso("Configuracion.Consultar")) return Forbid();
+        var existente = await compras.ObtenerDirectiva();
+        if (!Request.Form.ContainsKey("PlantillaEmail")) directiva.PlantillaEmail = existente.PlantillaEmail;
+        if (!Request.Form.ContainsKey("AsuntoCotizacion")) directiva.AsuntoCotizacion = existente.AsuntoCotizacion;
+        if (!Request.Form.ContainsKey("CuerpoCotizacion")) directiva.CuerpoCotizacion = existente.CuerpoCotizacion;
+        if (!Request.Form.ContainsKey("AsuntoOrden")) directiva.AsuntoOrden = existente.AsuntoOrden;
+        if (!Request.Form.ContainsKey("CuerpoOrden")) directiva.CuerpoOrden = existente.CuerpoOrden;
         var resultado = await compras.GuardarDirectiva(directiva);
         TempData[resultado.EsExitoso ? "SuccessMessage" : "ErrorMessage"] = resultado.EsExitoso ? resultado.MensajeExito : resultado.MensajeError;
         return Redirect(Url.Action("Index", "Configuracion") + "#reabastecimiento");
@@ -309,12 +315,9 @@ public sealed class InsumosController(
             return RedirectToAction(nameof(Cotizaciones));
         }
 
-        var contenido = string.Join("<br>", solicitud.Items.Select(x =>
-            $"{System.Net.WebUtility.HtmlEncode(x.NombreInsumo)}: {x.Cantidad}"));
-        var resultado = await emailSender.EnviarAsync(new EmailMessage(
-            proveedor.EmailOrdenes,
-            "Solicitud de cotización de insumos",
-            $"<p>Solicitamos cotización para los siguientes insumos:</p><p>{contenido}</p>"));
+        var directiva = await compras.ObtenerDirectiva();
+        var contexto = await compras.ObtenerContextoEmail(solicitud.Items);
+        var resultado = await emailSender.EnviarAsync(InsumosEmailFormatter.FormatearSolicitud(directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades));
         TempData[resultado.Enviado ? "Success" : "Error"] = resultado.Mensaje;
         return RedirectToAction(nameof(Cotizaciones));
     }
@@ -323,6 +326,34 @@ public sealed class InsumosController(
     [Permiso("Insumos.Crear")]
     public async Task<IActionResult> CrearSolicitudes(List<string> proveedorIds, List<OrdenCompraItem> items, string? notas)
     {
+        var directiva = await compras.ObtenerDirectiva();
+        var itemsValidos = (items ?? new()).Where(x => x.Cantidad > 0 && !string.IsNullOrWhiteSpace(x.InsumoId)).ToList();
+        var contexto = await compras.ObtenerContextoEmail(itemsValidos);
+        var itemsCorreo = new List<OrdenCompraItem>();
+        foreach (var item in itemsValidos)
+        {
+            var insumo = await insumos.Obtener(item.InsumoId);
+            itemsCorreo.Add(new OrdenCompraItem { InsumoId = item.InsumoId, NombreInsumo = insumo?.Nombre ?? item.NombreInsumo, Cantidad = item.Cantidad });
+        }
+        var preparados = new List<(string Id, Proveedor? Proveedor, EmailMessage? Mensaje)>();
+        foreach (var id in (proveedorIds ?? new()).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal))
+        {
+            var proveedor = await proveedores.Obtener(id);
+            if (proveedor == null || string.IsNullOrWhiteSpace(proveedor.EmailOrdenes))
+            {
+                preparados.Add((id, proveedor, null));
+                continue;
+            }
+            try
+            {
+                var solicitud = new SolicitudCotizacion { Items = itemsCorreo, Notas = notas ?? string.Empty };
+                preparados.Add((id, proveedor, InsumosEmailFormatter.FormatearSolicitud(directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades)));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
         var resultado = await compras.CrearSolicitudes(proveedorIds, items, notas, User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty, User.FindFirstValue(ClaimTypes.Email) ?? string.Empty);
         if (!resultado.EsExitoso)
         {
@@ -330,15 +361,11 @@ public sealed class InsumosController(
             return RedirectToAction(nameof(Cotizaciones));
         }
         var fallidos = new List<string>();
-        var contenido = string.Join("<br>", items.Where(x => x.Cantidad > 0).Select(x =>
-            $"{System.Net.WebUtility.HtmlEncode(x.NombreInsumo)}: {x.Cantidad}"));
-        foreach (var id in proveedorIds.Distinct(StringComparer.Ordinal))
+        foreach (var preparado in preparados)
         {
-            var proveedor = await proveedores.Obtener(id);
-            if (proveedor == null || string.IsNullOrWhiteSpace(proveedor.EmailOrdenes)) { fallidos.Add(id); continue; }
-            var envio = await emailSender.EnviarAsync(new EmailMessage(proveedor.EmailOrdenes,
-                "Solicitud de cotización de insumos", $"<p>Solicitamos cotización para los siguientes insumos:</p><p>{contenido}</p>"));
-            if (!envio.Enviado) fallidos.Add(proveedor.RazonSocial);
+            if (preparado.Mensaje == null) { fallidos.Add(preparado.Id); continue; }
+            var envio = await emailSender.EnviarAsync(preparado.Mensaje);
+            if (!envio.Enviado) fallidos.Add(preparado.Proveedor!.RazonSocial);
         }
         if (fallidos.Count > 0) TempData["Error"] = "Solicitudes creadas, pero no se pudo enviar el correo a: " + string.Join(", ", fallidos);
         else TempData["Success"] = resultado.MensajeExito;

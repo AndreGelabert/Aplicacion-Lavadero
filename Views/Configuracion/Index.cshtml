@@ -108,8 +108,22 @@
                         </select>
                     </div>
                     <div>
-                        <label for="plantilla-email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Plantilla de email</label>
-                        <textarea id="plantilla-email" name="PlantillaEmail" rows="5" disabled="@(!puedeModificar)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">@directiva.PlantillaEmail</textarea>
+                        <label for="plantilla-email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Asunto anterior de solicitud de cotización</label>
+                        <input id="plantilla-email" name="PlantillaEmail" value="@directiva.PlantillaEmail" disabled="@(!puedeModificar)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Se conserva como respaldo cuando el asunto de cotización está vacío.</p>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Los campos vacíos usan el formato recomendado. Se admite texto plano y estos marcadores: {proveedor}, {contacto_proveedor}, {comprador}, {ubicacion}, {notas}, {items}, {total}, {plazo_entrega}, {fecha_entrega}, {hora_entrega}. {items} solo se admite en el cuerpo. Los datos ausentes se indican como No informado.</p>
+                    <div>
+                        <label for="asunto-cotizacion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Solicitud de cotización — asunto</label>
+                        <input id="asunto-cotizacion" name="AsuntoCotizacion" value="@directiva.AsuntoCotizacion" placeholder="Solicitud de cotización de insumos" disabled="@(!puedeModificar)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                        <label for="cuerpo-cotizacion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Solicitud de cotización — cuerpo</label>
+                        <textarea id="cuerpo-cotizacion" name="CuerpoCotizacion" rows="5" placeholder="@Firebase.Services.InsumosEmailFormatter.CuerpoCotizacionDefault" disabled="@(!puedeModificar)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">@directiva.CuerpoCotizacion</textarea>
+                    </div>
+                    <div>
+                        <label for="asunto-orden" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Orden de compra — asunto</label>
+                        <input id="asunto-orden" name="AsuntoOrden" value="@directiva.AsuntoOrden" placeholder="Orden de compra de insumos" disabled="@(!puedeModificar)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                        <label for="cuerpo-orden" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Orden de compra — cuerpo</label>
+                        <textarea id="cuerpo-orden" name="CuerpoOrden" rows="5" placeholder="@Firebase.Services.InsumosEmailFormatter.CuerpoOrdenDefault" disabled="@(!puedeModificar)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">@directiva.CuerpoOrden</textarea>
                     </div>
                     @if (puedeModificar)
                     {

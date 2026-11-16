@@ -123,6 +123,10 @@ public sealed class DirectivaReabastecimiento
     [FirestoreProperty] public string Id { get; set; } = "principal";
     [FirestoreProperty] public string ModoEmision { get; set; } = "RequiereAprobacion";
     [FirestoreProperty] public string PlantillaEmail { get; set; } = "Solicitud de cotización de insumos";
+    [FirestoreProperty] public string AsuntoCotizacion { get; set; } = "";
+    [FirestoreProperty] public string CuerpoCotizacion { get; set; } = "";
+    [FirestoreProperty] public string AsuntoOrden { get; set; } = "";
+    [FirestoreProperty] public string CuerpoOrden { get; set; } = "";
 }
 
 public sealed class KardexCursor

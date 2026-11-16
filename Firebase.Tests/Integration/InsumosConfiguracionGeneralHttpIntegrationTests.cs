@@ -88,6 +88,16 @@ public sealed class InsumosConfiguracionGeneralHttpIntegrationTests
             Assert.Equal(HttpStatusCode.OK, errorPage.StatusCode);
             Assert.Contains("El modo de emisión no es válido.", WebUtility.HtmlDecode(await errorPage.Content.ReadAsStringAsync()));
         }
+        using (var badTemplate = await authorized.PostAsync("/Insumos/GuardarConfiguracion", new FormUrlEncodedContent(new Dictionary<string, string> {
+            ["__RequestVerificationToken"] = csrf, ["ModoEmision"] = "EnvioDirecto", ["PlantillaEmail"] = "Cambio", ["CuerpoOrden"] = "{invalido}"
+        })))
+        {
+            Assert.Equal(HttpStatusCode.Redirect, badTemplate.StatusCode);
+            Assert.Equal("/Configuracion#reabastecimiento", badTemplate.Headers.Location?.OriginalString);
+        }
+        Assert.Equal(before, await f.State());
+        using (var errorPage = await authorized.GetAsync("/Configuracion/Index"))
+            Assert.Contains("La plantilla contiene marcadores no válidos o excede la longitud permitida.", WebUtility.HtmlDecode(await errorPage.Content.ReadAsStringAsync()));
         using (var saved = await authorized.PostAsync("/Insumos/GuardarConfiguracion", Form(csrf, "EnvioDirecto", "Plantilla actualizada")))
         {
             Assert.Equal(HttpStatusCode.Redirect, saved.StatusCode);
@@ -102,6 +112,32 @@ public sealed class InsumosConfiguracionGeneralHttpIntegrationTests
         var html = WebUtility.HtmlDecode(await successPage.Content.ReadAsStringAsync());
         Assert.Contains("Directiva de reabastecimiento guardada.", html);
         Assert.Contains("Plantilla actualizada", html);
+    }
+
+    [LocalFirestoreFact]
+    public async Task CrearSolicitudesRechazaAsuntoInvalidoAntesDePersistirOEnviar()
+    {
+        await using var f = await Fixture.Start();
+        await f.PrepararProveedoresEInsumo();
+        Assert.True((await f.Compras.GuardarDirectiva(new DirectivaReabastecimiento { AsuntoCotizacion = "Solicitud {proveedor}" })).EsExitoso);
+        using var client = f.Client("Insumos.Crear");
+        var token = await client.GetStringAsync("/test-token");
+        var solicitudesAntes = (await f.Compras.ObtenerSolicitudes()).Count;
+        var auditoriasAntes = await f.AuditCount();
+        using var response = await client.PostAsync("/Insumos/CrearSolicitudes", new FormUrlEncodedContent(new[]
+        {
+            new KeyValuePair<string, string>("__RequestVerificationToken", token),
+            new KeyValuePair<string, string>("proveedorIds", "bueno"),
+            new KeyValuePair<string, string>("proveedorIds", "malo"),
+            new KeyValuePair<string, string>("items[0].InsumoId", "insumo"),
+            new KeyValuePair<string, string>("items[0].Cantidad", "2")
+        }));
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("El asunto generado no puede contener saltos de línea.", body);
+        Assert.Empty(f.Sender.Messages);
+        Assert.Equal(solicitudesAntes, (await f.Compras.ObtenerSolicitudes()).Count);
+        Assert.Equal(auditoriasAntes, await f.AuditCount());
     }
 
     private static FormUrlEncodedContent Form(string? token, string mode, string template)
@@ -121,9 +157,27 @@ public sealed class InsumosConfiguracionGeneralHttpIntegrationTests
         }
     }
 
-    private sealed class Fixture(WebApplication app, FirestoreDb db) : IAsyncDisposable
+    private sealed class FakeSender : IEmailSender
+    {
+        public List<EmailMessage> Messages { get; } = new();
+        public Task<ResultadoEnvioEmail> EnviarAsync(EmailMessage message, CancellationToken cancellationToken = default)
+        {
+            Messages.Add(message);
+            return Task.FromResult(new ResultadoEnvioEmail(true, "Aceptado por el transporte de prueba."));
+        }
+    }
+
+    private sealed class Fixture(WebApplication app, FirestoreDb db, FakeSender sender) : IAsyncDisposable
     {
         public ComprasService Compras { get; } = new(db);
+        public FakeSender Sender { get; } = sender;
+        public async Task PrepararProveedoresEInsumo()
+        {
+            await db.Collection("proveedores").Document("bueno").SetAsync(new Proveedor { Id = "bueno", RazonSocial = "Proveedor bueno", EmailOrdenes = "bueno@example.invalid" });
+            await db.Collection("proveedores").Document("malo").SetAsync(new Proveedor { Id = "malo", RazonSocial = "Proveedor\r\nBcc: atacante@example.invalid", EmailOrdenes = "malo@example.invalid" });
+            await db.Collection("insumos").Document("insumo").SetAsync(new Insumo { Id = "insumo", Nombre = "Jabón", UnidadMedida = "ml" });
+        }
+        public async Task<int> AuditCount() => (await db.Collection("registros_auditoria").GetSnapshotAsync()).Count;
         public static async Task<Fixture> Start()
         {
             if (Environment.GetEnvironmentVariable("FIRESTORE_EMULATOR_HOST") != "127.0.0.1:8245") throw new InvalidOperationException("Only the disposable local emulator is permitted.");
@@ -135,11 +189,12 @@ public sealed class InsumosConfiguracionGeneralHttpIntegrationTests
             builder.Services.AddAuthorization(); builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermisoPolicyProvider>();
             builder.Services.AddSingleton(db); builder.Services.AddMemoryCache(); builder.Services.AddScoped<ConfiguracionService>();
             builder.Services.AddScoped<InsumoService>(); builder.Services.AddScoped<ProveedorService>(); builder.Services.AddScoped<StockService>(); builder.Services.AddScoped<ComprasService>();
-            builder.Services.AddSingleton(Mock.Of<IAuditWriter>()); builder.Services.AddSingleton(Mock.Of<IEmailSender>(MockBehavior.Strict));
+            var sender = new FakeSender();
+            builder.Services.AddSingleton(Mock.Of<IAuditWriter>()); builder.Services.AddSingleton<IEmailSender>(sender);
             var app = builder.Build(); app.UseAuthentication(); app.UseAuthorization();
             app.MapGet("/test-token", (HttpContext context, IAntiforgery antiforgery) => antiforgery.GetAndStoreTokens(context).RequestToken!).RequireAuthorization();
             app.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
-            await app.StartAsync(); return new(app, db);
+            await app.StartAsync(); return new(app, db, sender);
         }
         public HttpClient Client(string permissions)
         {

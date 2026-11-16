@@ -1641,12 +1641,9 @@ public sealed class StockService(
                     logger.LogWarning("No se pudo enviar la solicitud automática {SolicitudId}: proveedor sin email.", solicitud.Id);
                     continue;
                 }
-                var contenido = string.Join("<br>", solicitud.Items.Select(x =>
-                    $"{System.Net.WebUtility.HtmlEncode(x.NombreInsumo)}: {x.Cantidad}"));
-                var resultado = await emailSender.EnviarAsync(new EmailMessage(
-                    proveedor.EmailOrdenes,
-                    directiva.PlantillaEmail,
-                    $"<p>Solicitud de cotización de insumos:</p><p>{contenido}</p>"));
+                var contexto = await new ComprasService(firestore).ObtenerContextoEmail(solicitud.Items);
+                var resultado = await emailSender.EnviarAsync(InsumosEmailFormatter.FormatearSolicitud(
+                    directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades));
                 if (!resultado.Enviado)
                     logger.LogWarning("No se pudo enviar la solicitud automática {SolicitudId}: {Mensaje}", solicitud.Id, resultado.Mensaje);
             }
@@ -1697,9 +1694,26 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
     {
         if (directiva.ModoEmision is not ("EnvioDirecto" or "RequiereAprobacion"))
             return ResultadoOperacion.CrearError("El modo de emisión no es válido.");
+        if (!InsumosEmailFormatter.PlantillaValida(directiva.AsuntoCotizacion, true) ||
+            !InsumosEmailFormatter.PlantillaValida(directiva.AsuntoOrden, true) ||
+            !InsumosEmailFormatter.PlantillaValida(directiva.CuerpoCotizacion, false) ||
+            !InsumosEmailFormatter.PlantillaValida(directiva.CuerpoOrden, false))
+            return ResultadoOperacion.CrearError("La plantilla contiene marcadores no válidos o excede la longitud permitida.");
         directiva.Id = "principal";
         await firestore.Collection("directivasReabastecimiento").Document("principal").SetAsync(directiva);
         return ResultadoOperacion.CrearExito("Directiva de reabastecimiento guardada.");
+    }
+
+    public async Task<(Configuracion? Configuracion, Dictionary<string, string> Unidades)> ObtenerContextoEmail(IEnumerable<OrdenCompraItem> items)
+    {
+        var config = await firestore.Collection("configuracion").Document("system_config").GetSnapshotAsync();
+        var unidades = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var id in items.Select(i => i.InsumoId).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal))
+        {
+            var doc = await firestore.Collection("insumos").Document(id).GetSnapshotAsync();
+            if (doc.Exists) unidades[id] = doc.ConvertTo<Insumo>().UnidadMedida;
+        }
+        return (config.Exists ? config.ConvertTo<Configuracion>() : null, unidades);
     }
 
     public sealed record ResultadoAuditoriaOrden(
@@ -1843,7 +1857,8 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
                     transicion1.Antes,
                     transicion1.DespuesRevision,
                     TransicionARevisionManual: true);
-            var email = proveedor.ConvertTo<Proveedor>().EmailOrdenes;
+            var proveedorDatos = proveedor.ConvertTo<Proveedor>();
+            var email = proveedorDatos.EmailOrdenes;
             if (string.IsNullOrWhiteSpace(email))
                 return new ResultadoAuditoriaOrden(
                     ResultadoOperacion.CrearError("Resultado incierto. Se requiere revisión manual."),
@@ -1851,8 +1866,21 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
                     transicion1.Antes,
                     transicion1.DespuesRevision,
                     TransicionARevisionManual: true);
-            var contenido = string.Join("<br>", orden.Items.Select(i => $"{System.Net.WebUtility.HtmlEncode(i.NombreInsumo)}: {i.Cantidad} × {i.PrecioUnitario}"));
-            var envio = await sender.EnviarAsync(new EmailMessage(email, "Orden de compra de insumos", $"<p>Orden de compra:</p><p>{contenido}</p>"));
+            var directiva = await ObtenerDirectiva();
+            var contexto = await ObtenerContextoEmail(orden.Items);
+            string? plazo = null;
+            if (!string.IsNullOrWhiteSpace(orden.GrupoCotizacionId))
+            {
+                var solicitudes = await firestore.Collection("solicitudesCotizacion").WhereEqualTo("GrupoId", orden.GrupoCotizacionId).GetSnapshotAsync();
+                var elegidas = solicitudes.Documents.Select(d => (Documento: d, Solicitud: d.ConvertTo<SolicitudCotizacion>()))
+                    .Where(x => x.Solicitud.Estado == "Adjudicada" && x.Solicitud.ProveedorId == orden.ProveedorId).ToList();
+                if (elegidas.Count == 1)
+                {
+                    var respuestas = await firestore.Collection("cotizacionesRespuestas").WhereEqualTo("SolicitudId", elegidas[0].Documento.Id).GetSnapshotAsync();
+                    if (respuestas.Count == 1) plazo = respuestas.Documents[0].ConvertTo<CotizacionRespuesta>().PlazoEntrega;
+                }
+            }
+            var envio = await sender.EnviarAsync(InsumosEmailFormatter.FormatearOrden(directiva, orden, proveedorDatos, contexto.Configuracion, plazo, contexto.Unidades));
             if (!envio.Enviado)
                 return new ResultadoAuditoriaOrden(
                     ResultadoOperacion.CrearError("Resultado incierto. Se requiere revisión manual."),
