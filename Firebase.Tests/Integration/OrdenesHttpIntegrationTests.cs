@@ -162,8 +162,8 @@ public sealed class OrdenesHttpIntegrationTests
     public async Task OrdenManualValidaYExponeErrorDeEnvio()
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-orden-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
-        await db.Collection("proveedores").Document("p").SetAsync(new Proveedor { Id = "p", RazonSocial = "Proveedor", EmailOrdenes = "p@example.invalid" });
-        await db.Collection("insumos").Document("i").SetAsync(new Insumo { Id = "i", Nombre = "Jabon" });
+        await db.Collection("proveedores").Document("p").SetAsync(new Proveedor { Id = "p", RazonSocial = "Proveedor", Estado = "Activo", EmailOrdenes = "p@example.invalid" });
+        await db.Collection("insumos").Document("i").SetAsync(new Insumo { Id = "i", Nombre = "Jabon", Estado = "Activo" });
         var email = new Mock<IEmailSender>();
         email.Setup(x => x.EnviarAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>())).ReturnsAsync(new ResultadoEnvioEmail(false, "Fallo de prueba"));
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" });
@@ -181,7 +181,7 @@ public sealed class OrdenesHttpIntegrationTests
             client.DefaultRequestHeaders.Add("X-Test-Permission", "Insumos.Crear,Insumos.Modificar,Insumos.Recepcionar");
             var page = WebUtility.HtmlDecode(await client.GetStringAsync("/Insumos/Ordenes"));
             var token = Regex.Match(page, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value;
-            Assert.NotEmpty(token); Assert.Contains("Crear orden", page);
+            Assert.NotEmpty(token); Assert.Contains("solicite una cotización", page); Assert.Contains("/Insumos/Cotizaciones", page);
             await db.Collection("ordenesCompra").Document("repetida").SetAsync(new OrdenCompra { Id = "repetida", ProveedorId = "p", Estado = "PendienteAprobacion", Notas = "El precio y la disponibilidad requieren confirmación del proveedor.", Items = new() { new OrdenCompraItem { InsumoId = "i", NombreInsumo = "Jabon", Cantidad = 2, PrecioUnitario = 5 } } });
             page = WebUtility.HtmlDecode(await client.GetStringAsync("/Insumos/Ordenes"));
             Assert.Contains("Editar orden", page);
@@ -218,9 +218,31 @@ public sealed class OrdenesHttpIntegrationTests
             email.Verify(x => x.EnviarAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Once);
             await Post("2");
             page = WebUtility.HtmlDecode(await client.GetStringAsync("/Insumos/Ordenes"));
-            Assert.Contains("Fallo de prueba", page); Assert.Contains("Jabon", page); Assert.Contains("RevisionManual", page);
-            Assert.Equal(2, (await db.Collection("ordenesCompra").GetSnapshotAsync()).Count);
+            Assert.Contains("Debe adjudicar una cotización o preparar una repetición reciente para aprobación.", page);
+            Assert.Single((await db.Collection("ordenesCompra").GetSnapshotAsync()).Documents);
+            email.Verify(x => x.EnviarAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Once);
+
+            var crear = new Dictionary<string, string> { ["__RequestVerificationToken"] = token, ["proveedorIds"] = "p", ["items[0].InsumoId"] = "i", ["items[0].Cantidad"] = "2" };
+            client.DefaultRequestHeaders.Remove("X-Test-Permission"); client.DefaultRequestHeaders.Add("X-Test-Permission", "Insumos.Modificar,Insumos.Recepcionar");
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync("/Insumos/CrearSolicitudes", new FormUrlEncodedContent(crear))).StatusCode);
+            Assert.Empty((await db.Collection("solicitudesCotizacion").GetSnapshotAsync()).Documents);
+            email.Verify(x => x.EnviarAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Once);
+            client.DefaultRequestHeaders.Remove("X-Test-Permission"); client.DefaultRequestHeaders.Add("X-Test-Permission", "Insumos.Crear,Insumos.Modificar,Insumos.Recepcionar");
+            email.Setup(x => x.EnviarAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>())).ReturnsAsync(new ResultadoEnvioEmail(true, "Aceptado"));
+            Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/Insumos/CrearSolicitudes", new FormUrlEncodedContent(crear))).StatusCode);
+            var solicitud = Assert.Single((await db.Collection("solicitudesCotizacion").GetSnapshotAsync()).Documents.Select(d => d.ConvertTo<SolicitudCotizacion>()));
+            Assert.Equal("Pendiente", solicitud.Estado);
             email.Verify(x => x.EnviarAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            var respuestaFields = new Dictionary<string, string> { ["__RequestVerificationToken"] = token, ["SolicitudId"] = solicitud.Id, ["PlazoEntrega"] = "1", ["Items[0].InsumoId"] = "i", ["Items[0].Cantidad"] = "2", ["Items[0].PrecioUnitario"] = "5", ["Items[0].Disponible"] = "true" };
+            Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/Insumos/RegistrarRespuesta", new FormUrlEncodedContent(respuestaFields))).StatusCode);
+            var respuesta = Assert.Single((await db.Collection("cotizacionesRespuestas").GetSnapshotAsync()).Documents.Select(d => d.ConvertTo<CotizacionRespuesta>()));
+            email.Setup(x => x.EnviarAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>())).ReturnsAsync(new ResultadoEnvioEmail(false, "Fallo de prueba"));
+            var adjudicar = new Dictionary<string, string> { ["__RequestVerificationToken"] = token, ["id"] = solicitud.Id, ["respuestaId"] = respuesta.Id };
+            Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/Insumos/Adjudicar", new FormUrlEncodedContent(adjudicar))).StatusCode);
+            page = WebUtility.HtmlDecode(await client.GetStringAsync("/Insumos/Ordenes"));
+            Assert.Contains("Resultado incierto. Se requiere revisión manual.", page); Assert.Contains("Jabon", page); Assert.Contains("RevisionManual", page);
+            Assert.Equal(2, (await db.Collection("ordenesCompra").GetSnapshotAsync()).Count);
+            email.Verify(x => x.EnviarAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
             var orden = (await db.Collection("ordenesCompra").GetSnapshotAsync()).Documents.Select(d => d.ConvertTo<OrdenCompra>()).Single(o => o.Id != "repetida");
             Assert.Equal("RevisionManual", orden.Estado);
             await db.Collection("ordenesCompra").Document(orden.Id).UpdateAsync("Estado", "Enviada");
@@ -240,13 +262,10 @@ public sealed class OrdenesHttpIntegrationTests
             await db.Collection("ordenesCompra").Document("otra").SetAsync(new OrdenCompra { Id = "otra", GrupoCotizacionId = "otro", Estado = "Enviada" });
             await db.Collection("ordenesCompra").Document("incierta").SetAsync(new OrdenCompra { Id = "incierta", GrupoCotizacionId = "g", Estado = "RevisionManual" });
             page = WebUtility.HtmlDecode(await client.GetStringAsync("/Insumos/Ordenes")); Assert.Contains("Cancelar órdenes concurrentes", page);
-            Assert.Equal(HttpStatusCode.Redirect, (await Recibir("1")).StatusCode);
-            Assert.Equal("Confirmada", (await db.Collection("ordenesCompra").Document(orden.Id).GetSnapshotAsync()).ConvertTo<OrdenCompra>().Estado);
-            Assert.Equal("Enviada", (await db.Collection("ordenesCompra").Document("rival").GetSnapshotAsync()).ConvertTo<OrdenCompra>().Estado);
             Assert.Equal(HttpStatusCode.Redirect, (await Recibir("3")).StatusCode);
             page = WebUtility.HtmlDecode(await client.GetStringAsync("/Insumos/Ordenes")); Assert.Contains("supera la cantidad pendiente", page);
-            Assert.Equal(1, (await db.Collection("insumos").Document("i").GetSnapshotAsync()).ConvertTo<Insumo>().StockActual);
-            var cierre = new Dictionary<string, string> { ["__RequestVerificationToken"] = token, ["id"] = orden.Id, ["insumoIds"] = "i", ["cantidades"] = "1", ["cancelarConcurrentes"] = "true" };
+            Assert.Equal(0, (await db.Collection("insumos").Document("i").GetSnapshotAsync()).ConvertTo<Insumo>().StockActual);
+            var cierre = new Dictionary<string, string> { ["__RequestVerificationToken"] = token, ["id"] = orden.Id, ["insumoIds"] = "i", ["cantidades"] = "2", ["cancelarConcurrentes"] = "true" };
             Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/Insumos/RecibirOrden", new FormUrlEncodedContent(cierre))).StatusCode);
             var rival = (await db.Collection("ordenesCompra").Document("rival").GetSnapshotAsync()).ConvertTo<OrdenCompra>();
             Assert.Equal("Cancelada", rival.Estado); Assert.Equal("Adjudicacion orden " + orden.Id, rival.MotivoCancelacion);
@@ -255,7 +274,7 @@ public sealed class OrdenesHttpIntegrationTests
             Assert.Equal(HttpStatusCode.Redirect, (await Recibir("2")).StatusCode);
             Assert.Equal(HttpStatusCode.Redirect, (await Recibir("2")).StatusCode);
             Assert.Equal(2, (await db.Collection("insumos").Document("i").GetSnapshotAsync()).ConvertTo<Insumo>().StockActual);
-            Assert.Equal(2, (await db.Collection("movimientosStock").GetSnapshotAsync()).Count);
+            Assert.Equal(1, (await db.Collection("movimientosStock").GetSnapshotAsync()).Count);
             Assert.Equal("Recibida", (await db.Collection("ordenesCompra").Document(orden.Id).GetSnapshotAsync()).ConvertTo<OrdenCompra>().Estado);
         }
         finally { await app.StopAsync(); }
@@ -894,7 +913,7 @@ public sealed class OrdenesHttpIntegrationTests
             Assert.Equal(HttpStatusCode.Redirect, resParcial.StatusCode);
 
             var ordenTrasParcial = (await db.Collection("ordenesCompra").Document(ordenRec.Id).GetSnapshotAsync()).ConvertTo<OrdenCompra>();
-            Assert.Equal("Confirmada", ordenTrasParcial.Estado);
+            Assert.Equal("RecibidaParcial", ordenTrasParcial.Estado);
             Assert.Equal(1m, ordenTrasParcial.Items[0].CantidadRecibida);
             Assert.Equal(2m, ordenTrasParcial.Items[1].CantidadRecibida);
             Assert.Equal("Enviada", (await db.Collection("ordenesCompra").Document("ord-rival").GetSnapshotAsync()).ConvertTo<OrdenCompra>().Estado);
@@ -914,40 +933,8 @@ public sealed class OrdenesHttpIntegrationTests
             Assert.Equal(despuesParcial.OrderBy(x => x.Key), evParcial.GetValue<Dictionary<string, string>>("Despues").OrderBy(x => x.Key));
             Assert.Equal("ConCambios", AuditCampos.ObtenerEstadoHistorial(evParcial.GetValue<Dictionary<string, string>>("Antes"), evParcial.GetValue<Dictionary<string, string>>("Despues")));
 
-            // 3. Recepción total emite segundo evento before/after (parcial -> Recibida) y cancela rival
-            var resTotal = await PostRecibir(client, token, ordenRec.Id, new[] { ("i1", "1"), ("i2", "2") }, cancelarConcurrentes: true);
-            Assert.Equal(HttpStatusCode.Redirect, resTotal.StatusCode);
-
-            var ordenTrasTotal = (await db.Collection("ordenesCompra").Document(ordenRec.Id).GetSnapshotAsync()).ConvertTo<OrdenCompra>();
-            Assert.Equal("Recibida", ordenTrasTotal.Estado);
-            Assert.Equal(2m, ordenTrasTotal.Items[0].CantidadRecibida);
-            Assert.Equal(4m, ordenTrasTotal.Items[1].CantidadRecibida);
-            var rival = (await db.Collection("ordenesCompra").Document("ord-rival").GetSnapshotAsync()).ConvertTo<OrdenCompra>();
-            Assert.Equal("Cancelada", rival.Estado);
-            Assert.Equal($"Adjudicacion orden {ordenRec.Id}", rival.MotivoCancelacion);
-            Assert.Equal(2m, (await db.Collection("insumos").Document("i1").GetSnapshotAsync()).ConvertTo<Insumo>().StockActual);
-            Assert.Equal(4m, (await db.Collection("insumos").Document("i2").GetSnapshotAsync()).ConvertTo<Insumo>().StockActual);
-            Assert.Equal(4, (await db.Collection("movimientosStock").GetSnapshotAsync()).Count);
-
-            var despuesTotal = AuditCampos.CapturarOrdenCompra(ordenTrasTotal);
-            var docsTrasTotal = (await db.Collection("registros_auditoria").WhereEqualTo("TargetId", ordenRec.Id).GetSnapshotAsync()).Documents;
-            Assert.Equal(2, docsTrasTotal.Count);
-            var evTotal = Assert.Single(docsTrasTotal, d => d.Id != evParcial.Id);
-            Assert.Equal("Recepción de orden de compra", evTotal.GetValue<string>("Action"));
-            Assert.Equal($"Orden {ordenRec.Id}", evTotal.GetValue<string>("NombreHistorico"));
-            Assert.Equal(despuesParcial.OrderBy(x => x.Key), evTotal.GetValue<Dictionary<string, string>>("Antes").OrderBy(x => x.Key));
-            Assert.Equal(despuesTotal.OrderBy(x => x.Key), evTotal.GetValue<Dictionary<string, string>>("Despues").OrderBy(x => x.Key));
-
-            var rivalAudits = (await db.Collection("registros_auditoria").WhereEqualTo("TargetId", "ord-rival").GetSnapshotAsync()).Documents;
-            var evRivalCancel = Assert.Single(rivalAudits);
-            Assert.Equal("Cambio de estado de orden a Cancelada", evRivalCancel.GetValue<string>("Action"));
-            Assert.Equal("OrdenCompra", evRivalCancel.GetValue<string>("TargetType"));
-            Assert.Equal("test", evRivalCancel.GetValue<string>("UserId"));
-            Assert.Equal("test@example.invalid", evRivalCancel.GetValue<string>("UserEmail"));
-            Assert.Equal("Cancelada", evRivalCancel.GetValue<Dictionary<string, string>>("Despues")["Estado"]);
-            Assert.Equal($"Adjudicacion orden {ordenRec.Id}", evRivalCancel.GetValue<Dictionary<string, string>>("Despues")["MotivoCancelacion"]);
-
-            // 4. Reintentos idempotentes (secuenciales y concurrentes) sobre orden Recibida NO duplican stock, Kardex ni auditoría
+            // 3. Reintentos de una recepción parcial terminal no modifican stock ni auditoría.
+            // La orden rival permanece abierta como antes cuando la recepción no fue total.
             Assert.Equal(HttpStatusCode.Redirect, (await PostRecibir(client, token, ordenRec.Id, new[] { ("i1", "1"), ("i2", "2") }, cancelarConcurrentes: true)).StatusCode);
             Assert.Equal(HttpStatusCode.Redirect, (await PostRecibir(client, token, ordenRec.Id, new[] { ("i1", "2"), ("i2", "4") })).StatusCode);
             var reintentosConcurrentes = await Task.WhenAll(
@@ -955,11 +942,11 @@ public sealed class OrdenesHttpIntegrationTests
                 PostRecibir(client2, token2, ordenRec.Id, new[] { ("i1", "1"), ("i2", "2") }));
             Assert.All(reintentosConcurrentes, r => Assert.Equal(HttpStatusCode.Redirect, r.StatusCode));
 
-            Assert.Equal(2m, (await db.Collection("insumos").Document("i1").GetSnapshotAsync()).ConvertTo<Insumo>().StockActual);
-            Assert.Equal(4m, (await db.Collection("insumos").Document("i2").GetSnapshotAsync()).ConvertTo<Insumo>().StockActual);
-            Assert.Equal(4, (await db.Collection("movimientosStock").GetSnapshotAsync()).Count);
-            Assert.Equal(2, (await db.Collection("registros_auditoria").WhereEqualTo("TargetId", ordenRec.Id).GetSnapshotAsync()).Count);
-            Assert.Single((await db.Collection("registros_auditoria").WhereEqualTo("TargetId", "ord-rival").GetSnapshotAsync()).Documents);
+            Assert.Equal(1m, (await db.Collection("insumos").Document("i1").GetSnapshotAsync()).ConvertTo<Insumo>().StockActual);
+            Assert.Equal(2m, (await db.Collection("insumos").Document("i2").GetSnapshotAsync()).ConvertTo<Insumo>().StockActual);
+            Assert.Equal(2, (await db.Collection("movimientosStock").GetSnapshotAsync()).Count);
+            Assert.Single((await db.Collection("registros_auditoria").WhereEqualTo("TargetId", ordenRec.Id).GetSnapshotAsync()).Documents);
+            Assert.Empty((await db.Collection("registros_auditoria").WhereEqualTo("TargetId", "ord-rival").GetSnapshotAsync()).Documents);
 
             // 5. Recepciones concurrentes simultáneas sobre orden abierta emiten exactamente 1 evento de auditoría
             var ordenConc = new OrdenCompra
@@ -980,8 +967,8 @@ public sealed class OrdenesHttpIntegrationTests
 
             var finalConc = (await db.Collection("ordenesCompra").Document(ordenConc.Id).GetSnapshotAsync()).ConvertTo<OrdenCompra>();
             Assert.Equal("Recibida", finalConc.Estado);
-            Assert.Equal(4m, (await db.Collection("insumos").Document("i1").GetSnapshotAsync()).ConvertTo<Insumo>().StockActual);
-            Assert.Equal(5, (await db.Collection("movimientosStock").GetSnapshotAsync()).Count);
+            Assert.Equal(3m, (await db.Collection("insumos").Document("i1").GetSnapshotAsync()).ConvertTo<Insumo>().StockActual);
+            Assert.Equal(3, (await db.Collection("movimientosStock").GetSnapshotAsync()).Count);
             var docsConc = (await db.Collection("registros_auditoria").WhereEqualTo("TargetId", ordenConc.Id).GetSnapshotAsync()).Documents;
             var evConc = Assert.Single(docsConc);
             Assert.Equal("Recepción de orden de compra", evConc.GetValue<string>("Action"));

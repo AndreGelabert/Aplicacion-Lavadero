@@ -181,20 +181,18 @@ async function sendPasswordResetEmail() {
             body: JSON.stringify({ email: email })
         });
         
-        const data = await resp.json();
-        
         if (!resp.ok) {
-            throw new Error(data.error || 'Error al enviar el correo');
+            throw new Error();
         }
-        
-        window.Notificaciones.exito('Correo de recuperación enviado. Revise su bandeja de entrada.');
+
+        window.Notificaciones.exito('Si existe una cuenta asociada a ese correo, recibirás instrucciones para restablecer tu contraseña.');
 
         // Cerrar modal después de 3 segundos
         setTimeout(() => {
             closeForgotPasswordModal();
         }, 3000);
-    } catch (error) {
-        window.Notificaciones.error(error.message || 'No se pudo enviar el correo de recuperación.');
+    } catch {
+        window.Notificaciones.error('Error al enviar el correo de recuperación. Por favor, intente de nuevo.');
     } finally {
         dismissProgress();
     }

@@ -46,6 +46,7 @@
         protegerTipoVehiculoEnEdicion();
         protegerTipoServicioEnEdicion();
         renderServicioRecipeList();
+        actualizarVisibilidadReceta();
     }
 
     // IMPORTANTE: asegurar que init se ejecute siempre
@@ -281,6 +282,22 @@
         if (!servicioForm) return;
 
         setupFieldValidation();
+        actualizarVisibilidadReceta();
+        if (!servicioForm.hasAttribute('data-recipe-reset-setup')) {
+            const etapasIniciales = document.getElementById('etapas-json')?.value || '[]';
+            const recetaInicial = document.getElementById('RecetaJson')?.value || '[]';
+            servicioForm.addEventListener('reset', () => setTimeout(() => {
+                const etapas = document.getElementById('etapas-json');
+                const receta = document.getElementById('RecetaJson');
+                if (etapas) etapas.value = etapasIniciales;
+                if (receta) receta.value = recetaInicial;
+                actualizarVisibilidadReceta();
+                renderServicioRecipeList();
+                const count = document.getElementById('etapas-count');
+                if (count) { try { count.textContent = JSON.parse(document.getElementById('etapas-json')?.value || '[]').length; } catch { count.textContent = '0'; } }
+            }, 0));
+            servicioForm.setAttribute('data-recipe-reset-setup', 'true');
+        }
 
         if (!servicioForm.hasAttribute('data-validation-setup')) {
             servicioForm.addEventListener('submit', validateFormOnSubmit);
@@ -1192,12 +1209,14 @@ titleSpan.textContent = isEdit ? 'Editando un Servicio' : 'Registrando un Servic
             protegerTipoServicioEnEdicion();
 
 const accordionBody = document.getElementById('accordion-flush-body-1');
-    if (accordionBody) {
-        if (isEdit) {
-        accordionBody.classList.remove('hidden');
-  } else {
-          accordionBody.classList.add('hidden');
-     }
+    const accordionInstance = window.FlowbiteInstances?.getInstance('Accordion', 'accordion-flush');
+    if (accordionInstance) {
+        if (isEdit) accordionInstance.open('#accordion-flush-body-1');
+        else accordionInstance.close('#accordion-flush-body-1');
+    } else if (accordionBody) {
+        accordionBody.classList.toggle('hidden', !isEdit);
+        const button = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
+        button?.setAttribute('aria-expanded', String(isEdit));
     }
 
     // NUEVO: Scroll automático hacia el formulario si es edición
@@ -1524,6 +1543,12 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
     let etapasEnMemoria = [];
     let originalEtapasSnapshot = [];
 
+    function actualizarVisibilidadReceta() {
+        let etapas = [];
+        try { etapas = JSON.parse(document.getElementById('etapas-json')?.value || '[]'); } catch { }
+        document.getElementById('servicio-receta-container')?.classList.toggle('hidden', Array.isArray(etapas) && etapas.length > 0);
+    }
+
     /**
      * Abre el modal de gestión de etapas
      */
@@ -1570,6 +1595,7 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
         if (hiddenInput) {
             hiddenInput.value = etapasJson;
         }
+        actualizarVisibilidadReceta();
 
         // Actualizar contador
         const countSpan = document.getElementById('etapas-count');
@@ -1777,6 +1803,12 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
             return false;
         }
         const option = select.options[select.selectedIndex];
+        let tiposHerramienta = [];
+        try { tiposHerramienta = JSON.parse(document.getElementById('tipos-herramienta-json')?.value || '[]'); } catch { }
+        if (modalidad === 'Tipo' && (tiposHerramienta.includes(select.value) || [...select.options].some(o => o.value === select.value && o.dataset.protegido === 'true'))) {
+            showTableMessage('error', 'Seleccione una herramienta específica, no el tipo Herramienta.');
+            return false;
+        }
         const item = { Modalidad: modalidad, InsumoId: modalidad === 'Producto' ? select.value : '', TipoId: modalidad === 'Tipo' ? select.value : '', NombreInsumo: modalidad === 'Producto' ? option.dataset.nombre : '', NombreTipo: modalidad === 'Tipo' ? option.dataset.nombre : '', Categoria: option.dataset.categoria || '', UnidadMedida: unidad, DosisTeorica: dose };
         const items = recetaEditorTarget.Receta || [];
         const index = items.findIndex(x => modalidad === 'Tipo' ? x.Modalidad === 'Tipo' && x.TipoId === select.value : x.InsumoId === select.value);
@@ -1830,6 +1862,7 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
         if (hiddenInput) {
             hiddenInput.value = etapasJson;
         }
+        actualizarVisibilidadReceta();
 
         // Actualizar contador
         const countSpan = document.getElementById('etapas-count');

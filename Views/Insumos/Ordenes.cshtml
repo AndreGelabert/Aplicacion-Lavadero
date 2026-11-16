@@ -1,10 +1,13 @@
 @model List<Firebase.Models.OrdenCompra>
-@{ ViewData["Title"] = "Órdenes de compra"; }
+@{ ViewData["Title"] = "Órdenes de compra"; var proveedores = (ViewBag.Proveedores as List<Firebase.Models.Proveedor>) ?? new List<Firebase.Models.Proveedor>(); }
 <section class="bg-gray-50 dark:bg-gray-900">
-<div class="mx-auto bg-white dark:bg-gray-800 shadow-md sm:rounded-lg p-4">
-    <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+<div class="mx-auto bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-visible p-4">
+    <div class="p-2 flex justify-between items-center rounded-t border-b dark:border-gray-600">
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Órdenes de compra</h1>
-        <a asp-action="Index" class="app-button app-button--secondary"><svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>Volver</a>
+        <div class="flex items-center gap-2"><a asp-action="Index" class="text-white inline-flex items-center bg-gray-600 hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-3 py-2 text-center dark:bg-gray-500 dark:hover:bg-gray-600 dark:focus:ring-gray-800"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"></path>
+                    </svg>
+                    Volver a Insumos</a><button data-popover-target="orders-help" data-popover-trigger="click" data-popover-placement="bottom" type="button" aria-label="Ayuda" class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-2 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"></path></svg></button><div data-popover id="orders-help" role="tooltip" class="absolute z-10 invisible inline-block w-64 text-sm text-gray-500 transition-opacity duration-300 bg-white border border-gray-200 rounded-lg shadow-xs opacity-0 dark:text-gray-400 dark:border-gray-600 dark:bg-gray-800"><div class="px-3 py-2 bg-gray-100 border-b border-gray-200 rounded-t-lg dark:border-gray-600 dark:bg-gray-700"><h3 class="font-semibold text-gray-900 dark:text-white">Ayuda</h3></div><div class="px-3 py-2"><p>En esta página puedes consultar las órdenes de compra y abrir su detalle para revisar insumos, cantidades y estado. Según tus permisos y el estado de la orden, puedes registrar su seguimiento y la recepción de los insumos.</p></div><div data-popper-arrow></div></div></div>
     </div>
     @if (User.TienePermiso("Insumos.Crear") && User.TienePermiso("Insumos.Modificar"))
     {
@@ -17,44 +20,106 @@
         @foreach (var o in Model)
         {
             <tr class="border-b dark:border-gray-700 align-top">
-                <td class="px-4 py-3" data-sort-value="@o.FechaEmision.ToUniversalTime().ToString("O")">@o.FechaEmision.ToLocalTime().ToString("g")</td><td class="px-4 py-3">@o.ProveedorId</td><td class="px-4 py-3"><span class="@(o.Estado == "Recibida" ? "bg-green-100 text-green-800" : o.Estado == "Cancelada" ? "bg-red-100 text-red-800" : o.Estado == "Enviada" || o.Estado == "PendienteAprobacion" ? "bg-yellow-100 text-yellow-800" : "bg-blue-100 text-blue-800") text-xs font-medium px-2.5 py-0.5 rounded-full">@o.Estado</span></td>
+                <td class="px-4 py-3" data-sort-value="@o.FechaEmision.ToUniversalTime().ToString("O")">@o.FechaEmision.ToLocalTime().ToString("g")</td><td class="px-4 py-3">@(proveedores.FirstOrDefault(p => p.Id == o.ProveedorId)?.RazonSocial ?? "Proveedor no disponible")</td><td class="px-4 py-3"><span class="@(o.Estado == "Recibida" ? "bg-green-100 text-green-800" : o.Estado == "Cancelada" ? "bg-red-100 text-red-800" : o.Estado == "Enviada" || o.Estado == "PendienteAprobacion" ? "bg-yellow-100 text-yellow-800" : "bg-blue-100 text-blue-800") text-xs font-medium px-2.5 py-0.5 rounded">@(o.Estado == "RecibidaParcial" ? "Recibida parcialmente" : o.Estado)</span></td>
                 <td class="px-4 py-3">
-                    <button type="button" data-open-modal="order-modal-@o.Id" class="p-1.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700" aria-label="Ver detalle de orden"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zm10-3a3 3 0 100 6 3 3 0 000-6z" /></svg></button>
+                    <button type="button" data-open-modal="order-modal-@o.Id" class="p-1.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700" aria-label="Ver detalle de orden"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg></button>
                 </td></tr>
         }
         </tbody></table></div>
         @foreach (var o in Model) {
-        <div id="order-modal-@o.Id" data-order-modal role="dialog" aria-modal="true" aria-hidden="true" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50"><div class="relative p-4 w-full max-w-2xl max-h-full overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg"><button type="button" data-close-modal class="float-right text-gray-500" aria-label="Cerrar">✕</button><h2 class="text-lg font-semibold dark:text-white">Detalle de la orden</h2>
+        <div id="order-modal-@o.Id" data-order-modal role="dialog" aria-modal="true" aria-hidden="true" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50"><div class="relative p-4 w-full max-w-7xl max-h-full overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg"><button type="button" data-close-modal class="float-right text-gray-500" aria-label="Cerrar">✕</button><h2 class="text-lg font-semibold dark:text-white">Detalle de la orden</h2>
                         <div class="space-y-3 mt-3 text-gray-700 dark:text-gray-300">
                             <p class="font-medium">Orden @o.Id</p><p>@o.Notas</p>
-                            <ul class="list-disc pl-5">@foreach (var item in o.Items) { <li>@item.NombreInsumo: @item.Cantidad (recibido: @item.CantidadRecibida), precio: @item.PrecioUnitario</li> }</ul>
+                            @{
+                                var etapas = new[] { "Enviada", "Confirmada", "Despachada", "Recibida" };
+                                var etapaActual = System.Array.IndexOf(etapas, o.Estado);
+                            }
+                            @if (etapaActual >= 0)
+                            {
+                                <ol aria-label="Progreso de la orden" class="flex flex-wrap gap-3 text-sm">
+                                    @for (var i = 0; i < etapas.Length; i++)
+                                    {
+                                        <li class="@(i <= etapaActual ? "font-semibold text-blue-700 dark:text-blue-300" : "text-gray-500 dark:text-gray-400")">
+                                            @if (i == etapaActual) { <span aria-current="step">● @etapas[i] (actual)</span> }
+                                            else { <span>@(i < etapaActual ? "✓" : "○") @etapas[i]</span> }
+                                        </li>
+                                    }
+                                </ol>
+                            }
+                            else if (o.Estado == "RecibidaParcial") { <p>Estado actual: Recibida parcialmente (orden cerrada)</p> }
+                            else { <p>Estado actual: @o.Estado</p> }
+                            <div class="overflow-x-auto"><table class="w-full text-sm text-left text-gray-500 dark:text-gray-400"><thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700"><tr><th class="p-2">Insumo</th><th>Cantidad</th><th>Recibido</th><th>Precio unitario</th></tr></thead><tbody>@foreach (var item in o.Items) { <tr class="border-b dark:border-gray-700"><td class="p-2">@item.NombreInsumo</td><td>@item.Cantidad</td><td>@item.CantidadRecibida</td><td>@item.PrecioUnitario</td></tr> }</tbody></table></div>
+                            @if (o.Estado == "RecibidaParcial")
+                            {
+                                @foreach (var item in o.Items.Where(i => i.CantidadRecibida < i.Cantidad))
+                                {
+                                    <p>Se recibieron @item.CantidadRecibida de @item.NombreInsumo; se esperaban @item.Cantidad. Faltan @(item.Cantidad - item.CantidadRecibida). Contactar al proveedor.</p>
+                                }
+                            }
                             @if (o.Estado == "PendienteAprobacion" && User.TienePermiso("Insumos.Modificar"))
                             {
                                 <p>El precio histórico es una referencia; el precio y la disponibilidad requieren confirmación del proveedor.</p>
-                                <form method="post" asp-action="AprobarOrden">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><button type="submit" class="app-button app-button--success"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg>Aprobar y enviar</button></form>
+                                <form method="post" asp-action="AprobarOrden" class="flex justify-end">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><button type="submit" class="app-button app-button--success"><svg aria-hidden="true" class="w-10 h-8" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" /></svg>Aprobar y enviar</button></form>
                                 @foreach (var item in o.Items)
                                 {
                                     <form method="post" asp-action="EditarOrdenPendiente" class="grid gap-2 border-t pt-2 dark:border-gray-700">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><input type="hidden" name="insumoId" value="@item.InsumoId" /><span>@item.NombreInsumo</span>
-                                        <label>Cantidad <input name="cantidad" type="number" min="0.0001" step="0.0001" value="@item.Cantidad.ToString(System.Globalization.CultureInfo.InvariantCulture)" required class="block w-full rounded border p-2 dark:bg-gray-700" /></label>
-                                        <label>Precio <input name="precio" type="number" min="0" step="0.0001" value="@item.PrecioUnitario.ToString(System.Globalization.CultureInfo.InvariantCulture)" required class="block w-full rounded border p-2 dark:bg-gray-700" /></label>
-                                        <div><button type="submit" class="app-button app-button--secondary"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1-9 3 3-9 9H9v-3z" /></svg>Editar orden</button></div>
+                                        <label class="block text-sm font-medium">Cantidad <span class="text-red-600">*</span><input name="cantidad" type="number" min="0.0001" step="0.0001" value="@item.Cantidad.ToString(System.Globalization.CultureInfo.InvariantCulture)" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:text-white" /></label><p class="text-xs text-gray-500 dark:text-gray-400">Ingrese una cantidad mayor que cero.</p>
+                                        <label class="block text-sm font-medium">Precio <span class="text-red-600">*</span><input name="precio" type="number" min="0" step="0.0001" value="@item.PrecioUnitario.ToString(System.Globalization.CultureInfo.InvariantCulture)" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:text-white" /></label><p class="text-xs text-gray-500 dark:text-gray-400">Ingrese un precio igual o mayor que cero.</p>
+                                        <div class="flex justify-end"><button type="submit" class="app-button app-button--success"><svg aria-hidden="true" class="w-10 h-8" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" /></svg>Editar orden</button></div>
                                     </form>
                                 }
                             }
                             @if (o.Estado == "RevisionManual") { <p>Resultado de envío incierto: requiere revisión manual. No se reenviará automáticamente.</p> }
-                            @if (User.TienePermiso("Insumos.Modificar") && o.Estado == "Enviada") { <form method="post" asp-action="CambiarEstadoOrden">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><input type="hidden" name="estado" value="Confirmada" /><button class="app-button app-button--secondary"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg>Confirmar</button></form> }
-                            @if (User.TienePermiso("Insumos.Modificar") && o.Estado == "Confirmada") { <form method="post" asp-action="CambiarEstadoOrden">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><input type="hidden" name="estado" value="Despachada" /><button class="app-button app-button--secondary"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h12v10H3zM15 10h3l3 3v4h-6M7 20a2 2 0 100-4 2 2 0 000 4zm11 0a2 2 0 100-4 2 2 0 000 4z" /></svg>Despachar</button></form> }
+                            @if (User.TienePermiso("Insumos.Modificar") && o.Estado == "Enviada")
+                            {
+                                <form method="post" asp-action="CambiarEstadoOrden" class="space-y-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@o.Id" />
+                                    <input type="hidden" name="estado" value="Confirmada" />
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Registra internamente que el proveedor confirmó la orden; no envía una notificación.</p>
+                                    <div class="flex justify-end">
+                                        <button type="submit" class="app-button app-button--success">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400" aria-hidden="true">
+                                                <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                                            </svg>
+                                            Marcar como confirmada por proveedor
+                                        </button>
+                                    </div>
+                                </form>
+                            }
+                            @if (User.TienePermiso("Insumos.Modificar") && o.Estado == "Confirmada")
+                            {
+                                <form method="post" asp-action="CambiarEstadoOrden" class="space-y-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@o.Id" />
+                                    <input type="hidden" name="estado" value="Despachada" />
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Registra internamente que el proveedor despachó los insumos; no despacha productos del lavadero.</p>
+                                    <div class="flex justify-end">
+                                        <button type="submit" class="app-button app-button--success">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400" aria-hidden="true">
+                                                <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                                            </svg>
+                                            Registrar despacho del proveedor
+                                        </button>
+                                    </div>
+                                </form>
+                            }
                             @if (User.TienePermiso("Insumos.Recepcionar") && (o.Estado == "Enviada" || o.Estado == "Confirmada" || o.Estado == "Despachada"))
                             {
                                 <form method="post" asp-action="RecibirOrden" class="space-y-2">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" />
-                                    @foreach (var item in o.Items) { <div><input type="hidden" name="insumoIds" value="@item.InsumoId" /><label class="text-xs">@item.NombreInsumo (pend. @(item.Cantidad - item.CantidadRecibida)) <input name="cantidades" type="number" min="0" max="@(item.Cantidad - item.CantidadRecibida)" step="0.0001" value="@(item.Cantidad - item.CantidadRecibida)" class="block w-full rounded border p-2 dark:bg-gray-700" /></label></div> }
+                                    @if (o.Estado != "Despachada") { <p id="recepcion-bloqueada-@o.Id" class="bg-yellow-100 text-yellow-800 rounded-lg p-3">Recepción bloqueada. Para registrar la recepción, primero registre el despacho del proveedor.</p> }
+                                    <fieldset disabled="@(o.Estado != "Despachada")" aria-describedby="@(o.Estado != "Despachada" ? $"recepcion-bloqueada-{o.Id}" : null)" class="space-y-2">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    @foreach (var item in o.Items) { <div><input type="hidden" name="insumoIds" value="@item.InsumoId" /><label class="block text-sm font-medium">Cantidad recibida de @item.NombreInsumo (pend. @(item.Cantidad - item.CantidadRecibida)) <span class="text-red-600">*</span><input name="cantidades" type="number" disabled="@(o.Estado != "Despachada")" required min="0" max="@((item.Cantidad - item.CantidadRecibida).ToString(System.Globalization.CultureInfo.InvariantCulture))" step="0.0001" value="@((item.Cantidad - item.CantidadRecibida).ToString(System.Globalization.CultureInfo.InvariantCulture))" class="@(o.Estado != "Despachada" ? "bg-gray-100 text-gray-500" : "bg-gray-50 text-gray-900 dark:bg-gray-700 dark:text-white") border border-gray-300 text-sm rounded-lg block w-full p-2.5" /></label><p class="text-xs text-gray-500 dark:text-gray-400">Ingrese una cantidad entre cero y la cantidad pendiente.</p></div> }
+                                    </div>
                                     @if (!string.IsNullOrWhiteSpace(o.GrupoCotizacionId)) { <label class="block"><input type="checkbox" name="cancelarConcurrentes" value="true" /> Cancelar órdenes concurrentes al completar la recepción</label> }
-                                    <button class="app-button app-button--success"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg>Registrar recepción</button>
+                                    <div class="flex justify-end"><button disabled="@(o.Estado != "Despachada")" class="app-button app-button--success disabled:opacity-50"><svg aria-hidden="true" class="w-10 h-8" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" /></svg>Registrar recepción</button></div>
+                                    </fieldset>
                                 </form>
                             }
-                            @if (User.TienePermiso("Insumos.Modificar") && o.Estado != "Recibida" && o.Estado != "Cancelada")
+                            @if (User.TienePermiso("Insumos.Modificar") && o.Estado != "Recibida" && o.Estado != "RecibidaParcial" && o.Estado != "Cancelada")
                             {
-                                <form method="post" asp-action="CambiarEstadoOrden" class="space-y-2">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><input type="hidden" name="estado" value="Cancelada" /><label>Motivo <input name="motivo" required class="block w-full rounded border p-2 dark:bg-gray-700" /></label><button class="app-button app-button--secondary"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18" /></svg>Cancelar orden</button></form>
+                                <form method="post" asp-action="CambiarEstadoOrden" class="space-y-2">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@o.Id" /><input type="hidden" name="estado" value="Cancelada" /><label class="block text-sm font-medium">Motivo <span class="text-red-600">*</span><input name="motivo" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:text-white" /></label><p class="text-xs text-gray-500 dark:text-gray-400">Indique el motivo de la cancelación.</p><div class="flex justify-end"><button class="app-button app-button--danger"><svg aria-hidden="true" class="w-10 h-8" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" /></svg>Cancelar orden</button></div></form>
                             }
                         </div>
                     </div></div>

@@ -33,9 +33,14 @@ public sealed class InsumosController(
         var filtros = Request.Query["tipos"].Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!.Trim()).ToArray();
         if (filtros.Length == 0 && !string.IsNullOrWhiteSpace(tipo)) filtros = new[] { tipo.Trim() };
         ViewBag.FiltrosTipos = filtros;
-        var preliminar = ProyectarInventarioMultiple(lista, todosTipos, new Dictionary<string, decimal?>(), search, filtros, soloBajoMinimo, page);
+        var estados = Request.Query.ContainsKey("estados")
+            ? Request.Query["estados"].Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!.Trim()).ToArray()
+            : new[] { "Activo" };
+        ViewBag.FiltrosEstados = estados;
+        var listaVisible = estados.Length == 0 ? lista : lista.Where(x => estados.Contains(x.Estado, StringComparer.OrdinalIgnoreCase)).ToList();
+        var preliminar = ProyectarInventarioMultiple(lista, todosTipos, new Dictionary<string, decimal?>(), search, filtros, soloBajoMinimo, page, listaVisible);
         var reservas = await stock.ObtenerReservasInventario(preliminar.Pagina.Select(x => x.Id));
-        var resultado = ProyectarInventarioMultiple(lista, todosTipos, reservas, search, filtros, soloBajoMinimo, page);
+        var resultado = ProyectarInventarioMultiple(lista, todosTipos, reservas, search, filtros, soloBajoMinimo, page, listaVisible);
         ViewBag.Page = resultado.Page;
         ViewBag.PageSize = 20;
         ViewBag.TotalPages = resultado.TotalPages;
@@ -52,11 +57,11 @@ public sealed class InsumosController(
             string.IsNullOrWhiteSpace(tipo) ? Array.Empty<string>() : new[] { tipo.Trim() }, soloBajoMinimo, page);
 
     private static ProyeccionInventario ProyectarInventarioMultiple(List<Insumo> todos, IEnumerable<TipoInsumo> tipos,
-        IReadOnlyDictionary<string, decimal?> reservas, string? search, IReadOnlyList<string> filtros, bool soloBajoMinimo, int page)
+        IReadOnlyDictionary<string, decimal?> reservas, string? search, IReadOnlyList<string> filtros, bool soloBajoMinimo, int page, IEnumerable<Insumo>? visibles = null)
     {
         var listaTipos = tipos.ToList();
         var identidad = new InventarioAgrupadoViewModel.IdentidadTipos(listaTipos);
-        IEnumerable<Insumo> filtrados = todos;
+        IEnumerable<Insumo> filtrados = visibles ?? todos;
         if (!string.IsNullOrWhiteSpace(search))
             filtrados = filtrados.Where(x => x.Nombre.Contains(search, StringComparison.OrdinalIgnoreCase));
         if (filtros.Count > 0)
@@ -145,13 +150,17 @@ public sealed class InsumosController(
         }
 
         ViewBag.Insumos = await insumos.ObtenerTodos();
+        var insumoIds = Request.Query["insumoId"].Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!).Distinct().ToArray();
+        var tipos = Request.Query["tipo"].Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!).Distinct().ToArray();
+        ViewBag.InsumoIds = insumoIds;
+        ViewBag.Tipos = tipos;
         ViewBag.InsumoId = insumoId;
         ViewBag.Tipo = tipo;
         ViewBag.Desde = desde;
         ViewBag.Hasta = hasta;
         sortOrder = sortOrder == "asc" ? "asc" : "desc";
         const int pageSize = 20;
-        var resultado = await stock.ObtenerKardexPaginado(insumoId, tipo, desde, hasta, page, pageSize, sortOrder, cursor);
+        var resultado = await stock.ObtenerKardexMultifiltro(insumoIds, tipos, desde, hasta, pageSize, sortOrder, cursor);
         ViewBag.Page = resultado.PaginaActual;
         ViewBag.TotalPages = resultado.TotalPaginas;
         ViewBag.SortOrder = sortOrder;
@@ -200,7 +209,7 @@ public sealed class InsumosController(
     [Permiso("Insumos.Modificar", "Insumos.Recepcionar")]
     public async Task<IActionResult> Ordenes()
     {
-        ViewBag.Proveedores = await proveedores.ObtenerTodos(false);
+        ViewBag.Proveedores = await proveedores.ObtenerTodos();
         ViewBag.Insumos = await insumos.ObtenerTodos(false);
         return View(await compras.ObtenerOrdenes());
     }
@@ -274,7 +283,7 @@ public sealed class InsumosController(
     {
         var solicitudes = await compras.ObtenerSolicitudes();
         ViewBag.GrupoId = grupoId;
-        ViewBag.Proveedores = await proveedores.ObtenerTodos(false);
+        ViewBag.Proveedores = await proveedores.ObtenerTodos();
         ViewBag.Insumos = await insumos.ObtenerTodos(false);
         ViewBag.PuedeCrear = User.TienePermiso("Insumos.Crear");
         ViewBag.Comparacion = string.IsNullOrWhiteSpace(grupoId)

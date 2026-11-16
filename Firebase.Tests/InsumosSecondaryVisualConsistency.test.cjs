@@ -3,6 +3,26 @@ const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const read = path => readFileSync(path, 'utf8');
 
+test('encabezados secundarios usan estructura e icono de ayuda de Servicios', () => {
+  const reference = read('Views/Servicio/Index.cshtml');
+  const buttonClasses = 'text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-2 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800';
+  const iconPath = 'M9.879 7.519c1.171-1.025';
+  assert.ok(reference.includes(buttonClasses)); assert.ok(reference.includes(iconPath));
+  for (const view of ['Cotizaciones', 'Proveedores', 'Ordenes', 'Kardex']) {
+    const source = read(`Views/Insumos/${view}.cshtml`);
+    assert.ok(source.includes(buttonClasses), view); assert.ok(source.includes(iconPath), view);
+    assert.match(source, /class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5"/, view);
+    assert.match(source, /p-2 flex justify-between items-center rounded-t border-b dark:border-gray-600/, view);
+    assert.match(source, /bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-visible/, view);
+  }
+  for (const view of ['Cotizaciones', 'Proveedores']) {
+    const source = read(`Views/Insumos/${view}.cshtml`);
+    assert.match(source, /data-active-classes="bg-white dark:bg-gray-900/);
+    assert.match(source, /<span[^>]*>[^<]+<\/span><svg data-accordion-icon/);
+  }
+  assert.match(read('Views/Insumos/Kardex.cshtml'), /md:flex-1/);
+});
+
 test('las vistas secundarias evitan acciones y edición inline', () => {
   for (const view of ['Cotizaciones', 'Proveedores', 'Ordenes', 'Kardex']) {
     const source = read(`Views/Insumos/${view}.cshtml`);
@@ -48,16 +68,18 @@ test('paginación de lista completa cambia filas sin POST y respeta límites', (
   const vm = require('node:vm');
   const rows = Array.from({ length: 11 }, () => ({ hidden: false }));
   const listeners = new Map();
-  function element() { return { children: [], addEventListener(name, handler) { this[name] = handler; }, setAttribute() {}, append(...nodes) { this.children.push(...nodes); } }; }
+  function element() { return { children: [], attrs: {}, addEventListener(name, handler) { this[name] = handler; }, setAttribute(name, value) { this.attrs[name] = value; }, getAttribute(name) { return this.attrs[name]; }, removeAttribute(name) { delete this.attrs[name]; }, append(...nodes) { this.children.push(...nodes); } }; }
   let nav;
   const table = { tBodies: [{ rows }], querySelectorAll() { return []; }, parentElement: { after(node) { nav = node; } } };
   const document = { addEventListener(name, fn) { listeners.set(name, fn); }, getElementById() { return null; }, querySelectorAll(selector) { return selector === '[data-finite-table]' ? [table] : []; }, createElement: element };
   vm.runInNewContext(read('wwwroot/js/insumos-secondary.js'), { document });
   const [label, controls] = nav.children;
-  const [previous, current, next] = controls.children;
-  assert.equal(label.textContent, 'Mostrando página 1 de 2'); assert.equal(rows.filter(r => !r.hidden).length, 10); assert.equal(previous.disabled, true);
-  next.click(); assert.equal(current.textContent, 2); assert.equal(rows.filter(r => !r.hidden).length, 1); assert.equal(next.disabled, true);
-  next.click(); assert.equal(current.textContent, 2); previous.click(); assert.equal(current.textContent, 1);
+  const previous = controls.children.find(x => x.getAttribute('aria-label') === 'Anterior');
+  const next = controls.children.find(x => x.getAttribute('aria-label') === 'Siguiente');
+  const active = () => controls.children.find(x => x.getAttribute('aria-current') === 'page').textContent;
+  assert.equal(label.textContent, 'Mostrando página 1 de 2'); assert.equal(active(), 1); assert.equal(rows.filter(r => !r.hidden).length, 10); assert.equal(previous.disabled, true);
+  next.click(); assert.equal(active(), 2); assert.equal(rows.filter(r => !r.hidden).length, 1); assert.equal(next.disabled, true);
+  next.click(); assert.equal(active(), 2); previous.click(); assert.equal(active(), 1);
 });
 test('listas finitas ofrecen ordenamiento funcional accesible', () => {
   for (const view of ['Proveedores', 'Cotizaciones', 'Ordenes']) assert.match(read(`Views/Insumos/${view}.cshtml`), /data-sort-column/, view);
@@ -86,15 +108,15 @@ test('selector rechaza cantidades inválidas y preserva selección al quitar', (
   const option = node(); option.dataset = { id: 'i1', name: 'Jabón', unit: 'l' }; option.closest = () => option;
   dropdown.querySelectorAll = () => [option];
   const ids = { 'quotation-picker': picker, 'quotation-search': search, 'quotation-dropdown': dropdown, 'quotation-selected': list, 'quotation-error': error, 'quotation-add': add };
-  const document = { addEventListener() {}, getElementById(id) { return ids[id] || null; }, querySelectorAll() { return []; }, createElement: node };
+  const document = { addEventListener() {}, getElementById(id) { return ids[id] || null; }, querySelector() { return null; }, querySelectorAll() { return []; }, createElement: node, createElementNS: node };
   vm.runInNewContext(read('wwwroot/js/insumos-secondary.js'), { document });
   let prevented = false; const submit = () => { prevented = false; form.submit({ preventDefault() { prevented = true; } }); return prevented; };
   assert.equal(submit(), true); assert.equal(list.children.length, 0);
   dropdown.click({ target: option }); add.click(); assert.equal(list.children.length, 1);
-  let row = list.children[0]; assert.equal(row.children[2].name, 'items[0].InsumoId'); assert.equal(row.children[2].value, 'i1'); assert.equal(row.children[3].name, 'items[0].Cantidad');
-  row.children[3].value = '0'; row.children[3].input(); assert.equal(submit(), true); assert.equal(list.children.length, 1);
-  row.children[3].value = '2.5'; row.children[3].input(); assert.equal(submit(), false);
-  row.children[4].click(); assert.equal(list.children.length, 0); assert.equal(submit(), true);
+  let row = list.children[0]; assert.equal(row.children[1].name, 'items[0].InsumoId'); assert.equal(row.children[1].value, 'i1'); const quantity = row.children[2].children[0]; assert.equal(quantity.name, 'items[0].Cantidad');
+  quantity.value = '0'; quantity.input(); assert.equal(submit(), true); assert.equal(list.children.length, 1);
+  quantity.value = '2.5'; quantity.input(); assert.equal(submit(), false);
+  row.children[3].click(); assert.equal(list.children.length, 0); assert.equal(submit(), true);
 });
 test('Kardex identifica búsqueda local de movimientos de la página', () => {
   const source = read('Views/Insumos/Kardex.cshtml');
@@ -113,9 +135,12 @@ test('buscar movimientos filtra solo filas cargadas y restaurar búsqueda las mu
 });
 test('Kardex conserva navegación por cursores y filtros', () => {
   const source = read('Views/Insumos/Kardex.cshtml');
-  for (const name of ['insumoId', 'tipo', 'desde', 'hasta', 'sortOrder']) assert.match(source, new RegExp(`asp-route-${name}=`));
-  assert.match(source, /asp-route-cursor="@ViewBag.PrevCursor"/);
-  assert.match(source, /asp-route-cursor="@ViewBag.NextCursor"/);
+  for (const name of ['insumoId', 'tipo', 'desde', 'hasta', 'sortOrder', 'cursor']) assert.match(source, new RegExp(`"${name}="`));
+  assert.match(source, /AddRange\(selectedInsumos\.Select\(x => "insumoId=" \+ Uri\.EscapeDataString\(x\)\)\)/);
+  assert.match(source, /AddRange\(selectedTipos\.Select\(x => "tipo=" \+ Uri\.EscapeDataString\(x\)\)\)/);
+  assert.match(source, /"cursor=" \+ Uri\.EscapeDataString\(cursor\)/);
+  assert.match(source, /href="@PageUrl\(\(string\)ViewBag.PrevCursor\)"/);
+  assert.match(source, /href="@PageUrl\(\(string\)ViewBag.NextCursor\)"/);
   assert.doesNotMatch(source, /asp-route-page=|ViewBag.TotalPages/);
   assert.match(source, /Aplicar Filtros/);
   assert.match(source, /Limpiar filtros/);

@@ -563,25 +563,45 @@ public sealed class ProveedorService(FirestoreDb firestore, IInterceptorAuditori
     public async Task<ResultadoOperacion> CambiarEstado(string id, string estado, string userId = "", string userEmail = "") =>
         (await CambiarEstadoConAuditoria(id, estado, userId, userEmail)).Resultado;
 
+    private static bool SolicitudActiva(string estado) => estado is "Pendiente" or "PendienteAprobacion" or "Respondida";
+    private static bool OrdenActiva(string estado) => estado is "PendienteAprobacion" or "RevisionManual" or "Enviada" or "Confirmada" or "Despachada";
+
     public async Task<List<Proveedor>> ObtenerTodos(bool incluirInactivos = true)
     {
         var snapshot = await firestore.Collection("proveedores").GetSnapshotAsync();
-        return snapshot.Documents.Select(d => d.ConvertTo<Proveedor>()).OrderBy(x => x.RazonSocial).ToList()
-            .Where(x => incluirInactivos || x.Estado == "Activo").ToList();
+        var solicitudes = await firestore.Collection("solicitudesCotizacion").GetSnapshotAsync();
+        var ordenes = await firestore.Collection("ordenesCompra").GetSnapshotAsync();
+        var bloqueados = solicitudes.Documents.Select(d => d.ConvertTo<SolicitudCotizacion>())
+            .Where(s => SolicitudActiva(s.Estado)).Select(s => s.ProveedorId)
+            .Concat(ordenes.Documents.Select(d => d.ConvertTo<OrdenCompra>()).Where(o => OrdenActiva(o.Estado)).Select(o => o.ProveedorId))
+            .ToHashSet(StringComparer.Ordinal);
+        var lista = snapshot.Documents.Select(d => d.ConvertTo<Proveedor>()).Where(x => incluirInactivos || x.Estado == "Activo").OrderBy(x => x.RazonSocial).ToList();
+        foreach (var proveedor in lista) proveedor.EmailOrdenesBloqueado = bloqueados.Contains(proveedor.Id);
+        return lista;
     }
 
     public async Task<Proveedor?> Obtener(string id)
     {
         var snapshot = await firestore.Collection("proveedores").Document(id).GetSnapshotAsync();
-        return snapshot.Exists ? snapshot.ConvertTo<Proveedor>() : null;
+        if (!snapshot.Exists) return null;
+        var proveedor = snapshot.ConvertTo<Proveedor>();
+        var solicitudes = await firestore.Collection("solicitudesCotizacion").WhereEqualTo("ProveedorId", id).GetSnapshotAsync();
+        var ordenes = await firestore.Collection("ordenesCompra").WhereEqualTo("ProveedorId", id).GetSnapshotAsync();
+        proveedor.EmailOrdenesBloqueado = solicitudes.Documents.Any(d => SolicitudActiva(d.ConvertTo<SolicitudCotizacion>().Estado)) ||
+            ordenes.Documents.Any(d => OrdenActiva(d.ConvertTo<OrdenCompra>().Estado));
+        return proveedor;
     }
 
     public async Task<ResultadoAuditoriaProveedor> GuardarConAuditoria(Proveedor proveedor, bool crear, string userId = "", string userEmail = "")
     {
         proveedor.IdentificacionTributaria = (proveedor.IdentificacionTributaria ?? string.Empty).Trim();
         proveedor.RazonSocial = (proveedor.RazonSocial ?? string.Empty).Trim();
-        proveedor.Contacto = proveedor.Contacto ?? string.Empty;
-        proveedor.EmailOrdenes = proveedor.EmailOrdenes ?? string.Empty;
+        proveedor.Contacto = (proveedor.Contacto ?? string.Empty).Trim();
+        proveedor.EmailOrdenes = (proveedor.EmailOrdenes ?? string.Empty).Trim();
+        if (!System.Text.RegularExpressions.Regex.IsMatch(proveedor.Contacto, @"^[0-9]{10}$"))
+            return new ResultadoAuditoriaProveedor(ResultadoOperacion.CrearError("El teléfono debe contener exactamente 10 dígitos."));
+        if (!System.Text.RegularExpressions.Regex.IsMatch(proveedor.EmailOrdenes, @"^[^\s@]+@[^\s@]+\.[^\s@]+$"))
+            return new ResultadoAuditoriaProveedor(ResultadoOperacion.CrearError("Ingrese un correo electrónico válido"));
 
         if (!crear && string.IsNullOrWhiteSpace(proveedor.Id))
             return new ResultadoAuditoriaProveedor(ResultadoOperacion.CrearError("El proveedor no existe."));
@@ -630,6 +650,14 @@ public sealed class ProveedorService(FirestoreDb firestore, IInterceptorAuditori
                     return new ResultadoAuditoriaProveedor(ResultadoOperacion.CrearError("El proveedor no existe."));
 
                 var actual = snapshot.ConvertTo<Proveedor>();
+                if (!string.Equals(actual.EmailOrdenes, proveedor.EmailOrdenes, StringComparison.Ordinal))
+                {
+                    var solicitudes = await transaction.GetSnapshotAsync(firestore.Collection("solicitudesCotizacion").WhereEqualTo("ProveedorId", proveedor.Id));
+                    var ordenes = await transaction.GetSnapshotAsync(firestore.Collection("ordenesCompra").WhereEqualTo("ProveedorId", proveedor.Id));
+                    if (solicitudes.Documents.Any(d => SolicitudActiva(d.ConvertTo<SolicitudCotizacion>().Estado)) ||
+                        ordenes.Documents.Any(d => OrdenActiva(d.ConvertTo<OrdenCompra>().Estado)))
+                        return new ResultadoAuditoriaProveedor(ResultadoOperacion.CrearError("No se puede modificar el email de órdenes mientras existan cotizaciones u órdenes activas."));
+                }
                 if (!string.Equals(actual.IdentificacionTributaria, proveedor.IdentificacionTributaria, StringComparison.OrdinalIgnoreCase))
                     return new ResultadoAuditoriaProveedor(ResultadoOperacion.CrearError("La identificación fiscal no se puede modificar."));
 
@@ -1293,6 +1321,52 @@ public sealed class StockService(
         return KardexCursor.Crear(direccion, documento.GetValue<Timestamp>("Fecha").ToDateTime(), documento.Id);
     }
 
+    // Each partition has at most 25 disjunctions; the bounded page merge avoids a collection scan.
+    public async Task<ResultadoKardexPaginado> ObtenerKardexMultifiltro(
+        IEnumerable<string> insumos, IEnumerable<string> tipos, DateTime? desde = null,
+        DateTime? hasta = null, int pageSize = 20, string? sortOrder = "desc", string? cursor = null)
+    {
+        var ids = insumos.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToArray();
+        var kinds = tipos.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToArray();
+        KardexCursor? decoded = null;
+        if (!string.IsNullOrWhiteSpace(cursor) && !KardexCursor.TratarDeDecodificar(cursor, out decoded, out var error))
+            throw new ArgumentException("Cursor no válido: " + error, nameof(cursor));
+        pageSize = pageSize > 0 ? pageSize : 20;
+        bool asc = string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase);
+        bool previous = decoded?.Direccion == "prev";
+        var idChunks = ids.Length == 0 ? new[] { Array.Empty<string>() } : ids.Chunk(5).ToArray();
+        var typeChunks = kinds.Length == 0 ? new[] { Array.Empty<string>() } : kinds.Chunk(5).ToArray();
+        var documents = new List<DocumentSnapshot>();
+        foreach (var idChunk in idChunks)
+        foreach (var typeChunk in typeChunks)
+        {
+            Query q = ConstruirQueryMovimientos(null, null, desde, hasta);
+            if (idChunk.Length == 1) q = q.WhereEqualTo("InsumoId", idChunk[0]);
+            else if (idChunk.Length > 1) q = q.WhereIn("InsumoId", idChunk);
+            if (typeChunk.Length == 1) q = q.WhereEqualTo("Tipo", typeChunk[0]);
+            else if (typeChunk.Length > 1) q = q.WhereIn("Tipo", typeChunk);
+            q = asc ? q.OrderBy("Fecha").OrderBy(FieldPath.DocumentId) : q.OrderByDescending("Fecha").OrderByDescending(FieldPath.DocumentId);
+            if (decoded != null) q = previous ? q.EndBefore(decoded.FechaUtc, decoded.DocumentId) : q.StartAfter(decoded.FechaUtc, decoded.DocumentId);
+            q = previous ? q.LimitToLast(pageSize + 1) : q.Limit(pageSize + 1);
+            documents.AddRange((await q.GetSnapshotAsync()).Documents);
+        }
+        var ordered = asc
+            ? documents.OrderBy(d => d.GetValue<Timestamp>("Fecha")).ThenBy(d => d.Id, StringComparer.Ordinal).ToList()
+            : documents.OrderByDescending(d => d.GetValue<Timestamp>("Fecha")).ThenByDescending(d => d.Id, StringComparer.Ordinal).ToList();
+        bool extra = ordered.Count > pageSize;
+        var selected = previous ? ordered.TakeLast(pageSize).ToList() : ordered.Take(pageSize).ToList();
+        bool hasPrevious = previous ? extra : decoded != null;
+        bool hasNext = previous ? decoded != null : extra;
+        return new ResultadoKardexPaginado
+        {
+            Movimientos = selected.Select(MapDocumentToMovimiento).ToList(),
+            TienePaginaAnterior = hasPrevious, TienePaginaSiguiente = hasNext,
+            CursorAnterior = hasPrevious && selected.Count > 0 ? CrearCursorKardex("prev", selected.First()) : null,
+            CursorSiguiente = hasNext && selected.Count > 0 ? CrearCursorKardex("next", selected.Last()) : null,
+            PaginaActual = 1, TotalPaginas = 0, TotalRegistros = 0
+        };
+    }
+
     public async Task<ResultadoKardexPaginado> ObtenerKardexPaginado(
         string? insumoId = null,
         string? tipo = null,
@@ -1581,6 +1655,9 @@ public sealed class StockService(
                 .Where(x => vigencia >= 0 && (ahora - x.Fecha).TotalDays <= vigencia)
                 .OrderByDescending(x => x.Fecha).ThenBy(x => x.Orden.Id, StringComparer.Ordinal)
                 .ThenBy(x => x.Orden.ProveedorId, StringComparer.Ordinal).FirstOrDefault();
+            // Serializa la creación de actividad contra cambios de correo del proveedor.
+            foreach (var id in proveedoresActivos.OrderBy(id => id, StringComparer.Ordinal))
+                transaction.Update(firestore.Collection("proveedores").Document(id), "Estado", "Activo");
             // Serializa evaluaciones del mismo insumo sin modificar su saldo.
             transaction.Update(insumoRef, "StockActual", DecimalFirestore.ToFirestore(insumo.StockActual));
             if (antecedente != null)
@@ -1958,7 +2035,7 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
             var estadosValidos = new[] { "Enviada", "Despachada", "Confirmada", "Recibida", "Cancelada" };
             if (!estadosValidos.Contains(estado, StringComparer.Ordinal))
                 return new ResultadoAuditoriaOrden(ResultadoOperacion.CrearError("El estado de la orden no es válido."));
-            if (orden.Estado is "Recibida" or "Cancelada")
+            if (orden.Estado is "Recibida" or "RecibidaParcial" or "Cancelada")
                 return new ResultadoAuditoriaOrden(ResultadoOperacion.CrearError("La orden ya no admite cambios."));
             if (orden.Estado == estado)
             {
@@ -2192,6 +2269,8 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
             }
             foreach (var item in items.OrderBy(i => i.InsumoId, StringComparer.Ordinal))
                 transaction.Update(firestore.Collection("insumos").Document(item.InsumoId), "Estado", "Activo");
+            foreach (var id in proveedorIds.OrderBy(id => id, StringComparer.Ordinal))
+                transaction.Update(firestore.Collection("proveedores").Document(id), "Estado", "Activo");
             foreach (var id in proveedorIds)
             {
                 var reference = firestore.Collection("solicitudesCotizacion").Document();
@@ -2348,7 +2427,7 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
             if (order.Estado == "Cancelada") throw new InvalidOperationException("La orden está cancelada.");
             if (order.Estado != "Enviada" && order.Estado != "Confirmada" && order.Estado != "Despachada")
                 throw new InvalidOperationException("La orden no está disponible para recepción.");
-            if (cantidades != null && (cantidades.Count == 0 || cantidades.Any(x => x.Value <= 0 || !order.Items.Any(i => i.InsumoId == x.Key))))
+            if (cantidades != null && (cantidades.Count == 0 || !cantidades.Any(x => x.Value > 0) || cantidades.Any(x => x.Value < 0 || !order.Items.Any(i => i.InsumoId == x.Key))))
                 throw new InvalidOperationException("Las cantidades de recepción deben ser válidas y mayores a cero.");
             if (cantidades != null)
             {
@@ -2407,7 +2486,7 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
                 {
                     var rivalOrder = rival.ConvertTo<OrdenCompra>();
                     var estado = rivalOrder.Estado;
-                    if (estado != "Recibida" && estado != "Cancelada" && estado != "RevisionManual")
+                    if (estado != "Recibida" && estado != "RecibidaParcial" && estado != "Cancelada" && estado != "RevisionManual")
                     {
                         var rivalId = string.IsNullOrEmpty(rivalOrder.Id) ? rival.Id : rivalOrder.Id;
                         var antesRival = AuditCampos.CapturarOrdenCompra(rivalOrder);
@@ -2436,7 +2515,7 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
                         }
                     }
                 }
-            order.Estado = parcial ? order.Estado : "Recibida";
+            order.Estado = parcial ? "RecibidaParcial" : "Recibida";
             var despues = AuditCampos.CapturarOrdenCompra(order);
             if (HayCambiosAuditoria(antes, despues))
             {

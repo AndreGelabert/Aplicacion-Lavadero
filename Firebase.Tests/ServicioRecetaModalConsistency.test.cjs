@@ -8,13 +8,14 @@ const index = fs.readFileSync('Views/Servicio/Index.cshtml', 'utf8');
 const source = fs.readFileSync('wwwroot/js/servicio.js', 'utf8');
 
 test('service fields reflow without wider spans than the active grid', () => {
-    assert.match(view, /class="grid gap-4 m-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5"/);
+    assert.match(view, /class="grid gap-4 m-4 grid-cols-1 lg:grid-cols-3"/);
     for (const label of ['Nombre', 'Precio', 'TipoVehiculo', 'TiempoEstimado']) {
         assert.match(view, new RegExp(`<div class="min-w-0">\\s*<label for="${label}"`));
     }
-    assert.match(view, /class="min-w-0 sm:col-span-2"[^>]*>\s*<label for="Tipo"/);
-    assert.match(view, /class="min-w-0 sm:col-span-2 lg:col-span-3"[^>]*>\s*<label for="Descripcion"/);
-    assert.match(view, /id="servicio-receta-container" class="min-w-0 sm:col-span-2 lg:col-span-5"/);
+    // S5 restores equal main thirds, with both type fields sharing the last third.
+    assert.match(view, /class="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">\s*<div class="min-w-0">\s*<label for="Tipo"/);
+    assert.match(view, /class="min-w-0"[^>]*>\s*<label for="Descripcion"/);
+    assert.match(view, /id="servicio-receta-container" class="min-w-0 /);
     assert.match(view, /class="flex flex-wrap items-center gap-2"/);
     assert.match(view, /class="flex flex-wrap justify-end m-4 gap-2"/);
     assert.doesNotMatch(view, /overflow-y: hidden/);

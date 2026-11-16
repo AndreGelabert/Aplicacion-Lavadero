@@ -29,6 +29,7 @@ public sealed class Proveedor
     [FirestoreProperty] public string Contacto { get; set; } = string.Empty;
     [FirestoreProperty, EmailAddress] public string EmailOrdenes { get; set; } = string.Empty;
     [FirestoreProperty] public string Estado { get; set; } = "Activo";
+    public bool EmailOrdenesBloqueado { get; set; }
 }
 
 public enum TipoMovimientoStock

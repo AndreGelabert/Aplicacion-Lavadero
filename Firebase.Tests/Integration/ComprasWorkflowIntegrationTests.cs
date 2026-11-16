@@ -232,7 +232,7 @@ public sealed class ComprasWorkflowIntegrationTests
             var ids = new List<string>();
             for (var j = 0; j < 3; j++)
             {
-                var proveedor = new Proveedor { RazonSocial = $"Proveedor{i}-{j}", IdentificacionTributaria = $"id{i}-{j}", EmailOrdenes = "p@example.invalid" };
+                var proveedor = new Proveedor { RazonSocial = $"Proveedor{i}-{j}", IdentificacionTributaria = $"id{i}-{j}", Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
                 Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
                 ids.Add(proveedor.Id);
             }
@@ -271,7 +271,7 @@ public sealed class ComprasWorkflowIntegrationTests
         await db.Collection("insumos").Document("i").SetAsync(new Insumo { Id = "i", Nombre = "Insumo" });
         for (var i = 0; i < 5; i++)
         {
-            var proveedor = new Proveedor { RazonSocial = "Proveedor" + i, IdentificacionTributaria = "id" + i, EmailOrdenes = "p@example.invalid" };
+            var proveedor = new Proveedor { RazonSocial = "Proveedor" + i, IdentificacionTributaria = "id" + i, Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
             Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
             var solicitud = await Emitir(compras, new SolicitudCotizacion { ProveedorId = proveedor.Id, Items = new() { new OrdenCompraItem { InsumoId = "i", Cantidad = 1 } } });
             await Responder(compras, solicitud);
@@ -310,7 +310,7 @@ public sealed class ComprasWorkflowIntegrationTests
         await db.Collection("insumos").Document("i").SetAsync(new Insumo { Id = "i", Nombre = "Insumo" });
         for (var i = 0; i < 5; i++)
         {
-            var proveedor = new Proveedor { RazonSocial = "Proveedor" + i, IdentificacionTributaria = "id" + i, EmailOrdenes = "p@example.invalid" };
+            var proveedor = new Proveedor { RazonSocial = "Proveedor" + i, IdentificacionTributaria = "id" + i, Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
             Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
             var solicitud = await Emitir(compras, new SolicitudCotizacion { ProveedorId = proveedor.Id, Items = new() { new OrdenCompraItem { InsumoId = "i", Cantidad = 1 } } });
             await Responder(compras, solicitud);
@@ -336,7 +336,7 @@ public sealed class ComprasWorkflowIntegrationTests
         var db = new FirestoreDbBuilder { ProjectId = "demo-compras-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var proveedores = new ProveedorService(db);
         var compras = new ComprasService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", EmailOrdenes = "p@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
         Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
         await db.Collection("insumos").Document("i").SetAsync(new Insumo { Id = "i", Nombre = "Insumo" });
         var solicitud = await Emitir(compras, new SolicitudCotizacion { ProveedorId = proveedor.Id, Items = new() { new OrdenCompraItem { InsumoId = "i", Cantidad = 1 } } });
@@ -359,14 +359,14 @@ public sealed class ComprasWorkflowIntegrationTests
         var proveedores = new ProveedorService(db);
         for (var i = 0; i < 30; i++)
         {
-            var proveedor = new Proveedor { RazonSocial = "Proveedor" + i, IdentificacionTributaria = "id" + i };
+            var proveedor = new Proveedor { RazonSocial = "Proveedor" + i, IdentificacionTributaria = "id" + i, Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
             Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
-            proveedor.Contacto = "Editado";
+            proveedor.Contacto = "0987654321";
             var resultados = await Task.WhenAll(proveedores.Guardar(proveedor, false), proveedores.CambiarEstado(proveedor.Id, "Inactivo"));
             Assert.All(resultados, r => Assert.True(r.EsExitoso));
             var actual = (await proveedores.Obtener(proveedor.Id))!;
             Assert.Equal("Inactivo", actual.Estado);
-            Assert.Equal("Editado", actual.Contacto);
+            Assert.Equal("0987654321", actual.Contacto);
         }
     }
 
@@ -376,7 +376,7 @@ public sealed class ComprasWorkflowIntegrationTests
         var db = new FirestoreDbBuilder { ProjectId = "demo-compras-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var proveedores = new ProveedorService(db);
         var compras = new ComprasService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
         Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
         await db.Collection("insumos").Document("i").SetAsync(new Insumo { Id = "i", Nombre = "Insumo" });
         var solicitud = await Emitir(compras, new SolicitudCotizacion { ProveedorId = proveedor.Id, Items = new() { new OrdenCompraItem { InsumoId = "i", Cantidad = 1 } } });

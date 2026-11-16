@@ -4,6 +4,46 @@
     const title = document.getElementById('form-title');
     const accordion = document.getElementById('accordion-flush-body-1');
     const accordionButton = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
+    const providerBox = inventoryForm?.querySelector('#insumo-proveedores');
+    const providerSearch = inventoryForm?.querySelector('#insumo-proveedor-search');
+    const providerDropdown = inventoryForm?.querySelector('#insumo-proveedor-dropdown');
+    const providerList = inventoryForm?.querySelector('#insumo-proveedor-selected');
+    const providerInputs = inventoryForm?.querySelector('#hiddenProveedoresIds');
+    const providerOptions = providerDropdown ? [...providerDropdown.querySelectorAll('[data-provider-option]')] : [];
+    let selectedProvider = null;
+    function closeProviders() { if (!providerDropdown) return; providerDropdown.classList.add('hidden'); providerSearch.setAttribute('aria-expanded', 'false'); }
+    function filterProviders() {
+        if (!providerDropdown || providerSearch.disabled) return;
+        selectedProvider = null;
+        const term = providerSearch.value.trim().toLocaleLowerCase('es');
+        providerOptions.forEach(option => { option.classList.toggle('hidden', !option.dataset.name.toLocaleLowerCase('es').includes(term) || [...providerInputs.children].some(input => input.value === option.dataset.id)); });
+        providerDropdown.classList.remove('hidden'); providerSearch.setAttribute('aria-expanded', 'true');
+    }
+    function addProvider(id, name) {
+        if (!providerInputs || [...providerInputs.children].some(input => input.value === id)) return;
+        const input = document.createElement('input'); input.type = 'hidden'; input.name = 'ProveedoresIds'; input.value = id;
+        const row = document.createElement('div'); row.className = 'flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600';
+        const label = document.createElement('span'); label.className = 'flex-1 dark:text-white'; label.textContent = name;
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'w-8 h-8 flex items-center justify-center text-red-600 hover:text-red-800'; remove.setAttribute('aria-label', 'Quitar proveedor ' + name);
+        remove.innerHTML = '<svg aria-hidden="true" fill="currentColor" class="w-5 h-5" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd"/></svg>';
+        remove.addEventListener('click', () => { if (remove.disabled) return; row.remove(); input.remove(); providerSearch.focus(); });
+        row.append(label, remove); providerList.append(row); providerInputs.append(input);
+    }
+    providerSearch?.addEventListener('focus', filterProviders);
+    providerSearch?.addEventListener('input', filterProviders);
+    providerOptions.forEach(option => option.addEventListener('click', () => { if (option.disabled) return; selectedProvider = option; providerSearch.value = option.dataset.name; closeProviders(); }));
+    inventoryForm?.querySelector('[data-add-provider]')?.addEventListener('click', e => {
+        if (e.currentTarget.disabled || !selectedProvider || providerSearch.disabled) return;
+        addProvider(selectedProvider.dataset.id, selectedProvider.dataset.name); selectedProvider = null; providerSearch.value = ''; closeProviders(); providerSearch.focus();
+    });
+    if (providerBox) {
+        document.addEventListener('click', e => { if (!providerBox.contains(e.target)) closeProviders(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && !providerDropdown.classList.contains('hidden')) { e.preventDefault(); closeProviders(); providerSearch.focus(); } });
+    }
+    document.querySelector('[data-clear-insumos-filters]')?.addEventListener('click', () => {
+        document.querySelectorAll('#insumosFiltros input[type="checkbox"]').forEach(input => input.checked = input.name === 'estados' && input.value === 'Activo');
+        const search = document.getElementById('insumos-search'); if (search) search.value = '';
+    });
     function resetInventory() {
         if (!inventoryForm) return;
         inventoryForm.reset();
@@ -15,7 +55,9 @@
         const hiddenUnit = inventoryForm.querySelector('input[name="UnidadMedida"]');
         type.disabled = unit.disabled = false; hiddenType.disabled = hiddenUnit.disabled = true;
         inventoryForm.querySelectorAll('[data-open-tipos], [data-delete-tipo]').forEach(b => b.disabled = false);
-        inventoryForm.querySelectorAll('[data-missing-provider]').forEach(el => el.remove());
+        providerList?.replaceChildren(); providerInputs?.replaceChildren(); selectedProvider = null;
+        if (providerSearch) { providerSearch.value = ''; closeProviders(); }
+        const resetLabel = inventoryForm.querySelector('[data-reset-label]'); if (resetLabel) resetLabel.textContent = 'Limpiar campos';
         inventoryForm.querySelector('[type="submit"]').disabled = inventoryForm.dataset.canCreate !== 'true';
         title.textContent = 'Registrando un Insumo';
     }
@@ -36,12 +78,11 @@
         hiddenType.value = record.TipoId || ''; hiddenUnit.value = record.UnidadMedida || '';
         type.disabled = unit.disabled = true; hiddenType.disabled = hiddenUnit.disabled = false;
         inventoryForm.querySelectorAll('[data-open-tipos], [data-delete-tipo]').forEach(b => b.disabled = true);
-        const providers = inventoryForm.querySelector('#insumo-proveedores');
         for (const id of record.ProveedoresIds || []) {
-            let checkbox = [...providers.querySelectorAll('input')].find(x => x.value === id);
-            if (!checkbox) { const label = document.createElement('label'); label.dataset.missingProvider = 'true'; checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'ProveedoresIds'; checkbox.value = id; label.append(checkbox, document.createTextNode(' Proveedor no disponible (' + id + ')')); providers.append(label); }
-            checkbox.checked = true;
+            const option = providerOptions.find(item => item.dataset.id === id);
+            addProvider(id, option?.dataset.name || 'Proveedor no disponible (' + id + ')');
         }
+        const resetLabel = inventoryForm.querySelector('[data-reset-label]'); if (resetLabel) resetLabel.textContent = 'Cancelar';
         inventoryForm.querySelector('[type="submit"]').disabled = false;
         title.textContent = 'Editando un Insumo';
         if (accordion.classList.contains('hidden')) accordionButton.click();
@@ -49,8 +90,21 @@
     }));
     let dialogTrigger = null;
     function openDialog(id, trigger) { dialogTrigger = trigger; const modal = document.getElementById(id); modal.classList.remove('hidden'); modal.querySelector('input:not([type="hidden"]), button')?.focus(); }
-    document.querySelectorAll('[data-ajustar-insumo]').forEach(button => button.addEventListener('click', () => { const modal = document.getElementById('insumoAjusteModal'); modal.querySelector('form').reset(); modal.querySelector('[name="insumoId"]').value = button.dataset.id; openDialog('insumoAjusteModal', button); }));
-    document.querySelectorAll('[data-estado-insumo]').forEach(button => button.addEventListener('click', () => { const modal = document.getElementById('insumoConfirmModal'), deactivate = button.dataset.estado === 'Inactivo'; modal.querySelector('[name="id"]').value = button.dataset.id; modal.querySelector('[name="estado"]').value = button.dataset.estado; document.getElementById('insumoConfirmTitle').textContent = deactivate ? 'Desactivar Insumo' : 'Reactivar Insumo'; document.getElementById('insumoConfirmMessage').textContent = `¿Confirma ${deactivate ? 'desactivar' : 'reactivar'} el insumo ${button.dataset.nombre}?`; document.getElementById('insumoConfirmSubmit').textContent = deactivate ? 'Desactivar' : 'Reactivar'; openDialog('insumoConfirmModal', button); }));
+    document.querySelectorAll('[data-ajustar-insumo]').forEach(button => button.addEventListener('click', () => { const modal = document.getElementById('insumoAjusteModal'); modal.querySelector('form').reset(); modal.querySelector('[name="insumoId"]').value = button.dataset.id; modal.querySelector('[data-ajuste-unidad]').textContent = `Ingrese una cantidad mayor que cero en ${window.etiquetaUnidadInsumo(button.dataset.unidadAjuste)}.`; openDialog('insumoAjusteModal', button); }));
+    document.querySelectorAll('[data-estado-insumo]').forEach(button => button.addEventListener('click', () => {
+        const modal = document.getElementById('insumoConfirmModal'), deactivate = button.dataset.estado === 'Inactivo';
+        modal.querySelector('[name="id"]').value = button.dataset.id; modal.querySelector('[name="estado"]').value = button.dataset.estado;
+        document.getElementById('insumoConfirmTitle').textContent = deactivate ? 'Desactivar Insumo' : 'Reactivar Insumo';
+        const name = document.createElement('strong'); name.textContent = button.dataset.nombre;
+        document.getElementById('insumoConfirmMessage').replaceChildren(`¿Confirma ${deactivate ? 'desactivar' : 'reactivar'} el insumo `, name, '?');
+        const submit = document.getElementById('insumoConfirmSubmit'); submit.textContent = deactivate ? 'Desactivar' : 'Reactivar';
+        submit.className = deactivate ? 'app-button app-button--danger' : 'app-button app-button--success';
+        const wrapper = document.getElementById('insumoConfirmIconWrapper'), icon = document.getElementById('insumoConfirmIcon');
+        wrapper.className = `w-12 h-12 rounded-full ${deactivate ? 'bg-red-100 dark:bg-red-900' : 'bg-green-100 dark:bg-green-900'} p-2 flex items-center justify-center mx-auto mb-3.5`;
+        icon.className.baseVal = `w-8 h-8 ${deactivate ? 'text-red-600 dark:text-red-400' : 'text-green-500 dark:text-green-400'}`;
+        icon.innerHTML = deactivate ? '<path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd"/>' : '<path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd"/>';
+        openDialog('insumoConfirmModal', button);
+    }));
     document.querySelectorAll('[data-close-dialog]').forEach(button => button.addEventListener('click', () => { button.closest('[role="dialog"]').classList.add('hidden'); dialogTrigger?.focus(); }));
     document.querySelectorAll('[data-sort-insumos]').forEach(button => button.addEventListener('click', () => {
         const table = button.closest('table'), body = table.tBodies[0];
@@ -129,11 +183,25 @@
             else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
         }
     });
-    function resetForm() { form.reset(); form.elements.crear.value = 'true'; form.elements.Id.value = ''; }
+    function updateSummaryUnits(selected = form.elements.UnidadResumen.value) {
+        const unit = form.elements.UnidadResumen;
+        window.actualizarUnidadesInsumo({
+            selectedOptions: [{ dataset: { categoria: form.elements.Categoria.value } }],
+            form: { querySelector: () => unit }
+        });
+        unit.value = selected;
+    }
+    form.elements.Categoria.addEventListener('change', () => updateSummaryUnits());
+    function resetForm() { form.reset(); form.elements.crear.value = 'true'; form.elements.Id.value = ''; updateSummaryUnits(); }
+    updateSummaryUnits();
     typesModal.querySelector('[data-reset-tipo]').addEventListener('click', resetForm);
     function button(label, handler) {
-        const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
-        b.className = 'app-button app-button--secondary'; b.addEventListener('click', handler); return b;
+        const b = document.createElement('button'); b.type = 'button'; b.title = label; b.setAttribute('aria-label', label);
+        const edit = label === 'Editar', activate = label === 'Reactivar';
+        b.className = `p-1.5 text-white ${edit ? 'bg-blue-600 hover:bg-blue-700' : activate ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} rounded-lg transition-colors`;
+        const path = edit ? 'm16.862 4.487 1.687-1.687a2.25 2.25 0 0 1 3.182 3.182L10.5 17.213l-4.5 1.5 1.5-4.5L16.862 4.487z' : activate ? 'M4.5 12.75l6 6 9-13.5' : label === 'Eliminar' ? 'M14.74 9l-.346 9m-4.788 0L9.26 9M4.772 5.79l1.388 13.883a2.25 2.25 0 002.244 2.077h7.192a2.25 2.25 0 002.244-2.077L19.228 5.79M3.75 5.955a48.11 48.11 0 0116.5 0M9 5.4V4.5a3 3 0 016 0v.9' : 'M6 18L18 6M6 6l12 12';
+        b.innerHTML = `<svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="${path}" /></svg>`;
+        b.addEventListener('click', handler); return b;
     }
     async function refresh(selectedId) {
         try {
@@ -160,9 +228,7 @@
                     actions.append(button('Editar', () => {
                         form.elements.crear.value = 'false'; form.elements.Id.value = type.id;
                         form.elements.Nombre.value = type.nombre; form.elements.Categoria.value = type.categoria;
-                        const unit = form.elements.UnidadResumen;
-                        if (![...unit.options].some(o => o.value === type.unidadResumen)) unit.add(new Option(window.etiquetaUnidadInsumo(type.unidadResumen), type.unidadResumen));
-                        unit.value = type.unidadResumen; form.elements.Nombre.focus();
+                        updateSummaryUnits(type.unidadResumen); form.elements.Nombre.focus();
                     }));
                     actions.append(button(type.estado === 'Activo' ? 'Desactivar' : 'Reactivar', () => mutate(typesModal.dataset.stateUrl, { id: type.id, estado: type.estado === 'Activo' ? 'Inactivo' : 'Activo' })));
                     actions.append(button('Eliminar', () => { if (window.confirm('¿Eliminar este tipo de insumo?')) mutate(typesModal.dataset.deleteUrl, { id: type.id }); }));

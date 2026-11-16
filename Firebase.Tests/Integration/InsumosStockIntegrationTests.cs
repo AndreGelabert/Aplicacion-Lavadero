@@ -361,7 +361,7 @@ public sealed class InsumosStockIntegrationTests
         var b = new Insumo { Nombre = "B", Tipo = "Quimico" };
         Assert.True((await insumos.Guardar(a, true)).EsExitoso);
         Assert.True((await insumos.Guardar(b, true)).EsExitoso);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", EmailOrdenes = "proveedor@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", Contacto = "1234567890", EmailOrdenes = "proveedor@example.invalid" };
         Assert.True((await new ProveedorService(db).Guardar(proveedor, true)).EsExitoso);
         var items = new List<OrdenCompraItem> {
             new() { InsumoId = a.Id, NombreInsumo = a.Nombre, Cantidad = 2 },

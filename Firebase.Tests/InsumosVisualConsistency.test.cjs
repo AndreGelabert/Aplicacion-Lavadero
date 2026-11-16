@@ -55,7 +55,7 @@ test('edit loads the captured inventory record into the accordion with duplicate
     type.form = form;
     const row = { dataset: { record: JSON.stringify(record) }, addEventListener(event, callback) { this.click = callback; } };
     let expanded = false;
-    const document = { getElementById: id => ({ 'insumo-form': form, 'form-title': title, 'accordion-flush-body-1': { classList: { contains: () => !expanded } } })[id] || null, querySelector: () => ({ click() { expanded = true; } }), querySelectorAll: s => s === '[data-edit-insumo]' ? [row] : [] };
+    const document = { addEventListener() {}, getElementById: id => ({ 'insumo-form': form, 'form-title': title, 'accordion-flush-body-1': { classList: { contains: () => !expanded } } })[id] || null, querySelector: () => ({ click() { expanded = true; }, addEventListener() {} }), querySelectorAll: s => s === '[data-edit-insumo]' ? [row] : [] };
     const window = { etiquetaUnidadInsumo: x => x };
     function Option(text, value) { this.text = text; this.value = value; }
     vm.runInNewContext(read('wwwroot/js/tipos-insumo.js'), { window, Option });
