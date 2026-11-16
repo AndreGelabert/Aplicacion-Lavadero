@@ -36,7 +36,7 @@ test('unit labels and canonical values through the public selector', () => {
     const selector = (value, categoria) => ({ value, selectedOptions: [{ dataset: { categoria } }] });
     nodes.recetaModalidad = { value: 'Producto' };
     nodes.recetaInsumo = selector('p', 'Volumen');
-    nodes['unidades-receta-json'] = { value: JSON.stringify({ Volumen: ['ml', 'l'] }) };
+    nodes['unidades-receta-json'] = { value: JSON.stringify({ Volumen: ['cc', 'cm3', 'l', 'litro', 'litros', 'lt', 'mililitro', 'mililitros', 'ml'], Masa: ['mg', 'miligramo', 'g', 'gr', 'kg', 'kilo'], Unidades: ['u', 'unidad', 'unidades'] }) };
     const options = [];
     nodes.recetaUnidad = { replaceChildren: (...x) => { options.length = 0; options.push(...x); }, add: x => options.push(x) };
     const document = { getElementById: id => nodes[id], addEventListener() {} };
@@ -44,7 +44,54 @@ test('unit labels and canonical values through the public selector', () => {
     function Option(text, value) { this.text = text; this.value = value; }
     vm.runInNewContext(source, { document, window, Option });
     window.actualizarUnidadesReceta();
-    assert.deepEqual(options.slice(1).map(x => [x.text, x.value]), [['Mililitro (mL)', 'ml'], ['Litro (L)', 'l']]);
+    assert.deepEqual(options.slice(1).map(x => [x.text, x.value]), [['L (Litros)', 'l'], ['ml (Mililitros)', 'ml'], ['cm³ (Centímetros cúbicos)', 'cm3']]);
+    nodes.recetaInsumo.selectedOptions[0].dataset.categoria = 'Masa';
+    window.actualizarUnidadesReceta();
+    assert.deepEqual(options.slice(1).map(x => x.value), ['mg', 'g', 'kg']);
+    nodes.recetaInsumo.selectedOptions[0].dataset.categoria = 'Unidades';
+    window.actualizarUnidadesReceta();
+    assert.deepEqual(options.slice(1).map(x => x.value), ['unidad']);
+
+});
+
+test('public recipe handlers preserve selected volume codes, quantities and legacy drafts', () => {
+    const list = { innerHTML: '' };
+    const classes = { add() {}, remove() {}, toggle() {} };
+    const productOption = { dataset: { categoria: 'Volumen', nombre: 'Producto' } };
+    const product = { value: '', selectedIndex: 0, options: [productOption], selectedOptions: [productOption] };
+    const unit = { value: '', replaceChildren() { this.value = ''; }, add() {} };
+    const legacy = [{ InsumoId: 'legacy', NombreInsumo: 'Anterior', UnidadMedida: 'cc', DosisTeorica: 2.5 }];
+    const nodes = {
+        RecetaJson: { value: JSON.stringify(legacy) }, recetaModalidad: { value: 'Producto', focus() {} },
+        recetaInsumo: product, recetaTipo: { value: '' }, recetaUnidad: unit,
+        recetaDosis: { value: '' }, 'unidades-receta-json': { value: JSON.stringify({ Volumen: ['ml', 'cm3', 'cc', 'l'] }) },
+        'receta-editor-list': list, 'servicio-receta-list': { innerHTML: '' },
+        recetaTipoGrupo: { classList: classes }, recetaInsumoGrupo: { classList: classes },
+        recetaEditorModal: { classList: classes, setAttribute() {} }
+    };
+    const document = { getElementById: id => nodes[id], addEventListener() {}, querySelectorAll: () => [], body: { classList: classes }, createElement: () => ({ set textContent(value) { this.innerHTML = String(value); } }) };
+    function Option(text, value) { this.text = text; this.value = value; }
+    const window = { document, Option };
+    window.window = window;
+    vm.runInNewContext(source, window);
+    window.openServicioRecipeEditor();
+    assert.match(list.innerHTML, /2.5 ml \(Mililitros\)/);
+    for (const [id, code, amount] of [['a', 'cm3', '3.25'], ['b', 'ml', '4.5']]) {
+        product.value = id; unit.value = code; nodes.recetaDosis.value = amount;
+        assert.equal(window.addRecipeItem(), true);
+    }
+    assert.match(list.innerHTML, /3.25 cm³ \(Centímetros cúbicos\)/);
+    window.closeRecipeEditor(true);
+    const saved = JSON.parse(nodes.RecetaJson.value);
+    assert.deepEqual(saved.map(x => [x.UnidadMedida, x.DosisTeorica]), [['cc', 2.5], ['cm3', 3.25], ['ml', 4.5]]);
+    window.openServicioRecipeEditor();
+    assert.match(list.innerHTML, /3.25 cm³ \(Centímetros cúbicos\)/);
+});
+
+test('recipe save and cancel buttons have corresponding icons', () => {
+    for (const action of ['true', 'false']) {
+        assert.match(view, new RegExp(`onclick="closeRecipeEditor\\(${action}\\)"[^>]*>\\s*<svg`));
+    }
 });
 
 test('stage and recipe cancellation have separate public exits', () => {

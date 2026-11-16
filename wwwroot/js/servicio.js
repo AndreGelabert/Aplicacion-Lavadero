@@ -1736,10 +1736,31 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
         let unidades = {}; try { unidades = JSON.parse(document.getElementById('unidades-receta-json').value || '{}'); } catch { }
         const unidad = document.getElementById('recetaUnidad');
         unidad.replaceChildren(new Option('Seleccionar unidad', ''));
-        (unidades[categoria] || []).forEach(u => unidad.add(new Option(etiquetaUnidadReceta(u), u)));
+        const disponibles = unidades[categoria] || [];
+        if (categoria === 'Volumen') {
+            const codigos = new Set(disponibles.map(u => u.trim().toLowerCase()));
+            if ([...codigos].some(u => normalizarUnidadReceta(u) === 'l')) unidad.add(new Option('L (Litros)', 'l'));
+            if ([...codigos].some(u => normalizarUnidadReceta(u) === 'ml')) unidad.add(new Option('ml (Mililitros)', 'ml'));
+            if (codigos.has('cm3')) unidad.add(new Option('cm³ (Centímetros cúbicos)', 'cm3'));
+            return;
+        }
+        const vistos = new Set();
+        disponibles.forEach(u => {
+            const canonica = normalizarUnidadReceta(u);
+            if (vistos.has(canonica)) return;
+            vistos.add(canonica);
+            unidad.add(new Option(etiquetaUnidadReceta(canonica), canonica));
+        });
     };
+    // Mirrors ConversionUnidadesService.NormalizarUnidad; unknown codes remain untouched.
+    function normalizarUnidadReceta(unidad) {
+        const key = unidad.trim().toLowerCase();
+        return ({ ml: 'ml', mililitro: 'ml', mililitros: 'ml', cm3: 'ml', cc: 'ml', l: 'l', lt: 'l', litro: 'l', litros: 'l', mg: 'mg', miligramo: 'mg', miligramos: 'mg', g: 'g', gr: 'g', gramo: 'g', gramos: 'g', kg: 'kg', kilo: 'kg', kilogramo: 'kg', kilogramos: 'kg', unidad: 'unidad', unidades: 'unidad', u: 'unidad' })[key] || unidad;
+    }
     function etiquetaUnidadReceta(unidad) {
-        return ({ ml: 'Mililitro (mL)', l: 'Litro (L)', mg: 'Miligramo (mg)', g: 'Gramo (g)', kg: 'Kilogramo (kg)', unidad: 'Unidad (u)' })[unidad] || unidad;
+        if (unidad.trim().toLowerCase() === 'cm3') return 'cm³ (Centímetros cúbicos)';
+        const canonical = normalizarUnidadReceta(unidad);
+        return ({ ml: 'ml (Mililitros)', l: 'L (Litros)', mg: 'mg (Miligramos)', g: 'g (Gramos)', kg: 'kg (Kilogramos)', unidad: 'u (Unidades)' })[canonical] || unidad;
     }
     // La etiqueta es solo presentación; el valor sigue siendo la unidad canónica.
     function unidadRecetaVisible(unidad) {
