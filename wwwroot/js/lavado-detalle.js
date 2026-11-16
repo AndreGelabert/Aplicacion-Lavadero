@@ -78,12 +78,30 @@
         }
     };
 
-    window.abrirModalFinalizar = function (lavadoId, servicioId, etapaId, tipo, nombre) {
+    window.abrirModalFinalizar = function (lavadoId, servicioId, etapaId, tipo, nombre, sourceButton) {
         document.getElementById('finalizarLavadoId').value = lavadoId;
         document.getElementById('finalizarLavadoIdAlt').value = lavadoId;
         document.getElementById('finalizarServicioId').value = servicioId || '';
         document.getElementById('finalizarEtapaId').value = etapaId || '';
         document.getElementById('finalizarTipo').value = tipo;
+        const consumoFields = document.getElementById('consumoRealFields');
+        const consumoJson = document.getElementById('consumoRealJson');
+        const justificacion = document.getElementById('justificacionDesvio');
+        if (consumoFields) consumoFields.classList.toggle('hidden', tipo !== 'etapa');
+        if (consumoJson) consumoJson.value = '';
+        if (justificacion) { justificacion.value = ''; justificacion.required = false; }
+        const inputs = document.getElementById('consumoRealInputs');
+        if (inputs) {
+            let receta = [];
+            try { receta = JSON.parse(sourceButton?.dataset.receta || '[]'); } catch { receta = []; }
+            inputs.innerHTML = receta.map(item =>
+                `<label class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                    <span>${escapeConsumo(item.NombreInsumo || item.InsumoId)} (${escapeConsumo(item.UnidadMedida === 'l' ? 'Litro (L)' : item.UnidadMedida || '')})</span>
+                    <input type="number" min="0" step="any" value="${item.DosisTeorica}" data-insumo-id="${escapeConsumo(item.InsumoId)}" data-teorica="${item.DosisTeorica}" class="consumo-real-input w-28 rounded-lg border border-gray-300 p-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
+                </label>`).join('');
+            inputs.querySelectorAll('.consumo-real-input').forEach(input => input.addEventListener('input', actualizarConsumoRealJson));
+            actualizarConsumoRealJson();
+        }
 
         const title = tipo === 'lavado' ? 'Finalizar Lavado' :
             tipo === 'servicio' ? 'Finalizar Servicio' : 'Finalizar Etapa';
@@ -107,12 +125,37 @@
         abrirModal('finalizarModal');
     };
 
+    const escapeConsumo = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+
+    function actualizarConsumoRealJson() {
+        const output = document.getElementById('consumoRealJson');
+        if (!output) return;
+        const result = {};
+        document.querySelectorAll('.consumo-real-input').forEach(input => {
+            result[input.dataset.insumoId] = Number(input.value || 0);
+        });
+        output.value = JSON.stringify(result);
+        const justificacion = document.getElementById('justificacionDesvio');
+        if (justificacion) justificacion.required = Array.from(document.querySelectorAll('.consumo-real-input')).some(input => Number(input.value || 0) !== Number(input.dataset.teorica));
+    }
+
+    async function elegirProductos(params) {
+        const respuesta = await window.Peticiones.enviar('/Lavados/RecursosInicio?' + new URLSearchParams(params));
+        if (!respuesta.ok) throw new Error('No se pudieron consultar los productos.');
+        const datos = await respuesta.json();
+        if (!datos.success || !Array.isArray(datos.items)) throw new Error('No se pudieron consultar los productos.');
+        return window.LavadoInsumos.seleccionar(datos.items);
+    }
+
     window.iniciarServicioDesdeDetalle = async function (lavadoId, servicioId) {
         try {
             const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
             const formData = new FormData();
             formData.append('lavadoId', lavadoId);
             formData.append('servicioId', servicioId);
+            const seleccion = await elegirProductos({ lavadoId, servicioId });
+            if (seleccion === null) return;
+            formData.append('seleccionJson', JSON.stringify(seleccion));
 
             const response = await window.Peticiones.enviar('/Lavados/IniciarServicio', {
                 method: 'POST',
@@ -129,7 +172,7 @@
             }
         } catch (e) {
             console.error('Error:', e);
-            showMessage('error', 'Error al iniciar el servicio.');
+            showMessage('error', e.message || 'Error al iniciar el servicio.');
         }
     };
 
@@ -140,6 +183,9 @@
             formData.append('lavadoId', lavadoId);
             formData.append('servicioId', servicioId);
             formData.append('etapaId', etapaId);
+            const seleccion = await elegirProductos({ lavadoId, servicioId, etapaId });
+            if (seleccion === null) return;
+            formData.append('seleccionJson', JSON.stringify(seleccion));
 
             const response = await window.Peticiones.enviar('/Lavados/IniciarEtapa', {
                 method: 'POST',
@@ -156,7 +202,7 @@
             }
         } catch (e) {
             console.error('Error:', e);
-            showMessage('error', 'Error al iniciar la etapa.');
+            showMessage('error', e.message || 'Error al iniciar la etapa.');
         }
     };
 
@@ -226,9 +272,13 @@
         // Formulario de cancelar
         const formCancelar = document.getElementById('formCancelar');
         if (formCancelar) {
+            let cancelacionEnCurso = false;
             formCancelar.addEventListener('submit', async function (e) {
                 e.preventDefault();
-
+                if (cancelacionEnCurso) return;
+                cancelacionEnCurso = true;
+                let suspendido = false;
+                try {
                 const motivo = document.getElementById('motivoCancelacion').value;
                 if (!motivo.trim()) {
                     showMessage('error', 'Debe ingresar un motivo de cancelación.');
@@ -236,6 +286,22 @@
                 }
 
                 const formData = new FormData(this);
+                const tipo = document.getElementById('cancelarTipo').value;
+                if (tipo !== 'etapa') {
+                    try {
+                        const params = new URLSearchParams({ lavadoId: document.getElementById('cancelarLavadoId').value });
+                        if (tipo === 'servicio') params.set('servicioId', document.getElementById('cancelarServicioId').value);
+                        const consulta = await window.Peticiones.enviar('/Lavados/RecursosCancelacion?' + params);
+                        if (!consulta.ok) throw new Error('No se pudieron consultar los consumos.');
+                        const recursos = await consulta.json();
+                        if (!recursos.success) throw new Error('No se pudieron consultar los consumos.');
+                        cerrarModal('cancelarModal');
+                        suspendido = true;
+                        const consumos = await window.LavadoInsumos.consumos(recursos);
+                        if (consumos === null) { abrirModal('cancelarModal'); suspendido = false; return; }
+                        formData.append('consumosNoRegistradosJson', JSON.stringify(consumos));
+                    } catch (error) { showMessage('error', error.message); return; }
+                }
 
                 try {
                     const response = await window.Peticiones.enviar(this.action, {
@@ -244,7 +310,8 @@
                     });
 
                     const result = await response.json();
-                    cerrarModal('cancelarModal');
+                    if (!suspendido) cerrarModal('cancelarModal');
+                    suspendido = false;
 
                     if (result.success) {
                         showMessage('success', result.message);
@@ -255,6 +322,10 @@
                 } catch (e) {
                     console.error('Error:', e);
                     showMessage('error', 'Error al cancelar.');
+                }
+                } finally {
+                    if (suspendido) abrirModal('cancelarModal');
+                    cancelacionEnCurso = false;
                 }
             });
         }
@@ -275,6 +346,12 @@
                     return;
                 }
 
+                if (tipo === 'etapa') {
+                    const fields = document.querySelectorAll('.consumo-real-input');
+                    if (Array.from(fields).some(field => field.value !== '' && (!Number.isFinite(Number(field.value)) || Number(field.value) < 0))) { showMessage('error', 'Cantidad inválida.'); return; }
+                    const justification = document.getElementById('justificacionDesvio');
+                    if (Array.from(fields).some(field => Number(field.value || 0) !== Number(field.dataset.teorica)) && !justification?.value.trim()) { showMessage('error', 'Debe informar la justificación del desvío.'); return; }
+                }
                 const formData = new FormData(this);
 
                 try {

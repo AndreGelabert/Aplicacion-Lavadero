@@ -15,6 +15,7 @@ public class ConfiguracionController : Controller
     #region Dependencias
     private readonly ConfiguracionService _configuracionService;
     private readonly IAuditWriter _auditService;
+    private readonly ComprasService? _comprasService;
 
     /// <summary>
     /// Crea una nueva instancia del controlador de configuración.
@@ -23,10 +24,12 @@ public class ConfiguracionController : Controller
     /// <param name="auditService">Servicio de auditoría.</param>
     public ConfiguracionController(
         ConfiguracionService configuracionService,
-        IAuditWriter auditService)
+        IAuditWriter auditService,
+        ComprasService? comprasService = null)
     {
         _configuracionService = configuracionService;
         _auditService = auditService;
+        _comprasService = comprasService;
     }
     #endregion
 
@@ -43,6 +46,11 @@ public class ConfiguracionController : Controller
         try
         {
             var configuracion = await _configuracionService.ObtenerConfiguracion();
+            if (User.TienePermiso("Insumos.Modificar") && _comprasService != null)
+            {
+                try { ViewBag.DirectivaReabastecimiento = await _comprasService.ObtenerDirectiva(); }
+                catch (Exception ex) { TempData["ErrorMessage"] = $"Error al cargar la directiva de reabastecimiento: {ex.Message}"; }
+            }
             return View(configuracion);
         }
         catch (Exception ex)
@@ -90,15 +98,14 @@ public class ConfiguracionController : Controller
                 return View("Index", configuracion);
             }
 
-            var antes = AuditCampos.CapturarConfiguracion(await _configuracionService.ObtenerConfiguracion());
+            var existente = await _configuracionService.ObtenerConfiguracion();
+            // Estos parámetros no forman parte del formulario de configuración.
+            configuracion.TiempoNotificacionMinutos = existente.TiempoNotificacionMinutos;
+            configuracion.TiempoToleranciaMinutos = existente.TiempoToleranciaMinutos;
+            configuracion.IntervaloPreguntas = existente.IntervaloPreguntas;
             var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? "Desconocido";
-            await _configuracionService.ActualizarConfiguracion(configuracion, userEmail);
-            var persistida = await _configuracionService.ObtenerConfiguracion();
-
-            // Registrar evento de auditoría
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _auditService.LogEvent(userId, userEmail, "Actualización de configuración del sistema", 
-                configuracion.Id, "Configuracion", antes, AuditCampos.CapturarConfiguracion(persistida), persistida.NombreLavadero);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            await _configuracionService.ActualizarConfiguracion(configuracion, userEmail, userId);
 
             TempData["SuccessMessage"] = "Configuración actualizada correctamente.";
             return RedirectToAction("Index");

@@ -11,7 +11,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -217,8 +219,8 @@ public class LogoutHttpIntegrationTests
                 services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie();
                 services.AddAuthorization();
                 services.AddAntiforgery(options => options.HeaderName = "RequestVerificationToken");
-                services.AddControllersWithViews().AddApplicationPart(typeof(LoginController).Assembly).AddControllersAsServices();
-                Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions.RemoveAll<LoginController>(services);
+                services.AddControllersWithViews().AddApplicationPart(typeof(LoginController).Assembly);
+                services.Replace(ServiceDescriptor.Transient<IControllerActivator, ServiceBasedControllerActivator>());
                 services.AddTransient(provider => ActivatorUtilities.CreateInstance<LoginController>(provider));
                 services.AddTransient(_ => new FirebaseLoginCustom.Controllers.LavadosController(null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!));
                 // No Firestore instance or network access: these instances deliberately fail on use.

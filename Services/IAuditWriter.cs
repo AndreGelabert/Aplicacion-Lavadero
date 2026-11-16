@@ -13,6 +13,10 @@ public interface IAuditWriter
     Task LogEvent(string userId, string userEmail, string action, string targetId, string targetType,
         Dictionary<string, string> antes, Dictionary<string, string> despues, string nombreHistorico = null);
 
+    /// <summary>Enlists an audit event in the caller's Firestore transaction. Unsupported writers fail closed.</summary>
+    void EnlistarEnTransaccion(Google.Cloud.Firestore.Transaction transaction, global::AuditLog log) =>
+        throw new NotSupportedException("El escritor de auditoría no admite transacciones.");
+
     /// <summary>Records a session event for which data comparison does not apply.</summary>
     Task LogSessionEvent(string userId, string userEmail, string action, string targetId, string targetType);
 }

@@ -99,5 +99,8 @@ namespace Firebase.Models
         /// </summary>
         [FirestoreProperty]
         public List<Etapa> Etapas { get; set; } = new List<Etapa>();
+
+        [FirestoreProperty]
+        public List<RecetaInsumo> Receta { get; set; } = new();
     }
 }

@@ -45,6 +45,8 @@
         window.CommonUtils?.setupDefaultFilterForm();
         protegerTipoVehiculoEnEdicion();
         protegerTipoServicioEnEdicion();
+        renderServicioRecipeList();
+        actualizarVisibilidadReceta();
     }
 
     // IMPORTANTE: asegurar que init se ejecute siempre
@@ -280,6 +282,22 @@
         if (!servicioForm) return;
 
         setupFieldValidation();
+        actualizarVisibilidadReceta();
+        if (!servicioForm.hasAttribute('data-recipe-reset-setup')) {
+            const etapasIniciales = document.getElementById('etapas-json')?.value || '[]';
+            const recetaInicial = document.getElementById('RecetaJson')?.value || '[]';
+            servicioForm.addEventListener('reset', () => setTimeout(() => {
+                const etapas = document.getElementById('etapas-json');
+                const receta = document.getElementById('RecetaJson');
+                if (etapas) etapas.value = etapasIniciales;
+                if (receta) receta.value = recetaInicial;
+                actualizarVisibilidadReceta();
+                renderServicioRecipeList();
+                const count = document.getElementById('etapas-count');
+                if (count) { try { count.textContent = JSON.parse(document.getElementById('etapas-json')?.value || '[]').length; } catch { count.textContent = '0'; } }
+            }, 0));
+            servicioForm.setAttribute('data-recipe-reset-setup', 'true');
+        }
 
         if (!servicioForm.hasAttribute('data-validation-setup')) {
             servicioForm.addEventListener('submit', validateFormOnSubmit);
@@ -1191,12 +1209,14 @@ titleSpan.textContent = isEdit ? 'Editando un Servicio' : 'Registrando un Servic
             protegerTipoServicioEnEdicion();
 
 const accordionBody = document.getElementById('accordion-flush-body-1');
-    if (accordionBody) {
-        if (isEdit) {
-        accordionBody.classList.remove('hidden');
-  } else {
-          accordionBody.classList.add('hidden');
-     }
+    const accordionInstance = window.FlowbiteInstances?.getInstance('Accordion', 'accordion-flush');
+    if (accordionInstance) {
+        if (isEdit) accordionInstance.open('#accordion-flush-body-1');
+        else accordionInstance.close('#accordion-flush-body-1');
+    } else if (accordionBody) {
+        accordionBody.classList.toggle('hidden', !isEdit);
+        const button = document.querySelector('[data-accordion-target="#accordion-flush-body-1"]');
+        button?.setAttribute('aria-expanded', String(isEdit));
     }
 
     // NUEVO: Scroll automático hacia el formulario si es edición
@@ -1523,6 +1543,12 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
     let etapasEnMemoria = [];
     let originalEtapasSnapshot = [];
 
+    function actualizarVisibilidadReceta() {
+        let etapas = [];
+        try { etapas = JSON.parse(document.getElementById('etapas-json')?.value || '[]'); } catch { }
+        document.getElementById('servicio-receta-container')?.classList.toggle('hidden', Array.isArray(etapas) && etapas.length > 0);
+    }
+
     /**
      * Abre el modal de gestión de etapas
      */
@@ -1569,6 +1595,7 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
         if (hiddenInput) {
             hiddenInput.value = etapasJson;
         }
+        actualizarVisibilidadReceta();
 
         // Actualizar contador
         const countSpan = document.getElementById('etapas-count');
@@ -1635,18 +1662,207 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
      * Elimina una etapa de la lista
      */
     window.eliminarEtapa = function (etapaId) {
+        const etapa = etapasEnMemoria.find(e => e.Id === etapaId);
+        if (etapa?.Receta?.length) {
+            showTableMessage('error', 'Quite la receta de la etapa antes de eliminarla.');
+            return;
+        }
         etapasEnMemoria = etapasEnMemoria.filter(e => e.Id !== etapaId);
         renderEtapasList();
     };
 
+    window.editarRecetaEtapa = function (etapaId) {
+        const etapa = etapasEnMemoria.find(e => e.Id === etapaId);
+        if (!etapa) return;
+        openRecipeEditor(etapa);
+    };
+
+    let recetaEditorTarget = null;
+    let recetaEditorOriginal = [];
+    let recetaEditorReturnFocus = null;
+    let recetaEditorStageId = null;
+
+    window.openServicioRecipeEditor = function () {
+        const input = document.getElementById('RecetaJson');
+        let receta = [];
+        try { receta = JSON.parse(input?.value || '[]'); } catch { receta = []; }
+        recetaEditorTarget = { Receta: receta };
+        openRecipeEditor(recetaEditorTarget);
+    };
+
+    function openRecipeEditor(target) {
+        recetaEditorTarget = target;
+        recetaEditorOriginal = JSON.parse(JSON.stringify(target.Receta || []));
+        recetaEditorReturnFocus = document.activeElement;
+        recetaEditorStageId = target.Id || null;
+        renderRecipeEditor();
+        // Suspend the stage modal without calling openEtapasModal again: that reloads
+        // the hidden JSON and would discard the unsaved stage draft.
+        if (recetaEditorStageId) cerrarModal('etapasModal');
+        abrirModal('recetaEditorModal');
+        document.getElementById('recetaModalidad')?.focus();
+    }
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && recetaEditorTarget) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            window.closeRecipeEditor(false);
+        }
+    }, true);
+
+    window.closeRecipeEditor = function (save) {
+        if (!recetaEditorTarget) return;
+        if (save) {
+            const select = document.getElementById(document.getElementById('recetaModalidad')?.value === 'Tipo' ? 'recetaTipo' : 'recetaInsumo');
+            const dose = document.getElementById('recetaDosis')?.value;
+            if ((select?.value || dose) && !addRecipeItem()) return;
+            if (recetaEditorTarget.Receta) {
+                if (recetaEditorTarget.Id) renderEtapasList();
+                else {
+                    const input = document.getElementById('RecetaJson');
+                    if (input) input.value = JSON.stringify(recetaEditorTarget.Receta);
+                    renderServicioRecipeList();
+                }
+            }
+        } else {
+            recetaEditorTarget.Receta = recetaEditorOriginal;
+        }
+        cerrarModal('recetaEditorModal');
+        // Discard uncommitted controls on either exit so they cannot leak into
+        // another recipe, including when the user cancels.
+        document.getElementById('recetaModalidad').value = 'Producto';
+        document.getElementById('recetaInsumo').value = '';
+        document.getElementById('recetaTipo').value = '';
+        document.getElementById('recetaDosis').value = '';
+        cambiarModalidadReceta();
+        if (recetaEditorStageId) {
+            abrirModal('etapasModal');
+            const button = [...document.querySelectorAll('#etapas-list button[onclick^="editarRecetaEtapa("]')]
+                .find(el => el.getAttribute('onclick') === `editarRecetaEtapa('${recetaEditorStageId}')`);
+            (button || document.getElementById('nuevaEtapaNombre'))?.focus();
+        } else {
+            recetaEditorReturnFocus?.focus();
+        }
+        recetaEditorTarget = null;
+        recetaEditorStageId = null;
+        recetaEditorReturnFocus = null;
+    };
+
+    window.cambiarModalidadReceta = function () {
+        const tipo = document.getElementById('recetaModalidad').value === 'Tipo';
+        document.getElementById('recetaTipoGrupo').classList.toggle('hidden', !tipo);
+        document.getElementById('recetaInsumoGrupo').classList.toggle('hidden', tipo);
+        actualizarUnidadesReceta();
+    };
+    window.actualizarUnidadesReceta = function () {
+        const tipo = document.getElementById('recetaModalidad').value === 'Tipo';
+        const select = document.getElementById(tipo ? 'recetaTipo' : 'recetaInsumo');
+        const categoria = select.selectedOptions[0]?.dataset.categoria;
+        let unidades = {}; try { unidades = JSON.parse(document.getElementById('unidades-receta-json').value || '{}'); } catch { }
+        const unidad = document.getElementById('recetaUnidad');
+        unidad.replaceChildren(new Option('Seleccionar unidad', ''));
+        const disponibles = unidades[categoria] || [];
+        if (categoria === 'Volumen') {
+            const codigos = new Set(disponibles.map(u => u.trim().toLowerCase()));
+            if ([...codigos].some(u => normalizarUnidadReceta(u) === 'l')) unidad.add(new Option('L (Litros)', 'l'));
+            if ([...codigos].some(u => normalizarUnidadReceta(u) === 'ml')) unidad.add(new Option('ml (Mililitros)', 'ml'));
+            if (codigos.has('cm3')) unidad.add(new Option('cm³ (Centímetros cúbicos)', 'cm3'));
+            return;
+        }
+        const vistos = new Set();
+        disponibles.forEach(u => {
+            const canonica = normalizarUnidadReceta(u);
+            if (vistos.has(canonica)) return;
+            vistos.add(canonica);
+            unidad.add(new Option(etiquetaUnidadReceta(canonica), canonica));
+        });
+    };
+    // Mirrors ConversionUnidadesService.NormalizarUnidad; unknown codes remain untouched.
+    function normalizarUnidadReceta(unidad) {
+        const key = unidad.trim().toLowerCase();
+        return ({ ml: 'ml', mililitro: 'ml', mililitros: 'ml', cm3: 'ml', cc: 'ml', l: 'l', lt: 'l', litro: 'l', litros: 'l', mg: 'mg', miligramo: 'mg', miligramos: 'mg', g: 'g', gr: 'g', gramo: 'g', gramos: 'g', kg: 'kg', kilo: 'kg', kilogramo: 'kg', kilogramos: 'kg', unidad: 'unidad', unidades: 'unidad', u: 'unidad' })[key] || unidad;
+    }
+    function etiquetaUnidadReceta(unidad) {
+        if (unidad.trim().toLowerCase() === 'cm3') return 'cm³ (Centímetros cúbicos)';
+        const canonical = normalizarUnidadReceta(unidad);
+        return ({ ml: 'ml (Mililitros)', l: 'L (Litros)', mg: 'mg (Miligramos)', g: 'g (Gramos)', kg: 'kg (Kilogramos)', unidad: 'u (Unidades)' })[canonical] || unidad;
+    }
+    // La etiqueta es solo presentación; el valor sigue siendo la unidad canónica.
+    function unidadRecetaVisible(unidad) {
+        return etiquetaUnidadReceta(unidad || '');
+    };
+    function addRecipeItem() {
+        const modalidad = document.getElementById('recetaModalidad').value;
+        const select = document.getElementById(modalidad === 'Tipo' ? 'recetaTipo' : 'recetaInsumo');
+        const unidad = document.getElementById('recetaUnidad').value;
+        const doseInput = document.getElementById('recetaDosis');
+        const dose = Number(doseInput?.value);
+        if (!select?.value || !unidad || !Number.isFinite(dose) || !(dose > 0)) {
+            showTableMessage('error', 'Seleccione producto o tipo, unidad compatible y dosis mayor a cero.');
+            return false;
+        }
+        const option = select.options[select.selectedIndex];
+        let tiposHerramienta = [];
+        try { tiposHerramienta = JSON.parse(document.getElementById('tipos-herramienta-json')?.value || '[]'); } catch { }
+        if (modalidad === 'Tipo' && (tiposHerramienta.includes(select.value) || [...select.options].some(o => o.value === select.value && o.dataset.protegido === 'true'))) {
+            showTableMessage('error', 'Seleccione una herramienta específica, no el tipo Herramienta.');
+            return false;
+        }
+        const item = { Modalidad: modalidad, InsumoId: modalidad === 'Producto' ? select.value : '', TipoId: modalidad === 'Tipo' ? select.value : '', NombreInsumo: modalidad === 'Producto' ? option.dataset.nombre : '', NombreTipo: modalidad === 'Tipo' ? option.dataset.nombre : '', Categoria: option.dataset.categoria || '', UnidadMedida: unidad, DosisTeorica: dose };
+        const items = recetaEditorTarget.Receta || [];
+        const index = items.findIndex(x => modalidad === 'Tipo' ? x.Modalidad === 'Tipo' && x.TipoId === select.value : x.InsumoId === select.value);
+        if (index >= 0) items[index] = item; else items.push(item);
+        recetaEditorTarget.Receta = items;
+        select.value = '';
+        doseInput.value = '';
+        actualizarUnidadesReceta();
+        renderRecipeEditor();
+        return true;
+    }
+
+    window.addRecipeItem = addRecipeItem;
+
+    window.removeRecipeItem = function (index) {
+        recetaEditorTarget.Receta.splice(index, 1);
+        renderRecipeEditor();
+    };
+
+    function renderRecipeEditor() {
+        const container = document.getElementById('receta-editor-list');
+        if (!container) return;
+        container.innerHTML = (recetaEditorTarget?.Receta || []).map((item, index) =>
+            `<div class="flex justify-between items-center rounded border p-2 dark:border-gray-600 dark:text-white">
+                <span>${escapeHtml(item.NombreTipo || item.NombreInsumo || item.TipoId || item.InsumoId)} - ${item.DosisTeorica} ${escapeHtml(unidadRecetaVisible(item.UnidadMedida))}</span>
+                <button type="button" onclick="removeRecipeItem(${index})" class="inline-flex items-center gap-1 text-red-600 hover:text-red-700"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>Quitar</button>
+            </div>`).join('') || '<p class="text-sm text-gray-500">No hay insumos configurados.</p>';
+    }
+
+    function renderServicioRecipeList() {
+        const container = document.getElementById('servicio-receta-list');
+        if (!container) return;
+        let receta = [];
+        try { receta = JSON.parse(document.getElementById('RecetaJson')?.value || '[]'); } catch { }
+        container.innerHTML = receta.map(x =>
+            `<div class="text-sm text-gray-700 dark:text-gray-300">${escapeHtml(x.NombreTipo || x.NombreInsumo || x.TipoId || x.InsumoId)}: ${x.DosisTeorica} ${escapeHtml(unidadRecetaVisible(x.UnidadMedida))}</div>`).join('') ||
+            '<p class="text-sm text-gray-500">No hay insumos configurados.</p>';
+    }
+
     // Guarda cambios y cierra
     window.saveEtapasModal = function () {
+        let receta = [];
+        try { receta = JSON.parse(document.getElementById('RecetaJson')?.value || '[]'); } catch { showTableMessage('error', 'Receta inválida.'); return; }
+        if (etapasEnMemoria.length && receta.length && !originalEtapasSnapshot.length) {
+            showTableMessage('error', 'Quite la receta del servicio antes de agregar etapas.');
+            return;
+        }
         // Guardar etapas en el input hidden
         const etapasJson = JSON.stringify(etapasEnMemoria);
         const hiddenInput = document.getElementById('etapas-json');
         if (hiddenInput) {
             hiddenInput.value = etapasJson;
         }
+        actualizarVisibilidadReceta();
 
         // Actualizar contador
         const countSpan = document.getElementById('etapas-count');
@@ -1705,9 +1921,13 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300">${index + 1}.</span>
                     <span class="text-sm text-gray-900 dark:text-white">${escapeHtml(etapa.Nombre)}</span>
                 </div>
-                <button type="button" onclick="eliminarEtapa('${etapa.Id}')" 
+                <button type="button" onclick="editarRecetaEtapa('${etapa.Id}')"
+                        class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 mr-3">
+                    <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> Receta
+                </button>
+                <button type="button" onclick="eliminarEtapa('${etapa.Id}')" aria-label="Eliminar etapa ${escapeHtml(etapa.Nombre)}"
                         class="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <svg aria-hidden="true" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>

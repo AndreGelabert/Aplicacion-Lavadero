@@ -27,6 +27,7 @@ namespace Firebase.Tests.Security
             ["Configuracion"] = new[] { "Consultar", "Modificar" },
             ["Auditoria"] = new[] { "Consultar" },
             ["Roles"] = new[] { "Consultar", "Crear", "Modificar", "Eliminar" }
+            ,["Insumos"] = new[] { "Consultar", "Crear", "Modificar", "Eliminar", "AjustarStock", "Recepcionar", "Kardex" }
         };
 
         // S1
@@ -34,7 +35,7 @@ namespace Firebase.Tests.Security
         public void S1_Catalogo_ExposesExactly28PermissionsAndTheSpecifiedMatrix()
         {
             var esperados = MatrizEsperada.Sum(m => m.Value.Length);
-            Assert.Equal(28, esperados);
+            Assert.Equal(35, esperados);
             Assert.Equal(esperados, RolCatalogo.TodosLosPermisos.Count);
             Assert.Equal(esperados, RolCatalogo.TodosLosPermisos.Distinct().Count());
 
@@ -188,7 +189,8 @@ namespace Firebase.Tests.Security
                 ("Personal", "/Personal", "Personal.Consultar"),
                 ("Auditoria", "/Auditoria", "Auditoria.Consultar"),
                 ("Configuracion", "/Configuracion", "Configuracion.Consultar"),
-                ("Rol", "/Rol", "Roles.Consultar")
+                ("Rol", "/Rol", "Roles.Consultar"),
+                ("Insumos", "/Insumos", "Insumos.Consultar")
             };
 
             Assert.Equal(esperados.Length, NavegacionSistema.Modulos.Count);

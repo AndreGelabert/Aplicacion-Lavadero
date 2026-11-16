@@ -1,0 +1,129 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "empleados",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "Estado", "order": "ASCENDING" },
+        { "fieldPath": "Nombre", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paquetes_servicios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "Estado", "order": "ASCENDING" },
+        { "fieldPath": "TipoVehiculo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paquetes_servicios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "Estado", "order": "ASCENDING" },
+        { "fieldPath": "Nombre", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "paquetes_servicios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "Estado", "order": "ASCENDING" },
+        { "fieldPath": "PorcentajeDescuento", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "registros_auditoria",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "Action", "order": "ASCENDING" },
+        { "fieldPath": "Timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "registros_auditoria",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "TargetType", "order": "ASCENDING" },
+        { "fieldPath": "Timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "servicios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "Estado", "order": "ASCENDING" },
+        { "fieldPath": "Tipo", "order": "ASCENDING" },
+        { "fieldPath": "Nombre", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "servicios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "Estado", "order": "ASCENDING" },
+        { "fieldPath": "Nombre", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "servicios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "Tipo", "order": "ASCENDING" },
+        { "fieldPath": "Estado", "order": "ASCENDING" },
+        { "fieldPath": "Nombre", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "movimientosStock",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "InsumoId", "order": "ASCENDING" },
+        { "fieldPath": "Fecha", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "movimientosStock",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "InsumoId", "order": "ASCENDING" },
+        { "fieldPath": "Fecha", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "movimientosStock",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "Tipo", "order": "ASCENDING" },
+        { "fieldPath": "Fecha", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "movimientosStock",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "Tipo", "order": "ASCENDING" },
+        { "fieldPath": "Fecha", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "movimientosStock",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "InsumoId", "order": "ASCENDING" },
+        { "fieldPath": "Tipo", "order": "ASCENDING" },
+        { "fieldPath": "Fecha", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "movimientosStock",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "InsumoId", "order": "ASCENDING" },
+        { "fieldPath": "Tipo", "order": "ASCENDING" },
+        { "fieldPath": "Fecha", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

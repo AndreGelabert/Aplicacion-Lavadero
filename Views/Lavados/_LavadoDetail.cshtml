@@ -392,7 +392,7 @@
                                             }
                                             @if (etapa.Estado == "EnProceso")
                                             {
-                                                <button type="button" onclick="abrirModalFinalizar('@Model.Id', '@servicio.ServicioId', '@etapa.EtapaId', 'etapa', '@etapa.Nombre')"
+                                                <button type="button" data-receta='@System.Text.Json.JsonSerializer.Serialize(etapa.Receta)' onclick="abrirModalFinalizar('@Model.Id', '@servicio.ServicioId', '@etapa.EtapaId', 'etapa', '@etapa.Nombre', this)"
                                                         class="p-1 text-green-600 hover:text-green-800" title="Finalizar">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>

@@ -23,6 +23,8 @@ public class ServicioController : Controller
     private readonly ServicioFormService _form;
     private readonly ServicioTypeService _types;
     private readonly VehiculoService _vehiculoService; // ✅ NUEVO
+    private readonly InsumoService _insumoService;
+    private readonly TipoInsumoService? _tipoInsumoService;
 
     /// <summary>
     /// Crea una nueva instancia del controlador de servicios.
@@ -36,7 +38,8 @@ public class ServicioController : Controller
         ServicioQueryService queries,
         ServicioLifecycleService lifecycle,
         ServicioFormService form,
-        ServicioTypeService types)
+        ServicioTypeService types,
+        InsumoService? insumoService = null, TipoInsumoService? tipoInsumoService = null)
     {
         _servicioService = servicioService;
         _queries = queries;
@@ -47,6 +50,8 @@ public class ServicioController : Controller
         _form = form;
         _types = types;
         _vehiculoService = vehiculoService; // ✅ NUEVO
+        _insumoService = insumoService;
+        _tipoInsumoService = tipoInsumoService;
     }
     #endregion
 
@@ -69,9 +74,9 @@ public class ServicioController : Controller
         string sortBy = null,
         string sortOrder = null)
     {
+        await CargarListasForm();
         if (!User.TienePermiso("Servicios.Consultar"))
         {
-            await CargarListasForm();
             await ConfigurarFormulario(string.Empty);
             return View(new List<Servicio>());
         }
@@ -102,7 +107,7 @@ public class ServicioController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Permiso("Servicios.Crear")]
-    public async Task<IActionResult> CrearServicioAjax(Servicio servicio, string? EtapasJson)
+    public async Task<IActionResult> CrearServicioAjax(Servicio servicio, string? EtapasJson, string? RecetaJson = null)
     {
         try
         {
@@ -110,6 +115,8 @@ public class ServicioController : Controller
             {
                 servicio.Etapas = System.Text.Json.JsonSerializer.Deserialize<List<Etapa>>(EtapasJson) ?? new List<Etapa>();
             }
+            if (!string.IsNullOrWhiteSpace(RecetaJson))
+                servicio.Receta = System.Text.Json.JsonSerializer.Deserialize<List<RecetaInsumo>>(RecetaJson) ?? new();
 
             var resultado = await ProcesarCreacionServicio(servicio);
             var despuesCaptura = resultado.EsExitoso ? AuditCampos.CapturarServicio(await ObtenerServicioParaAuditoria(servicio.Id)) : null;
@@ -128,7 +135,7 @@ public class ServicioController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Permiso("Servicios.Modificar")]
-    public async Task<IActionResult> ActualizarServicioAjax(Servicio servicio, string? EtapasJson)
+    public async Task<IActionResult> ActualizarServicioAjax(Servicio servicio, string? EtapasJson, string? RecetaJson = null)
     {
         try
         {
@@ -136,6 +143,8 @@ public class ServicioController : Controller
             {
                 servicio.Etapas = System.Text.Json.JsonSerializer.Deserialize<List<Etapa>>(EtapasJson) ?? new List<Etapa>();
             }
+            if (!string.IsNullOrWhiteSpace(RecetaJson))
+                servicio.Receta = System.Text.Json.JsonSerializer.Deserialize<List<RecetaInsumo>>(RecetaJson) ?? new();
 
             var servicioAntes = await _servicioService.ObtenerServicio(servicio.Id);
             var antesCaptura = AuditCampos.CapturarServicio(servicioAntes);
@@ -832,7 +841,13 @@ public class ServicioController : Controller
     {
         ViewBag.TiposServicio = await _tipoServicioService.ObtenerTiposServicio() ?? new List<string>();
         ViewBag.TodosLosTiposVehiculo = await _tipoVehiculoService.ObtenerTiposVehiculos() ?? new List<string>();
+        ViewBag.TiposInsumoDisponibles = _tipoInsumoService == null ? new List<TipoInsumo>() : await _tipoInsumoService.ObtenerTodos(false);
+        ViewBag.UnidadesReceta = TipoInsumo.Categorias.Todas.ToDictionary(c => c, c => TipoInsumo.ObtenerUnidadesPermitidas(c).OrderBy(u => u).ToArray());
+        var insumos = _insumoService == null ? new List<Insumo>() : await _insumoService.ObtenerTodos(false);
+        ViewBag.InsumosDisponibles = insumos.Select(i => new InsumoRecetaOpcion(i.Id, i.Nombre, i.UnidadMedida)).ToList();
     }
+
+    public sealed record InsumoRecetaOpcion(string Id, string Nombre, string UnidadMedida);
 
     private async Task<IActionResult> ResponderCreacionTipo(ServicioTypeService.Creacion resultado, string entidad, string accionAuditoria)
     {

@@ -220,8 +220,18 @@ namespace Firebase.Services
         /// </summary>
         /// <param name="email">Email del usuario que solicita recuperar la contraseña.</param>
         /// <returns>Resultado de la operación.</returns>
+        public static bool IsValidPasswordResetEmail(string? email)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return false;
+            return System.Text.RegularExpressions.Regex.IsMatch(email.Trim(), @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+        }
+
         public async Task<AuthenticationResult> SendPasswordResetEmailAsync(string email)
         {
+            if (!IsValidPasswordResetEmail(email))
+                return AuthenticationResult.Failure("Por favor, ingrese un correo electrónico válido.");
+
+            email = email.Trim();
             try
             {
                 var resetPayload = new
@@ -240,14 +250,17 @@ namespace Firebase.Services
 
                 if (!resetResponse.IsSuccessStatusCode)
                 {
+                    if (resetResponse.StatusCode != System.Net.HttpStatusCode.BadRequest)
+                        return AuthenticationResult.Failure("Error al enviar el correo de recuperación. Por favor, intente de nuevo.");
+
                     var errorResponse = await resetResponse.Content.ReadAsStringAsync();
                     var firebaseError = JsonConvert.DeserializeObject<FirebaseErrorResponse>(errorResponse);
-                    var errorCode = firebaseError?.error?.message?.Split(' ').FirstOrDefault() ?? "UNKNOWN_ERROR";
-
-                    return AuthenticationResult.Failure(GetFirebaseErrorMessage(errorCode));
+                    var errorCode = firebaseError?.error?.message?.Split(' ').FirstOrDefault();
+                    if (errorCode != "EMAIL_NOT_FOUND")
+                        return AuthenticationResult.Failure("Error al enviar el correo de recuperación. Por favor, intente de nuevo.");
                 }
 
-                Console.WriteLine("Correo de recuperación de contraseña enviado mediante plantilla Firebase.");
+                Console.WriteLine("Solicitud de recuperación de contraseña procesada.");
                 return AuthenticationResult.Success(new UserInfo
                 {
                     Uid = "",

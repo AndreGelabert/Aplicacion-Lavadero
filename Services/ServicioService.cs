@@ -1,9 +1,10 @@
 using Firebase.Models;
+using Firebase.Services;
 using Google.Cloud.Firestore;
 
 /// <summary>
-/// Servicio para la gestión de servicios del lavadero en Firestore.
-/// Proporciona operaciones CRUD, filtrado, paginación y validación de servicios.
+/// Servicio para la gestiï¿½n de servicios del lavadero en Firestore.
+/// Proporciona operaciones CRUD, filtrado, paginaciï¿½n y validaciï¿½n de servicios.
 /// </summary>
 public class ServicioService
 {
@@ -35,11 +36,11 @@ public class ServicioService
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar (null para solo activos por defecto).</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar (null para todos).</param>
-    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar (null para todos).</param>
-    /// <param name="pageNumber">Número de página (1-based).</param>
-    /// <param name="pageSize">Cantidad de elementos por página.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehï¿½culo a filtrar (null para todos).</param>
+    /// <param name="pageNumber">Nï¿½mero de pï¿½gina (1-based).</param>
+    /// <param name="pageSize">Cantidad de elementos por pï¿½gina.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
-    /// <param name="sortOrder">Dirección del ordenamiento (asc/desc).</param>
+    /// <param name="sortOrder">Direcciï¿½n del ordenamiento (asc/desc).</param>
     /// <returns>Lista de servicios filtrados, ordenados y paginados.</returns>
     public async Task<List<Servicio>> ObtenerServicios(
         List<string> estados = null,
@@ -63,15 +64,15 @@ public class ServicioService
     }
 
     /// <summary>
-    /// Calcula el número total de páginas para los servicios filtrados.
+    /// Calcula el nï¿½mero total de pï¿½ginas para los servicios filtrados.
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
-    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
-    /// <param name="precioDesde">Precio mínimo a filtrar.</param>
-    /// <param name="precioHasta">Precio máximo a filtrar.</param>
-    /// <param name="pageSize">Cantidad de elementos por página.</param>
-    /// <returns>Número total de páginas.</returns>
+    /// <param name="tiposVehiculo">Lista de tipos de vehï¿½culo a filtrar.</param>
+    /// <param name="precioDesde">Precio mï¿½nimo a filtrar.</param>
+    /// <param name="precioHasta">Precio mï¿½ximo a filtrar.</param>
+    /// <param name="pageSize">Cantidad de elementos por pï¿½gina.</param>
+    /// <returns>Nï¿½mero total de pï¿½ginas.</returns>
     public async Task<int> ObtenerTotalPaginas(
         List<string> estados,
         List<string> tipos,
@@ -81,21 +82,21 @@ public class ServicioService
         int pageSize)
     {
         if (pageSize <= 0)
-            throw new ArgumentException("El tamaño de página debe ser mayor a 0", nameof(pageSize));
+            throw new ArgumentException("El tamaï¿½o de pï¿½gina debe ser mayor a 0", nameof(pageSize));
 
         var totalServicios = await ObtenerTotalServicios(estados, tipos, tiposVehiculo, precioDesde, precioHasta);
         return (int)Math.Ceiling(totalServicios / (double)pageSize);
     }
 
     /// <summary>
-    /// Obtiene un servicio específico por su ID.
+    /// Obtiene un servicio especï¿½fico por su ID.
     /// </summary>
     /// <param name="id">ID del servicio.</param>
     /// <returns>El servicio encontrado o null si no existe.</returns>
     public async Task<Servicio> ObtenerServicio(string id)
     {
         if (string.IsNullOrWhiteSpace(id))
-            throw new ArgumentException("El ID del servicio no puede estar vacío", nameof(id));
+            throw new ArgumentException("El ID del servicio no puede estar vacï¿½o", nameof(id));
 
         var docRef = _firestore.Collection(COLLECTION_NAME).Document(id);
         var snapshot = await docRef.GetSnapshotAsync();
@@ -104,20 +105,20 @@ public class ServicioService
     }
 
     /// <summary>
-    /// Busca servicios por término de búsqueda (texto/número/"X min").
+    /// Busca servicios por tï¿½rmino de bï¿½squeda (texto/nï¿½mero/"X min").
     /// Incluye coincidencias por cantidad de etapas.
     /// </summary>
-    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <param name="searchTerm">Tï¿½rmino de bï¿½squeda.</param>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
-    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
-    /// <param name="precioDesde">Precio mínimo a filtrar.</param>
-    /// <param name="precioHasta">Precio máximo a filtrar.</param>
-    /// <param name="pageNumber">Número de página actual.</param>
-    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehï¿½culo a filtrar.</param>
+    /// <param name="precioDesde">Precio mï¿½nimo a filtrar.</param>
+    /// <param name="precioHasta">Precio mï¿½ximo a filtrar.</param>
+    /// <param name="pageNumber">Nï¿½mero de pï¿½gina actual.</param>
+    /// <param name="pageSize">Tamaï¿½o de pï¿½gina.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
-    /// <param name="sortOrder">Dirección del ordenamiento.</param>
-    /// <returns>Lista de servicios que coinciden con la búsqueda.</returns>
+    /// <param name="sortOrder">Direcciï¿½n del ordenamiento.</param>
+    /// <returns>Lista de servicios que coinciden con la bï¿½squeda.</returns>
     public async Task<List<Servicio>> BuscarServicios(
         string searchTerm,
         List<string> estados = null,
@@ -142,16 +143,16 @@ public class ServicioService
     }
 
     /// <summary>
-    /// Obtiene el total de servicios que coinciden con la búsqueda.
-    /// Usa la misma lógica de <see cref="BuscarServicios"/>.
+    /// Obtiene el total de servicios que coinciden con la bï¿½squeda.
+    /// Usa la misma lï¿½gica de <see cref="BuscarServicios"/>.
     /// </summary>
-    /// <param name="searchTerm">Término de búsqueda.</param>
+    /// <param name="searchTerm">Tï¿½rmino de bï¿½squeda.</param>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
-    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
-    /// <param name="precioDesde">Precio mínimo a filtrar.</param>
-    /// <param name="precioHasta">Precio máximo a filtrar.</param>
-    /// <returns>Número total de servicios que coinciden.</returns>
+    /// <param name="tiposVehiculo">Lista de tipos de vehï¿½culo a filtrar.</param>
+    /// <param name="precioDesde">Precio mï¿½nimo a filtrar.</param>
+    /// <param name="precioHasta">Precio mï¿½ximo a filtrar.</param>
+    /// <returns>Nï¿½mero total de servicios que coinciden.</returns>
     public async Task<int> ObtenerTotalServiciosBusqueda(
         string searchTerm,
         List<string> estados,
@@ -172,7 +173,7 @@ public class ServicioService
     }
 
     /// <summary>
-    /// Obtiene todos los servicios de un tipo específico.
+    /// Obtiene todos los servicios de un tipo especï¿½fico.
     /// </summary>
     /// <param name="tipo">Tipo de servicio.</param>
     /// <returns>Lista de servicios del tipo especificado.</returns>
@@ -180,10 +181,10 @@ public class ServicioService
         => await ObtenerServiciosPorCampo("Tipo", tipo);
 
     /// <summary>
-    /// Obtiene todos los servicios para un tipo de vehículo específico.
+    /// Obtiene todos los servicios para un tipo de vehï¿½culo especï¿½fico.
     /// </summary>
-    /// <param name="tipoVehiculo">Tipo de vehículo.</param>
-    /// <returns>Lista de servicios para el tipo de vehículo especificado.</returns>
+    /// <param name="tipoVehiculo">Tipo de vehï¿½culo.</param>
+    /// <returns>Lista de servicios para el tipo de vehï¿½culo especificado.</returns>
     public async Task<List<Servicio>> ObtenerServiciosPorTipoVehiculo(string tipoVehiculo)
         => await ObtenerServiciosPorCampo("TipoVehiculo", tipoVehiculo);
     #endregion
@@ -203,10 +204,12 @@ public class ServicioService
         if (await ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo))
         {
             throw new ArgumentException(
-                $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'");
+                $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehï¿½culos tipo '{servicio.TipoVehiculo}'");
         }
 
         ValidarServicio(servicio);
+        ValidarUbicacionRecetas(servicio, null);
+        await ValidarRecetas(servicio);
 
         var servicioRef = _firestore.Collection(COLLECTION_NAME).Document();
         servicio.Id = servicioRef.Id;
@@ -231,10 +234,13 @@ public class ServicioService
         if (await ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id))
         {
             throw new ArgumentException(
-                $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'");
+                $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehï¿½culos tipo '{servicio.TipoVehiculo}'");
         }
 
         ValidarServicio(servicio);
+        var anterior = await ObtenerServicio(servicio.Id);
+        ValidarUbicacionRecetas(servicio, anterior);
+        await ValidarRecetas(servicio, anterior);
 
         var servicioRef = _firestore.Collection(COLLECTION_NAME).Document(servicio.Id);
         var servicioData = CrearDiccionarioServicio(servicio);
@@ -242,31 +248,31 @@ public class ServicioService
     }
 
     /// <summary>
-    /// Cambia el estado de un servicio específico.
+    /// Cambia el estado de un servicio especï¿½fico.
     /// </summary>
     /// <param name="id">ID del servicio.</param>
     /// <param name="nuevoEstado">Nuevo estado.</param>
     public async Task CambiarEstadoServicio(string id, string nuevoEstado)
     {
         if (string.IsNullOrWhiteSpace(id))
-            throw new ArgumentException("El ID del servicio no puede estar vacío", nameof(id));
+            throw new ArgumentException("El ID del servicio no puede estar vacï¿½o", nameof(id));
 
         if (string.IsNullOrWhiteSpace(nuevoEstado))
-            throw new ArgumentException("El nuevo estado no puede estar vacío", nameof(nuevoEstado));
+            throw new ArgumentException("El nuevo estado no puede estar vacï¿½o", nameof(nuevoEstado));
 
         var servicioRef = _firestore.Collection(COLLECTION_NAME).Document(id);
         await servicioRef.UpdateAsync("Estado", nuevoEstado);
     }
     #endregion
 
-    #region Operaciones de Verificación
+    #region Operaciones de Verificaciï¿½n
 
     /// <summary>
-    /// Verifica si existe un servicio con el nombre y tipo de vehículo especificados.
+    /// Verifica si existe un servicio con el nombre y tipo de vehï¿½culo especificados.
     /// </summary>
     /// <param name="nombre">Nombre del servicio.</param>
-    /// <param name="tipoVehiculo">Tipo de vehículo.</param>
-    /// <param name="idActual">ID actual (para excluir en actualización).</param>
+    /// <param name="tipoVehiculo">Tipo de vehï¿½culo.</param>
+    /// <param name="idActual">ID actual (para excluir en actualizaciï¿½n).</param>
     /// <returns>True si existe.</returns>
     public async Task<bool> ExisteServicioConNombreTipoVehiculo(string nombre, string tipoVehiculo, string idActual = null)
     {
@@ -286,18 +292,18 @@ public class ServicioService
     }
     #endregion
 
-    #region Métodos Privados - Consultas Base
+    #region Mï¿½todos Privados - Consultas Base
 
     /// <summary>
     /// Obtiene todos los servicios aplicando filtros y ordenamiento.
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
-    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
-    /// <param name="precioDesde">Precio mínimo a filtrar.</param>
-    /// <param name="precioHasta">Precio máximo a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehï¿½culo a filtrar.</param>
+    /// <param name="precioDesde">Precio mï¿½nimo a filtrar.</param>
+    /// <param name="precioHasta">Precio mï¿½ximo a filtrar.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
-    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <param name="sortOrder">Direcciï¿½n del ordenamiento.</param>
     /// <returns>Lista de servicios filtrados y ordenados.</returns>
     private async Task<List<Servicio>> ObtenerServiciosFiltrados(
         List<string> estados,
@@ -328,10 +334,10 @@ public class ServicioService
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
-    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
-    /// <param name="precioDesde">Precio mínimo a filtrar.</param>
-    /// <param name="precioHasta">Precio máximo a filtrar.</param>
-    /// <returns>Número total de servicios.</returns>
+    /// <param name="tiposVehiculo">Lista de tipos de vehï¿½culo a filtrar.</param>
+    /// <param name="precioDesde">Precio mï¿½nimo a filtrar.</param>
+    /// <param name="precioHasta">Precio mï¿½ximo a filtrar.</param>
+    /// <returns>Nï¿½mero total de servicios.</returns>
     private async Task<int> ObtenerTotalServicios(
         List<string> estados,
         List<string> tipos,
@@ -377,7 +383,7 @@ public class ServicioService
     }
 
     /// <summary>
-    /// Obtiene servicios filtrados por un campo específico.
+    /// Obtiene servicios filtrados por un campo especï¿½fico.
     /// </summary>
     /// <param name="campo">Campo por el cual filtrar.</param>
     /// <param name="valor">Valor del campo.</param>
@@ -385,7 +391,7 @@ public class ServicioService
     private async Task<List<Servicio>> ObtenerServiciosPorCampo(string campo, string valor)
     {
         if (string.IsNullOrWhiteSpace(campo))
-            throw new ArgumentException("El campo no puede estar vacío", nameof(campo));
+            throw new ArgumentException("El campo no puede estar vacï¿½o", nameof(campo));
 
         if (string.IsNullOrWhiteSpace(valor))
             return new List<Servicio>();
@@ -401,13 +407,13 @@ public class ServicioService
     }
     #endregion
 
-    #region Métodos Privados - Utilidades
+    #region Mï¿½todos Privados - Utilidades
 
     /// <summary>
-    /// Configura la lista de estados por defecto si no se especificó ninguno.
+    /// Configura la lista de estados por defecto si no se especificï¿½ ninguno.
     /// </summary>
     /// <param name="estados">Lista de estados seleccionados por el usuario.</param>
-    /// <returns>Lista con al menos un estado; si estaba vacía, contiene "Activo".</returns>
+    /// <returns>Lista con al menos un estado; si estaba vacï¿½a, contiene "Activo".</returns>
     private static List<string> ConfigurarEstadosDefecto(List<string> estados)
     {
         estados ??= new List<string>();
@@ -444,10 +450,10 @@ public class ServicioService
     }
 
     /// <summary>
-    /// Aplica filtro de tipo de vehículo (post-proceso).
+    /// Aplica filtro de tipo de vehï¿½culo (post-proceso).
     /// </summary>
     /// <param name="servicios">Lista de servicios.</param>
-    /// <param name="tiposVehiculo">Tipos de vehículo a filtrar.</param>
+    /// <param name="tiposVehiculo">Tipos de vehï¿½culo a filtrar.</param>
     /// <returns>Lista filtrada.</returns>
     private static List<Servicio> AplicarFiltroTipoVehiculo(List<Servicio> servicios, List<string> tiposVehiculo)
     {
@@ -464,8 +470,8 @@ public class ServicioService
     /// Aplica filtro de rango de precios (post-proceso).
     /// </summary>
     /// <param name="servicios">Lista de servicios.</param>
-    /// <param name="precioDesde">Precio mínimo.</param>
-    /// <param name="precioHasta">Precio máximo.</param>
+    /// <param name="precioDesde">Precio mï¿½nimo.</param>
+    /// <param name="precioHasta">Precio mï¿½ximo.</param>
     /// <returns>Lista filtrada.</returns>
     private static List<Servicio> AplicarFiltroPrecio(List<Servicio> servicios, decimal? precioDesde, decimal? precioHasta)
     {
@@ -487,7 +493,7 @@ public class ServicioService
     /// </summary>
     /// <param name="servicios">Lista de servicios a ordenar.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
-    /// <param name="sortOrder">Dirección del ordenamiento.</param>
+    /// <param name="sortOrder">Direcciï¿½n del ordenamiento.</param>
     /// <returns>Lista ordenada.</returns>
     private static List<Servicio> AplicarOrdenamiento(List<Servicio> servicios, string sortBy, string sortOrder)
     {
@@ -514,21 +520,21 @@ public class ServicioService
     }
 
     /// <summary>
-    /// Aplica paginación a una lista en memoria.
+    /// Aplica paginaciï¿½n a una lista en memoria.
     /// </summary>
     /// <param name="lista">Lista a paginar.</param>
-    /// <param name="pageNumber">Número de página.</param>
-    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="pageNumber">Nï¿½mero de pï¿½gina.</param>
+    /// <param name="pageSize">Tamaï¿½o de pï¿½gina.</param>
     /// <returns>Lista paginada.</returns>
     private static List<Servicio> AplicarPaginacion(List<Servicio> lista, int pageNumber, int pageSize)
         => lista.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
 
     /// <summary>
-    /// Aplica la lógica de búsqueda sobre una lista previamente filtrada.
+    /// Aplica la lï¿½gica de bï¿½squeda sobre una lista previamente filtrada.
     /// </summary>
     /// <param name="baseFiltrada">Lista base filtrada.</param>
-    /// <param name="searchTerm">Término de búsqueda.</param>
-    /// <returns>Lista filtrada por búsqueda.</returns>
+    /// <param name="searchTerm">Tï¿½rmino de bï¿½squeda.</param>
+    /// <returns>Lista filtrada por bï¿½squeda.</returns>
     private static List<Servicio> AplicarBusqueda(List<Servicio> baseFiltrada, string searchTerm)
     {
         var term = searchTerm?.Trim() ?? string.Empty;
@@ -547,7 +553,7 @@ public class ServicioService
             return new List<Servicio>();
         }
 
-        // Numérico (precio/tiempo/etapas)
+        // Numï¿½rico (precio/tiempo/etapas)
         if (decimal.TryParse(term, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var numeroDecimal))
         {
             var numeroEntero = (int)numeroDecimal;
@@ -580,7 +586,8 @@ public class ServicioService
             .Select(e => new Dictionary<string, object>
             {
                 ["Id"] = string.IsNullOrWhiteSpace(e.Id) ? Guid.NewGuid().ToString() : e.Id,
-                ["Nombre"] = e.Nombre.Trim()
+                ["Nombre"] = e.Nombre.Trim(),
+                ["Receta"] = CrearDatosReceta(e.Receta)
             })
             .ToList();
 
@@ -593,8 +600,112 @@ public class ServicioService
             { "TiempoEstimado", servicio.TiempoEstimado },
             { "Descripcion", servicio.Descripcion },
             { "Estado", servicio.Estado },
-            { "Etapas", etapasList }
+            { "Etapas", etapasList },
+            { "Receta", CrearDatosReceta(servicio.Receta) }
         };
+    }
+
+    private static List<Dictionary<string, object>> CrearDatosReceta(List<RecetaInsumo> receta)
+        => (receta ?? new List<RecetaInsumo>()).Select(item => new Dictionary<string, object>
+        {
+            ["Modalidad"] = item.Modalidad,
+            ["TipoId"] = item.TipoId,
+            ["NombreTipo"] = item.NombreTipo,
+            ["Categoria"] = item.Categoria,
+            ["InsumoId"] = item.InsumoId,
+            ["NombreInsumo"] = item.NombreInsumo,
+            ["UnidadMedida"] = item.UnidadMedida,
+            ["DosisTeorica"] = (double)item.DosisTeorica
+        }).ToList();
+
+    private static List<RecetaInsumo> MapearReceta(object raw)
+    {
+        if (raw is not IList<object> items) return new List<RecetaInsumo>();
+        return items.OfType<IDictionary<string, object>>().Select(item => new RecetaInsumo
+        {
+            Modalidad = item.TryGetValue("Modalidad", out var modalidad) ? modalidad?.ToString() ?? "Producto" : "Producto",
+            TipoId = item.TryGetValue("TipoId", out var tipoId) ? tipoId?.ToString() ?? string.Empty : string.Empty,
+            NombreTipo = item.TryGetValue("NombreTipo", out var nombreTipo) ? nombreTipo?.ToString() ?? string.Empty : string.Empty,
+            Categoria = item.TryGetValue("Categoria", out var categoria) ? categoria?.ToString() ?? string.Empty : string.Empty,
+            InsumoId = item.TryGetValue("InsumoId", out var id) ? id?.ToString() ?? string.Empty : string.Empty,
+            NombreInsumo = item.TryGetValue("NombreInsumo", out var nombre) ? nombre?.ToString() ?? string.Empty : string.Empty,
+            UnidadMedida = item.TryGetValue("UnidadMedida", out var unidad) ? unidad?.ToString() ?? string.Empty : string.Empty,
+            DosisTeorica = item.TryGetValue("DosisTeorica", out var dosis) && dosis != null ? Convert.ToDecimal(dosis) : 0m
+        }).ToList();
+    }
+
+    private static void ValidarUbicacionRecetas(Servicio servicio, Servicio anterior)
+    {
+        var etapas = servicio.Etapas ?? new();
+        var receta = servicio.Receta ?? new();
+        if (etapas.Count > 0 && receta.Count > 0)
+        {
+            // Permitir la lectura y ediciÃ³n de datos legacy ambiguos solo si la receta del servicio permanece intacta.
+            var previa = anterior?.Receta ?? new();
+            bool legacy = anterior?.Etapas?.Count > 0 && previa.Count == receta.Count &&
+                receta.Zip(previa).All(p => RecetaIgual(p.First, p.Second));
+            if (!legacy) throw new ArgumentException("Un servicio con etapas no puede tener receta propia; quite esa receta antes de agregar etapas.");
+        }
+        foreach (var etapa in anterior?.Etapas ?? new())
+            if ((etapa.Receta?.Count ?? 0) > 0 && !etapas.Any(e => e != null && e.Id == etapa.Id))
+                throw new ArgumentException("Quite la receta de la etapa antes de eliminarla.");
+    }
+
+    private static bool RecetaIgual(RecetaInsumo x, RecetaInsumo y) => x != null && y != null &&
+        x.Modalidad == y.Modalidad && x.InsumoId == y.InsumoId && x.TipoId == y.TipoId &&
+        x.UnidadMedida == y.UnidadMedida && x.DosisTeorica == y.DosisTeorica;
+
+    private async Task ValidarRecetas(Servicio servicio, Servicio anterior = null)
+    {
+        await ValidarListaReceta(servicio.Receta, anterior?.Receta);
+        foreach (var etapa in servicio.Etapas ?? new())
+        {
+            if (etapa == null) continue;
+            var anteriores = (anterior?.Etapas ?? new()).Where(e => e.Id == etapa.Id && !string.IsNullOrWhiteSpace(etapa.Id)).ToList();
+            await ValidarListaReceta(etapa.Receta, anteriores.Count == 1 ? anteriores[0].Receta : null);
+        }
+    }
+
+    private async Task ValidarListaReceta(List<RecetaInsumo> receta, List<RecetaInsumo> anterior)
+    {
+        var conversion = new ConversionUnidadesService();
+        foreach (var item in receta ?? new())
+        {
+            if (item == null || item.DosisTeorica <= 0) throw new ArgumentException("La dosis debe ser mayor a cero.");
+            var coincidencias = (anterior ?? new()).Where(x => x != null &&
+                x.Modalidad == item.Modalidad && x.InsumoId == item.InsumoId && x.TipoId == item.TipoId &&
+                x.UnidadMedida == item.UnidadMedida && x.DosisTeorica == item.DosisTeorica).ToList();
+            if (coincidencias.Count == 1)
+            {
+                var snapshot = coincidencias[0];
+                item.NombreInsumo = snapshot.NombreInsumo;
+                item.NombreTipo = snapshot.NombreTipo;
+                item.Categoria = snapshot.Categoria;
+                continue;
+            }
+            if (item.Modalidad == "Producto" && !string.IsNullOrWhiteSpace(item.InsumoId) && string.IsNullOrWhiteSpace(item.TipoId))
+            {
+                var doc = await _firestore.Collection("insumos").Document(item.InsumoId).GetSnapshotAsync();
+                if (!doc.Exists) throw new ArgumentException("El insumo seleccionado no existe.");
+                var insumo = doc.ConvertTo<Insumo>();
+                if (insumo.Estado != "Activo" || !conversion.SonCompatibles(insumo.UnidadMedida, item.UnidadMedida))
+                    throw new ArgumentException("El insumo estÃ¡ inactivo o la unidad es incompatible.");
+                item.NombreInsumo = insumo.Nombre;
+                item.Categoria = conversion.ObtenerCategoria(item.UnidadMedida) ?? string.Empty;
+            }
+            else if (item.Modalidad == "Tipo" && !string.IsNullOrWhiteSpace(item.TipoId) && string.IsNullOrWhiteSpace(item.InsumoId))
+            {
+                var doc = await _firestore.Collection(TipoInsumoService.Collection).Document(item.TipoId).GetSnapshotAsync();
+                if (!doc.Exists) throw new ArgumentException("El tipo seleccionado no existe.");
+                var tipo = doc.ConvertTo<TipoInsumo>();
+                if (tipo.Estado != "Activo" || !TipoInsumo.EsUnidadValidaParaCategoria(tipo.Categoria, item.UnidadMedida))
+                    throw new ArgumentException("El tipo estÃ¡ inactivo o la unidad es incompatible.");
+                item.NombreTipo = tipo.Nombre;
+                item.Categoria = tipo.Categoria;
+            }
+            else throw new ArgumentException("Seleccione un producto o un tipo de insumo.");
+            item.UnidadMedida = conversion.NormalizarUnidad(item.UnidadMedida);
+        }
     }
 
     /// <summary>
@@ -620,6 +731,7 @@ public class ServicioService
                 : 0,
             Descripcion = documento.GetValue<string>("Descripcion"),
             Estado = documento.GetValue<string>("Estado"),
+            Receta = documento.ContainsField("Receta") ? MapearReceta(documento.GetValue<object>("Receta")) : new List<RecetaInsumo>(),
             Etapas = documento.ContainsField("Etapas")
                 ? MapearEtapas(documento)
                 : new List<Etapa>()
@@ -627,7 +739,7 @@ public class ServicioService
     }
 
     /// <summary>
-    /// Mapea la colección embebida de etapas.
+    /// Mapea la colecciï¿½n embebida de etapas.
     /// </summary>
     /// <param name="documento">Documento de Firestore.</param>
     /// <returns>Lista de etapas.</returns>
@@ -645,7 +757,8 @@ public class ServicioService
                 etapas.Add(new Etapa
                 {
                     Id = idVal?.ToString() ?? string.Empty,
-                    Nombre = nombreVal?.ToString() ?? string.Empty
+                    Nombre = nombreVal?.ToString() ?? string.Empty,
+                    Receta = map.TryGetValue("Receta", out var receta) ? MapearReceta(receta) : new List<RecetaInsumo>()
                 });
             }
         }
@@ -661,19 +774,19 @@ public class ServicioService
         var errores = new List<string>();
 
         if (string.IsNullOrWhiteSpace(servicio.Nombre))
-            errores.Add("El nombre del servicio no puede estar vacío");
+            errores.Add("El nombre del servicio no puede estar vacï¿½o");
 
         if (string.IsNullOrWhiteSpace(servicio.Tipo))
-            errores.Add("El tipo de servicio no puede estar vacío");
+            errores.Add("El tipo de servicio no puede estar vacï¿½o");
 
         if (string.IsNullOrWhiteSpace(servicio.TipoVehiculo))
-            errores.Add("El tipo de vehículo no puede estar vacío");
+            errores.Add("El tipo de vehï¿½culo no puede estar vacï¿½o");
 
         if (string.IsNullOrWhiteSpace(servicio.Descripcion))
-            errores.Add("La descripción no puede estar vacía");
+            errores.Add("La descripciï¿½n no puede estar vacï¿½a");
 
         if (!string.IsNullOrWhiteSpace(servicio.Nombre) &&
-            !System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
+            !System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-Zï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\s]+$"))
             errores.Add("El nombre solo puede contener letras y espacios");
 
         if (servicio.Precio < 0)
@@ -689,43 +802,43 @@ public class ServicioService
                 if (etapa == null) continue;
                 if (string.IsNullOrWhiteSpace(etapa.Nombre))
                 {
-                    errores.Add("El nombre de la etapa no puede estar vacío");
+                    errores.Add("El nombre de la etapa no puede estar vacï¿½o");
                     continue;
                 }
 
-                if (!System.Text.RegularExpressions.Regex.IsMatch(etapa.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
+                if (!System.Text.RegularExpressions.Regex.IsMatch(etapa.Nombre, @"^[a-zA-Zï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\s]+$"))
                     errores.Add($"La etapa '{etapa.Nombre}' solo puede contener letras y espacios");
             }
         }
 
         if (errores.Any())
-            throw new ArgumentException($"Errores de validación: {string.Join(", ", errores)}");
+            throw new ArgumentException($"Errores de validaciï¿½n: {string.Join(", ", errores)}");
     }
 
     /// <summary>
-    /// Valida los parámetros de paginación.
+    /// Valida los parï¿½metros de paginaciï¿½n.
     /// </summary>
-    /// <param name="pageNumber">Número de página.</param>
-    /// <param name="pageSize">Tamaño de página.</param>
+    /// <param name="pageNumber">Nï¿½mero de pï¿½gina.</param>
+    /// <param name="pageSize">Tamaï¿½o de pï¿½gina.</param>
     private static void ValidarParametrosPaginacion(int pageNumber, int pageSize)
     {
         if (pageNumber <= 0)
-            throw new ArgumentException("El número de página debe ser mayor a 0", nameof(pageNumber));
+            throw new ArgumentException("El nï¿½mero de pï¿½gina debe ser mayor a 0", nameof(pageNumber));
 
         if (pageSize <= 0)
-            throw new ArgumentException("El tamaño de página debe ser mayor a 0", nameof(pageSize));
+            throw new ArgumentException("El tamaï¿½o de pï¿½gina debe ser mayor a 0", nameof(pageSize));
     }
     #endregion
 
     #region Clases Auxiliares
 
     /// <summary>
-    /// Obtiene el precio mínimo de los servicios activos según los filtros aplicados.
+    /// Obtiene el precio mï¿½nimo de los servicios activos segï¿½n los filtros aplicados.
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
-    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
-    /// <returns>Precio mínimo encontrado o 0 si no hay servicios.</returns>
+    /// <param name="tiposVehiculo">Lista de tipos de vehï¿½culo a filtrar.</param>
+    /// <returns>Precio mï¿½nimo encontrado o 0 si no hay servicios.</returns>
     public async Task<decimal> ObtenerPrecioMinimo(
         List<string> estados = null,
         List<string> tipos = null,
@@ -745,12 +858,12 @@ public class ServicioService
     }
 
     /// <summary>
-    /// Obtiene el precio máximo de los servicios activos según los filtros aplicados.
+    /// Obtiene el precio mï¿½ximo de los servicios activos segï¿½n los filtros aplicados.
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
-    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
-    /// <returns>Precio máximo encontrado o 0 si no hay servicios.</returns>
+    /// <param name="tiposVehiculo">Lista de tipos de vehï¿½culo a filtrar.</param>
+    /// <returns>Precio mï¿½ximo encontrado o 0 si no hay servicios.</returns>
     public async Task<decimal> ObtenerPrecioMaximo(
         List<string> estados = null,
         List<string> tipos = null,
@@ -774,7 +887,7 @@ public class ServicioService
     /// </summary>
     private class ServicioConteo
     {
-        /// <summary>Tipo de vehículo del servicio.</summary>
+        /// <summary>Tipo de vehï¿½culo del servicio.</summary>
         public string TipoVehiculo { get; set; }
         /// <summary>Precio del servicio.</summary>
         public decimal Precio { get; set; }

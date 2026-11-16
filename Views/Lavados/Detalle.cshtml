@@ -8,8 +8,8 @@
 <section class="bg-gray-50 dark:bg-gray-900 min-h-screen py-8">
     <div class="max-w-7xl mx-auto px-4">
         <!-- Header con boton de volver -->
-        <div class="mb-6 flex items-center justify-between">
-            <div class="flex items-center gap-4">
+        <div class="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+            <div class="flex min-w-0 flex-wrap items-center gap-4">
                 <a href="@Url.Action("Index", "Lavados")" 
                    class="inline-flex items-center text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -21,7 +21,7 @@
                     Detalle del Lavado
                 </h1>
             </div>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
                 @if (puedeModificar && (Model.Estado == "EnProceso" || Model.Estado == "Pendiente"))
                 {
                     <button onclick="abrirModalCancelar('@Model.Id', '', '', 'lavado')" 
@@ -184,6 +184,14 @@
                 <input type="hidden" id="finalizarServicioId" name="servicioId" />
                 <input type="hidden" id="finalizarEtapaId" name="etapaId" />
                 <input type="hidden" id="finalizarTipo" name="tipo" />
+                <div id="consumoRealFields" class="hidden mb-4 text-left">
+                    <h4 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white">Consumo real por insumo</h4>
+                    <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">Revise las cantidades y justifique cualquier desvío respecto de la dosis prevista.</p>
+                    <div id="consumoRealInputs" class="space-y-2"></div>
+                    <textarea id="consumoRealJson" name="consumoRealJson" class="hidden"></textarea>
+                    <label for="justificacionDesvio" class="mt-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Justificación del desvío</label>
+                    <textarea id="justificacionDesvio" name="justificacionDesvio" rows="2" class="mt-1 w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"></textarea>
+                </div>
                 <div class="flex justify-center items-center space-x-4">
                     <button type="button"
                             data-modal-hide="finalizarModal"
@@ -239,4 +247,5 @@
     </div>
 </div>
 
+@await Html.PartialAsync("_InsumosInteractionModals")
 <script src="~/js/lavado-detalle.js" asp-append-version="true"></script>

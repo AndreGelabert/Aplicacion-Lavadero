@@ -1,0 +1,64 @@
+@model List<Firebase.Models.MovimientoStock>
+@{
+    ViewData["Title"] = "Kardex";
+    var insumos = (ViewBag.Insumos as List<Firebase.Models.Insumo>) ?? new List<Firebase.Models.Insumo>();
+    var insumoMap = insumos.Where(i => !string.IsNullOrEmpty(i.Id)).ToDictionary(i => i.Id, i => i.Nombre);
+    var selectedInsumos = (ViewBag.InsumoIds as string[]) ?? Array.Empty<string>();
+    var selectedTipos = (ViewBag.Tipos as string[]) ?? Array.Empty<string>();
+    string PageUrl(string cursor) {
+        var query = new List<string>();
+        query.AddRange(selectedInsumos.Select(x => "insumoId=" + Uri.EscapeDataString(x)));
+        query.AddRange(selectedTipos.Select(x => "tipo=" + Uri.EscapeDataString(x)));
+        if (ViewBag.Desde is DateTime desde) query.Add("desde=" + desde.ToString("yyyy-MM-dd"));
+        if (ViewBag.Hasta is DateTime hasta) query.Add("hasta=" + hasta.ToString("yyyy-MM-dd"));
+        query.Add("sortOrder=" + Uri.EscapeDataString((string)ViewBag.SortOrder));
+        query.Add("cursor=" + Uri.EscapeDataString(cursor));
+        return Url.Action("Kardex") + "?" + string.Join("&", query);
+    }
+}
+<section class="bg-gray-50 dark:bg-gray-900"><div class="mx-auto bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-visible p-4">
+    <div class="p-2 flex justify-between items-center rounded-t border-b dark:border-gray-600"><h1 class="text-2xl font-semibold dark:text-white">Kardex</h1><div class="flex items-center gap-2"><a asp-action="Index" class="text-white inline-flex items-center bg-gray-600 hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-3 py-2 text-center dark:bg-gray-500 dark:hover:bg-gray-600 dark:focus:ring-gray-800"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"></path>
+                    </svg>
+                    Volver a Insumos</a><button data-popover-target="kardex-help" data-popover-trigger="click" data-popover-placement="bottom" type="button" aria-label="Ayuda" class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-2 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"></path></svg></button><div data-popover id="kardex-help" role="tooltip" class="absolute z-10 invisible inline-block w-64 text-sm text-gray-500 transition-opacity duration-300 bg-white border border-gray-200 rounded-lg shadow-xs opacity-0 dark:text-gray-400 dark:border-gray-600 dark:bg-gray-800"><div class="px-3 py-2 bg-gray-100 border-b border-gray-200 rounded-t-lg dark:border-gray-600 dark:bg-gray-700"><h3 class="font-semibold text-gray-900 dark:text-white">Ayuda</h3></div><div class="px-3 py-2"><p>En esta página puedes consultar los movimientos de stock, su cantidad, saldo y justificación. Filtra por insumo, tipo o fecha y usa la búsqueda para localizar movimientos en esta página.</p></div><div data-popper-arrow></div></div></div></div>
+    <div class="flex flex-col md:flex-row items-center justify-between gap-3 p-4 relative">
+        <label class="w-full md:flex-1 text-sm text-gray-700 dark:text-gray-300">Buscar movimientos en esta página <input type="search" id="kardex-search" autocomplete="off" placeholder="Buscar en los movimientos mostrados..." class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2 dark:bg-gray-700 dark:text-white" /></label>
+        <button type="button" data-dropdown-toggle="kardex-filters" class="w-full md:w-auto flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"><svg aria-hidden="true" class="h-4 w-4 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" /></svg>Filtros<svg class="-mr-1 ml-1.5 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path clip-rule="evenodd" fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg></button>
+    <div id="kardex-filters" class="z-50 hidden w-full max-w-2xl bg-white rounded-lg shadow-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+    <form method="get" asp-action="Kardex" class="p-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <fieldset class="text-sm text-gray-900 dark:text-white"><legend class="mb-3 font-medium border-b border-gray-200 dark:border-gray-600 pb-2">Insumo</legend><div class="max-h-40 overflow-y-auto space-y-2">@foreach (var insumo in insumos) { <label class="flex items-center gap-2"><input type="checkbox" name="insumoId" value="@insumo.Id" checked="@selectedInsumos.Contains(insumo.Id)" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" /> @insumo.Nombre</label> }</div></fieldset>
+        <fieldset class="text-sm text-gray-900 dark:text-white"><legend class="mb-3 font-medium border-b border-gray-200 dark:border-gray-600 pb-2">Tipo de movimiento</legend><div class="max-h-40 overflow-y-auto space-y-2">@foreach (var tipo in Enum.GetValues<Firebase.Models.TipoMovimientoStock>()) { <label class="flex items-center gap-2"><input type="checkbox" name="tipo" value="@tipo" checked="@selectedTipos.Contains(tipo.ToString())" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" /> @tipo</label> }</div></fieldset>
+        <div class="space-y-2 text-sm text-gray-900 dark:text-white"><h6 class="mb-3 font-medium border-b border-gray-200 dark:border-gray-600 pb-2">Rango de fechas</h6><label class="block text-xs text-gray-600 dark:text-gray-400">Desde <input type="date" name="desde" value="@(((DateTime?)ViewBag.Desde)?.ToString("yyyy-MM-dd"))" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white" /></label>
+        <label class="block text-xs text-gray-600 dark:text-gray-400">Hasta <input type="date" name="hasta" value="@(((DateTime?)ViewBag.Hasta)?.ToString("yyyy-MM-dd"))" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white" /></label>
+        <label class="block text-xs text-gray-600 dark:text-gray-400">Orden por fecha <select name="sortOrder" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="desc" selected="@(ViewBag.SortOrder == "desc")">Más recientes primero</option><option value="asc" selected="@(ViewBag.SortOrder == "asc")">Más antiguos primero</option></select></label>
+        </div></div>
+        <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-200 dark:border-gray-600"><a asp-action="Kardex" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Limpiar filtros</a><button type="submit" class="px-6 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Aplicar Filtros</button></div>
+    </form></div></div>
+    @if (Model.Count == 0) { <p>No hay movimientos para los filtros seleccionados.</p> }
+    <div class="overflow-x-auto"><table class="w-full text-sm text-left text-gray-500 dark:text-gray-400"><thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700"><tr class="border-b"><th class="text-left p-2">Fecha</th><th>Insumo</th><th>Tipo</th><th>Cantidad</th><th>Saldo</th><th>Justificación</th></tr></thead><tbody>@foreach (var m in Model) { <tr data-kardex-row class="border-b"><td class="p-2">@m.Fecha.ToLocalTime().ToString("g")</td><td>@(insumoMap.TryGetValue(m.InsumoId, out var nombre) && !string.IsNullOrWhiteSpace(nombre) ? $"{nombre} ({m.InsumoId})" : m.InsumoId)</td><td>@m.Tipo</td><td>@m.Cantidad</td><td>@m.SaldoResultante</td><td>@m.Justificacion</td></tr> }</tbody></table></div>
+    <nav aria-label="Paginación de Kardex" class="flex flex-col md:flex-row justify-between items-center gap-3 p-4">
+        @if (ViewBag.HasPrevious == true && !string.IsNullOrEmpty((string?)ViewBag.PrevCursor))
+        {
+            <a href="@PageUrl((string)ViewBag.PrevCursor)"
+               class="py-2 px-3 bg-white border border-gray-300 rounded-l-lg dark:bg-gray-800 dark:text-white" aria-label="Anterior">&lt;</a>
+        }
+        else
+        {
+            <span class="py-2 px-3 border border-gray-300 text-gray-400 rounded-l-lg" aria-disabled="true">&lt;</span>
+        }
+
+        <span class="text-gray-600 dark:text-gray-300">Resultados por cursores</span>
+
+        @if (ViewBag.HasNext == true && !string.IsNullOrEmpty((string?)ViewBag.NextCursor))
+        {
+            <a href="@PageUrl((string)ViewBag.NextCursor)"
+               class="py-2 px-3 bg-white border border-gray-300 rounded-r-lg dark:bg-gray-800 dark:text-white" aria-label="Siguiente">&gt;</a>
+        }
+        else
+        {
+            <span class="py-2 px-3 border border-gray-300 text-gray-400 rounded-r-lg" aria-disabled="true">&gt;</span>
+        }
+    </nav>
+</div></section>
+<script src="~/js/insumos-secondary.js" asp-append-version="true"></script>

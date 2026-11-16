@@ -188,23 +188,23 @@ public class LoginController : Controller
     /// <param name="request">Email del usuario que solicita recuperar la contraseña.</param>
     /// <returns>Resultado de la operación.</returns>
     [HttpPost]
-    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest? request)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(request.Email))
+            if (!ModelState.IsValid || !Firebase.Services.AuthenticationService.IsValidPasswordResetEmail(request?.Email))
             {
                 return BadRequest(new { error = "Por favor, ingrese un correo electrónico válido." });
             }
 
-            var result = await _authService.SendPasswordResetEmailAsync(request.Email);
+            var result = await _authService.SendPasswordResetEmailAsync(request!.Email.Trim());
 
             if (!result.IsSuccess)
             {
                 return BadRequest(new { error = result.ErrorMessage });
             }
 
-            return Ok(new { message = "Correo de recuperación enviado exitosamente." });
+            return Ok(new { message = "Si existe una cuenta asociada a ese correo, recibirás instrucciones para restablecer tu contraseña." });
         }
         catch (Exception)
         {

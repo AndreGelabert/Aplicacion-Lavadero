@@ -64,6 +64,7 @@ namespace Firebase.Security
             new ModuloNavegacion("Auditoria", "Auditoría", RolCatalogo.Clave("Auditoria", RolCatalogo.Consultar)),
             new ModuloNavegacion("Configuracion", "Configuración", RolCatalogo.Clave("Configuracion", RolCatalogo.Consultar)),
             new ModuloNavegacion("Rol", "Roles y Permisos", RolCatalogo.Clave("Roles", RolCatalogo.Consultar)) { PermisoCrear = RolCatalogo.Clave("Roles", RolCatalogo.Crear) }
+            ,new ModuloNavegacion("Insumos", "Insumos y Stock", RolCatalogo.Clave("Insumos", RolCatalogo.Consultar))
         };
 
         /// <summary>

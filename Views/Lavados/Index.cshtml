@@ -411,6 +411,14 @@
                         <input type="hidden" id="finalizarServicioId" name="servicioId" />
                         <input type="hidden" id="finalizarEtapaId" name="etapaId" />
                         <input type="hidden" id="finalizarTipo" name="tipo" />
+                        <div id="consumoRealFields" class="hidden mb-4 text-left">
+                            <h4 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white">Consumo real por insumo</h4>
+                            <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">Revise las cantidades y justifique cualquier desvío respecto de la dosis prevista.</p>
+                            <div id="consumoRealInputs" class="space-y-2"></div>
+                            <textarea id="consumoRealJson" name="consumoRealJson" class="hidden"></textarea>
+                            <label for="justificacionDesvio" class="mt-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Justificación del desvío</label>
+                            <textarea id="justificacionDesvio" name="justificacionDesvio" rows="2" class="mt-1 w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"></textarea>
+                        </div>
                         <div class="flex justify-center items-center space-x-4">
                             <button type="button"
                                     data-modal-hide="finalizarModal"
@@ -560,5 +568,6 @@
         </div>
     </div>
 </section>
+@await Html.PartialAsync("_InsumosInteractionModals")
 <script src="~/js/form-validation.js" asp-append-version="true"></script>
 <script src="~/js/lavado.js" asp-append-version="true"></script>

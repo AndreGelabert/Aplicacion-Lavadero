@@ -53,6 +53,7 @@ public class VehicleCatalogueReviewHttpSecurityTests
         builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermisoPolicyProvider>();
         builder.Services.AddSingleton(db);
         builder.Services.AddScoped<ConfiguracionService>();
+        builder.Services.AddScoped<InsumoService>();
         builder.Services.AddSingleton(upstream.Object);
         builder.Services.AddScoped<VehicleCatalogueReviewService>();
 
@@ -78,6 +79,7 @@ public class VehicleCatalogueReviewHttpSecurityTests
             Assert.Contains(approvedVehicle.Id, page);
             Assert.Contains(linkedVehicle.Id, page);
             Assert.Contains(discardedVehicle.Id, page);
+            Assert.DoesNotContain("insumo(s) en stock crítico", page);
             var tokenMatch = Regex.Match(page,
                 "<input[^>]*name=\\\"__RequestVerificationToken\\\"[^>]*value=\\\"([^\\\"]+)\\\"",
                 RegexOptions.IgnoreCase);

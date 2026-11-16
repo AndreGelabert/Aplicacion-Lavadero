@@ -94,3 +94,29 @@ Los resultados explícitos de los servicios y los logs correlacionados son mejor
 - Pruebas aisladas con credenciales sintéticas válidas cubren la carga desde JSON y archivo, el rechazo de tipos incompatibles y entradas inválidas; no usan secretos ni realizan llamadas reales a Google.
 - Se verifica la prioridad de fuentes, el fallback a credenciales predeterminadas y el bypass de emuladores sin autenticar contra servicios reales.
 - La corrección recibe verificación independiente por afectar la carga de credenciales; cualquier revisión RDD aplicable se limita a su propia unidad de cambio.
+
+## [ ] PAG-01 — Análisis de paginación por cursores en Auditoría, Lavados y diseño para Turnos
+
+**Prioridad:** pospuesta para evaluación tras concluir el módulo actual; constituye una tarea de análisis y diseño preliminar que **no autoriza la implementación ni migración futura automática**.
+
+**Alcance y delimitación:**
+- **Kardex:** no forma parte de este pendiente futuro porque pertenece al trabajo en curso del módulo actual de insumos, donde la paginación por cursores se adopta de entrada.
+- **Auditoría y Lavados:** módulos existentes en el sistema que se evaluarán para una eventual migración de paginación hacia cursores en Firestore.
+- **Turnos:** módulo futuro aún no implementado; se contempla únicamente como pauta de diseño anticipado para cuando se desarrolle, acorde a sus consultas concretas (previsiblemente ordenadas por fecha y hora).
+
+**Problema que aborda:**
+Los historiales y registros operativos crecen continuamente. La paginación tradicional mediante desplazamiento (offset) o la recuperación de listas completas degrada el rendimiento, eleva el consumo de lecturas en Firestore y genera inconsistencias ante inserciones o modificaciones en tiempo real. No obstante, migrar o diseñar con cursores exige adaptar la navegación, las consultas y los índices compuestos.
+
+**Aspectos técnicos que analizar:**
+- **Filtros y consultas reales:** relevar los filtros vigentes en las vistas de Auditoría y Lavados (estados, rangos de fechas, clientes, usuarios) y su compatibilidad con las reglas de Firestore (desigualdades limitadas a un campo y necesidad de ordenar por dicho campo primero).
+- **Orden estable y desempates:** definir criterios deterministas de ordenamiento (ej. marca temporal descendente combinada con el ID del documento como desempate) para que la navegación no salte ni duplique registros ante marcas de tiempo idénticas.
+- **Conteo total frente a navegación relativa:** evaluar si la interfaz realmente requiere conocer el total absoluto de registros/páginas o si es suficiente una navegación relativa (siguiente/anterior con cursor), sopesando el costo y latencia de consultas de agregación (`Count()`) en Firestore.
+- **Costos e índices compuestos:** proyectar los índices requeridos para cada combinación prevista de filtro y orden, evitando combinaciones excesivas que encarezcan el almacenamiento o superen límites de Firestore.
+- **Cambios concurrentes:** documentar la tolerancia y el comportamiento observado ante inserciones, actualizaciones o bajas ocurridas mientras un usuario recorre páginas.
+- **Sin predefinir detalles no resueltos:** no fijar de antemano contratos de API, tokens opacos o formatos definitivos de respuesta sin haber validado las consultas concretas y las necesidades de cada vista.
+
+**Criterios de aceptación:**
+- El análisis genera un documento técnico comparativo para Auditoría y Lavados que define la viabilidad, índices requeridos, costos operativos y la estrategia de cursores (fecha + ID).
+- Se documenta la decisión sobre conteo total y su impacto en la experiencia de usuario y cuota.
+- Se establecen directrices de diseño para el futuro módulo de Turnos según sus consultas previstas.
+- El alcance se restringe estrictamente a la investigación y diseño técnico; cualquier implementación o migración requerirá aprobación y especificación independiente previa.

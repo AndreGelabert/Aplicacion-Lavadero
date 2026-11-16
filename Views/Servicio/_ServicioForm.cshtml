@@ -8,14 +8,17 @@
     var puedeEliminarTipoServicio = User.TienePermiso("Servicios.Eliminar");
     var puedeCrearTipoVehiculo = User.TieneAlgunPermiso("Servicios.Crear", "Vehiculos.Crear");
     var puedeEliminarTipoVehiculo = User.TieneAlgunPermiso("Servicios.Eliminar", "Vehiculos.Eliminar");
+    var tiposReceta = (ViewBag.TiposInsumoDisponibles as List<Firebase.Models.TipoInsumo>) ?? new List<Firebase.Models.TipoInsumo>();
+    // The service creates random IDs; legacy Herramienta records can lack EsProtegido.
+    var tiposHerramientaIds = tiposReceta.Where(t => t.EsProtegido || (string.Equals(t.Nombre, Firebase.Models.TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase) && string.Equals(t.Categoria, Firebase.Models.TipoInsumo.Categorias.Unidades, StringComparison.OrdinalIgnoreCase))).Select(t => t.Id).ToArray();
 }
 <form id="servicio-form" data-validate="true" data-edit="@edit" method="post" action="@formAction" onsubmit="return submitServicioAjax(this);">
     @Html.AntiForgeryToken()
     <input type="hidden" name="Id" id="Id" value="@(Model?.Id)" />
     <input type="hidden" name="Estado" value="@(Model?.Estado ?? "Activo")" />
 
-    <div class="grid gap-4 m-4 grid-cols-5">
-        <div>
+    <div class="grid gap-4 m-4 grid-cols-1 lg:grid-cols-3">
+        <div class="min-w-0">
             <label for="Nombre" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre <span class="text-red-600">*</span></label>
             <input type="text" name="Nombre" id="Nombre"
                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
@@ -28,7 +31,7 @@
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 caracteres</p>
             <span asp-validation-for="Nombre" class="text-red-600 text-xs"></span>
         </div>
-        <div>
+        <div class="min-w-0">
             <label for="Precio" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Precio <span class="text-red-600">*</span></label>
             <input type="number" name="Precio" id="Precio"
                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
@@ -37,11 +40,12 @@
                    min="0" step="100" required />
             <span asp-validation-for="Precio" class="text-red-600 text-xs"></span>
         </div>
-        <div class="col-span-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
+        <div class="min-w-0">
             <label for="Tipo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Servicio <span class="text-red-600">*</span></label>
             <div class="flex">
                 <select name="Tipo" id="Tipo" 
-                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")" 
+                        class="min-w-0 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")" 
                  required
                         @(edit ? "disabled" : "")>
                     @foreach (var tipo in (ViewBag.TiposServicio as List<string>) ?? new List<string>())
@@ -87,11 +91,11 @@
   <span asp-validation-for="Tipo" class="text-red-600 text-xs"></span>
         </div>
         <!-- Tipo de Vehículo -->
-        <div>
+        <div class="min-w-0">
             <label for="TipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tipo de Vehículo <span class="text-red-600">*</span></label>
             <div class="flex">
                 <select name="TipoVehiculo" id="TipoVehiculo"
-                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")"
+                        class="min-w-0 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 @(edit ? "cursor-not-allowed opacity-60" : "")"
                         required
                         @(edit ? "disabled" : "")>
                     @foreach (var tipo in (ViewBag.TodosLosTiposVehiculo as List<string>) ?? new List<string>())
@@ -136,7 +140,8 @@
             }
             <span asp-validation-for="TipoVehiculo" class="text-red-600 text-xs"></span>
         </div>
-        <div>
+        </div>
+        <div class="min-w-0">
             <label for="TiempoEstimado" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
         Tiempo Estimado <span class="text-red-600">*</span>
     @if (Model?.TiempoEstimado >= 60)
@@ -156,9 +161,10 @@
                    min="1" required />
             <span asp-validation-for="TiempoEstimado" class="text-red-600 text-xs"></span>
         </div>
-        <div>
+        <div class="min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="min-w-0">
             <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Etapas del Servicio</label>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
                 <span class="text-sm text-gray-700 dark:text-gray-300">Cantidad de etapas: <span id="etapas-count">@(Model?.Etapas?.Count ?? 0)</span></span>
                 <button type="button" onclick="openEtapasModal()" class="px-2 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
                     <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -172,14 +178,26 @@
                     : "[]";
             }
             <input type="hidden" id="etapas-json" name="EtapasJson" value='@etapasJson' />
+            <input type="hidden" id="unidades-receta-json" value='@System.Text.Json.JsonSerializer.Serialize((ViewBag.UnidadesReceta as Dictionary<string, string[]>) ?? new Dictionary<string, string[]>())' />
+            <input type="hidden" id="tipos-herramienta-json" value='@System.Text.Json.JsonSerializer.Serialize(tiposHerramientaIds)' />
+            </div>
+        @{
+            var recetaJson = System.Text.Json.JsonSerializer.Serialize(Model?.Receta ?? new List<Firebase.Models.RecetaInsumo>());
+            <div id="servicio-receta-container" class="min-w-0 @((Model?.Etapas?.Count ?? 0) > 0 ? "hidden" : "")">
+                <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Receta de insumos (servicios sin etapas)</label>
+                <input type="hidden" id="RecetaJson" name="RecetaJson" value='@recetaJson' />
+                <div id="servicio-receta-list" class="space-y-2 mb-2"></div>
+                <button type="button" onclick="openServicioRecipeEditor()" class="inline-flex items-center gap-2 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Configurar receta</button>
+            </div>
+        }
         </div>
-        <div class="col-span-3">
+        <div class="min-w-0">
             <label for="Descripcion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Descripción <span class="text-red-600">*</span></label>
-            <textarea id="Descripcion" name="Descripcion" rows="1" style="min-height: 2.5rem; overflow-y: hidden;" oninput="autoGrow(this)" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Descripción del servicio" required>@(Model?.Descripcion)</textarea>
+            <textarea id="Descripcion" name="Descripcion" rows="1" style="min-height: 2.5rem;" oninput="window.SiteModule.autoGrow(this)" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Descripción del servicio" required>@(Model?.Descripcion)</textarea>
             <span asp-validation-for="Descripcion" class="text-red-600 text-xs"></span>
         </div>
     </div>
-    <div class="flex justify-end m-4 gap-2">
+    <div class="flex flex-wrap justify-end m-4 gap-2">
         <button type="submit" id="submit-button" class="app-button app-button--success">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8 text-white-500 dark:text-white-400">
                 <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
@@ -199,3 +217,36 @@
     <!-- Mensajes AJAX (éxito / error general) -->
     <div id="ajax-form-messages" class="mb-4"></div>
 </form>
+
+<div id="recetaEditorModal" tabindex="-1" aria-hidden="true" aria-labelledby="recetaEditorTitle" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
+    <div class="relative p-4 w-full max-w-2xl h-full md:h-auto"><div class="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
+        <div class="flex justify-between items-center pb-4 mb-4 rounded-t border-b dark:border-gray-600"><h3 id="recetaEditorTitle" class="text-lg font-semibold text-gray-900 dark:text-white">Configurar receta</h3><button type="button" onclick="closeRecipeEditor(false)" aria-label="Cerrar receta" class="text-gray-400 hover:bg-gray-200 rounded-lg p-1.5 dark:hover:bg-gray-600"><svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg></button></div>
+        <p class="text-sm dark:text-white mb-2">Elija producto o tipo y una unidad compatible. El producto para una receta por tipo se elegirá durante la ejecución.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div><label for="recetaModalidad" class="block mb-2 text-sm font-medium dark:text-white">Seleccionar por</label><select id="recetaModalidad" onchange="cambiarModalidadReceta()" class="w-full rounded-lg border-gray-300 p-2.5 dark:bg-gray-700 dark:text-white"><option value="Producto">Producto</option><option value="Tipo">Tipo</option></select></div>
+            <div id="recetaInsumoGrupo"><label for="recetaInsumo" class="block mb-2 text-sm font-medium dark:text-white">Producto</label><select id="recetaInsumo" onchange="actualizarUnidadesReceta()" class="w-full rounded-lg border-gray-300 p-2.5 dark:bg-gray-700 dark:text-white">
+                <option value="">Seleccionar insumo</option>
+                @foreach (var insumo in (ViewBag.InsumosDisponibles as List<ServicioController.InsumoRecetaOpcion>) ?? new List<ServicioController.InsumoRecetaOpcion>())
+                {
+                    <option value="@insumo.Id" data-nombre="@insumo.Nombre" data-unidad="@insumo.UnidadMedida" data-categoria="@Firebase.Models.TipoInsumo.ObtenerCategoriaDeUnidad(insumo.UnidadMedida)">@insumo.Nombre</option>
+                }
+            </select></div>
+            <div id="recetaTipoGrupo" class="hidden"><label for="recetaTipo" class="block mb-2 text-sm font-medium dark:text-white">Tipo de insumo</label><select id="recetaTipo" onchange="actualizarUnidadesReceta()" class="w-full rounded-lg border-gray-300 p-2.5 dark:bg-gray-700 dark:text-white">
+                <option value="">Seleccionar tipo</option>
+                @foreach (var tipo in tiposReceta)
+                {
+                    var esHerramienta = tiposHerramientaIds.Contains(tipo.Id);
+                    <option value="@tipo.Id" data-nombre="@tipo.Nombre" data-categoria="@tipo.Categoria" data-protegido="@esHerramienta.ToString().ToLowerInvariant()" disabled="@esHerramienta" hidden="@esHerramienta">@tipo.Nombre</option>
+                }
+            </select></div>
+            <div><label for="recetaUnidad" class="block mb-2 text-sm font-medium dark:text-white">Unidad</label><select id="recetaUnidad" class="w-full rounded-lg border-gray-300 p-2.5 dark:bg-gray-700 dark:text-white"><option value="">Seleccionar unidad</option></select></div>
+            <div><label for="recetaDosis" class="block mb-2 text-sm font-medium dark:text-white">Cantidad</label><input id="recetaDosis" type="number" min="0.0001" step="0.0001" placeholder="Cantidad" class="w-full rounded-lg border-gray-300 p-2.5 dark:bg-gray-700 dark:text-white" /></div>
+        </div>
+        <button type="button" onclick="addRecipeItem()" class="inline-flex items-center gap-2 mb-4 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Agregar insumo</button>
+        <div id="receta-editor-list" class="space-y-2 max-h-60 overflow-y-auto mb-4"></div>
+        <div class="flex justify-end gap-2">
+            <button type="button" onclick="closeRecipeEditor(true)" class="app-button app-button--success"><svg aria-hidden="true" class="w-10 h-8" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z"/></svg>Guardar</button>
+            <button type="button" onclick="closeRecipeEditor(false)" class="app-button app-button--danger"><svg aria-hidden="true" class="w-10 h-8" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z"/></svg>Cancelar</button>
+        </div>
+    </div></div>
+</div>

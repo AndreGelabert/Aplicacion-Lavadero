@@ -36,6 +36,7 @@ public static class RolCatalogo
         new ModuloPermisos("Configuracion", "Configuración", new[] { Consultar, Modificar }),
         new ModuloPermisos("Auditoria", "Auditoría", new[] { Consultar }),
         new ModuloPermisos("Roles", "Roles y Permisos", new[] { Consultar, Crear, Modificar, Eliminar })
+        ,new ModuloPermisos("Insumos", "Insumos y Stock", new[] { Consultar, Crear, Modificar, Eliminar, "AjustarStock", "Recepcionar", "Kardex" })
     };
 
     /// <summary>
@@ -73,6 +74,7 @@ public static class RolCatalogo
                 "Vehiculos.Consultar", "Vehiculos.Crear", "Vehiculos.Modificar",
                 "Servicios.Consultar", "Paquetes.Consultar",
                 "Lavados.Consultar", "Lavados.Crear", "Lavados.Modificar"
+                , "Insumos.Consultar", "Insumos.Recepcionar"
             })
     };
 

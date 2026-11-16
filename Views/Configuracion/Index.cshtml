@@ -94,12 +94,65 @@
             </div>
         </div>
 
+        @if (ViewBag.DirectivaReabastecimiento is Firebase.Models.DirectivaReabastecimiento directiva)
+        {
+            <section id="reabastecimiento" class="m-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Reabastecimiento de insumos</h2>
+                <form method="post" asp-controller="Insumos" asp-action="GuardarConfiguracion" class="space-y-4">
+                    @Html.AntiForgeryToken()
+                    <div>
+                        <label for="modo-emision" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Modo de emisión</label>
+                        <select id="modo-emision" name="ModoEmision" disabled="@(!puedeModificar)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <option value="RequiereAprobacion" selected="@(directiva.ModoEmision == "RequiereAprobacion")">Requiere aprobación</option>
+                            <option value="EnvioDirecto" selected="@(directiva.ModoEmision == "EnvioDirecto")">Envío directo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="plantilla-email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Asunto anterior de solicitud de cotización</label>
+                        <input id="plantilla-email" name="PlantillaEmail" value="@directiva.PlantillaEmail" disabled="@(!puedeModificar)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Se conserva como respaldo cuando el asunto de cotización está vacío.</p>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Los campos vacíos usan el formato recomendado. Se admite texto plano y estos marcadores: {proveedor}, {contacto_proveedor}, {comprador}, {ubicacion}, {notas}, {items}, {total}, {plazo_entrega}, {fecha_entrega}, {hora_entrega}. {items} solo se admite en el cuerpo. Los datos ausentes se indican como No informado.</p>
+                    <div>
+                        <label for="asunto-cotizacion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Solicitud de cotización — asunto</label>
+                        <input id="asunto-cotizacion" name="AsuntoCotizacion" value="@directiva.AsuntoCotizacion" placeholder="Solicitud de cotización de insumos" disabled="@(!puedeModificar)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                        <label for="cuerpo-cotizacion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Solicitud de cotización — cuerpo</label>
+                        <textarea id="cuerpo-cotizacion" name="CuerpoCotizacion" rows="5" placeholder="@Firebase.Services.InsumosEmailFormatter.CuerpoCotizacionDefault" disabled="@(!puedeModificar)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">@directiva.CuerpoCotizacion</textarea>
+                    </div>
+                    <div>
+                        <label for="asunto-orden" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Orden de compra — asunto</label>
+                        <input id="asunto-orden" name="AsuntoOrden" value="@directiva.AsuntoOrden" placeholder="Orden de compra de insumos" disabled="@(!puedeModificar)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                        <label for="cuerpo-orden" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Orden de compra — cuerpo</label>
+                        <textarea id="cuerpo-orden" name="CuerpoOrden" rows="5" placeholder="@Firebase.Services.InsumosEmailFormatter.CuerpoOrdenDefault" disabled="@(!puedeModificar)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">@directiva.CuerpoOrden</textarea>
+                    </div>
+                    @if (puedeModificar)
+                    {
+                        <button type="submit" class="app-button app-button--primary"><svg aria-hidden="true" class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg>Guardar reabastecimiento</button>
+                    }
+                </form>
+            </section>
+        }
+
         <!-- Formulario de Configuración -->
         <form id="configuracion-form" data-validate="true" asp-action="Actualizar" method="post" class="p-4 grid grid-cols-2 gap-2">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="FechaActualizacion" />
             <input type="hidden" asp-for="ActualizadoPor" />
+
+            <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <h2 class="text-xl font-semibold">Alerta de stock</h2>
+                <label asp-for="PorcentajeAlertaStock">Porcentaje sobre el stock mínimo (%)</label>
+                <input asp-for="PorcentajeAlertaStock" type="number" min="0" step="any" required class="block w-full rounded-lg border p-2 dark:bg-gray-700" />
+                <span asp-validation-for="PorcentajeAlertaStock" class="text-red-600 text-xs"></span>
+            </div>
+
+            <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <h2 class="text-xl font-semibold">Compras recientes</h2>
+                <label asp-for="VigenciaCompraRecienteDias">Vigencia de compra reciente (días)</label>
+                <input asp-for="VigenciaCompraRecienteDias" type="number" min="0" step="1" required class="block w-full rounded-lg border p-2 dark:bg-gray-700" />
+                <span asp-validation-for="VigenciaCompraRecienteDias" class="text-red-600 text-xs"></span>
+            </div>
 
             <!-- Sección 1: Descuentos por Cancelación Anticipada -->
             <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
