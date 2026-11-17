@@ -2,36 +2,39 @@
 
 ## 1. Resumen Ejecutivo
 
-Este documento constituye el informe técnico y ejecutivo del estado actual del aseguramiento de calidad (QA) y la infraestructura de pruebas del sistema **LavaFácil**. Reemplaza las estimaciones históricas anteriores para reflejar con fidelidad la totalidad del código de prueba existente en el repositorio.
+Este documento constituye el informe técnico y ejecutivo del estado actual del aseguramiento de calidad (QA) y la infraestructura de pruebas del sistema **LavaFácil**. Reemplaza las estimaciones históricas anteriores para reflejar con fidelidad la totalidad del código de prueba existente en el repositorio, incluyendo las pruebas agregadas recientemente para el **Módulo de Notificaciones al Cliente** (`ClienteNotificationService`) y las preferencias de entrega en cotizaciones de insumos.
 
 ### 1.1 Tipos de Pruebas Existentes
 
-El repositorio cuenta con una estrategia de pruebas estructurada en cuatro niveles principales:
+El repositorio cuenta con una estrategia de pruebas estructurada en niveles complementarios:
 
 1. **Pruebas Unitarias de Backend (.NET 9 / xUnit)**:
    - Verifican reglas de negocio, modelos de datos, DTOs, cálculos de precios, duraciones, validaciones de expresiones regulares, normalización de datos y contratos de servicios sin dependencias externas, utilizando dobles de prueba con **Moq** y memoria volátil.
 2. **Pruebas de Integración con Emuladores Locales (.NET 9 / Firestore / Auth)**:
    - Verifican operaciones de persistencia transaccional, consultas complejas, ordenamiento, filtrado multifiltro, paginación, concurrencia (guardias por patente) y flujos de negocio contra instancias locales y desechables de los emuladores de **Google Cloud Firestore** y **Firebase Auth**.
-3. **Pruebas de Seguridad y Control de Acceso Basado en Roles (RBAC)**:
-   - Verifican la matriz de permisos, protección contra bypass de autorización, directivas de retención y expiración de sesiones, mitigación de ataques de enumeración y denegación de servicio en restablecimiento de contraseñas, y regeneración de navegación según claims.
-4. **Pruebas Unitarias y de Integración de Frontend (Node.js / `node:test`)**:
+3. **Pruebas del Módulo de Notificaciones al Cliente (WhatsApp & Email)**:
+   - Verifican la construcción de mensajes contextuales veraces según el evento del lavado (etapa finalizada con anticipación de la próxima etapa, servicio finalizado, lavado completado con vehículo listo para retiro, y cancelaciones con motivo explicativo), despacho dual (Meta WhatsApp Cloud API y Resend Email), normalización de preferencias del cliente (requiriendo al menos un canal activo), prevención de reenvíos duplicados (idempotencia) y resiliencia operativa ante contingencias de auditoría.
+4. **Pruebas de Seguridad y Control de Acceso Basado en Roles (RBAC)**:
+   - Verifican la matriz de permisos, protección contra bypass de autorización, directivas de retención y expiración de sesiones, mitigación de ataques de enumeración y denegación de servicio en restablecimiento de contraseñas, diagnóstico estructurado de transporte sin filtración de secretos, y regeneración de navegación según claims.
+5. **Pruebas Unitarias y de Integración de Frontend (Node.js / `node:test`)**:
    - Prueban la lógica de scripts cliente (`wwwroot/js/*.js`), interacción con modales, normalización de formularios, contrastes y consistencia de atributos HTML mediante un entorno DOM simulado con `node:vm`, sin necesidad de levantar un navegador completo.
-5. **Pruebas de Interfaz y Componentes en Navegador (Playwright / Chromium)**:
+6. **Pruebas de Interfaz y Componentes en Navegador (Playwright / Chromium)**:
    - Verifican el comportamiento visual e interactivo de vistas y controles (trampas de foco, accesibilidad por teclado, superposición de capas y modales, toasts de notificación, temas claro/oscuro) utilizando Chromium headless sobre un servidor de fixtures locales con respuestas simuladas.
-6. **Prueba End-to-End Autenticada con Servidor en Vivo (Playwright + Kestrel + Emuladores)**:
+7. **Prueba End-to-End Autenticada con Servidor en Vivo (Playwright + Kestrel + Emuladores)**:
    - Suite especializada que levanta la aplicación ASP.NET Core completa junto a emuladores locales sembrados para validar el ciclo completo de autenticación, revocación de roles en vivo, invalidación de menú y redirección HTTP 403.
 
 ### 1.2 Áreas Funcionales Cubiertas
 
 El inventario de pruebas existente cubre los siguientes módulos del sistema:
 
-- **Clientes**: Registro, ciclo de vida, asociación a vehículos, normalización de datos personales y búsqueda insensible a mayúsculas.
+- **Notificaciones al Cliente**: Despacho automático y multicanal (WhatsApp y Email) por eventos operativos del lavado, cálculo de etapa siguiente, prevención de mensajes engañosos en cancelaciones, normalización estricta de preferencias (`NotificarPorWhatsApp`, `NotificarPorEmail`), diagnóstico seguro de transporte en Meta WhatsApp sin fuga de tokens o datos sensibles, e idempotencia ante eventos repetidos.
+- **Clientes**: Registro, ciclo de vida, asociación a vehículos, normalización de datos personales y preferencias de comunicación, y búsqueda insensible a mayúsculas.
 - **Vehículos y Catálogo**: Detección de tipos de vehículo (CarQuery y catálogo local), propuestas de nuevos modelos, validación y generación de claves de asociación (algoritmo SHA-256), titularidad, vehículos huérfanos y guardias transaccionales de patentes.
 - **Lavados y Servicios**: Estados del ciclo de lavado, cálculo de precios y descuentos, asignación de empleados, etapas operativas, recetas de insumos teóricas vs. reales, y cancelación con devolución de stock.
-- **Insumos, Stock y Kardex**: Registro de transacciones de stock, conversión de unidades, precisión decimal, multifiltros de kardex, reabastecimiento, reservas automáticas, órdenes de compra, cotizaciones y catálogo de proveedores.
+- **Insumos, Stock, Compras y Cotizaciones**: Registro de transacciones de stock, conversión de unidades, precisión decimal, multifiltros de kardex, reabastecimiento, reservas automáticas, órdenes de compra, catálogo de proveedores, y cotizaciones con fecha/hora preferida de entrega en zona horaria argentina.
 - **Servicios y Paquetes**: Catálogo de servicios, dependencias de permisos, composición de paquetes y cálculo de descuentos.
 - **Personal**: Gestión de empleados, roles, filtros y paginación.
-- **Auditoría**: Captura granular de eventos de auditoría (catálogo, clientes, vehículos, lavados, sesiones), contratos de escritura y renderizado de vistas parciales de detalle.
+- **Auditoría**: Captura granular de eventos de auditoría (catálogo, clientes, vehículos, lavados, sesiones, notificaciones), contratos de escritura y renderizado de vistas parciales de detalle.
 - **Seguridad, Roles y Sesiones**: Catálogo y reglas de roles, claims, navegación dinámica, seguridad en restablecimiento de contraseñas, inmutabilidad de roles base y expiración de sesiones.
 - **WhatsApp Bot**: Flujos conversacionales de registro y asociación de vehículos, normalización de números telefónicos internacionales/argentinos y controladores de webhooks.
 - **Interfaz de Usuario y Presentación**: Consistencia visual, tablas adaptables (responsive), modales multinivel, temas visuales y componentes compartidos.
@@ -57,7 +60,7 @@ El inventario de pruebas existente cubre los siguientes módulos del sistema:
 
 - **Sin porcentaje global de cobertura certificado**: El proyecto cuenta con el paquete recolector `coverlet.collector`, pero no existe un reporte consolidado ni mediciones previas de cobertura porcentual por líneas o ramas. Por lo tanto, no se declara ningún porcentaje arbitrario de cobertura.
 - **Alcance de las pruebas de navegador**: Con excepción del script específico de notificaciones autenticadas, las 17 suites de Playwright (`tests/browser/*.spec.cjs`) se ejecutan contra un servidor de fixtures estático que sirve HTML pre-renderizado con respuestas HTTP simuladas. No evalúan la compilación dinámica de Razor ni la integración con la base de datos real.
-- **Ejecución observada en esta actualización**: Se ejecutaron y verificaron directamente en esta tarea las suites unitarias de JavaScript (218 pruebas en total: 216 aprobadas y 2 fallidas observadas). Las suites de .NET y Playwright no completaron su corrida en este entorno debido a restricciones del entorno de aislamiento (timeout de sockets IPC en VSTest y permisos de sistema de archivos temporales en Playwright), por lo que se documentan a partir del código fuente existente y su configuración explícita.
+- **Ejecución observada en esta actualización**: Se ejecutaron y verificaron directamente en esta tarea las suites unitarias de JavaScript (221 pruebas en total: 218 aprobadas y 3 fallidas observadas). Las suites de .NET y Playwright no completaron su corrida en este entorno debido a restricciones del entorno de aislamiento (timeout de sockets IPC en VSTest y permisos de sistema de archivos temporales en Playwright), por lo que se documentan a partir del código fuente existente y su configuración explícita.
 
 ---
 
@@ -77,10 +80,10 @@ Aplicacion-Lavadero/
 │   │   ├── TestFactory.cs                         # Factoría de entidades de dominio
 │   │   ├── LocalAuthEmulatorTransport.cs          # Transporte de cliente para Auth emulator
 │   │   └── firebase-auth-emulator.cjs             # Helper de inicio del emulador de autenticación
-│   ├── Services/                                  # 44 archivos .cs de pruebas unitarias de servicios
-│   ├── Integration/                               # 60 archivos .cs (59 activos) de integración con emulador
+│   ├── Services/                                  # 46 archivos .cs de pruebas unitarias de servicios
+│   ├── Integration/                               # 61 archivos .cs (60 activos) de integración con emulador
 │   ├── Security/                                  # 18 archivos .cs de pruebas de seguridad y RBAC
-│   └── *.test.cjs                                 # 43 suites de pruebas JavaScript unitarias (node:test)
+│   └── *.test.cjs                                 # 44 suites de pruebas JavaScript unitarias (node:test)
 ├── tests/                                         # Pruebas de integración frontend y navegador
 │   ├── lavado-finalizacion.test.js                # Suite unitaria JS de modal de consumos (node:test)
 │   └── browser/                                   # 17 archivos .spec.cjs de pruebas Playwright
@@ -120,14 +123,14 @@ El archivo [package.json](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/p
    - `CreateLavado(...)`, `CreateServicioEnLavado(...)`, `CreateServicio(...)`
    - `CreatePaquete(...)`, `CreateConfiguracion(...)`, `CreateAuditLog(...)`
 2. **Dobles de Red y Handlers HTTP**:
-   - `FakeHandler`: Permite simular respuestas `HttpResponseMessage` para probar llamadas salientes (e.g., Firebase REST o proveedores de email).
+   - `FakeHandler` / `CaptureHandler`: Simulan respuestas `HttpResponseMessage` para probar llamadas salientes hacia Firebase REST, Meta WhatsApp Cloud API o el servicio de correo Resend.
    - Servidor Kestrel en memoria: Se utiliza en pruebas de seguridad para instanciar la canalización ASP.NET Core sobre puertos efímeros (`127.0.0.1:0`).
 3. **Mocks de Frontend con `node:vm`**:
    - Las pruebas `*.test.cjs` y `tests/lavado-finalizacion.test.js` cargan el archivo de código fuente real de `wwwroot/js/` dentro de un contexto aislado creado con `vm.runInNewContext`. Crean implementaciones simuladas de `window`, `document`, `DOMParser`, `FormData`, `Peticiones` y `Notificaciones`, verificando la lógica de cliente sin dependencias externas de red o navegador.
 
 ### 2.4 Emuladores Locales y Condiciones de Aislamiento
 
-El sistema implementa dos mecanismos estrictos para garantizar que las pruebas nunca interactúen con servicios de producción:
+El sistema implementa mecanismos estrictos para garantizar que las pruebas nunca interactúen con servicios de producción:
 
 1. **Detección Obligatoria de Emulador (`EmulatorDetection.EmulatorOnly`)**:
    Las pruebas de integración configuran clientes de Firestore mediante `FirestoreDbBuilder` exigiendo `EmulatorDetection.EmulatorOnly`. Si el entorno no apunta a un emulador, la inicialización falla inmediatamente por diseño.
@@ -146,19 +149,30 @@ El sistema implementa dos mecanismos estrictos para garantizar que las pruebas n
 
 A continuación se detalla el inventario completo y clasificado de las pruebas que existen en el repositorio.
 
-### 3.1 Clientes
+### 3.1 Módulo de Notificaciones al Cliente (`ClienteNotificationService`)
+
+Este módulo fue implementado para orquestar la comunicación transaccional directa con los clientes ante cambios de estado en sus lavados, a través de WhatsApp y correo electrónico:
+
+| Componente / Archivo | Tipo de Prueba | Dependencias / Mecanismo | Escenarios y Comportamientos Verificados | Límites Relevantes |
+|---|---|---|---|---|
+| [ClienteNotificationMessageTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/ClienteNotificationMessageTests.cs) (3 tests) | Unitaria (.NET) | En memoria / Mock HTTP | - `ServiceEvent_UsesFriendlyContextAndTruthfulOutcome`: Mensajes cordiales y veraces en finalización ("finalizó correctamente") y cancelación ("fue cancelado") de servicios, conteniendo el nombre del lavadero, el servicio y marca temporal.<br>- `WhatsAppSequentialAcceptedRequests_DoNotEstablishDelivery`: Verifica que la respuesta HTTP 200 de Meta solo acredita aceptación por el proveedor, no entrega al destinatario.<br>- `CompletedStage_ReportsNextStageRatherThanCurrentService`: Al completarse una etapa operativa, el mensaje informa la próxima etapa (`Sigue: Enjuague.`) en lugar de reiterar el nombre del servicio completo. | No realiza envíos de red reales a Meta ni a servidores de correo. |
+| [ClienteNotificationPreferenceTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/ClienteNotificationPreferenceTests.cs) (4 tests) | Unitaria (.NET) | En memoria | - `LegacyClient_UsesEmailAsEffectiveDefault`: Normalización para clientes existentes sin preferencias explícitas (adopta email activo y WhatsApp inactivo por defecto).<br>- `ExplicitPreferences_ArePreserved`: Preservación estricta de elecciones explícitas (WhatsApp solo, Email solo o ambos).<br>- `ExplicitlyEmptyPreferences_AreRejected`: Lanza `ValidationException` si se intentan desactivar ambos canales simultáneamente.<br>- `CancellationMessage_ContainsReasonAndDoesNotClaimCompletion`: La notificación de cancelación de lavado incluye el motivo explicativo y nunca afirma que el vehículo esté listo para retirar. | Validación de lógica en memoria. |
+| [MetaWhatsAppServiceTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/MetaWhatsAppServiceTests.cs) (6 tests: 1 Fact + 5 Theories) | Unitaria (.NET) | Moq / `ThrowingHandler` | - Formateo de payloads para texto, botones y listas interactivas.<br>- `TransportDiagnostics_AreStructuredAndNeverLeak`: Ante fallas de transporte HTTP o cancelaciones, genera diagnóstico clasificado como `"uncertain transport"` y registra logs de advertencia estructurados **sin filtrar secretos**, tokens, números de teléfono o URLs privadas.<br>- `TransportFailure_IsUncertainAndSafe`: Clasificación segura de excepciones de red. | Pruebas de contrato de cliente HTTP. |
+| [LavadoCreationPricingRefactorTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/LavadoCreationPricingRefactorTests.cs) (3 tests específicos de notificaciones) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | - `ClienteNotification_SequentialStagesUseConfiguredNameAndContinueAfterNotificationAuditFailure`: Despacho dual (Email y WhatsApp) ante etapas consecutivas con el nombre configurado del lavadero, transición hacia el mensaje de retiro en la última etapa, y continuidad operativa si el registro de auditoría de la notificación falla (`NotificationAuditFailure`).<br>- `ClienteNotification_RepeatedStageCompletionDoesNotResend`: Idempotencia; reintentar finalizar una etapa ya completada no duplica mensajes de notificación.<br>- `Horario_CreationOutsideHoursReturnsSpecificErrorWithoutWrites`: Rechazo específico ante solicitudes fuera de horario de atención comercial sin escrituras espurias en la base de datos. | Requiere emulador en puerto 8190. |
+
+### 3.2 Clientes
 
 | Componente / Archivo | Tipo de Prueba | Dependencias / Mecanismo | Escenarios y Comportamientos Verificados | Límites Relevantes |
 |---|---|---|---|---|
 | [ClienteServiceTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/ClienteServiceTests.cs) (21 tests) | Unitaria (.NET) | En memoria / Sin BD | Propiedades del modelo `Cliente`, concatenación de `NombreCompleto`, regex de nombres (acentos, espacios, mín. 3 letras), solo números en DNI, teléfono de 10 dígitos, formato de email, filtros por estado múltiple, búsqueda insensible a mayúsculas en múltiples campos, ordenamiento alfabético, cálculo de páginas y detección de documentos duplicados. | No prueba persistencia en Firestore ni transacciones concurrentes. |
 | [ClienteQueryRefactorTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/ClienteQueryRefactorTests.cs) (2 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Listado y conteo de clientes respetando combinaciones de filtros, orden ascendente/descendente por nombre y paginación exacta. | Requiere emulador en puerto 8190. |
 | [ClienteAssociationRefactorTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/ClienteAssociationRefactorTests.cs) (3 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Asociación y desvinculación de clientes a vehículos, conservación de lista de vehículos asociados y consistencia referencial bidireccional. | Requiere emulador en puerto 8190. |
-| [ClienteLifecycleRefactorTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/ClienteLifecycleRefactorTests.cs) (1 test) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Ciclo de vida completo del cliente: alta, actualización de datos, baja lógica (inactivación) y persistencia del estado. | Requiere emulador en puerto 8190. |
+| [ClienteLifecycleRefactorTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/ClienteLifecycleRefactorTests.cs) (1 test) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Ciclo de vida completo del cliente: alta, actualización de datos (incluidas preferencias de notificación), baja lógica (inactivación) y persistencia del estado. | Requiere emulador en puerto 8190. |
 | [ClienteVehicleCatalogueProposalTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/ClienteVehicleCatalogueProposalTests.cs) (5 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Creación de cliente vinculada a propuestas de nuevos modelos de vehículos en el catálogo cuando no existen previamente. | Requiere emulador en puerto 8190. |
 | [ClienteSecurityRegressionTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Security/ClienteSecurityRegressionTests.cs) (1 test) | Seguridad (.NET) | Simulación de claims | Verificación de permisos de usuario para modificar clientes y aislamiento de datos. | Sin conexión HTTP real. |
 | [ClienteLayout.test.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/ClienteLayout.test.cjs) (2 tests) | Frontend JS | Node.js `node:test` + `node:vm` | Renderizado adaptativo de formularios de cliente y grilla de vehículos asociados. | Ejecución en DOM sintético. |
 
-### 3.2 Vehículos, Titularidad y Catálogo
+### 3.3 Vehículos, Titularidad y Catálogo
 
 | Componente / Archivo | Tipo de Prueba | Dependencias / Mecanismo | Escenarios y Comportamientos Verificados | Límites Relevantes |
 |---|---|---|---|---|
@@ -179,14 +193,14 @@ A continuación se detalla el inventario completo y clasificado de las pruebas q
 | [VehicleSearchSort.test.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/VehicleSearchSort.test.cjs) (2 tests) | Frontend JS | Node.js `node:test` + `node:vm` | Búsqueda y ordenamiento en cliente de la grilla de vehículos. | DOM sintético. |
 | [vehicle-ownership.spec.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/tests/browser/vehicle-ownership.spec.cjs) (7 tests) | Navegador (Playwright) | Fixture local (puerto 41783) | Advertencia visual al quitar titular compartido, ingreso y envío de clave de asociación, modal de personas asociadas y feedback de error. | Respuestas HTTP simuladas. |
 
-### 3.3 Lavados, Recetas y Etapas Operativas
+### 3.4 Lavados, Recetas y Etapas Operativas
 
 | Componente / Archivo | Tipo de Prueba | Dependencias / Mecanismo | Escenarios y Comportamientos Verificados | Límites Relevantes |
 |---|---|---|---|---|
 | [LavadoServiceTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/LavadoServiceTests.cs) (46 tests) | Unitaria (.NET) | En memoria | Estados válidos del lavado (`Pendiente`, `EnProceso`, `Realizado`, `RealizadoParcialmente`, `Cancelado`), estado inicial, retiro (`Pendiente`, `Retirado`), cálculo de precios como suma de servicios menos descuentos (rango 0-100%), suma de tiempos estimados, estados de pago (`Pendiente`, `Parcial`, `Pagado`), medios de pago, validación de al menos un servicio, asignación de empleados (rango 1 a 10) y validación de motivo obligatorio en cancelaciones. | No valida persistencia transaccional. |
 | [LavadoRecetaTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/LavadoRecetaTests.cs) (2 tests) | Unitaria (.NET) | En memoria | Consumo teórico de recetas de insumos asociadas a los servicios configurados en el lavado. | En memoria. |
 | [LavadoQueryRefactorTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/LavadoQueryRefactorTests.cs) (1 test) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Consultas de lavados filtrando por rangos de fecha, clientes, patentes y estados operativos. | Requiere emulador. |
-| [LavadoCreationPricingRefactorTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/LavadoCreationPricingRefactorTests.cs) (11 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Creación transaccional de lavados y fijación de precios según tipo de vehículo y catálogo vigente. | Requiere emulador. |
+| [LavadoCreationPricingRefactorTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/LavadoCreationPricingRefactorTests.cs) (14 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Creación transaccional de lavados, fijación de precios según tipo de vehículo, verificación de notificaciones secuenciales a clientes, idempotencia de finalización de etapas y control de horarios comerciales. | Requiere emulador. |
 | [LavadoCancelacionConsumosIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/LavadoCancelacionConsumosIntegrationTests.cs) (9 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Cancelación de lavados o etapas con consumo real registrado: registro de insumos devueltos vs. consumidos efectivamente. | Requiere emulador. |
 | [LavadoAssociatedClientRefactorTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/LavadoAssociatedClientRefactorTests.cs) (2 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Creación de lavados solicitados por clientes asociados al vehículo (no solo el titular). | Requiere emulador. |
 | [LavadoInsumosTiposIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/LavadoInsumosTiposIntegrationTests.cs) (15 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Consumo de insumos por tipo y categoría durante las etapas operativas del lavado. | Requiere emulador. |
@@ -198,9 +212,7 @@ A continuación se detalla el inventario completo y clasificado de las pruebas q
 | [LavadoInsumosModalConsistency.test.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/LavadoInsumosModalConsistency.test.cjs) (3 tests) | Frontend JS | Node.js `node:test` + `node:vm` | Consistencia de modales de insumos en el flujo operativo de lavados. | DOM sintético. |
 | [wash-modal-layering.spec.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/tests/browser/wash-modal-layering.spec.cjs) (1 test) | Navegador (Playwright) | Fixture local (puerto 41783) | Capas de z-index y bloqueo de scroll al abrir modales en la pantalla de lavados. | Servidor fixture estático. |
 
-### 3.4 Insumos, Stock, Kardex, Compras, Proveedores y Órdenes
-
-Esta es una de las áreas más extensas del sistema y no figuraba en la documentación anterior:
+### 3.5 Insumos, Stock, Kardex, Compras, Proveedores, Órdenes y Cotizaciones
 
 | Componente / Archivo | Tipo de Prueba | Dependencias / Mecanismo | Escenarios y Comportamientos Verificados | Límites Relevantes |
 |---|---|---|---|---|
@@ -211,6 +223,7 @@ Esta es una de las áreas más extensas del sistema y no figuraba en la document
 | [TipoInsumoTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/TipoInsumoTests.cs) (4 tests) | Unitaria (.NET) | En memoria | Clasificación de insumos por categorías y tipos. | En memoria. |
 | [ConversionUnidadesTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/ConversionUnidadesTests.cs) (18 tests) | Unitaria (.NET) | En memoria | Conversión entre unidades de medida (litros, mililitros, unidades, kilogramos, gramos) y validaciones de equivalencia. | En memoria. |
 | [RecetaUnidadTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/RecetaUnidadTests.cs) (2 tests) | Unitaria (.NET) | En memoria | Unidades de medida configuradas en recetas de servicios y compatibilidad con unidades de stock. | En memoria. |
+| [PreferredDeliveryIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/PreferredDeliveryIntegrationTests.cs) (5 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Solicitudes de cotización con fecha y hora preferidas de entrega: validación en zona horaria argentina (`America/Argentina/Buenos_Aires`), persistencia UTC, rechazo de fechas pasadas y campos incompletos sin escrituras ni auditoría, y formateo en resúmenes. | Requiere emulador. |
 | [InsumosStockIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/InsumosStockIntegrationTests.cs) (48 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Suite integral de stock: actualización atómica de existencias, descuentos por lavados, alertas de stock mínimo, bloqueo de stock negativo y transacciones concurrentes. | Requiere emulador. |
 | [InsumosTiposIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/InsumosTiposIntegrationTests.cs) (19 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Altas, bajas, modificaciones y consultas de tipos de insumo en Firestore. | Requiere emulador. |
 | [InsumoCatalogIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/InsumoCatalogIntegrationTests.cs) (9 tests) & [InsumosCatalogIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/InsumosCatalogIntegrationTests.cs) (9 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Catálogo maestro de insumos, validación de nombres únicos, precios de compra y proveedores predeterminados. | Requiere emulador. |
@@ -220,11 +233,11 @@ Esta es una de las áreas más extensas del sistema y no figuraba en la document
 | [OrdenesHttpIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/OrdenesHttpIntegrationTests.cs) (8 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Controladores HTTP para gestión de órdenes de compra, permisos y transiciones de estado. | Requiere emulador. |
 | [ProveedorCatalogIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/ProveedorCatalogIntegrationTests.cs) (14 tests), [ProveedorEmailLockIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/ProveedorEmailLockIntegrationTests.cs) (5 tests), [ProveedorValidationHttpIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/ProveedorValidationHttpIntegrationTests.cs) (1 test) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Gestión de proveedores: unicidad de CUIT/RUT, bloqueo de modificación de email durante órdenes activas y validaciones HTTP. | Requiere emulador. |
 | [ReabastecimientoIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/ReabastecimientoIntegrationTests.cs) (17 tests) & [RecepcionParcialCierreIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/RecepcionParcialCierreIntegrationTests.cs) (4 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Algoritmos de sugerencia de reabastecimiento por stock crítico, recepciones parciales con cierre definitivo o pendiente. | Requiere emulador. |
-| [InsumosEmailFormattingIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/InsumosEmailFormattingIntegrationTests.cs) (7 tests) | Integración (.NET) | En memoria / Emulador | Generación y formateo de correos electrónicos de órdenes y alertas de stock. | Sin envío de correo real. |
-| [InsumosHttpIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/InsumosHttpIntegrationTests.cs) (0 tests) | Documentación / Placeholder | N/A | Archivo conservado con comentario que documenta la remoción deliberada de servidores HTTP en favor de pruebas contra Firestore local en `InsumosTiposIntegrationTests`. | No contiene métodos ejecutables. |
+| [InsumosEmailFormattingIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/InsumosEmailFormattingIntegrationTests.cs) (7 tests) | Integración (.NET) | En memoria / Emulador | Generación y formateo de correos electrónicos de órdenes, cotizaciones con fecha/hora preferida y alertas de stock. | Sin envío de correo real. |
+| [PreferredDeliveryUi.test.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/PreferredDeliveryUi.test.cjs) (3 tests) | Frontend JS | Node.js `node:test` + `node:vm` | Validación de fecha y hora preferida de entrega opcionales en formulario de cotizaciones, mínimos dinámicos según hora local argentina y actualización de ayuda contextual. | DOM sintético. |
 | 17 Suites JavaScript de Insumos (`*.test.cjs`) | Frontend JS | Node.js `node:test` + `node:vm` | Verifican consistencia visual de tarjetas y tablas de insumos, estilos de paginación, filtros multifiltro de Kardex, detalle de stock y órdenes, reactivación de estados y templates de email. | DOM sintético. |
 
-### 3.5 Servicios y Paquetes
+### 3.6 Servicios y Paquetes
 
 | Componente / Archivo | Tipo de Prueba | Dependencias / Mecanismo | Escenarios y Comportamientos Verificados | Límites Relevantes |
 |---|---|---|---|---|
@@ -236,30 +249,30 @@ Esta es una de las áreas más extensas del sistema y no figuraba en la document
 | [PaqueteQueryRefactorTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/PaqueteQueryRefactorTests.cs) (1 test) & [PaqueteMutationRefactorTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/PaqueteMutationRefactorTests.cs) (1 test) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Consultas y mutaciones de paquetes de servicios en Firestore. | Requiere emulador. |
 | [ServicioRecetaModalConsistency.test.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/ServicioRecetaModalConsistency.test.cjs) & [ServicioRecipeDetails.test.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/ServicioRecipeDetails.test.cjs) | Frontend JS | Node.js `node:test` + `node:vm` | Modales y formularios de edición de recetas de insumos en la interfaz de servicios. | DOM sintético. |
 
-### 3.6 Personal
+### 3.7 Personal
 
 | Componente / Archivo | Tipo de Prueba | Dependencias / Mecanismo | Escenarios y Comportamientos Verificados | Límites Relevantes |
 |---|---|---|---|---|
 | [PersonalServiceTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/PersonalServiceTests.cs) (11 tests) | Unitaria (.NET) | En memoria | Modelo de empleado, validación de email, asignación de roles iniciales, estados activo/inactivo y paginación. | En memoria. |
 | [PersonalQueryRefactorTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/PersonalQueryRefactorTests.cs) (4 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Consultas de personal con filtros por rol, estado y búsqueda por nombre en base de datos. | Requiere emulador. |
 
-### 3.7 Auditoría
+### 3.8 Auditoría
 
 | Componente / Archivo | Tipo de Prueba | Dependencias / Mecanismo | Escenarios y Comportamientos Verificados | Límites Relevantes |
 |---|---|---|---|---|
-| 10 Suites Unitarias de Auditoría ([AuditServiceTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/AuditServiceTests.cs), [AuditChangeDetailsTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/AuditChangeDetailsTests.cs), etc.) (71 tests en total) | Unitaria (.NET) | En memoria | Formateo de cambios en campos (`AuditChangeDetailsTests` cuenta con 42 tests unitarios exhaustivos), captura de sesión, captura de eventos de catálogo y lavados, contratos del escritor de auditoría y renderizado de vistas parciales. | En memoria. |
+| 10 Suites Unitarias de Auditoría ([AuditServiceTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/AuditServiceTests.cs), [AuditChangeDetailsTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/AuditChangeDetailsTests.cs), etc.) (71 tests en total) | Unitaria (.NET) | En memoria | Formateo de cambios en campos (`AuditChangeDetailsTests` cuenta con 42 tests unitarios exhaustivos), captura de sesión, captura de eventos de catálogo, lavados y notificaciones, contratos del escritor de auditoría y renderizado de vistas parciales. | En memoria. |
 | 6 Suites de Integración de Auditoría ([AuditCaptureTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/AuditCaptureTests.cs), etc.) (13 tests en total) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Inmutabilidad de registros en la colección `auditoria`, consultas por rango de fechas, usuario y entidad afectada. | Requiere emulador. |
 | [AuditDateRange.test.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/AuditDateRange.test.cjs) & [AuditDetail.test.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/AuditDetail.test.cjs) | Frontend JS | Node.js `node:test` + `node:vm` | Validación de fechas invertidas (rechaza recarga sin petición al servidor) y modal de visualización de detalles de auditoría. | DOM sintético. |
 | [auditoria.spec.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/tests/browser/auditoria.spec.cjs) (8 tests) | Navegador (Playwright) | Fixture local (puerto 41783) | Modal de detalle de auditoría: etiquetas en negrita con valores en línea, fondo oscurecido, cierre con X y Escape, foco del teclado y estilos de tabla. | Respuestas simuladas. |
 
-### 3.8 Autenticación, Seguridad y Roles (RBAC)
+### 3.9 Autenticación, Seguridad y Roles (RBAC)
 
 | Componente / Archivo | Tipo de Prueba | Dependencias / Mecanismo | Escenarios y Comportamientos Verificados | Límites Relevantes |
 |---|---|---|---|---|
 | [AuthenticationServiceTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/AuthenticationServiceTests.cs) (21 tests) | Unitaria (.NET) | Moq / En memoria | Validación de credenciales de usuario, login por email y contraseña, mapeo de roles y claims de identidad. | Dobles de prueba de Firebase Auth. |
 | [PasswordResetSecurityTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/PasswordResetSecurityTests.cs) (6 tests) | Seguridad (.NET) | Kestrel local efímero (`127.0.0.1:0`) | Verificación estricta de seguridad en recuperación de contraseña: rechazo de entradas inválidas sin invocar proveedores externos (mitigación de costos y denegación de servicio), respuesta idéntica y genérica ante emails existentes e inexistentes para evitar enumeración de cuentas. | Kestrel en memoria sin salida externa. |
 | [ResendEmailSenderTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/ResendEmailSenderTests.cs) (3 tests) | Unitaria (.NET) | Moq / FakeHandler | Contrato de envío de correos mediante API de Resend, manejo de errores de red y tokens. | No envía correos reales. |
-| [RolCatalogoTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/RolCatalogoTests.cs) (10 tests), [RolDependenciasTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/RolDependenciasTests.cs) (7 tests), [RolModelTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/RolModelTests.cs) (1 test), [RolReglasTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/RolReglasTests.cs) (6 tests) | Unitaria (.NET) | En memoria | Catálogo y modelo de roles, jerarquías de dependencias entre permisos (e.g. un permiso operativo requiere permisos de lectura base), inmutabilidad de roles del sistema y validaciones. | En memoria. |
+| [RolCatalogoTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/RolCatalogoTests.cs) (10 tests), [RolDependenciasTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/RolDependenciasTests.cs) (7 tests), [RolModelTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/RolModelTests.cs) (1 test), [RolReglasTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/RolReglasTests.cs) (6 tests) | Unitaria (.NET) | En memoria | Catálogo y modelo de roles, jerarquías de dependencias entre permisos, inmutabilidad de roles del sistema y validaciones. | En memoria. |
 | 18 Suites en [Firebase.Tests/Security/](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Security) (78 tests) | Seguridad (.NET) | En memoria / Claims / Kestrel | Pruebas de matriz de permisos RBAC (`RbacSpecProbes`), regeneración de menú de navegación según permisos (`NavegacionSistemaTests`), roles con solo permisos de creación en catálogo y lavados, login inicial con Google (`GoogleFirstLoginTests`), siembra de credenciales de emulador local, expiración de sesiones y privacidad en endpoints de actividad. | Sin conexión a servicios productivos. |
 | [LocalEmulatorLoginTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/LocalEmulatorLoginTests.cs) (1 test) | Integración (.NET) | Auth Emulator (`[LocalSeedFact]`) | Autenticación real contra el emulador local de Firebase Auth, validación de Uid y rechazo con credenciales incorrectas. | Requiere Auth emulator en puerto 9199. |
 | [RolInsumosBaseIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/RolInsumosBaseIntegrationTests.cs) (6 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Persistencia y asignación de permisos sobre módulos de insumos. | Requiere emulador. |
@@ -267,21 +280,20 @@ Esta es una de las áreas más extensas del sistema y no figuraba en la document
 | [login-validation.spec.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/tests/browser/login-validation.spec.cjs) (1 test) | Navegador (Playwright) | Fixture local (puerto 41783) | Validación visual de campos requeridos y formato de correo en la pantalla de acceso. | Respuestas simuladas. |
 | [test-authenticated-notifications.ps1](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/scripts/test-authenticated-notifications.ps1) & [authenticated-notifications.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/scripts/authenticated-notifications.cjs) | E2E Autenticado (Playwright + ASP.NET Core) | Servidor real (puerto 5200) + Emuladores (8189 y 9099) | Flujo E2E completo: inicio de sesión de administrador, apertura de formulario de rol, remoción de permiso de configuración, guardado AJAX, verificación de regeneración del menú lateral (desaparición de enlace), consumo único de mensaje `TempData`, auto-revocación y comprobación de respuesta HTTP 403 (Acceso Denegado). | Requiere entorno con puertos libres y dependencias instaladas. |
 
-### 3.9 WhatsApp Bot y Telefonía
+### 3.10 WhatsApp Bot y Telefonía
 
 | Componente / Archivo | Tipo de Prueba | Dependencias / Mecanismo | Escenarios y Comportamientos Verificados | Límites Relevantes |
 |---|---|---|---|---|
-| [WhatsAppFlowServiceTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/WhatsAppFlowServiceTests.cs) (26 tests) | Unitaria (.NET) | En memoria | Máquina de estados finitos del flujo conversacional: estados de inicio, registro, vehículos, menú de cliente, edición y asociación. Reconocimiento de comandos especiales (`INICIO`, `MENU`, `REINICIAR`), persistencia en `TemporaryData` y actualización de fecha de última interacción. | En memoria. |
-| [MetaWhatsAppServiceTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/MetaWhatsAppServiceTests.cs) (5 tests) | Unitaria (.NET) | FakeHandler / Moq | Construcción de payloads JSON para la API de mensajería de Meta (Cloud API), envío de mensajes de texto y plantillas interactivas. | No realiza llamadas HTTP externas. |
+| [WhatsAppFlowServiceTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/WhatsAppFlowServiceTests.cs) (26 tests) | Unitaria (.NET) | En memoria | Máquina de estados finitos del flujo conversacional: estados de inicio, registro, vehículos, menú de cliente, edición de perfil (con preferencias de notificación) y asociación. Reconocimiento de comandos especiales (`INICIO`, `MENU`, `REINICIAR`), persistencia en `TemporaryData` y actualización de fecha de última interacción. | En memoria. |
 | [PhoneNumberHelperTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/PhoneNumberHelperTests.cs) (21 tests) | Unitaria (.NET) | En memoria | Normalización de números telefónicos: remoción de caracteres no numéricos, manejo del prefijo internacional `+54` y el prefijo móvil `9` característico de Argentina, preparación para API de Meta y comparación flexible de números. | En memoria. |
 | [WhatsAppOperationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/WhatsAppOperationTests.cs) (4 tests) & [WhatsAppWebhookControllerTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/WhatsAppWebhookControllerTests.cs) (10 tests) | Unitaria (.NET) | Controller / Moq | Verificación del webhook de Meta (validación de token de suscripción de webhook mediante desafío `hub.challenge`), recepción y procesamiento asíncrono de mensajes entrantes. | En memoria. |
 | [WhatsAppAssociationKeyTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/WhatsAppAssociationKeyTests.cs) (9 tests: 2 Unitarias + 7 Integración) | Híbrida (.NET / Firestore) | Firestore Emulator (`[LocalFirestoreFact]`) | Generación y entrega de claves de asociación vehicular a través de mensajes de WhatsApp, validación contra base de datos. | Requiere emulador. |
 
-### 3.10 Configuración del Sistema y Componentes UI Transversales
+### 3.11 Configuración del Sistema y Componentes UI Transversales
 
 | Componente / Archivo | Tipo de Prueba | Dependencias / Mecanismo | Escenarios y Comportamientos Verificados | Límites Relevantes |
 |---|---|---|---|---|
-| [ConfiguracionServiceTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/ConfiguracionServiceTests.cs) (19 tests) | Unitaria (.NET) | En memoria | Parámetros de configuración general: porcentajes de descuento por cancelación, horas límites y políticas de reserva. | En memoria. |
+| [ConfiguracionServiceTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/ConfiguracionServiceTests.cs) (19 tests) | Unitaria (.NET) | En memoria | Parámetros de configuración general: nombre del lavadero utilizado en notificaciones, porcentajes de descuento por cancelación, horarios comerciales y capacidades. | En memoria. |
 | [TableEmptyStateRenderingTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services/TableEmptyStateRenderingTests.cs) (2 tests) | Unitaria (.NET) | En memoria | Renderizado de estados vacíos en tablas cuando no hay registros disponibles. | En memoria. |
 | [ConfiguracionStockIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/ConfiguracionStockIntegrationTests.cs) (4 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Parámetros de configuración de inventario y alertas en base de datos. | Requiere emulador. |
 | 13 Suites JavaScript Transversales (`*.test.cjs`) | Frontend JS | Node.js `node:test` + `node:vm` | Botones de formulario (`FormButtons.test.cjs`), contraste de colores (`FormButtonContrastRegression.test.cjs`), inicialización de validación dinámica (`DynamicFormValidation.test.cjs`), controles de tabla (`TableControlsConsistency.test.cjs`), tema claro/oscuro (`Theme.test.cjs`), e integración del helper de peticiones (`NotificationIntegration.test.cjs`). | DOM sintético. |
@@ -344,8 +356,8 @@ Para ejecutar pruebas unitarias de backend que no requieren emuladores de base d
 # Ejecutar todas las pruebas unitarias de servicios y seguridad (sin emuladores)
 dotnet test Firebase.Tests/Firebase.Tests.csproj --filter "FullyQualifiedName~Services|FullyQualifiedName~Security"
 
-# Ejecutar una clase de prueba específica
-dotnet test Firebase.Tests/Firebase.Tests.csproj --filter "FullyQualifiedName~ClienteServiceTests"
+# Ejecutar las pruebas del módulo de notificaciones al cliente
+dotnet test Firebase.Tests/Firebase.Tests.csproj --filter "FullyQualifiedName~ClienteNotification"
 
 # Ejecutar con salida detallada
 dotnet test Firebase.Tests/Firebase.Tests.csproj --logger "console;verbosity=detailed"
@@ -369,7 +381,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& ./Firebase.Tests/r
 
 ### 5.3 Pruebas JavaScript Unitarias y de Componentes (`node:test`)
 
-Para ejecutar las 44 suites de pruebas de frontend en entorno DOM simulado:
+Para ejecutar las 45 suites de pruebas de frontend en entorno DOM simulado:
 
 - **Directorio de ejecución**: Raíz del repositorio.
 - **Requisitos**: Node.js instalado. No requiere navegador ni servidor web.
@@ -382,7 +394,7 @@ node --test (Get-ChildItem -Path "Firebase.Tests/*.test.cjs" | ForEach-Object { 
 node --test tests/lavado-finalizacion.test.js
 
 # Ejecutar una suite específica
-node --test Firebase.Tests/AuditDateRange.test.cjs
+node --test Firebase.Tests/PreferredDeliveryUi.test.cjs
 ```
 
 ### 5.4 Pruebas de Navegador con Playwright
@@ -432,19 +444,21 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-authenticat
 
 ### 6.1 Verificación Ejecutada Durante Esta Actualización
 
-Durante la presente revisión técnica (fecha: **16 de noviembre de 2026**), se ejecutaron las pruebas unitarias de frontend para constatar su funcionamiento observable:
+Durante la presente revisión técnica (fecha: **17 de noviembre de 2026**), se ejecutaron las suites de pruebas JavaScript disponibles para constatar su comportamiento observable:
 
 | Comando Ejecutado | Alcance | Total Tests | Aprobados | Fallidos | Omitidos | Duración Observada |
 |---|---|---|---|---|---|---|
-| `node --test Firebase.Tests/*.test.cjs` | 43 archivos de pruebas de componentes JS | 197 | 195 | 2 | 0 | 11.106 ms (~11,1 s) |
+| `node --test Firebase.Tests/*.test.cjs` | 44 archivos de pruebas de componentes JS | 200 | 197 | 3 | 0 | 15.668 ms (~15,7 s) |
 | `node --test tests/lavado-finalizacion.test.js` | Suite de modales de finalización y consumos | 21 | 21 | 0 | 0 | 192 ms (~0,2 s) |
-| **TOTAL VERIFICADO EN VIVO** | **44 archivos JavaScript** | **218** | **216** | **2** | **0** | **~11,3 s** |
+| **TOTAL VERIFICADO EN VIVO** | **45 archivos JavaScript** | **221** | **218** | **3** | **0** | **~15,9 s** |
 
-#### Detalle de los 2 Fallos Observados en Pruebas JavaScript:
+#### Detalle de los 3 Fallos Observados en Pruebas JavaScript:
 1. **[Firebase.Tests/FormButtons.test.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/FormButtons.test.cjs#L40)** (`Servicio conserva atributos de formulario y ambos controles`):
-   - *Causa*: El test esperaba únicamente los botones estándar de `submit` y `clear` con clase `app-button--(success|danger)`. La vista `_ServicioForm.cshtml` incorporó botones adicionales para cerrar el editor de recetas (`closeRecipeEditor(true)` y `closeRecipeEditor(false)`), provocando una discrepancia en la aserción de igualdad estricta.
+   - *Causa*: El test esperaba únicamente los botones estándar de `submit` y `clear`. La vista `_ServicioForm.cshtml` incorporó botones adicionales para cerrar el editor de recetas (`closeRecipeEditor(true)` y `closeRecipeEditor(false)`), provocando una discrepancia en la aserción de igualdad estricta.
 2. **[Firebase.Tests/WashDetailNotifications.test.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/WashDetailNotifications.test.cjs#L7)** (`wash detail uses shared transport and notifications while preserving token and form body`):
-   - *Causa*: El test esperaba recibir el mensaje `'No permitido'` desde la respuesta mockeada. Sin embargo, en el entorno de ejecución la llamada generó un error de red (`'Failed to fetch'`), que fue capturado y mostrado por el sistema de notificaciones.
+   - *Causa*: El test esperaba recibir el mensaje `'No permitido'` desde la respuesta mockeada. En el entorno de ejecución la llamada generó un error de red (`'Failed to fetch'`), capturado por el sistema de notificaciones.
+3. **[Firebase.Tests/PurchaseUiCorrections.test.cjs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/PurchaseUiCorrections.test.cjs#L25)** (`S3 notas ocupa una columna de grilla adaptable`):
+   - *Causa*: La vista `Views/Insumos/Cotizaciones.cshtml` incorporó los nuevos campos de `fechaEntregaPreferida` y `horaEntregaPreferida` inmediatamente antes del campo de `Notas`, alterando la coincidencia de expresión regular que esperaba el contenedor simple anterior.
 
 ### 6.2 Suites No Verificadas en Vivo y Limitaciones Ambientales
 
@@ -458,21 +472,21 @@ Durante la presente revisión técnica (fecha: **16 de noviembre de 2026**), se 
    - *Estado*: No verificada en esta tarea.
    - *Motivo*: Requiere la descarga externa de librerías (`flowbite.min.js`) si no están en caché y el levantamiento simultáneo de tres servidores en segundo plano (Firestore, Auth y Kestrel).
 
-### 6.3 Resumen de Cifras Históricas del Repositorio
+### 6.3 Resumen de Cifras del Repositorio
 
-Para evitar confusiones con la documentación anterior, se aclara el origen y contexto de las cifras históricas registradas previamente en el proyecto:
+Para contextualizar el progreso del repositorio y evitar confusiones con la documentación anterior:
 
 - **Cifra Histórica de 494 Tests (5 de Diciembre, 2024)**:
-  - Correspondía a una fase inicial del proyecto donde solo se contemplaban 11 clases de prueba unitaria en `Firebase.Tests/Services/`. No incluía pruebas de integración, pruebas de seguridad RBAC, el módulo completo de stock/insumos, ni las pruebas de frontend y navegador.
+  - Fase inicial del proyecto con solo 11 clases de prueba unitaria en `Firebase.Tests/Services/`. No contemplaba integración, seguridad RBAC, insumos ni frontend.
 - **Cifra Histórica de 843 Tests Aislados (Registro de Titularidad y Patentes)**:
   - Registrada en archivos de log de corridas pasadas (`ownership-live-lifecycle.*.log`) con emuladores locales levantados para verificar las regresiones de titularidad de vehículos huérfanos.
 - **Inventario Actual de Código de Prueba en el Repositorio (Noviembre 2026)**:
-  - **887 métodos de prueba definidos en C# (.NET)** en 123 archivos de prueba:
-    - 382 métodos `[Fact]`
-    - 131 métodos `[Theory]` (con múltiples casos parametrizados cada uno)
-    - 373 métodos `[LocalFirestoreFact]` (pruebas contra Firestore Emulator)
+  - **906 métodos de prueba definidos en C# (.NET)** en 126 archivos de prueba (+ 2 helpers):
+    - 390 métodos `[Fact]`
+    - 134 métodos `[Theory]` (con múltiples casos parametrizados cada uno)
+    - 381 métodos `[LocalFirestoreFact]` (pruebas contra Firestore Emulator)
     - 1 método `[LocalSeedFact]` (prueba contra Auth Emulator)
-  - **218 casos de prueba JavaScript (`node:test`)** en 44 archivos de prueba.
+  - **221 casos de prueba JavaScript (`node:test`)** en 45 archivos de prueba.
   - **49 pruebas de navegador declaradas en Playwright** en 17 archivos `.spec.cjs`.
   - **1 suite completa de integración E2E autenticada** con Playwright, Kestrel y emuladores.
 
@@ -480,11 +494,11 @@ Para evitar confusiones con la documentación anterior, se aclara el origen y co
 
 ## 7. Conclusiones y Recomendaciones de Calidad
 
-1. **Cobertura de Casos Críticos de Negocio**:
-   - El sistema cuenta con sólidas protecciones en áreas de alto riesgo: guardias de concurrencia para evitar patentes duplicadas, prevención de desvinculación indebida de vehículos con cotitulares, trazabilidad de Kardex e inmutabilidad de registros de auditoría.
-2. **Higiene en Pruebas de Seguridad**:
-   - Se destaca la implementación de pruebas específicas contra ataques de temporización y enumeración de usuarios en el restablecimiento de contraseñas, así como la verificación de políticas de acceso denegado (HTTP 403) ante auto-revocación de roles.
-3. **Mantenimiento de Pruebas de Frontend**:
-   - Se recomienda actualizar la aserción de `FormButtons.test.cjs` para contemplar los nuevos botones del editor de recetas en `_ServicioForm.cshtml`, y revisar la resolución de rutas en `WashDetailNotifications.test.cjs` para evitar fallos por `'Failed to fetch'`.
+1. **Robustez del Módulo de Notificaciones**:
+   - El nuevo módulo `ClienteNotificationService` introduce una sólida arquitectura de entrega dual (WhatsApp/Email) con salvaguardas explícitas: normalización que impide clientes sin vías de contacto, cálculo transparente de etapas siguientes, anticipación de vehículos listos para retirar, idempotencia estricta ante finalizaciones repetidas y protección contra fugas de credenciales en logs de transporte.
+2. **Higiene en Pruebas de Integración y Transacciones**:
+   - Se destaca la cobertura de tolerancia a fallos en `LavadoCreationPricingRefactorTests.cs`: si la auditoría de la notificación experimenta un fallo temporal, la operación comercial principal y el envío de notificaciones continúan con éxito sin bloquear al usuario.
+3. **Mantenimiento y Sincronización de Pruebas de Frontend**:
+   - Se recomienda actualizar las expresiones regulares en `PurchaseUiCorrections.test.cjs` para reflejar los campos de entrega preferida, y en `FormButtons.test.cjs` para los botones del editor de recetas.
 4. **Adopción de Reportes Formales de Cobertura**:
    - Se aconseja instrumentar un pipeline continuo que ejecute `dotnet test --collect:"XPlat Code Coverage"` junto con emuladores para generar informes objetivos de cobertura porcentual por ramas y líneas.
