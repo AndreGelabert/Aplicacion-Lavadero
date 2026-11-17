@@ -9,8 +9,8 @@ public static class InsumosEmailFormatter
 {
     private static readonly CultureInfo Cultura = CultureInfo.GetCultureInfo("es-AR");
     private static readonly string[] Campos = { "proveedor", "contacto_proveedor", "comprador", "ubicacion", "notas", "items", "total", "plazo_entrega", "fecha_entrega", "hora_entrega" };
-    public const string CuerpoCotizacionDefault = "Solicitamos cotización para los siguientes insumos:\n{items}\nNotas: {notas}\nProveedor: {proveedor}\nContacto del proveedor: {contacto_proveedor}\nComprador: {comprador}\nUbicación: {ubicacion}\nFecha de entrega: {fecha_entrega}\nHora de entrega: {hora_entrega}\nPlazo de entrega: {plazo_entrega}";
-    public const string CuerpoOrdenDefault = "Orden de compra:\n{items}\nTotal: {total}\nNotas: {notas}\nProveedor: {proveedor}\nContacto del proveedor: {contacto_proveedor}\nComprador: {comprador}\nUbicación: {ubicacion}\nFecha de entrega: {fecha_entrega}\nHora de entrega: {hora_entrega}\nPlazo de entrega: {plazo_entrega}";
+    public const string CuerpoCotizacionDefault = "Solicitamos cotización para los siguientes insumos:\n{items}\nPor favor indique precio, disponibilidad y plazo de entrega.\nNotas: {notas}\nProveedor: {proveedor}\nContacto del proveedor: {contacto_proveedor}\nComprador: {comprador}\nUbicación: {ubicacion}\nFecha preferida de entrega: {fecha_entrega}\nHora preferida de entrega: {hora_entrega}\nLa fecha y hora son preferidas y están sujetas a confirmación del proveedor.";
+    public const string CuerpoOrdenDefault = "Orden de compra:\n{items}\nTotal: {total}\nNotas: {notas}\nProveedor: {proveedor}\nContacto del proveedor: {contacto_proveedor}\nComprador: {comprador}\nUbicación: {ubicacion}\nPlazo de entrega: {plazo_entrega}";
 
     public static bool PlantillaValida(string? valor, bool asunto)
     {
@@ -23,6 +23,12 @@ public static class InsumosEmailFormatter
     public static EmailMessage FormatearSolicitud(DirectivaReabastecimiento directiva, SolicitudCotizacion solicitud, Proveedor proveedor, Configuracion? comprador, IReadOnlyDictionary<string, string>? unidades = null)
     {
         var datos = Datos(proveedor, comprador, solicitud.Notas, solicitud.Items, unidades, false, null);
+        if (solicitud.FechaEntregaPreferidaUtc is DateTime fecha)
+        {
+            var local = TimeZoneInfo.ConvertTimeFromUtc(fecha, ComprasService.ZonaEntrega);
+            datos["fecha_entrega"] = local.ToString("dd/MM/yyyy", Cultura);
+            datos["hora_entrega"] = local.ToString("HH:mm", Cultura);
+        }
         var asunto = string.IsNullOrWhiteSpace(directiva.AsuntoCotizacion) ? directiva.PlantillaEmail : directiva.AsuntoCotizacion;
         if (string.IsNullOrWhiteSpace(asunto)) asunto = "Solicitud de cotización de insumos";
         return Crear(proveedor.EmailOrdenes, asunto, directiva.CuerpoCotizacion, CuerpoCotizacionDefault, datos);

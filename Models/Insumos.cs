@@ -94,6 +94,7 @@ public sealed class SolicitudCotizacion
     [FirestoreProperty] public string Estado { get; set; } = "Pendiente";
     [FirestoreProperty] public List<OrdenCompraItem> Items { get; set; } = new();
     [FirestoreProperty] public DateTime Fecha { get; set; } = DateTime.UtcNow;
+    [FirestoreProperty] public DateTime? FechaEntregaPreferidaUtc { get; set; }
     [FirestoreProperty] public string Notas { get; set; } = string.Empty;
 }
 

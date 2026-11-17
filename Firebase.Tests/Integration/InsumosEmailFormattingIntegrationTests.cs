@@ -125,6 +125,56 @@ public sealed class InsumosEmailFormattingIntegrationTests
         Assert.Equal("RevisionManual", Assert.Single(await compras.ObtenerOrdenes()).Estado);
     }
 
+    [Fact]
+    public void FormatosRecomendadosSolicitanCotizacionYOrdenUsaPlazoReal()
+    {
+        var proveedor = new Proveedor { RazonSocial = "Proveedor <X>" };
+        var config = new Configuracion { NombreLavadero = "Lavadero & Hijos", Ubicacion = "Calle <1>" };
+        var solicitud = InsumosEmailFormatter.FormatearSolicitud(new DirectivaReabastecimiento(), new SolicitudCotizacion { Items = new() { Item("Jabón <X>", 2, 0) } }, proveedor, config);
+        var texto = WebUtility.HtmlDecode(solicitud.Html);
+        Assert.Contains("precio", texto, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("disponibilidad", texto, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("plazo", texto, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Lavadero & Hijos", texto);
+        Assert.DoesNotContain("<X>", solicitud.Html);
+        Assert.DoesNotContain("Plazo de entrega: No informado", texto);
+        var orden = InsumosEmailFormatter.FormatearOrden(new DirectivaReabastecimiento(), new OrdenCompra(), proveedor, config, "3 días");
+        var textoOrden = WebUtility.HtmlDecode(orden.Html);
+        Assert.Contains("3 días", textoOrden);
+        Assert.Contains("Calle <1>", textoOrden);
+        Assert.DoesNotContain("Fecha de entrega:", textoOrden);
+        Assert.DoesNotContain("Hora de entrega:", textoOrden);
+    }
+
+    [Fact]
+    public void PlantillasPersonalizadasConservanPreferenciaYValoresAusentes()
+    {
+        var directiva = new DirectivaReabastecimiento { AsuntoCotizacion = "{comprador} {fecha_entrega}", CuerpoCotizacion = "{fecha_entrega}|{hora_entrega}|{comprador}|{items}|{total}" };
+        var proveedor = new Proveedor { RazonSocial = "P" };
+        var config = new Configuracion { NombreLavadero = "Lavadero <X>" };
+        var solicitud = new SolicitudCotizacion { FechaEntregaPreferidaUtc = new DateTime(2099, 1, 2, 13, 30, 0, DateTimeKind.Utc), Items = new() { Item("<jabón>", 1, 0) } };
+        var mensaje = InsumosEmailFormatter.FormatearSolicitud(directiva, solicitud, proveedor, config);
+        Assert.Equal("Lavadero <X> 02/01/2099", mensaje.Subject);
+        Assert.Contains("02/01/2099|10:30|Lavadero &lt;X&gt;|", mensaje.Html);
+        Assert.Contains("<jabón>", WebUtility.HtmlDecode(mensaje.Html));
+        Assert.DoesNotContain("<jabón>", mensaje.Html);
+        Assert.Contains("&lt;jab", mensaje.Html);
+        Assert.Contains("No informado", mensaje.Html);
+        solicitud.FechaEntregaPreferidaUtc = null;
+        Assert.Contains("No informado|No informado", InsumosEmailFormatter.FormatearSolicitud(directiva, solicitud, proveedor, config).Html);
+        var orden = InsumosEmailFormatter.FormatearOrden(new DirectivaReabastecimiento { CuerpoOrden = "{fecha_entrega}|{hora_entrega}" }, new OrdenCompra(), proveedor, config, null);
+        Assert.Contains("No informado|No informado", orden.Html);
+    }
+
+    [Fact]
+    public void CapturaAuditoriaIncluyePreferenciaUtcSinInventarValor()
+    {
+        var solicitud = new SolicitudCotizacion { FechaEntregaPreferidaUtc = new DateTime(2099, 1, 2, 13, 30, 0, DateTimeKind.Utc) };
+        Assert.Equal("2099-01-02T13:30:00.0000000Z", AuditCampos.CapturarSolicitudCotizacion(solicitud)["FechaEntregaPreferidaUtc"]);
+        solicitud.FechaEntregaPreferidaUtc = null;
+        Assert.Equal("", AuditCampos.CapturarSolicitudCotizacion(solicitud)["FechaEntregaPreferidaUtc"]);
+    }
+
     private static FirestoreDb Db() => new FirestoreDbBuilder
     {
         ProjectId = "demo-email-" + Guid.NewGuid().ToString("N")[..16],

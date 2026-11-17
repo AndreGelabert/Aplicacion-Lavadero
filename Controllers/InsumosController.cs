@@ -333,8 +333,10 @@ public sealed class InsumosController(
 
     [HttpPost, ValidateAntiForgeryToken]
     [Permiso("Insumos.Crear")]
-    public async Task<IActionResult> CrearSolicitudes(List<string> proveedorIds, List<OrdenCompraItem> items, string? notas)
+    public async Task<IActionResult> CrearSolicitudes(List<string> proveedorIds, List<OrdenCompraItem> items, string? notas, string? fechaEntregaPreferida = null, string? horaEntregaPreferida = null)
     {
+        var preferencia = compras.ValidarPreferencia(fechaEntregaPreferida, horaEntregaPreferida, out var preferenciaUtc);
+        if (!preferencia.EsExitoso) return BadRequest(preferencia.MensajeError);
         var directiva = await compras.ObtenerDirectiva();
         var itemsValidos = (items ?? new()).Where(x => x.Cantidad > 0 && !string.IsNullOrWhiteSpace(x.InsumoId)).ToList();
         var contexto = await compras.ObtenerContextoEmail(itemsValidos);
@@ -355,7 +357,7 @@ public sealed class InsumosController(
             }
             try
             {
-                var solicitud = new SolicitudCotizacion { Items = itemsCorreo, Notas = notas ?? string.Empty };
+                var solicitud = new SolicitudCotizacion { Items = itemsCorreo, Notas = notas ?? string.Empty, FechaEntregaPreferidaUtc = preferenciaUtc };
                 preparados.Add((id, proveedor, InsumosEmailFormatter.FormatearSolicitud(directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades)));
             }
             catch (InvalidOperationException ex)
@@ -363,7 +365,7 @@ public sealed class InsumosController(
                 return BadRequest(ex.Message);
             }
         }
-        var resultado = await compras.CrearSolicitudes(proveedorIds, items, notas, User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty, User.FindFirstValue(ClaimTypes.Email) ?? string.Empty);
+        var resultado = await compras.CrearSolicitudes(proveedorIds, items, notas, User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty, User.FindFirstValue(ClaimTypes.Email) ?? string.Empty, preferenciaUtc);
         if (!resultado.EsExitoso)
         {
             TempData["Error"] = resultado.MensajeError;

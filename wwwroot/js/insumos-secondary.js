@@ -192,6 +192,18 @@
     const list = document.getElementById('quotation-selected');
     const error = document.getElementById('quotation-error');
     const form = picker.closest('form');
+    const fechaPreferida = form.elements.namedItem('fechaEntregaPreferida');
+    const horaPreferida = form.elements.namedItem('horaEntregaPreferida');
+    function actualizarMinimoEntrega() {
+        if (!fechaPreferida || !horaPreferida) return;
+        const partes = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(Date.now() + 60000)).map(p => [p.type, p.value]));
+        const hoy = `${partes.year}-${partes.month}-${partes.day}`;
+        fechaPreferida.min = hoy;
+        horaPreferida.min = fechaPreferida.value === hoy ? `${partes.hour}:${partes.minute}` : '';
+    }
+    fechaPreferida?.addEventListener('change', actualizarMinimoEntrega);
+    horaPreferida?.addEventListener('focus', actualizarMinimoEntrega);
+    actualizarMinimoEntrega();
     let selectedOption = null;
     const items = [];
     function filter() {
@@ -228,9 +240,10 @@
         items.push({ id: selectedOption.id, name: selectedOption.name, unit: selectedOption.unit, quantity: '' }); selectedOption = null; input.value = ''; error.textContent = ''; dropdown.classList.add('hidden'); render();
     });
     document.querySelector('[data-quotation-reset]')?.addEventListener('click', () => {
-        form.reset(); items.length = 0; selectedOption = null; error.textContent = ''; dropdown.classList.add('hidden'); render();
+        form.reset(); actualizarMinimoEntrega(); items.length = 0; selectedOption = null; error.textContent = ''; dropdown.classList.add('hidden'); render();
     });
     form.addEventListener('submit', event => {
+        actualizarMinimoEntrega();
         if (!items.length || !form.querySelector('input[name="proveedorIds"]')) { event.preventDefault(); error.textContent = 'Seleccione al menos un proveedor y un insumo.'; return; }
         if (items.some(item => !item.quantity.trim() || !Number.isFinite(Number(item.quantity)) || Number(item.quantity) < 0.0001)) { event.preventDefault(); error.textContent = 'Ingrese una cantidad válida para cada insumo.'; }
     });

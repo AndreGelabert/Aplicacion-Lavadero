@@ -102,7 +102,7 @@ test('ordenamiento numérico y por fecha usa valores canónicos', () => {
 test('selector rechaza cantidades inválidas y preserva selección al quitar', () => {
   const vm = require('node:vm');
   const node = () => ({ children: [], dataset: {}, classList: { add() {}, remove() {} }, addEventListener(n,f) { this[n]=f; }, setAttribute() {}, append(...x) { this.children.push(...x); }, replaceChildren(...x) { this.children = x; } });
-  const form = node(); let provider = true; form.querySelector = () => provider ? {} : null;
+  const form = node(); form.elements = { namedItem() { return null; } }; let provider = true; form.querySelector = () => provider ? {} : null;
   const picker = node(); picker.closest = () => form;
   const search = node(), dropdown = node(), list = node(), error = node(), add = node();
   const option = node(); option.dataset = { id: 'i1', name: 'Jabón', unit: 'l' }; option.closest = () => option;

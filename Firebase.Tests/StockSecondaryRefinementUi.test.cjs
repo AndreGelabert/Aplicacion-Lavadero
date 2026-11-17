@@ -6,7 +6,7 @@ const { readFileSync } = require('node:fs');
 test('el desplegable de insumos se cierra al pulsar fuera sin perder la selección', () => {
   const handlers = {};
   const node = () => ({ children: [], dataset: {}, classList: { hidden: true, add() { this.hidden = true; }, remove() { this.hidden = false; } }, addEventListener(n, f) { this[n] = f; }, setAttribute() {}, append(...x) { this.children.push(...x); }, replaceChildren(...x) { this.children = x; } });
-  const form = node(); form.querySelector = () => ({});
+  const form = node(); form.elements = { namedItem() { return null; } }; form.querySelector = () => ({});
   const picker = node(); picker.closest = () => form; picker.contains = target => target.inside === true;
   const search = node(), dropdown = node(), list = node(), error = node(), add = node();
   const option = node(); option.dataset = { id: 'i1', name: 'Jabón', unit: 'L' }; option.closest = () => option;
@@ -44,7 +44,7 @@ test('limpiar cotización elimina proveedores, insumos y cantidades y restablece
   const picker = node(), supplier = node(), search = node(), dropdown = node(), selected = node(), add = node();
   const input = node(), choices = node(), items = node(), error = node(), itemAdd = node(), reset = node();
   const listeners = []; reset.addEventListener = (n, f) => listeners.push(f);
-  const form = node(); let resetCount = 0; form.reset = () => { resetCount++; }; form.querySelector = () => selected.children.length ? {} : null;
+  const form = node(); form.elements = { namedItem() { return null; } }; let resetCount = 0; form.reset = () => { resetCount++; }; form.querySelector = () => selected.children.length ? {} : null;
   picker.closest = () => form; picker.contains = () => false; supplier.contains = () => false;
   const option = node(); option.dataset = { id: 'i1', name: 'Jabón', unit: 'L' }; option.closest = () => option;
   const provider = node(); provider.dataset = { id: 'p1', name: 'Proveedor' }; provider.closest = () => provider;

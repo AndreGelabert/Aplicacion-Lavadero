@@ -78,7 +78,7 @@ public static class AuditCampos
     /// <summary>Campos auditables de SolicitudCotizacion.</summary>
     public static readonly IReadOnlyList<string> SolicitudCotizacion = new[]
     {
-        "GrupoId", "ProveedorId", "Estado", "Items", "Notas"
+        "GrupoId", "ProveedorId", "Estado", "Items", "Notas", "FechaEntregaPreferidaUtc"
     };
 
     /// <summary>Campos auditables de TipoInsumo.</summary>
@@ -308,7 +308,8 @@ public static class AuditCampos
                 i.Cantidad,
                 i.PrecioUnitario
             })),
-            ["Notas"] = s.Notas ?? ""
+            ["Notas"] = s.Notas ?? "",
+            ["FechaEntregaPreferidaUtc"] = s.FechaEntregaPreferidaUtc?.ToString("O", System.Globalization.CultureInfo.InvariantCulture) ?? ""
         };
     }
 

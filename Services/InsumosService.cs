@@ -1738,9 +1738,25 @@ public interface IInterceptorAuditoriaCompras
     void Interceptar(AuditLog log);
 }
 
-public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaCompras? interceptor = null)
+public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaCompras? interceptor = null, TimeProvider? reloj = null)
 {
     private static readonly DecimalConverter DecimalFirestore = new();
+    public static readonly TimeZoneInfo ZonaEntrega = TimeZoneInfo.FindSystemTimeZoneById("America/Argentina/Buenos_Aires");
+    private DateTime AhoraUtc => (reloj ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+
+    public ResultadoOperacion ValidarPreferencia(string? fecha, string? hora, out DateTime? preferenciaUtc)
+    {
+        preferenciaUtc = null;
+        if (string.IsNullOrWhiteSpace(fecha) && string.IsNullOrWhiteSpace(hora))
+            return ResultadoOperacion.CrearExito("");
+        if (!DateTime.TryParseExact(fecha + " " + hora, "yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var local) || ZonaEntrega.IsInvalidTime(local) || ZonaEntrega.IsAmbiguousTime(local))
+            return ResultadoOperacion.CrearError("Ingrese una fecha y hora preferidas válidas, o deje ambas vacías.");
+        preferenciaUtc = TimeZoneInfo.ConvertTimeToUtc(local, ZonaEntrega);
+        if (preferenciaUtc < AhoraUtc)
+            return ResultadoOperacion.CrearError("La fecha y hora preferidas no pueden ser anteriores al momento actual.");
+        return ResultadoOperacion.CrearExito("");
+    }
 
     public Action<AuditLog>? InterceptorAuditoria { get; set; }
 
@@ -2236,8 +2252,10 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
         });
     }
 
-    public async Task<ResultadoOperacion> CrearSolicitudes(List<string> proveedorIds, List<OrdenCompraItem> items, string? notas, string userId = "", string userEmail = "")
+    public async Task<ResultadoOperacion> CrearSolicitudes(List<string> proveedorIds, List<OrdenCompraItem> items, string? notas, string userId = "", string userEmail = "", DateTime? fechaEntregaPreferidaUtc = null)
     {
+        if (fechaEntregaPreferidaUtc.HasValue && (fechaEntregaPreferidaUtc.Value.Kind != DateTimeKind.Utc || fechaEntregaPreferidaUtc.Value < AhoraUtc))
+            return ResultadoOperacion.CrearError("La fecha y hora preferidas no pueden ser anteriores al momento actual.");
         proveedorIds = (proveedorIds ?? new()).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.Ordinal).ToList();
         items ??= new();
         if (items.Any(x => x.Cantidad < 0)) return ResultadoOperacion.CrearError("Seleccione proveedores e insumos válidos con cantidades mayores a cero.");
@@ -2271,12 +2289,17 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
                 transaction.Update(firestore.Collection("insumos").Document(item.InsumoId), "Estado", "Activo");
             foreach (var id in proveedorIds.OrderBy(id => id, StringComparer.Ordinal))
                 transaction.Update(firestore.Collection("proveedores").Document(id), "Estado", "Activo");
+            var solicitudesAuditadas = new List<Dictionary<string, string>>();
             foreach (var id in proveedorIds)
             {
                 var reference = firestore.Collection("solicitudesCotizacion").Document();
-                transaction.Create(reference, new SolicitudCotizacion { Id = reference.Id, GrupoId = grupo, ProveedorId = id, Items = items, Notas = notas ?? string.Empty });
+                var solicitud = new SolicitudCotizacion { Id = reference.Id, GrupoId = grupo, ProveedorId = id, Items = items, Notas = notas ?? string.Empty, FechaEntregaPreferidaUtc = fechaEntregaPreferidaUtc };
+                transaction.Create(reference, solicitud);
+                var captura = AuditCampos.CapturarSolicitudCotizacion(solicitud);
+                captura["Id"] = solicitud.Id;
+                solicitudesAuditadas.Add(captura);
             }
-            RegistrarAuditoriaEnTransaccion(transaction, new AuditLog { UserId = userId, UserEmail = userEmail, Action = "Emision Solicitud Cotizacion", TargetType = "SolicitudCotizacion", TargetId = grupo, NombreHistorico = $"Grupo {grupo}", Antes = new(), Despues = new() { ["GrupoId"] = grupo }, Timestamp = DateTime.UtcNow });
+            RegistrarAuditoriaEnTransaccion(transaction, new AuditLog { UserId = userId, UserEmail = userEmail, Action = "Emision Solicitud Cotizacion", TargetType = "SolicitudCotizacion", TargetId = grupo, NombreHistorico = $"Grupo {grupo}", Antes = new(), Despues = new() { ["GrupoId"] = grupo, ["Solicitudes"] = System.Text.Json.JsonSerializer.Serialize(solicitudesAuditadas) }, Timestamp = DateTime.UtcNow });
             return ResultadoOperacion.CrearExito("Solicitudes de cotización creadas.");
         });
     }
