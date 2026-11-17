@@ -293,6 +293,10 @@ public partial class WhatsAppFlowService
                     await HandleRegistroEmail(phoneNumber, session, messageBody);
                     break;
 
+                case WhatsAppFlowStates.REGISTRO_PREFERENCIAS:
+                    await HandleRegistroPreferencias(phoneNumber, session, messageBody);
+                    break;
+
                 case WhatsAppFlowStates.REGISTRO_CONFIRMACION:
                     await HandleRegistroConfirmacion(phoneNumber, session, messageBody);
                     break;
@@ -360,6 +364,10 @@ public partial class WhatsAppFlowService
 
                 case WhatsAppFlowStates.EDITAR_EMAIL:
                     await HandleEditarEmail(phoneNumber, session, messageBody);
+                    break;
+
+                case WhatsAppFlowStates.EDITAR_PREFERENCIAS:
+                    await HandleEditarPreferencias(phoneNumber, session, messageBody);
                     break;
 
                 case WhatsAppFlowStates.CONFIRMAR_EDICION:

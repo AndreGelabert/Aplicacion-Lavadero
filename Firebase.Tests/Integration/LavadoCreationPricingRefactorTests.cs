@@ -320,6 +320,64 @@ public class LavadoCreationPricingRefactorTests
         Assert.Equal("Creación de lavado", auditoria.Action);
     }
 
+    [LocalFirestoreFact]
+    public async Task ClienteNotification_SequentialStagesUseConfiguredNameAndContinueAfterNotificationAuditFailure()
+    {
+        using var fixture = await Fixture.Create();
+        await fixture.EnableNotifications();
+        var response = Json(await fixture.Controller.CrearLavadoAjax(Request(new[] { Item("one") }, 0m)));
+        var id = Assert.Single(response.GetProperty("lavadosIds").EnumerateArray()).GetString()!;
+        var first = Json(await fixture.Controller.FinalizarEtapa(id, "one", "e1"));
+        var second = Json(await fixture.Controller.FinalizarEtapa(id, "one", "e2"));
+        Assert.True(first.GetProperty("success").GetBoolean(), first.GetRawText());
+        Assert.True(second.GetProperty("success").GetBoolean(), second.GetRawText());
+        Assert.Contains("2 aceptadas por el proveedor", first.GetProperty("message").GetString());
+        Assert.Contains("auditoría", first.GetProperty("message").GetString());
+        Assert.Contains("2 aceptadas por el proveedor", second.GetProperty("message").GetString());
+        Assert.Equal(2, fixture.Email.Messages.Count);
+        Assert.Equal(2, fixture.WhatsAppRequests.Count);
+        Assert.All(fixture.Email.Messages, m => Assert.Contains("Desde Lavadero Prueba queremos avisarte", m.Html));
+        Assert.Contains("Sigue: Segunda.", fixture.Email.Messages[0].Html);
+        Assert.Contains("listo para retirar", fixture.Email.Messages[1].Html);
+        var wash = await fixture.Washes.ObtenerLavado(id);
+        Assert.Equal("Realizado", wash!.Estado);
+        Assert.All(wash.Servicios[0].Etapas, e => Assert.Equal("Realizado", e.Estado));
+    }
+
+    [LocalFirestoreFact]
+    public async Task ClienteNotification_RepeatedStageCompletionDoesNotResend()
+    {
+        using var fixture = await Fixture.Create();
+        await fixture.EnableNotifications();
+        var created = Json(await fixture.Controller.CrearLavadoAjax(Request(new[] { Item("one") }, 0m)));
+        Assert.True(created.GetProperty("success").GetBoolean(), created.GetRawText());
+        var id = Assert.Single(created.GetProperty("lavadosIds").EnumerateArray()).GetString()!;
+        var first = Json(await fixture.Controller.FinalizarEtapa(id, "one", "e1"));
+        Assert.True(first.GetProperty("success").GetBoolean(), first.GetRawText());
+        Assert.Single(fixture.Email.Messages);
+        Assert.Single(fixture.WhatsAppRequests);
+        var before = await fixture.Washes.ObtenerLavado(id);
+        var repeated = Json(await fixture.Controller.FinalizarEtapa(id, "one", "e1"));
+        var after = await fixture.Washes.ObtenerLavado(id);
+        Assert.Equal(before!.Servicios[0].Etapas.Select(e => (e.Estado, e.TiempoFinalizacion)),
+            after!.Servicios[0].Etapas.Select(e => (e.Estado, e.TiempoFinalizacion)));
+        Assert.Single(fixture.Email.Messages);
+        Assert.Single(fixture.WhatsAppRequests);
+        Assert.DoesNotContain("aceptadas por el proveedor", repeated.GetProperty("message").GetString());
+    }
+
+    [LocalFirestoreFact]
+    public async Task Horario_CreationOutsideHoursReturnsSpecificErrorWithoutWrites()
+    {
+        using var fixture = await Fixture.Create();
+        fixture.SetClosedSchedule();
+        var response = Json(await fixture.Controller.CrearLavadoAjax(Request(new[] { Item("one") }, 0m)));
+        Assert.False(response.GetProperty("success").GetBoolean());
+        Assert.StartsWith("El lavadero está cerrado los días ", response.GetProperty("message").GetString());
+        Assert.Empty((await fixture.Db.Collection("lavados").GetSnapshotAsync()).Documents);
+        Assert.Empty((await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Documents);
+    }
+
     private static CrearLavadoRequest TwoVehicles()
     {
         var request = Request(new[] { Item("one") }, 0m);
@@ -359,12 +417,39 @@ public class LavadoCreationPricingRefactorTests
         }
     }
 
+    private sealed class CapturingEmail : IEmailSender
+    {
+        public List<EmailMessage> Messages { get; } = new();
+        public Task<ResultadoEnvioEmail> EnviarAsync(EmailMessage message, CancellationToken cancellationToken = default)
+        { Messages.Add(message); return Task.FromResult(new ResultadoEnvioEmail(true, "accepted")); }
+    }
+
+    private sealed class CaptureHandler(List<string> requests) : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        { requests.Add(await request.Content!.ReadAsStringAsync(cancellationToken)); return new HttpResponseMessage(System.Net.HttpStatusCode.OK); }
+    }
+
+    private sealed class NotificationAuditFailure(IAuditWriter inner) : IAuditWriter
+    {
+        private bool failed;
+        public Task LogEvent(string userId, string userEmail, string action, string targetId, string targetType) => inner.LogEvent(userId, userEmail, action, targetId, targetType);
+        public Task LogSessionEvent(string userId, string userEmail, string action, string targetId, string targetType) => inner.LogSessionEvent(userId, userEmail, action, targetId, targetType);
+        public Task LogEvent(string userId, string userEmail, string action, string targetId, string targetType, Dictionary<string, string> antes, Dictionary<string, string> despues, string nombreHistorico = null!)
+        {
+            if (targetType == "Notificacion" && !failed) { failed = true; throw new InvalidOperationException("simulated audit failure"); }
+            return inner.LogEvent(userId, userEmail, action, targetId, targetType, antes, despues, nombreHistorico);
+        }
+    }
+
     private sealed class Fixture : IDisposable
     {
         private readonly MemoryCache _cache = new(new MemoryCacheOptions());
         public FirestoreDb Db { get; }
         public LavadoService Washes { get; }
-        public LavadosController Controller { get; }
+        public LavadosController Controller { get; private set; }
+        public CapturingEmail Email { get; } = new();
+        public List<string> WhatsAppRequests { get; } = new();
 
         private Fixture(FirestoreDb db, bool failFirstAudit)
         {
@@ -389,6 +474,33 @@ public class LavadoCreationPricingRefactorTests
                 } }
             };
         }
+
+        public async Task EnableNotifications()
+        {
+            _cache.Set("system_configuration", new Configuracion { NombreLavadero = "Lavadero Prueba", HorariosOperacion = new(), CapacidadMaximaConcurrente = 10 });
+            await Db.Collection("clientes").Document("client").UpdateAsync(new Dictionary<string, object> { ["NotificarPorEmail"] = true, ["NotificarPorWhatsApp"] = true, ["Telefono"] = "3751000000" });
+            await Db.Collection("servicios").Document("one").UpdateAsync(new Dictionary<string, object> { ["Etapas"] = new[] { new Etapa { Id = "e1", Nombre = "Primera" }, new Etapa { Id = "e2", Nombre = "Segunda" } } });
+            var services = new ServicioService(Db);
+            var packages = new PaqueteServicioService(Db, services, _cache);
+            var staff = new PersonalService(Db);
+            var config = new ConfiguracionService(Db, _cache);
+            var clients = new ClienteService(Db);
+            var vehicles = new VehiculoService(Db);
+            var audit = new NotificationAuditFailure(new AuditService(Db));
+            var whatsapp = new MetaWhatsAppService(new HttpClient(new CaptureHandler(WhatsAppRequests)), Microsoft.Extensions.Options.Options.Create(new WhatsAppSettings { AccessToken = "fake", PhoneNumberId = "fake", VerifyToken = "fake" }), NullLogger<MetaWhatsAppService>.Instance);
+            var notifications = new ClienteNotificationService(clients, Washes, config, Email, whatsapp, audit, NullLogger<ClienteNotificationService>.Instance);
+            Controller = new LavadosController(NullLogger<LavadosController>.Instance, audit, Washes, services, packages, clients, vehicles, staff, config, new TipoVehiculoService(Db), new TipoDocumentoService(Db), new LavadoCreationService(clients, vehicles, services, packages, new TipoVehiculoService(Db), Washes), new LavadoAssociatedClientService(clients, vehicles, new TipoDocumentoService(Db)), notifications)
+            { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, "actor"), new Claim(ClaimTypes.Email, "actor@example.com") }, "test")) } } };
+        }
+
+        public void SetClosedSchedule() => _cache.Set("system_configuration", new Configuracion
+        {
+            HorariosOperacion = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["Lunes"] = "CERRADO", ["Martes"] = "CERRADO", ["Miércoles"] = "CERRADO",
+                ["Jueves"] = "CERRADO", ["Viernes"] = "CERRADO", ["Sábado"] = "CERRADO", ["Domingo"] = "CERRADO"
+            }, CapacidadMaximaConcurrente = 10
+        });
 
         public void SetStaffMaximum(int maximum) => _cache.Set("system_configuration", new Configuracion
         {

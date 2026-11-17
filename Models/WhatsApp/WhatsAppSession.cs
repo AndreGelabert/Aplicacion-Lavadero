@@ -61,6 +61,7 @@ public static class WhatsAppFlowStates
     public const string REGISTRO_NOMBRE = "REGISTRO_NOMBRE";
     public const string REGISTRO_APELLIDO = "REGISTRO_APELLIDO";
     public const string REGISTRO_EMAIL = "REGISTRO_EMAIL";
+    public const string REGISTRO_PREFERENCIAS = "REGISTRO_PREFERENCIAS";
     public const string REGISTRO_CONFIRMACION = "REGISTRO_CONFIRMACION";
 
     // Estados de gestión de vehículos
@@ -83,6 +84,7 @@ public static class WhatsAppFlowStates
     public const string EDITAR_NOMBRE = "EDITAR_NOMBRE";
     public const string EDITAR_APELLIDO = "EDITAR_APELLIDO";
     public const string EDITAR_EMAIL = "EDITAR_EMAIL";
+    public const string EDITAR_PREFERENCIAS = "EDITAR_PREFERENCIAS";
     public const string CONFIRMAR_EDICION = "CONFIRMAR_EDICION";
 
     // Estados de gestion de vehiculos

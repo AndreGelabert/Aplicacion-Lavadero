@@ -689,6 +689,15 @@
             return false;
         }
 
+        const notificationPreferences = [...form.querySelectorAll('.notification-preference')];
+        if (notificationPreferences.length > 0 &&
+            !notificationPreferences.some(input => input.checked)) {
+            document.getElementById('notification-preferences-error')?.classList.remove('hidden');
+            showFormMessage('error', 'Debe seleccionar al menos un método de notificación.');
+            return false;
+        }
+        document.getElementById('notification-preferences-error')?.classList.add('hidden');
+
         // Prevenir doble envío
         const submitBtn = document.getElementById('submit-button');
         if (submitBtn && submitBtn.disabled) {

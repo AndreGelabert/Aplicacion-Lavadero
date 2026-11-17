@@ -134,6 +134,11 @@ public class ClienteController : Controller
         {
             ModelState.Remove("Id");
             ModelState.Remove("VehiculosDataJson");
+
+            if (cliente.NotificarPorWhatsApp == false && cliente.NotificarPorEmail == false)
+                ModelState.AddModelError(nameof(Cliente.NotificarPorEmail), "Debe seleccionar al menos un método de notificación.");
+            else if (cliente.NotificarPorWhatsApp is null && cliente.NotificarPorEmail is null)
+                cliente.NotificarPorEmail = true;
             
             if (!ModelState.IsValid)
             {
@@ -218,6 +223,18 @@ public class ClienteController : Controller
                 ModelState.AddModelError("", "El cliente no existe.");
                 return await PrepararRespuestaAjax(false, cliente, null);
             }
+
+            if (cliente.NotificarPorWhatsApp is null && cliente.NotificarPorEmail is null)
+            {
+                cliente.NotificarPorWhatsApp = clienteActual.NotificarPorWhatsApp;
+                cliente.NotificarPorEmail = clienteActual.NotificarPorEmail;
+            }
+            if (cliente.NotificarPorWhatsApp == false && cliente.NotificarPorEmail == false)
+            {
+                ModelState.AddModelError(nameof(Cliente.NotificarPorEmail), "Debe seleccionar al menos un método de notificación.");
+                return await PrepararRespuestaAjax(false, cliente, null);
+            }
+            cliente.NormalizarPreferenciasNotificacion();
 
             var vehiculosData = DeserializarVehiculos(vehiculosDataJson);
             var validacion = await _clienteVehicles.Validar(cliente, vehiculosData, false);

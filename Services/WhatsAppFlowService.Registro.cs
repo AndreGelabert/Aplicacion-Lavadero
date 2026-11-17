@@ -141,6 +141,36 @@ public partial class WhatsAppFlowService
 
         // Guardar email en minúsculas (después de validar)
         await _sessionService.SaveTemporaryData(phoneNumber, "Email", email.ToLowerInvariant());
+        await _sessionService.SaveTemporaryData(phoneNumber, "NotificarPorWhatsApp", "false");
+        await _sessionService.SaveTemporaryData(phoneNumber, "NotificarPorEmail", "true");
+        await MostrarOpcionesPreferenciasRegistro(phoneNumber);
+    }
+
+    private async Task MostrarOpcionesPreferenciasRegistro(string phoneNumber)
+    {
+        await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.REGISTRO_PREFERENCIAS);
+        await _whatsAppService.SendButtonMessage(phoneNumber,
+            "📬 ¿Cómo prefieres recibir las notificaciones del lavado?\n\n" +
+            "Email queda seleccionado por defecto. Puedes elegir otro método.",
+            new List<(string, string)>
+            {
+                ("notificacion_email", "📧 Solo email"),
+                ("notificacion_whatsapp", "💬 Solo WhatsApp"),
+                ("notificacion_ambos", "📧💬 Ambos")
+            });
+    }
+
+    private async Task HandleRegistroPreferencias(string phoneNumber, WhatsAppSession session, string input)
+    {
+        if (!TryParseNotificationPreference(input, out var whatsapp, out var email))
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "⚠️ Opción no válida. Elige solo email, solo WhatsApp o ambos.");
+            return;
+        }
+
+        await _sessionService.SaveTemporaryData(phoneNumber, "NotificarPorWhatsApp", whatsapp ? "true" : "false");
+        await _sessionService.SaveTemporaryData(phoneNumber, "NotificarPorEmail", email ? "true" : "false");
         await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.REGISTRO_CONFIRMACION);
 
         // Mostrar resumen para confirmación
@@ -154,12 +184,28 @@ public partial class WhatsAppFlowService
                       $"• Número: {numDoc}\n" +
                       $"• Nombre: {nombre} {apellido}\n" +
                       $"• Teléfono: {phoneNumber}\n" +
-                      $"• Email: {email}\n\n" +
+                      $"• Email: {email}\n" +
+                      $"• Notificaciones: {DescribeNotificationPreference(whatsapp, email)}\n\n" +
                       $"¿Los datos son correctos?\n\n" +
                       $"Responde *SÍ* para confirmar o *NO* para cancelar.";
 
         await _whatsAppService.SendTextMessage(phoneNumber, resumen);
     }
+
+    private static bool TryParseNotificationPreference(string input, out bool whatsapp, out bool email)
+    {
+        var option = input.Trim().ToLowerInvariant();
+        whatsapp = option is "notificacion_whatsapp" || option.Contains("whatsapp");
+        email = option is "notificacion_email" || option.Contains("email") || option.Contains("correo");
+        if (option is "notificacion_ambos" || option.Contains("ambos"))
+            whatsapp = email = true;
+        return (whatsapp || email) &&
+            (option.Contains("notificacion_") || option.Contains("whatsapp") || option.Contains("email") ||
+             option.Contains("correo") || option.Contains("ambos"));
+    }
+
+    private static string DescribeNotificationPreference(bool whatsapp, bool email) =>
+        whatsapp && email ? "Email y WhatsApp" : whatsapp ? "Solo WhatsApp" : "Solo email";
 
     /// <summary>
     /// Maneja la confirmación del registro
@@ -290,6 +336,8 @@ public partial class WhatsAppFlowService
                 Apellido = session.TemporaryData.GetValueOrDefault("Apellido", ""),
                 Telefono = telefonoParaDB, // Guardar SIN código de país
                 Email = session.TemporaryData.GetValueOrDefault("Email", ""),
+                NotificarPorWhatsApp = session.TemporaryData.GetValueOrDefault("NotificarPorWhatsApp", "false") == "true",
+                NotificarPorEmail = session.TemporaryData.GetValueOrDefault("NotificarPorEmail", "true") == "true",
                 VehiculosIds = new List<string>(),
                 Estado = "Activo"
             };
@@ -394,6 +442,8 @@ public partial class WhatsAppFlowService
                 Apellido = session.TemporaryData.GetValueOrDefault("Apellido", ""),
                 Telefono = telefonoParaDB,
                 Email = session.TemporaryData.GetValueOrDefault("Email", ""),
+                NotificarPorWhatsApp = session.TemporaryData.GetValueOrDefault("NotificarPorWhatsApp", "false") == "true",
+                NotificarPorEmail = session.TemporaryData.GetValueOrDefault("NotificarPorEmail", "true") == "true",
                 VehiculosIds = new List<string>(),
                 Estado = "Activo"
             };
@@ -454,6 +504,8 @@ public partial class WhatsAppFlowService
         session.TemporaryData.Remove("Nombre");
         session.TemporaryData.Remove("Apellido");
         session.TemporaryData.Remove("Email");
+        session.TemporaryData.Remove("NotificarPorWhatsApp");
+        session.TemporaryData.Remove("NotificarPorEmail");
         session.TemporaryData.Remove("ClienteDatosConfirmados");
         session.TemporaryData.Remove("RegistroInicial");
 

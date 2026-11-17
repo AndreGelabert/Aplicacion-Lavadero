@@ -8,6 +8,8 @@
     var puedeEliminarTipoDocumento = User.TienePermiso("Clientes.Eliminar");
     var puedeCrearVehiculo = User.TienePermiso("Vehiculos.Crear");
     var puedeGestionarVehiculos = puedeCrearVehiculo;
+    var prefiereWhatsApp = Model?.NotificarPorWhatsApp == true;
+    var prefiereEmail = Model?.NotificarPorEmail != false;
 }
 @if (ViewBag.AssociationKeys != null)
 {
@@ -130,6 +132,31 @@
                            required>
                     <span asp-validation-for="Email" class="text-red-600 text-xs"></span>
                 </div>
+        <!-- Preferencias de notificación -->
+        <fieldset class="col-span-full">
+            <legend class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                ¿Qué métodos de notificación prefiere? <span class="text-red-600">*</span>
+            </legend>
+            <div class="flex flex-col gap-2 sm:flex-row sm:gap-6">
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                    <input type="checkbox" name="NotificarPorWhatsApp" value="true"
+                           @(prefiereWhatsApp ? "checked" : "")
+                           class="notification-preference h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                    <input type="hidden" name="NotificarPorWhatsApp" value="false" />
+                    WhatsApp
+                </label>
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                    <input type="checkbox" name="NotificarPorEmail" value="true"
+                           @(prefiereEmail ? "checked" : "")
+                           class="notification-preference h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                    <input type="hidden" name="NotificarPorEmail" value="false" />
+                    Email
+                </label>
+            </div>
+            <span id="notification-preferences-error" class="hidden text-red-600 text-xs">
+                Debe seleccionar al menos un método de notificación.
+            </span>
+        </fieldset>
         <!-- Vehículos Asociados (Selector estilo paquetes) -->
         <div class="col-span-full">
             <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Vehículos del Cliente (mínimo 1) <span class="text-red-600">*</span></label>

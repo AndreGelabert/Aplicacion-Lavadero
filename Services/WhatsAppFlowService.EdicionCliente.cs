@@ -39,11 +39,57 @@ public partial class WhatsAppFlowService
 
             await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.EDITAR_EMAIL);
         }
+        else if (opcion.Contains("prefer") || opcion.Contains("notificacion") || opcion == "editar_preferencias")
+        {
+            var cliente = await _clienteService.ObtenerCliente(session.ClienteId!);
+            if (cliente == null)
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber, "❌ No se pudieron cargar tus datos.");
+                return;
+            }
+            await _whatsAppService.SendButtonMessage(phoneNumber,
+                $"📬 Preferencias actuales: {DescribeNotificationPreference(cliente.PrefiereWhatsApp, cliente.PrefiereEmail)}.\n\n" +
+                "Elige tus métodos de notificación:",
+                new List<(string, string)>
+                {
+                    ("notificacion_email", "📧 Solo email"),
+                    ("notificacion_whatsapp", "💬 Solo WhatsApp"),
+                    ("notificacion_ambos", "📧💬 Ambos")
+                });
+            await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.EDITAR_PREFERENCIAS);
+        }
         else
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
                 "⚠️ Opción no reconocida. Por favor, selecciona una de las opciones del menú.");
         }
+    }
+
+    private async Task HandleEditarPreferencias(string phoneNumber, WhatsAppSession session, string input)
+        {
+            if (!TryParseNotificationPreference(input, out var whatsapp, out var email))
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber,
+                    "⚠️ Opción no válida. Elige solo email, solo WhatsApp o ambos.");
+                return;
+            }
+
+            var cliente = await _clienteService.ObtenerCliente(session.ClienteId!);
+            if (cliente == null)
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber, "❌ No se pudieron cargar tus datos.");
+                return;
+            }
+
+            cliente.NotificarPorWhatsApp = whatsapp;
+            cliente.NotificarPorEmail = email;
+            cliente.NormalizarPreferenciasNotificacion(solicitudExplicita: true);
+            await _clienteService.ActualizarCliente(cliente);
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                $"✅ Preferencias actualizadas: {DescribeNotificationPreference(whatsapp, email)}.\n\n" +
+                "Volviendo al menú principal...");
+            await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO);
+            await ShowClienteMenu(phoneNumber, cliente.Nombre);
     }
 
     /// <summary>
@@ -256,6 +302,14 @@ public partial class WhatsAppFlowService
                     valorAnterior = cliente.Email;
                     valorNuevo = session.TemporaryData.GetValueOrDefault("nuevo_email", "");
                     cliente.Email = valorNuevo;
+                    break;
+
+                case "Preferencias":
+                    valorAnterior = DescribeNotificationPreference(cliente.PrefiereWhatsApp, cliente.PrefiereEmail);
+                    cliente.NotificarPorWhatsApp = session.TemporaryData.GetValueOrDefault("NotificarPorWhatsApp") == "true";
+                    cliente.NotificarPorEmail = session.TemporaryData.GetValueOrDefault("NotificarPorEmail") == "true";
+                    cliente.NormalizarPreferenciasNotificacion(solicitudExplicita: true);
+                    valorNuevo = DescribeNotificationPreference(cliente.PrefiereWhatsApp, cliente.PrefiereEmail);
                     break;
 
                 default:

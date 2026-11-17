@@ -189,6 +189,7 @@ public partial class WhatsAppFlowService
                          $"• Documento: {cliente.TipoDocumento} {cliente.NumeroDocumento}\n" +
                          $"• Teléfono: {cliente.Telefono}\n" +
                          $"• Email: {cliente.Email}\n" +
+                         $"• Notificaciones: {DescribeNotificationPreference(cliente.PrefiereWhatsApp, cliente.PrefiereEmail)}\n" +
                          $"• Vehículos: {cliente.VehiculosIds.Count}\n" +
                          $"• Estado: {cliente.Estado}\n\n" +
                          $"📝 Puedes editar tu nombre, apellido y email.";
@@ -230,24 +231,26 @@ public partial class WhatsAppFlowService
                          $"Datos actuales:\n" +
                          $"• Nombre: {cliente.Nombre}\n" +
                          $"• Apellido: {cliente.Apellido}\n" +
-                         $"• Email: {cliente.Email}\n\n" +
+                         $"• Email: {cliente.Email}\n" +
+                         $"• Notificaciones: {DescribeNotificationPreference(cliente.PrefiereWhatsApp, cliente.PrefiereEmail)}\n\n" +
                          $"¿Qué dato deseas modificar?";
 
             await _whatsAppService.SendTextMessage(phoneNumber, mensaje);
 
             await Task.Delay(300);
 
-            var buttons = new List<(string id, string title)>
+            var options = new List<(string id, string title, string description)>
             {
-                ("editar_nombre", "👤 Nombre"),
-                ("editar_apellido", "👤 Apellido"),
-                ("editar_email", "📧 Email")
+                ("editar_nombre", "👤 Nombre", "Cambiar nombre"),
+                ("editar_apellido", "👤 Apellido", "Cambiar apellido"),
+                ("editar_email", "📧 Email", "Cambiar correo"),
+                ("editar_preferencias", "📬 Notificaciones", "Elegir email, WhatsApp o ambos")
             };
 
             await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.EDITAR_DATOS_MENU);
-            await _whatsAppService.SendButtonMessage(phoneNumber,
+            await _whatsAppService.SendListMessage(phoneNumber,
                 "Selecciona una opción:",
-                buttons);
+                "📋 Ver opciones", "Editar datos", options);
         }
         catch (Exception ex) when (ex is not WhatsAppOperationException)
         {

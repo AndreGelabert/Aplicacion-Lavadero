@@ -214,6 +214,7 @@ builder.Services.AddScoped<Firebase.Services.LavadoService>();
 builder.Services.AddScoped<Firebase.Services.LavadoCreationService>();
 builder.Services.AddScoped<Firebase.Services.LavadoAssociatedClientService>();
 builder.Services.AddScoped<Firebase.Services.LavaderoInfoService>();
+builder.Services.AddScoped<Firebase.Services.ClienteNotificationService>();
 builder.Services.AddScoped<Firebase.Services.InsumoService>();
 builder.Services.AddScoped<Firebase.Services.TipoInsumoService>();
 builder.Services.AddScoped<Firebase.Services.ProveedorService>();

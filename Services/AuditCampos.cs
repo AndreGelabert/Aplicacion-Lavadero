@@ -118,6 +118,8 @@ public static class AuditCampos
             ["NumeroDocumento"] = c.NumeroDocumento ?? "",
             ["Telefono"] = c.Telefono ?? "",
             ["Email"] = c.Email ?? "",
+            ["NotificarPorWhatsApp"] = c.NotificarPorWhatsApp?.ToString() ?? "",
+            ["NotificarPorEmail"] = c.NotificarPorEmail?.ToString() ?? "",
             ["Estado"] = c.Estado ?? "",
             ["VehiculosIds"] = System.Text.Json.JsonSerializer.Serialize(c.VehiculosIds)
         };

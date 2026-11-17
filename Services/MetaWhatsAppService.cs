@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using Firebase.Models;
@@ -81,7 +82,11 @@ public class MetaWhatsAppService
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
-            _logger.LogWarning("WhatsApp operation {Operation} failed: uncertain transport ({ExceptionType})", operation, ex.GetType().Name);
+            if (ex is HttpRequestException httpException)
+                _logger.LogWarning("WhatsApp operation {Operation} failed: uncertain transport ({ExceptionType}, {HttpRequestError}, {SocketErrorCode})",
+                    operation, nameof(HttpRequestException), httpException.HttpRequestError, (httpException.InnerException as SocketException)?.SocketErrorCode);
+            else
+                _logger.LogWarning("WhatsApp operation {Operation} failed: uncertain transport ({ExceptionType})", operation, nameof(TaskCanceledException));
             throw new WhatsAppOperationException(operation, "uncertain transport");
         }
     }

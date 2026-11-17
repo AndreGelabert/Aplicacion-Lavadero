@@ -124,6 +124,7 @@ public class ClienteService
 
     public async Task CrearCliente(Cliente cliente)
     {
+        cliente.NormalizarPreferenciasNotificacion(solicitudExplicita: true);
         var docRef = _firestore.Collection("clientes").Document();
         cliente.Id = docRef.Id;
         await docRef.SetAsync(cliente);
@@ -131,6 +132,7 @@ public class ClienteService
 
     public async Task<bool> CrearClienteAsociado(Cliente cliente, string vehiculoId, string claveAsociacion)
     {
+        cliente.NormalizarPreferenciasNotificacion(solicitudExplicita: true);
         var clienteRef = _firestore.Collection("clientes").Document();
         var vehiculoRef = _firestore.Collection("vehiculos").Document(vehiculoId);
         cliente.Id = clienteRef.Id;
@@ -156,6 +158,7 @@ public class ClienteService
 
     public async Task<bool> CrearClienteYVincular(Cliente cliente, string vehiculoId, string hash, bool sinDueno)
     {
+        cliente.NormalizarPreferenciasNotificacion(solicitudExplicita: true);
         if (string.IsNullOrWhiteSpace(vehiculoId)) return false;
         var clienteRef = _firestore.Collection("clientes").Document();
         var vehiculoRef = _firestore.Collection("vehiculos").Document(vehiculoId);
@@ -207,6 +210,9 @@ public class ClienteService
     public async Task<bool> GuardarClienteConVehiculos(Cliente cliente, bool crear, List<VinculoWeb> solicitados, List<AuditoriaVehiculo> auditorias, List<AuditoriaCliente> auditoriasCliente, bool conservarExistentes = false, bool permitirReclamarHuerfano = false)
     {
         if (solicitados.Count == 0) return false;
+        cliente.NormalizarPreferenciasNotificacion(solicitudExplicita: true);
+        var preferenciasWhatsApp = cliente.NotificarPorWhatsApp;
+        var preferenciasEmail = cliente.NotificarPorEmail;
         var patentesNuevas = solicitados.Where(x => x.Nuevo != null).Select(x => x.Nuevo!.Patente.Trim().ToUpperInvariant()).ToList();
         if (patentesNuevas.Distinct().Count() != patentesNuevas.Count) return false;
         var clienteRef = crear ? _firestore.Collection("clientes").Document() : _firestore.Collection("clientes").Document(cliente.Id);
@@ -256,7 +262,12 @@ public class ClienteService
                 vehiculos[id] = actual.ConvertTo<Vehiculo>();
             }
             if (conservarExistentes && clienteSnapshot.Exists)
+            {
                 cliente = clienteSnapshot.ConvertTo<Cliente>();
+                cliente.NotificarPorWhatsApp = preferenciasWhatsApp ?? cliente.NotificarPorWhatsApp;
+                cliente.NotificarPorEmail = preferenciasEmail ?? cliente.NotificarPorEmail;
+                cliente.NormalizarPreferenciasNotificacion(solicitudExplicita: true);
+            }
             var seleccion = new Dictionary<string, VinculoWeb>();
             var reutilizados = new HashSet<string>();
             if (conservarExistentes)
@@ -352,6 +363,7 @@ public class ClienteService
 
     public async Task ActualizarCliente(Cliente cliente)
     {
+        cliente.NormalizarPreferenciasNotificacion(solicitudExplicita: true);
         var docRef = _firestore.Collection("clientes").Document(cliente.Id);
         await docRef.SetAsync(cliente, SetOptions.Overwrite);
     }

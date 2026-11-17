@@ -539,7 +539,7 @@ namespace Firebase.Services
         /// <summary>
         /// Finaliza una etapa específica dentro de un servicio.
         /// </summary>
-        public async Task FinalizarEtapa(string lavadoId, string servicioId, string etapaId, string? consumoRealJson = null, string? justificacionDesvio = null)
+        public async Task<bool> FinalizarEtapa(string lavadoId, string servicioId, string etapaId, string? consumoRealJson = null, string? justificacionDesvio = null)
         {
             var consumoReal = string.IsNullOrWhiteSpace(consumoRealJson)
                 ? null
@@ -554,7 +554,7 @@ namespace Firebase.Services
                     ?? throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
                 var etapa = servicio.Etapas.FirstOrDefault(e => e.EtapaId == etapaId)
                     ?? throw new ArgumentException("No se encontró la etapa en el servicio", nameof(etapaId));
-                if (etapa.Estado == "Realizado") return new List<StockService.ConsumoReceta>();
+                if (etapa.Estado == "Realizado") return (Finalizada: false, Consumos: new List<StockService.ConsumoReceta>());
                 if (etapa.Estado != "EnProceso") throw new InvalidOperationException("La etapa no está en proceso.");
                 if (consumoReal != null && consumoReal.Any(x => etapa.Receta.All(r => r.InsumoId != x.Key) || x.Value < 0))
                     throw new InvalidOperationException("El consumo real contiene insumos o cantidades inválidas.");
@@ -609,9 +609,10 @@ namespace Firebase.Services
                     ["Servicios"] = datos["Servicios"], ["Estado"] = datos["Estado"],
                     ["TiempoFinalizacion"] = datos["TiempoFinalizacion"]
                 });
-                return cantidades;
+                return (Finalizada: true, Consumos: cantidades);
             });
-            await _stockService.EvaluarConsumos(consumidos.Select(x => x.InsumoId));
+            await _stockService.EvaluarConsumos(consumidos.Consumos.Select(x => x.InsumoId));
+            return consumidos.Finalizada;
         }
 
         /// <summary>
@@ -978,7 +979,7 @@ namespace Firebase.Services
 
             if (horario.ToUpperInvariant() == "CERRADO")
             {
-                throw new InvalidOperationException($"El lavadero está cerrado los días {diaSemana}.");
+                throw new HorarioOperacionException($"El lavadero está cerrado los días {diaSemana}.");
             }
 
             // Parsear horario (formato: "09:00-18:00" o "09:00-13:00,15:00-19:00")
@@ -1004,7 +1005,7 @@ namespace Firebase.Services
 
             if (!dentroDeHorario)
             {
-                throw new InvalidOperationException($"El lavadero está fuera de horario de operación. Horario del día: {horario}");
+                throw new HorarioOperacionException("El lavadero está fuera de horario de operación.");
             }
         }
 

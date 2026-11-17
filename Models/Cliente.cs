@@ -91,5 +91,40 @@ namespace Firebase.Models
         /// </summary>
         [FirestoreProperty]
         public string Estado { get; set; } = "Activo";
+
+        /// <summary>
+        /// Indica si el cliente desea recibir notificaciones por WhatsApp.
+        /// Null representa un registro legado sin preferencias persistidas.
+        /// </summary>
+        [FirestoreProperty]
+        public bool? NotificarPorWhatsApp { get; set; }
+
+        /// <summary>
+        /// Indica si el cliente desea recibir notificaciones por correo.
+        /// Null representa un registro legado sin preferencias persistidas.
+        /// </summary>
+        [FirestoreProperty]
+        public bool? NotificarPorEmail { get; set; }
+
+        public bool PrefiereWhatsApp => NotificarPorWhatsApp == true;
+
+        public bool PrefiereEmail => NotificarPorEmail != false;
+
+        public void NormalizarPreferenciasNotificacion(bool solicitudExplicita = false)
+        {
+            if (NotificarPorWhatsApp is null && NotificarPorEmail is null)
+            {
+                NotificarPorEmail = true;
+                return;
+            }
+
+            if (NotificarPorWhatsApp != true && NotificarPorEmail != true)
+            {
+                if (solicitudExplicita)
+                    throw new ValidationException("Debe seleccionar al menos un método de notificación.");
+
+                NotificarPorEmail = true;
+            }
+        }
     }
 }

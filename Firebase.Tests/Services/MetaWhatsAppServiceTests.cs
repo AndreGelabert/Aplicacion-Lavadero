@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Text.Json;
 using Firebase.Models;
 using Firebase.Services;
@@ -21,7 +22,17 @@ public class MetaWhatsAppServiceTests
         }
     }
 
-    private static MetaWhatsAppService Create(Handler handler, Mock<ILogger<MetaWhatsAppService>> logger) => new(
+    private sealed class ThrowingHandler(Exception exception) : HttpMessageHandler
+    {
+        public int Calls;
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Calls++;
+            throw exception;
+        }
+    }
+
+    private static MetaWhatsAppService Create(HttpMessageHandler handler, Mock<ILogger<MetaWhatsAppService>> logger) => new(
         new HttpClient(handler), Options.Create(new WhatsAppSettings { AccessToken = "secret token", PhoneNumberId = "123", VerifyToken = "verify" }), logger.Object);
 
     private static Task<bool> Invoke(MetaWhatsAppService service, string operation) => operation switch
@@ -91,6 +102,38 @@ public class MetaWhatsAppServiceTests
         Assert.Equal("auth", ex.Classification);
         Assert.Null(ex.MetaErrorCode);
         Assert.Null(ex.MetaErrorSubcode);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TransportDiagnostics_AreStructuredAndNeverLeak(bool canceled)
+    {
+        const string secret = "injected-secret-https://private.example/5491111111111";
+        Exception failure = canceled
+            ? new TaskCanceledException(secret, new Exception(secret))
+            : new HttpRequestException(HttpRequestError.ConnectionError, secret, new SocketException((int)SocketError.ConnectionRefused));
+        var handler = new ThrowingHandler(failure);
+        var logger = new Mock<ILogger<MetaWhatsAppService>>();
+        var result = await Assert.ThrowsAsync<WhatsAppOperationException>(() => Invoke(Create(handler, logger), "text"));
+        Assert.Equal("uncertain transport", result.Classification);
+        Assert.Null(result.StatusCode);
+        Assert.Equal(1, handler.Calls);
+        Assert.DoesNotContain(secret, result.ToString());
+        var log = Assert.Single(logger.Invocations.Where(i => i.Method.Name == "Log"));
+        Assert.Equal(LogLevel.Warning, log.Arguments[0]);
+        Assert.Null(log.Arguments[3]);
+        var fields = ((IEnumerable<KeyValuePair<string, object?>>)log.Arguments[2]).ToDictionary(x => x.Key, x => x.Value);
+        Assert.Equal("text", fields["Operation"]);
+        Assert.Equal(canceled ? "TaskCanceledException" : "HttpRequestException", fields["ExceptionType"]);
+        if (!canceled)
+        {
+            Assert.Equal(HttpRequestError.ConnectionError, fields["HttpRequestError"]);
+            Assert.Equal(SocketError.ConnectionRefused, fields["SocketErrorCode"]);
+        }
+        var allLogText = string.Join(" ", fields.Select(x => $"{x.Key}={x.Value}")) + log.Arguments[2];
+        foreach (var forbidden in new[] { secret, "private.example", "5491111111111", "secret token", "secret message" })
+            Assert.DoesNotContain(forbidden, allLogText);
     }
 
     [Theory]
