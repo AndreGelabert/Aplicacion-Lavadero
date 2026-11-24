@@ -1,0 +1,22 @@
+using System.Security.Cryptography;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace FirebaseLoginCustom.Controllers;
+
+[AllowAnonymous]
+public class TurnoOfertaEmailPageController : Controller
+{
+    [HttpGet("/turno-oferta-email/responder")]
+    public IActionResult Responder()
+    {
+        var nonce = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16));
+        Response.Headers.CacheControl = "no-store";
+        Response.Headers["Referrer-Policy"] = "no-referrer";
+        Response.Headers["X-Frame-Options"] = "DENY";
+        Response.Headers["X-Content-Type-Options"] = "nosniff";
+        Response.Headers.ContentSecurityPolicy = $"default-src 'none'; script-src 'nonce-{nonce}' 'strict-dynamic'; connect-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; require-trusted-types-for 'script'";
+        ViewData["Nonce"] = nonce;
+        return View("~/Views/TurnoOfertaEmail/Responder.cshtml");
+    }
+}
