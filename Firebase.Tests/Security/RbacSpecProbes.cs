@@ -23,6 +23,7 @@ namespace Firebase.Tests.Security
             ["Servicios"] = new[] { "Consultar", "Crear", "Modificar", "Eliminar" },
             ["Paquetes"] = new[] { "Consultar", "Crear", "Modificar", "Eliminar" },
             ["Lavados"] = new[] { "Consultar", "Crear", "Modificar" },
+            ["Turnos"] = new[] { "Consultar", "Crear", "Modificar", "Cancelar" },
             ["Personal"] = new[] { "Consultar", "Modificar" },
             ["Configuracion"] = new[] { "Consultar", "Modificar" },
             ["Auditoria"] = new[] { "Consultar" },
@@ -32,10 +33,10 @@ namespace Firebase.Tests.Security
 
         // S1
         [Fact]
-        public void S1_Catalogo_ExposesExactly28PermissionsAndTheSpecifiedMatrix()
+        public void S1_Catalogo_ExposesExactly39PermissionsAndTheSpecifiedMatrix()
         {
             var esperados = MatrizEsperada.Sum(m => m.Value.Length);
-            Assert.Equal(35, esperados);
+            Assert.Equal(39, esperados);
             Assert.Equal(esperados, RolCatalogo.TodosLosPermisos.Count);
             Assert.Equal(esperados, RolCatalogo.TodosLosPermisos.Distinct().Count());
 
@@ -182,6 +183,7 @@ namespace Firebase.Tests.Security
             var esperados = new[]
             {
                 ("Lavados", "/Lavados", "Lavados.Consultar"),
+                ("Turnos", "/Turnos", "Turnos.Consultar"),
                 ("Cliente", "/Cliente", "Clientes.Consultar"),
                 ("Vehiculo", "/Vehiculo", "Vehiculos.Consultar"),
                 ("Servicio", "/Servicio", "Servicios.Consultar"),

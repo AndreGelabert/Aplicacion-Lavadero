@@ -81,6 +81,9 @@ public static class RolReglas
             }
         }
 
+        if (seleccion.Contains("Turnos.Cancelar") && !seleccion.Contains("Turnos.Consultar"))
+            return "Para cancelar turnos debe seleccionar Consultar turnos.";
+
         if (seleccion.Contains("Clientes.Crear") && !seleccion.Contains("Vehiculos.Crear"))
             return "Para crear clientes debe seleccionar Crear vehículos.";
         if (seleccion.Contains("Vehiculos.Crear") && !seleccion.Contains("Clientes.Crear"))

@@ -18,8 +18,8 @@ test('access denied preserves conditional navigation and logout post', () => {
 });
 test('catalogue keeps exact resolution inputs and decision meanings', () => {
   assert.match(catalogue, /<form asp-action="Resolve" method="post" class="mt-4 space-y-3">\s*@Html.AntiForgeryToken\(\)\s*<input type="hidden" name="id" value="@proposal.VehiculoId"/);
-  assert.match(catalogue, /<input name="brand" value="@proposal.Marca" maxlength="100"/);
-  assert.match(catalogue, /<input name="model" value="@proposal.Modelo" maxlength="100"/);
+  assert.match(catalogue, /<input name="brand" value="@proposal.Marca"[^>]*maxlength="100"/);
+  assert.match(catalogue, /<input name="model" value="@proposal.Modelo"[^>]*maxlength="100"/);
   for (const [decision, variant] of Object.entries({link:'primary', approve:'success', discard:'secondary'}))
     assert.match(catalogue, new RegExp(`<button name="decision" value="${decision}" class="app-button app-button--${variant}">`));
   assert.match(catalogue, /@if \(Model.Count == 0\)[\s\S]*?No hay datos pendientes de revisión\./);

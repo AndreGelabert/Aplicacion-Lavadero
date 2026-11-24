@@ -83,6 +83,30 @@ namespace Firebase.Tests.Security
                 module => module.Controlador == controller);
         }
 
+        [Theory]
+        [InlineData("Turnos.Modificar")]
+        public void Turnos_ShouldNotExposeNavigationWithoutEndpoint(string permiso)
+        {
+            Assert.Empty(NavegacionSistema.ModulosVisibles(new[] { permiso }));
+            Assert.Equal(NavegacionSistema.RutaAccesoDenegado, NavegacionSistema.RutaLanding(new[] { permiso }));
+        }
+
+        [Fact]
+        public void TurnosCrear_RoutesSidebarAndLandingToCreateWithoutList()
+        {
+            var permissions = new[] { "Turnos.Crear" };
+            Assert.Equal("/Turnos/Crear", NavegacionSistema.RutaLanding(permissions));
+            Assert.Equal("/Turnos/Crear", Assert.Single(NavegacionSistema.ModulosVisibles(permissions)).Ruta);
+            Assert.Equal("/Turnos", Assert.Single(NavegacionSistema.ModulosVisibles(new[] { "Turnos.Consultar", "Turnos.Crear" })).Ruta);
+        }
+
+        [Fact]
+        public void TurnosConsultar_EnablesNavigationAndLanding()
+        {
+            Assert.Equal("/Turnos", NavegacionSistema.RutaLanding(new[] { "Turnos.Consultar" }));
+            Assert.Equal("Turnos", Assert.Single(NavegacionSistema.ModulosVisibles(new[] { "Turnos.Consultar" })).Controlador);
+        }
+
         [Fact]
         public void VehicleModule_ShouldNotBeVisibleWithCreatePermissionOnly()
         {

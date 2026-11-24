@@ -35,6 +35,28 @@ namespace Firebase.Tests.Services
             Assert.Null(RolReglas.ValidarPermisos(new[] { "Clientes.Consultar" }));
         }
 
+        [Theory]
+        [InlineData("Turnos.Modificar", "Turnos")]
+        [InlineData("Clientes.Modificar", "Clientes")]
+        [InlineData("Servicios.Eliminar", "Servicios")]
+        public void ValidarPermisos_RequiresConsultarForModifyAndDelete(string permiso, string modulo)
+        {
+            Assert.Equal($"Para modificar o eliminar en {modulo} debe seleccionar Consultar.", RolReglas.ValidarPermisos(new[] { permiso }));
+            Assert.Null(RolReglas.ValidarPermisos(new[] { permiso, $"{modulo}.Consultar" }));
+        }
+
+        [Fact]
+        public void ValidarPermisos_CancelarTurnosRequiresConsultar()
+        {
+            Assert.Equal("Para cancelar turnos debe seleccionar Consultar turnos.",
+                RolReglas.ValidarPermisos(new[] { "Turnos.Cancelar" }));
+            Assert.Null(RolReglas.ValidarPermisos(new[] { "Turnos.Cancelar", "Turnos.Consultar" }));
+            var rol = new Rol { Nombre = "Supervisor", Permisos = new List<string> { "Turnos.Consultar" } };
+            Assert.Equal("Para cancelar turnos debe seleccionar Consultar turnos.",
+                RolReglas.ValidarEdicion(rol, "Supervisor", new[] { "Turnos.Cancelar" }));
+            Assert.Null(RolReglas.ValidarEdicion(rol, "Supervisor", new[] { "Turnos.Cancelar", "Turnos.Consultar" }));
+        }
+
         [Fact]
         public void ValidarEdicion_ShouldProtectAdministratorCriticalPermissions()
         {
