@@ -55,6 +55,12 @@ Los resultados explícitos de los servicios y los logs correlacionados son mejor
 
 **Relación entre las tareas:** diseñar WA-02 junto con los estados y la recuperación de WA-01. La deduplicación de entrada y la outbox resuelven problemas distintos; ninguna reemplaza a la otra.
 
+## [ ] WA-03 — Mensajes entrantes sin número de teléfono
+
+**Prioridad:** mejora futura, fuera del alcance prioritario actual.
+
+**Pendiente:** evaluar cómo manejar mensajes de Meta que llegan sin número de teléfono y con otro identificador de usuario. Actualmente el acceso utiliza el teléfono del remitente; no sustituirlo por ese identificador ni asumir que estos mensajes ya están soportados.
+
 ## [ ] AUTH-01 — Preservar los datos al migrar una cuenta existente a Google
 
 **Prioridad:** pospuesta por decisión del usuario; no implementar como parte del refactor de expiración de sesiones.
@@ -71,6 +77,14 @@ Los resultados explícitos de los servicios y los logs correlacionados son mejor
 - Pruebas aisladas con datos sintéticos cubren éxito, fallo antes del guardado, conflicto de destino y repetición/interrupción: nunca se pierden los datos originales ni se mezclan identidades.
 - Se demuestra la conservación de los campos y referencias definidos, sin autenticación real ni eliminación de cuentas reales.
 - La corrección tiene verificación independiente por afectar identidad y persistencia; su revisión y entrega se mantienen separadas de los refactors mecánicos.
+
+## [ ] AUTH-02 — Investigar posible duplicación concurrente de empleados con Google
+
+**Prioridad:** pospuesta por decisión del usuario; continuar primero con Turnos. No hay corrección entregada ni autorización para desplegar cambios de seguridad sin verificar.
+
+**Pendiente:** investigar si escrituras solapadas de identidades autenticadas, con UID distintos y el mismo correo exacto verificado, pueden aprovisionar empleados duplicados. Se observó una búsqueda fuera de la transacción, pero no se confirmó la causa raíz, prevalencia ni comportamiento de referencia. La revisión independiente agotó el tiempo; la regresión en emulador falló dos veces: primero por tiempo de espera de bloqueo y luego sin detalle suficiente de la aserción.
+
+Preservar la migración, los roles y la auditoría existentes; investigar por separado diferencias de mayúsculas y minúsculas. Verificar la eventual corrección con un emulador descartable, sin autenticación real, y revisión independiente.
 
 ## [ ] SEC-01 — Reemplazar las APIs obsoletas de carga de credenciales de Google
 
