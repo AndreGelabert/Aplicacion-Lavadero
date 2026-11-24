@@ -363,6 +363,8 @@ MigrationBackup/
 FodyWeavers.xsd
 /Utils/loginmvc.json
 /Utils/loginmvc.json
+/appsettings.json
+/appsettings.json
 .vscode/launch.json
 .vscode/tasks.json
 
@@ -381,5 +383,3 @@ FodyWeavers.xsd
 
 # Local AI runtime state
 .atl/
-/appsettings.json
-/appsettings.json
