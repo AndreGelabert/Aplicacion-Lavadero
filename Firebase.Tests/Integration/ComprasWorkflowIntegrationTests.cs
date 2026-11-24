@@ -9,6 +9,18 @@ namespace Firebase.Tests.Integration;
 
 public sealed class ComprasWorkflowIntegrationTests
 {
+    private static string Cuit(int n)
+    {
+        var num = (n % 99999999).ToString("D8");
+        var baseDigits = $"30{num}";
+        int[] weights = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+        var sum = 0;
+        for (var i = 0; i < 10; i++) sum += (baseDigits[i] - '0') * weights[i];
+        var rem = 11 - (sum % 11);
+        var dv = rem switch { 11 => 0, 10 => 9, _ => rem };
+        return $"30-{num}-{dv}";
+    }
+
     private static async Task<FirestoreDb> PrepararCotizacionRed()
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-quote-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
@@ -232,7 +244,7 @@ public sealed class ComprasWorkflowIntegrationTests
             var ids = new List<string>();
             for (var j = 0; j < 3; j++)
             {
-                var proveedor = new Proveedor { RazonSocial = $"Proveedor{i}-{j}", IdentificacionTributaria = $"id{i}-{j}", Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
+                var proveedor = new Proveedor { RazonSocial = $"Proveedor{i}-{j}", IdentificacionTributaria = Cuit(i * 10 + j + 1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
                 Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
                 ids.Add(proveedor.Id);
             }
@@ -271,7 +283,7 @@ public sealed class ComprasWorkflowIntegrationTests
         await db.Collection("insumos").Document("i").SetAsync(new Insumo { Id = "i", Nombre = "Insumo" });
         for (var i = 0; i < 5; i++)
         {
-            var proveedor = new Proveedor { RazonSocial = "Proveedor" + i, IdentificacionTributaria = "id" + i, Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
+            var proveedor = new Proveedor { RazonSocial = "Proveedor" + i, IdentificacionTributaria = Cuit(i + 1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
             Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
             var solicitud = await Emitir(compras, new SolicitudCotizacion { ProveedorId = proveedor.Id, Items = new() { new OrdenCompraItem { InsumoId = "i", Cantidad = 1 } } });
             await Responder(compras, solicitud);
@@ -310,7 +322,7 @@ public sealed class ComprasWorkflowIntegrationTests
         await db.Collection("insumos").Document("i").SetAsync(new Insumo { Id = "i", Nombre = "Insumo" });
         for (var i = 0; i < 5; i++)
         {
-            var proveedor = new Proveedor { RazonSocial = "Proveedor" + i, IdentificacionTributaria = "id" + i, Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
+            var proveedor = new Proveedor { RazonSocial = "Proveedor" + i, IdentificacionTributaria = Cuit(i + 1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
             Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
             var solicitud = await Emitir(compras, new SolicitudCotizacion { ProveedorId = proveedor.Id, Items = new() { new OrdenCompraItem { InsumoId = "i", Cantidad = 1 } } });
             await Responder(compras, solicitud);
@@ -336,7 +348,7 @@ public sealed class ComprasWorkflowIntegrationTests
         var db = new FirestoreDbBuilder { ProjectId = "demo-compras-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var proveedores = new ProveedorService(db);
         var compras = new ComprasService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
         Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
         await db.Collection("insumos").Document("i").SetAsync(new Insumo { Id = "i", Nombre = "Insumo" });
         var solicitud = await Emitir(compras, new SolicitudCotizacion { ProveedorId = proveedor.Id, Items = new() { new OrdenCompraItem { InsumoId = "i", Cantidad = 1 } } });
@@ -359,7 +371,7 @@ public sealed class ComprasWorkflowIntegrationTests
         var proveedores = new ProveedorService(db);
         for (var i = 0; i < 30; i++)
         {
-            var proveedor = new Proveedor { RazonSocial = "Proveedor" + i, IdentificacionTributaria = "id" + i, Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
+            var proveedor = new Proveedor { RazonSocial = "Proveedor" + i, IdentificacionTributaria = Cuit(i + 1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
             Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
             proveedor.Contacto = "0987654321";
             var resultados = await Task.WhenAll(proveedores.Guardar(proveedor, false), proveedores.CambiarEstado(proveedor.Id, "Inactivo"));
@@ -376,7 +388,7 @@ public sealed class ComprasWorkflowIntegrationTests
         var db = new FirestoreDbBuilder { ProjectId = "demo-compras-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var proveedores = new ProveedorService(db);
         var compras = new ComprasService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
         Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
         await db.Collection("insumos").Document("i").SetAsync(new Insumo { Id = "i", Nombre = "Insumo" });
         var solicitud = await Emitir(compras, new SolicitudCotizacion { ProveedorId = proveedor.Id, Items = new() { new OrdenCompraItem { InsumoId = "i", Cantidad = 1 } } });

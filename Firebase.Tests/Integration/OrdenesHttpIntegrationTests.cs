@@ -1265,6 +1265,7 @@ public sealed class OrdenesHttpIntegrationTests
         await db.Collection("cotizacionesRespuestas").Document(respuesta.Id).SetAsync(respuesta);
 
         var email = new Mock<IEmailSender>();
+        email.Setup(x => x.EnviarAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>())).ReturnsAsync(new ResultadoEnvioEmail(true, "Aceptado"));
         var auditWriter = new Mock<IAuditWriter>();
 
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" });
@@ -1319,11 +1320,17 @@ public sealed class OrdenesHttpIntegrationTests
 
             // Auditoría de la orden generada registrada en la transacción con los claims del actor autenticado ("test", "test@example.invalid")
             var auditsOrden = (await db.Collection("registros_auditoria").WhereEqualTo("TargetId", orden.Id).GetSnapshotAsync()).Documents;
-            var evOrden = Assert.Single(auditsOrden);
+            Assert.Equal(3, auditsOrden.Count);
+            var evOrden = Assert.Single(auditsOrden, d => d.GetValue<string>("Action") == "Creacion de orden de compra");
             Assert.Equal("Creacion de orden de compra", evOrden.GetValue<string>("Action"));
             Assert.Equal("OrdenCompra", evOrden.GetValue<string>("TargetType"));
             Assert.Equal("test", evOrden.GetValue<string>("UserId"));
             Assert.Equal("test@example.invalid", evOrden.GetValue<string>("UserEmail"));
+            Assert.All(auditsOrden, d =>
+            {
+                Assert.Equal("test", d.GetValue<string>("UserId"));
+                Assert.Equal("test@example.invalid", d.GetValue<string>("UserEmail"));
+            });
 
             // Auditoría de la solicitud también registrada en la transacción
             var auditsSol = (await db.Collection("registros_auditoria").WhereEqualTo("TargetId", solicitud.Id).GetSnapshotAsync()).Documents;
@@ -1342,7 +1349,7 @@ public sealed class OrdenesHttpIntegrationTests
             }));
             Assert.Equal(HttpStatusCode.Redirect, retryResponse.StatusCode);
             Assert.Single((await db.Collection("ordenesCompra").GetSnapshotAsync()).Documents);
-            Assert.Single((await db.Collection("registros_auditoria").WhereEqualTo("TargetId", orden.Id).GetSnapshotAsync()).Documents);
+            Assert.Equal(3, (await db.Collection("registros_auditoria").WhereEqualTo("TargetId", orden.Id).GetSnapshotAsync()).Documents.Count);
             Assert.Single((await db.Collection("registros_auditoria").WhereEqualTo("TargetId", solicitud.Id).GetSnapshotAsync()).Documents);
         }
         finally

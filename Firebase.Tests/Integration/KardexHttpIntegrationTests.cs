@@ -451,7 +451,12 @@ public sealed class KardexHttpIntegrationTests
     [Fact]
     public void KardexConfiguracionIndicesCompuestosValida()
     {
-        var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../.."));
+        var repoRoot = AppContext.BaseDirectory;
+        while (repoRoot != null && !File.Exists(Path.Combine(repoRoot, "Firebase.csproj")))
+        {
+            repoRoot = Directory.GetParent(repoRoot)?.FullName;
+        }
+        Assert.NotNull(repoRoot);
         var indexesPath = Path.Combine(repoRoot, "firestore.indexes.json");
         var firebaseJsonPath = Path.Combine(repoRoot, "firebase.json");
 
@@ -653,9 +658,9 @@ public sealed class KardexHttpIntegrationTests
             Assert.Contains("bidir-19", p1);
             Assert.DoesNotContain("bidir-20", p1);
             Assert.DoesNotContain("bidir-44", p1);
-            Assert.Contains("<span class=\"text-gray-400\">Anterior</span>", p1);
+            Assert.Contains("aria-disabled=\"true\"><</span>", p1);
 
-            var nextMatch1 = System.Text.RegularExpressions.Regex.Match(p1, @"href=""[^""]*cursor=([a-zA-Z0-9%_-]+)[^""]*"">Siguiente</a>");
+            var nextMatch1 = System.Text.RegularExpressions.Regex.Match(p1, @"href=""[^""]*cursor=([a-zA-Z0-9%_-]+)[^""]*""[^>]*aria-label=""Siguiente""");
             Assert.True(nextMatch1.Success, "Página 1 debe tener enlace a Siguiente.");
             var nextCursor1 = Uri.UnescapeDataString(nextMatch1.Groups[1].Value);
 
@@ -667,11 +672,11 @@ public sealed class KardexHttpIntegrationTests
             Assert.DoesNotContain("bidir-19", p2);
             Assert.DoesNotContain("bidir-40", p2);
 
-            var prevMatch2 = System.Text.RegularExpressions.Regex.Match(p2, @"href=""[^""]*cursor=([a-zA-Z0-9%_-]+)[^""]*"">Anterior</a>");
+            var prevMatch2 = System.Text.RegularExpressions.Regex.Match(p2, @"href=""[^""]*cursor=([a-zA-Z0-9%_-]+)[^""]*""[^>]*aria-label=""Anterior""");
             Assert.True(prevMatch2.Success, "Página 2 debe tener enlace a Anterior.");
             var prevCursor2 = Uri.UnescapeDataString(prevMatch2.Groups[1].Value);
 
-            var nextMatch2 = System.Text.RegularExpressions.Regex.Match(p2, @"href=""[^""]*cursor=([a-zA-Z0-9%_-]+)[^""]*"">Siguiente</a>");
+            var nextMatch2 = System.Text.RegularExpressions.Regex.Match(p2, @"href=""[^""]*cursor=([a-zA-Z0-9%_-]+)[^""]*""[^>]*aria-label=""Siguiente""");
             Assert.True(nextMatch2.Success, "Página 2 debe tener enlace a Siguiente.");
             var nextCursor2 = Uri.UnescapeDataString(nextMatch2.Groups[1].Value);
 
@@ -680,9 +685,9 @@ public sealed class KardexHttpIntegrationTests
             Assert.Contains("bidir-40", p3);
             Assert.Contains("bidir-44", p3);
             Assert.DoesNotContain("bidir-39", p3);
-            Assert.Contains("<span class=\"text-gray-400\">Siguiente</span>", p3);
+            Assert.Contains("aria-disabled=\"true\">></span>", p3);
 
-            var prevMatch3 = System.Text.RegularExpressions.Regex.Match(p3, @"href=""[^""]*cursor=([a-zA-Z0-9%_-]+)[^""]*"">Anterior</a>");
+            var prevMatch3 = System.Text.RegularExpressions.Regex.Match(p3, @"href=""[^""]*cursor=([a-zA-Z0-9%_-]+)[^""]*""[^>]*aria-label=""Anterior""");
             Assert.True(prevMatch3.Success, "Página 3 debe tener enlace a Anterior.");
             var prevCursor3 = Uri.UnescapeDataString(prevMatch3.Groups[1].Value);
 
@@ -693,7 +698,7 @@ public sealed class KardexHttpIntegrationTests
             Assert.DoesNotContain("bidir-00", p2Back);
             Assert.DoesNotContain("bidir-44", p2Back);
 
-            var prevMatchBack = System.Text.RegularExpressions.Regex.Match(p2Back, @"href=""[^""]*cursor=([a-zA-Z0-9%_-]+)[^""]*"">Anterior</a>");
+            var prevMatchBack = System.Text.RegularExpressions.Regex.Match(p2Back, @"href=""[^""]*cursor=([a-zA-Z0-9%_-]+)[^""]*""[^>]*aria-label=""Anterior""");
             Assert.True(prevMatchBack.Success, "Página 2 retrocedida debe tener enlace a Anterior.");
             var prevCursorBack = Uri.UnescapeDataString(prevMatchBack.Groups[1].Value);
 
@@ -702,7 +707,7 @@ public sealed class KardexHttpIntegrationTests
             Assert.Contains("bidir-00", p1Back);
             Assert.Contains("bidir-19", p1Back);
             Assert.DoesNotContain("bidir-20", p1Back);
-            Assert.Contains("<span class=\"text-gray-400\">Anterior</span>", p1Back);
+            Assert.Contains("aria-disabled=\"true\"><</span>", p1Back);
         }
         finally
         {

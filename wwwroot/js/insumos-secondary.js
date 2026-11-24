@@ -23,6 +23,55 @@
     const providerForm = document.getElementById('provider-form');
     if (providerForm && typeof window !== 'undefined') {
         document.addEventListener('DOMContentLoaded', () => {
+            function validarCuitArgentino(cuit) {
+                if (!cuit) return { isValid: false, message: 'El CUIT es obligatorio' };
+                const clean = cuit.replace(/[-\s.]/g, '');
+                if (!/^\d{11}$/.test(clean)) {
+                    return { isValid: false, message: 'Debe contener exactamente 11 dígitos numéricos' };
+                }
+                if (cuit.includes('-') && !/^\d{2}-\d{8}-\d{1}$/.test(cuit.trim())) {
+                    return { isValid: false, message: 'Formato inválido. Use XX-XXXXXXXX-X o 11 dígitos' };
+                }
+                const prefix = clean.substring(0, 2);
+                const validPrefixes = ['20', '23', '24', '27', '30', '33', '34', '50', '51', '55'];
+                if (!validPrefixes.includes(prefix)) {
+                    return { isValid: false, message: `Prefijo '${prefix}' no válido para CUIT argentino` };
+                }
+                const multipliers = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+                let sum = 0;
+                for (let i = 0; i < 10; i++) {
+                    sum += parseInt(clean[i], 10) * multipliers[i];
+                }
+                const mod = sum % 11;
+                let expected = 11 - mod;
+                if (expected === 11) expected = 0;
+                else if (expected === 10) expected = 9;
+
+                const actual = parseInt(clean[10], 10);
+                if (actual !== expected) {
+                    return { isValid: false, message: 'Dígito verificador inválido (Módulo 11)' };
+                }
+                return { isValid: true, message: '' };
+            }
+
+            window.FormValidation?.registerCustomValidator('provider-tax-id', () => {
+                const isCreating = providerForm.elements.namedItem('crear')?.value !== 'false';
+                const input = providerForm.elements.namedItem('IdentificacionTributaria');
+                if (!isCreating || input?.readOnly) return { isValid: true, message: '' };
+                const rawValue = (input?.value || '').trim();
+                return validarCuitArgentino(rawValue);
+            });
+
+            const taxInput = document.getElementById('provider-tax-id');
+            if (taxInput) {
+                taxInput.addEventListener('blur', () => {
+                    const clean = (taxInput.value || '').replace(/[-\s.]/g, '').trim();
+                    if (clean.length === 11 && /^\d{11}$/.test(clean)) {
+                        taxInput.value = `${clean.substring(0, 2)}-${clean.substring(2, 10)}-${clean.substring(10)}`;
+                    }
+                });
+            }
+
             window.FormValidation?.registerCustomValidator('provider-phone', () => {
                 const value = providerForm.elements.namedItem('Contacto').value.trim();
                 return { isValid: /^[0-9]{10}$/.test(value), message: 'Exactamente 10 dígitos' };

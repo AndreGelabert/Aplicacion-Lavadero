@@ -37,7 +37,7 @@ public sealed class RecepcionParcialCierreIntegrationTests
 
     private static async Task<FirestoreDb> Fixture()
     {
-        Assert.Equal("127.0.0.1:8293", Environment.GetEnvironmentVariable("FIRESTORE_EMULATOR_HOST"));
+        Assert.Equal("127.0.0.1:8190", Environment.GetEnvironmentVariable("FIRESTORE_EMULATOR_HOST"));
         var db = new FirestoreDbBuilder { ProjectId = "demo-partial-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         await db.Collection("proveedores").Document("p").SetAsync(new Proveedor { Id = "p", IdentificacionTributaria = "123", RazonSocial = "Proveedor", Contacto = "1234567890", EmailOrdenes = "p@example.invalid", Estado = "Activo" });
         await db.Collection("insumos").Document("a").SetAsync(new Insumo { Id = "a", Nombre = "Jabon", StockActual = 3, Estado = "Activo" });

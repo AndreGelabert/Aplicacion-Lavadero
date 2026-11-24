@@ -23,7 +23,7 @@ test('S2 recepción bloqueada agrupa todos los controles y explica el motivo', (
 });
 
 test('S3 notas ocupa una columna de grilla adaptable', () => {
-  assert.match(quotes, /<div class="m-4 grid gap-4 sm:grid-cols-2"><label class="block[^\"]*">Notas <input name="notas"/);
+  assert.match(quotes, /<div class="m-4 grid gap-4 sm:grid-cols-2">[\s\S]*?<label class="block[^\"]*">Notas <input name="notas"/);
   assert.ok(css.includes('.sm\\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}'));
 });
 

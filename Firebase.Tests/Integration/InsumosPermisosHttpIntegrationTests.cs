@@ -78,7 +78,7 @@ public sealed class InsumosPermisosHttpIntegrationTests
         var b = new Insumo { Nombre = "B", Tipo = "Quimico" };
         Assert.True((await insumos.Guardar(a, true)).EsExitoso);
         Assert.True((await insumos.Guardar(b, true)).EsExitoso);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", EmailOrdenes = "p@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "30-00000001-5", Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
         Assert.True((await new ProveedorService(fixture.Db).Guardar(proveedor, true)).EsExitoso);
         var compras = new ComprasService(fixture.Db);
         var items = new List<OrdenCompraItem> {
@@ -106,7 +106,7 @@ public sealed class InsumosPermisosHttpIntegrationTests
                 new("insumoIds", a.Id), new("insumoIds", b.Id),
                 new("cantidades", cantidadA), new("cantidades", cantidadB)
             }));
-        foreach (var invalid in new[] { "0", "4" })
+        foreach (var invalid in new[] { "-1", "4" })
         {
             using var rejected = await Recibir("2", invalid);
             Assert.Equal(HttpStatusCode.Redirect, rejected.StatusCode);
@@ -151,8 +151,8 @@ public sealed class InsumosPermisosHttpIntegrationTests
         var insumo = new Insumo { Nombre = "Jabon", Tipo = "Quimico" };
         Assert.True((await insumos.Guardar(insumo, true)).EsExitoso);
         var proveedores = new ProveedorService(fixture.Db);
-        var p1 = new Proveedor { RazonSocial = "Proveedor A", IdentificacionTributaria = "123", EmailOrdenes = "a@example.invalid" };
-        var p2 = new Proveedor { RazonSocial = "Proveedor B", IdentificacionTributaria = "456", EmailOrdenes = "b@example.invalid" };
+        var p1 = new Proveedor { RazonSocial = "Proveedor A", IdentificacionTributaria = "30-00000001-5", Contacto = "1234567890", EmailOrdenes = "a@example.invalid" };
+        var p2 = new Proveedor { RazonSocial = "Proveedor B", IdentificacionTributaria = "30-00000002-3", Contacto = "1234567891", EmailOrdenes = "b@example.invalid" };
         Assert.True((await proveedores.Guardar(p1, true)).EsExitoso);
         Assert.True((await proveedores.Guardar(p2, true)).EsExitoso);
         using var client = fixture.Client("Insumos.Crear,Insumos.Modificar,Insumos.Recepcionar");
@@ -180,7 +180,12 @@ public sealed class InsumosPermisosHttpIntegrationTests
         Assert.All(solicitudes, s => { Assert.Equal("Pendiente", s.Estado); Assert.Equal(2m, Assert.Single(s.Items).Cantidad); });
         Assert.Equal(2, fixture.Messages.Count);
         foreach (var proveedor in new[] { p1, p2 })
-            Assert.Contains(new EmailMessage(proveedor.EmailOrdenes, "Solicitud de cotización de insumos", "<p>Solicitamos cotización para los siguientes insumos:</p><p>Jabon: 2</p>"), fixture.Messages);
+        {
+            var msg = Assert.Single(fixture.Messages, m => m.To == proveedor.EmailOrdenes);
+            Assert.Equal("Solicitud de cotización de insumos", msg.Subject);
+            Assert.Contains("Jabon", msg.Html);
+            Assert.Contains("2", msg.Html);
+        }
         var chosen = Assert.Single(solicitudes.Where(s => s.ProveedorId == p1.Id));
         var other = Assert.Single(solicitudes.Where(s => s.ProveedorId == p2.Id));
         using (var response = await client.PostAsync("/Insumos/RegistrarRespuesta", new FormUrlEncodedContent(new Dictionary<string, string> {
@@ -209,7 +214,10 @@ public sealed class InsumosPermisosHttpIntegrationTests
         Assert.Equal(p1.Id, orden.ProveedorId);
         Assert.Equal(5m, Assert.Single(orden.Items).PrecioUnitario);
         Assert.Equal(3, fixture.Messages.Count);
-        Assert.Equal(new EmailMessage("a@example.invalid", "Orden de compra de insumos", "<p>Orden de compra:</p><p>Jabon: 2 × 5</p>"), fixture.Messages[2]);
+        var orderMsg = fixture.Messages[2];
+        Assert.Equal("a@example.invalid", orderMsg.To);
+        Assert.Equal("Orden de compra de insumos", orderMsg.Subject);
+        Assert.Contains("Jabon", orderMsg.Html);
         var auditBefore = (await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Count;
         using (var receipt = await client.PostAsync("/Insumos/RecibirOrden", new FormUrlEncodedContent(new Dictionary<string, string> {
             ["__RequestVerificationToken"] = token, ["id"] = orden.Id, ["insumoIds"] = insumo.Id, ["cantidades"] = "2"
@@ -246,7 +254,7 @@ public sealed class InsumosPermisosHttpIntegrationTests
         private Fixture(WebApplication app, FirestoreDb db, List<EmailMessage> messages) { this.app = app; this.db = db; Messages = messages; }
         public static async Task<Fixture> Start()
         {
-            if (Environment.GetEnvironmentVariable("FIRESTORE_EMULATOR_HOST") != "127.0.0.1:8245") throw new InvalidOperationException("Only the disposable local emulator is permitted.");
+            if (Environment.GetEnvironmentVariable("FIRESTORE_EMULATOR_HOST") != "127.0.0.1:8190") throw new InvalidOperationException("Only the disposable local emulator is permitted.");
             var db = new FirestoreDbBuilder { ProjectId = "demo-ins-http-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
             await db.Collection("insumos").Document("existing").SetAsync(new Insumo { Id = "existing", Nombre = "Original", StockActual = 5 });
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" });

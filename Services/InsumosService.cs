@@ -48,11 +48,15 @@ public static class InsumosTransacciones
         }, runTransaction);
 }
 
-public sealed class InsumoService(FirestoreDb firestore, IInterceptorAuditoriaCompras? interceptor = null)
+public sealed class InsumoService(
+    FirestoreDb firestore,
+    IInterceptorAuditoriaCompras? interceptor = null,
+    StockService? stock = null)
 {
     private const string Collection = "insumos";
     private static readonly DecimalConverter DecimalFirestore = new();
 
+    public StockService? StockService { get; set; } = stock;
     public Action<AuditLog>? InterceptorAuditoria { get; set; }
 
     private void RegistrarAuditoriaEnTransaccion(Transaction transaction, AuditLog log)
@@ -122,6 +126,15 @@ public sealed class InsumoService(FirestoreDb firestore, IInterceptorAuditoriaCo
             .Where(x => incluirInactivos || x.Estado == "Activo").ToList();
     }
 
+    public async Task<HashSet<string>> ObtenerIdsHerramientas()
+    {
+        var insumos = await ObtenerTodos(true);
+        return insumos
+            .Where(i => string.Equals(i.Tipo, TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase))
+            .Select(i => i.Id)
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
     public async Task<Insumo?> Obtener(string id)
     {
         var snapshot = await firestore.Collection(Collection).Document(id).GetSnapshotAsync();
@@ -154,7 +167,8 @@ public sealed class InsumoService(FirestoreDb firestore, IInterceptorAuditoriaCo
         if (!crear && string.IsNullOrWhiteSpace(insumo.Id))
             return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("El insumo no existe."));
 
-        return await InsumosTransacciones.EjecutarAsync(firestore, async transaction =>
+        var evaluarReabastecimiento = false;
+        var resultado = await InsumosTransacciones.EjecutarAsync(firestore, async transaction =>
         {
             var existentesSnapshot = await transaction.GetSnapshotAsync(firestore.Collection(Collection));
             var existentes = existentesSnapshot.Documents.Select(d => d.ConvertTo<Insumo>()).ToList();
@@ -248,6 +262,8 @@ public sealed class InsumoService(FirestoreDb firestore, IInterceptorAuditoriaCo
                 insumo.Id = reference.Id;
                 insumo.StockActual = 0;
                 insumo.Estado = "Activo";
+
+                evaluarReabastecimiento = insumo.ReabastecimientoAutomatico && insumo.StockActual <= insumo.StockMinimo;
 
                 var antes = new Dictionary<string, string>();
                 var despues = AuditCampos.CapturarInsumo(insumo);
@@ -392,9 +408,24 @@ public sealed class InsumoService(FirestoreDb firestore, IInterceptorAuditoriaCo
                     Timestamp = DateTime.UtcNow
                 });
 
+                evaluarReabastecimiento = insumoActualizado.Estado == "Activo" &&
+                                          insumoActualizado.ReabastecimientoAutomatico &&
+                                          insumoActualizado.StockActual <= insumoActualizado.StockMinimo;
+
                 return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearExito("Insumo actualizado correctamente."), insumo.Id, antes, despues);
             }
         });
+
+        if (resultado.Resultado.EsExitoso && evaluarReabastecimiento)
+        {
+            var stockEfectivo = StockService ?? stock;
+            if (stockEfectivo != null)
+            {
+                await stockEfectivo.EvaluarReabastecimiento(resultado.InsumoId, userId ?? string.Empty, userEmail ?? string.Empty);
+            }
+        }
+
+        return resultado;
     }
 
     public async Task<ResultadoAuditoriaInsumo> CambiarEstadoConAuditoria(string id, string estado, string userId = "", string userEmail = "")
@@ -606,6 +637,14 @@ public sealed class ProveedorService(FirestoreDb firestore, IInterceptorAuditori
         if (!crear && string.IsNullOrWhiteSpace(proveedor.Id))
             return new ResultadoAuditoriaProveedor(ResultadoOperacion.CrearError("El proveedor no existe."));
 
+        if (crear)
+        {
+            if (!Firebase.Utils.CuitHelper.EsValido(proveedor.IdentificacionTributaria, out var errorCuit))
+                return new ResultadoAuditoriaProveedor(ResultadoOperacion.CrearError(errorCuit));
+
+            proveedor.IdentificacionTributaria = Firebase.Utils.CuitHelper.Formatear(proveedor.IdentificacionTributaria);
+        }
+
         return await InsumosTransacciones.EjecutarAsync(firestore, async transaction =>
         {
             var snapshotExistentes = await transaction.GetSnapshotAsync(firestore.Collection("proveedores"));
@@ -613,7 +652,8 @@ public sealed class ProveedorService(FirestoreDb firestore, IInterceptorAuditori
 
             if (crear)
             {
-                if (existentes.Any(x => string.Equals(x.IdentificacionTributaria, proveedor.IdentificacionTributaria, StringComparison.OrdinalIgnoreCase)))
+                if (existentes.Any(x => string.Equals(Firebase.Utils.CuitHelper.Limpiar(x.IdentificacionTributaria), Firebase.Utils.CuitHelper.Limpiar(proveedor.IdentificacionTributaria), StringComparison.OrdinalIgnoreCase) ||
+                                        string.Equals(x.IdentificacionTributaria, proveedor.IdentificacionTributaria, StringComparison.OrdinalIgnoreCase)))
                     return new ResultadoAuditoriaProveedor(ResultadoOperacion.CrearError("Ya existe un proveedor con esa identificación fiscal."));
 
                 if (existentes.Any(x => string.Equals(x.RazonSocial, proveedor.RazonSocial, StringComparison.OrdinalIgnoreCase)))

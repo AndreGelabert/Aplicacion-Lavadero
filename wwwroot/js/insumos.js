@@ -134,7 +134,7 @@
     function closeDelete() { deleteDialog.classList.add('hidden'); deleteId = ''; deleteTrigger?.focus(); }
     deleteDialog.querySelector('[data-cancel-delete-tipo]').addEventListener('click', closeDelete);
     deleteDialog.querySelector('[data-confirm-delete-tipo]').addEventListener('click', async () => {
-        const result = await mutate(typesModal.dataset.deleteUrl, { id: deleteId });
+        const result = await mutate(typesModal.dataset.stateUrl, { id: deleteId, estado: 'Inactivo' });
         if (result) closeDelete();
         else document.getElementById('confirmarEliminarTipoError').textContent = message.textContent;
     });
@@ -231,7 +231,6 @@
                         updateSummaryUnits(type.unidadResumen); form.elements.Nombre.focus();
                     }));
                     actions.append(button(type.estado === 'Activo' ? 'Desactivar' : 'Reactivar', () => mutate(typesModal.dataset.stateUrl, { id: type.id, estado: type.estado === 'Activo' ? 'Inactivo' : 'Activo' })));
-                    actions.append(button('Eliminar', () => { if (window.confirm('¿Eliminar este tipo de insumo?')) mutate(typesModal.dataset.deleteUrl, { id: type.id }); }));
                 }
                 row.append(actions); table.append(row);
             }
@@ -244,7 +243,7 @@
     createModal.querySelector('[data-delete-tipo]')?.addEventListener('click', e => {
         if (!selector.value) { window.alert('Seleccione un tipo de insumo.'); return; }
         deleteId = selector.value; deleteTrigger = e.currentTarget;
-        document.getElementById('confirmarEliminarTipoMensaje').textContent = `¿Confirma eliminar el tipo de insumo ${selector.selectedOptions[0].textContent}?`;
+        document.getElementById('confirmarEliminarTipoMensaje').textContent = `¿Confirma desactivar el tipo de insumo ${selector.selectedOptions[0].textContent}?`;
         document.getElementById('confirmarEliminarTipoError').textContent = '';
         deleteDialog.classList.remove('hidden');
         deleteDialog.querySelector('[data-cancel-delete-tipo]').focus();
