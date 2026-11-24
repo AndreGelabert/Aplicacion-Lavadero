@@ -13,7 +13,8 @@ internal sealed class TurnoOfertaEmail
     internal TurnoOfertaEmail(IEmailSender sender, string? origin = null)
     {
         ArgumentNullException.ThrowIfNull(sender);
-        if (Uri.TryCreate(origin, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps &&
+        if (Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttps || uri.IsLoopback || uri.Host == "localhost") &&
             string.IsNullOrEmpty(uri.UserInfo) && uri.AbsolutePath == "/" && string.IsNullOrEmpty(uri.Query) && string.IsNullOrEmpty(uri.Fragment))
             this.origin = uri.GetLeftPart(UriPartial.Authority);
     }

@@ -53,6 +53,20 @@ public class TurnoEmailOriginSecurityTests
         Assert.Equal(0, sender.Count);
     }
 
+    [Theory]
+    [InlineData("http://localhost:7059")]
+    [InlineData("http://127.0.0.1:5000")]
+    public void LocalhostLoopbackOriginsAreAcceptedForDevelopment(string origin)
+    {
+        var sender = new Sender();
+        var resolver = new TurnoOfertaEmail(sender, origin);
+        Assert.True(resolver.HasOrigin);
+        var message = resolver.AddLink(Message, "cascade", "offer", "client", Secret);
+        var html = WebUtility.HtmlDecode(message.Html);
+        Assert.Contains("href=\"" + origin + "/turno-oferta-email/responder#CascadeId=cascade&OfferId=offer&ClientId=client&Token=" + Secret + "\"", html);
+        Assert.Equal(0, sender.Count);
+    }
+
     private sealed class Sender : IEmailSender
     {
         public int Count;
