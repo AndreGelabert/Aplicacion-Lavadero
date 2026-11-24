@@ -101,6 +101,7 @@ public static class WhatsAppFlowStates
 
     // Estados de consulta
     public const string MENU_CLIENTE_AUTENTICADO = "MENU_CLIENTE_AUTENTICADO";
+    public const string MENU_TURNOS = "MENU_TURNOS";
     public const string MOSTRAR_DATOS = "MOSTRAR_DATOS";
     
     // Estados de edicion de cliente

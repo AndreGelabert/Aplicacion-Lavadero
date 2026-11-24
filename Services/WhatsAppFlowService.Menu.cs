@@ -15,7 +15,11 @@ public partial class WhatsAppFlowService
     {
         var opcion = input.Trim().ToLowerInvariant();
 
-        if (opcion == "ofertas_turno" || opcion == "ofertas turno")
+        if (opcion == "turnos" || opcion == "gestionar_turnos" || opcion == "gestionar turnos")
+        {
+            await MostrarMenuTurnos(phoneNumber, session);
+        }
+        else if (opcion == "ofertas_turno" || opcion == "ofertas turno")
         {
             await IniciarOfertasTurno(phoneNumber, session);
         }
@@ -23,7 +27,7 @@ public partial class WhatsAppFlowService
         {
             await IniciarReservaTurno(phoneNumber, session);
         }
-        else if (opcion == "mis_turnos" || opcion == "mis turnos" || opcion == "turnos")
+        else if (opcion == "mis_turnos" || opcion == "mis turnos")
         {
             if (string.IsNullOrWhiteSpace(session.ClienteId) || session.ClienteId.Contains('/'))
             {
@@ -278,6 +282,87 @@ public partial class WhatsAppFlowService
         {
             await _whatsAppService.SendTextMessage(phoneNumber,
                 "⚠️ Opción no reconocida. Por favor, selecciona una de las opciones del menú.");
+        }
+    }
+
+    /// <summary>
+    /// Muestra el submenú de gestión de turnos
+    /// </summary>
+    private async Task MostrarMenuTurnos(string phoneNumber, WhatsAppSession session)
+    {
+        try
+        {
+            await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MENU_TURNOS);
+
+            var options = new List<(string id, string title, string description)>
+            {
+                ("reservar_turno", "📅 Pedir turno", "Reservar un nuevo turno"),
+                ("mis_turnos", "📋 Mis turnos", "Consultar próximos turnos agendados"),
+                ("cancelar_turno", "❌ Cancelar turno", "Cancelar un turno pendiente"),
+                ("ofertas_turno", "⚡ Ofertas de adelanto", "Consultar turnos más tempranos"),
+                ("menu_principal", "🏠 Menú principal", "Volver al menú anterior")
+            };
+
+            await _whatsAppService.SendListMessage(phoneNumber,
+                "📅 *Gestión de Turnos*\n\n¿Qué deseas hacer?",
+                "📋 Ver opciones",
+                "Opciones de turnos",
+                options);
+        }
+        catch (Exception ex) when (ex is not WhatsAppOperationException)
+        {
+            _logger.LogError("Turnos menu failed: {ExceptionType}", ex.GetType().Name);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Maneja las opciones del submenú de turnos
+    /// </summary>
+    private async Task HandleMenuTurnos(string phoneNumber, WhatsAppSession session, string input)
+    {
+        var opcion = input.Trim().ToLowerInvariant();
+
+        if (opcion == "reservar_turno" || opcion == "reservar turno" || opcion.Contains("pedir") || opcion.Contains("reservar"))
+        {
+            await IniciarReservaTurno(phoneNumber, session);
+        }
+        else if (opcion == "mis_turnos" || opcion == "mis turnos" || opcion == "turnos" || opcion.Contains("proximos") || opcion.Contains("próximos"))
+        {
+            if (string.IsNullOrWhiteSpace(session.ClienteId) || session.ClienteId.Contains('/'))
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber, "❌ Error: No se pudo identificar tu usuario.");
+                return;
+            }
+            var turnos = _testTurnos != null
+                ? await _testTurnos(session.ClienteId, DateTime.UtcNow)
+                : await (_turnoConsulta ?? throw new InvalidOperationException("Consulta de turnos no disponible")).ProximosDeCliente(session.ClienteId, DateTime.UtcNow);
+            var mensaje = turnos.Count == 0 ? "📭 No tienes próximos turnos." :
+                "📅 *Tus próximos turnos:*\n\n" + string.Join("\n", turnos.Take(10).Select(t => "• " + Firebase.Utils.TimeZoneHelper.FormatearFechaHoraApp(t.InicioUtc))) +
+                (turnos.Count > 10 ? "\nMostrando los primeros 10 turnos." : "");
+            await _whatsAppService.SendTextMessage(phoneNumber, mensaje);
+        }
+        else if (opcion == "cancelar_turno" || opcion == "cancelar turno" || opcion.Contains("cancelar"))
+        {
+            await IniciarCancelacionTurno(phoneNumber, session);
+        }
+        else if (opcion == "ofertas_turno" || opcion == "ofertas_adelanto" || opcion.Contains("oferta") || opcion.Contains("adelanto"))
+        {
+            await IniciarOfertasTurno(phoneNumber, session);
+        }
+        else if (opcion.Contains("menu") || opcion.Contains("principal") || opcion == "menu_principal")
+        {
+            var cliente = await _clienteService.ObtenerCliente(session.ClienteId!);
+            if (cliente != null)
+            {
+                await _sessionService.UpdateSessionState(phoneNumber, WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO);
+                await ShowClienteMenu(phoneNumber, cliente.Nombre);
+            }
+        }
+        else
+        {
+            await _whatsAppService.SendTextMessage(phoneNumber,
+                "⚠️ Opción no reconocida. Por favor, selecciona una de las opciones del menú de turnos o escribe *MENÚ* para volver.");
         }
     }
 

@@ -218,12 +218,9 @@ public partial class WhatsAppFlowService
         // Como tenemos 4 opciones, usamos lista desplegable (WhatsApp permite máximo 3 botones)
         var options = new List<(string id, string title, string description)>
         {
+            ("turnos", "📅 Gestionar turnos", "Reservar, consultar o cancelar turnos"),
             ("vehiculos", "🚗 Gestionar vehículos", "Agregar o modificar vehículos"),
             ("datos", "👤 Mis datos", "Ver o editar mi información"),
-            ("reservar_turno", "📅 Pedir turno", "Reservar un turno"),
-            ("mis_turnos", "📅 Mis turnos", "Consultar próximos turnos"),
-            ("cancelar_turno", "❌ Cancelar turno", "Cancelar un próximo turno"),
-            ("ofertas_turno", "📅 Ofertas de turno", "Consultar adelantos disponibles"),
             ("sobre_nosotros", "ℹ️ Sobre nosotros", "Información del lavadero"),
             ("ayuda", "❓ Ayuda", "Comandos y contacto")
         };
@@ -334,6 +331,10 @@ public partial class WhatsAppFlowService
                 // ========== MENÚ CLIENTE AUTENTICADO ==========
                 case WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO:
                     await HandleMenuClienteAutenticado(phoneNumber, session, messageBody);
+                    break;
+
+                case WhatsAppFlowStates.MENU_TURNOS:
+                    await HandleMenuTurnos(phoneNumber, session, messageBody);
                     break;
 
                 case "TURNO_RESERVA_CONFIRMAR":
