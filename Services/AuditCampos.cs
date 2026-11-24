@@ -53,7 +53,7 @@ public static class AuditCampos
         "CapacidadMaximaConcurrente", "SesionDuracionHoras", "SesionInactividadMinutos",
         "NombreLavadero", "Ubicacion", "HorariosOperacion", "ConsiderarEmpleadosActivos",
         "EmpleadosMaximosPorLavado", "TiempoNotificacionMinutos", "TiempoToleranciaMinutos", "IntervaloPreguntas",
-        "PorcentajeAlertaStock", "VigenciaCompraRecienteDias"
+        "PorcentajeAlertaStock", "VigenciaCompraRecienteDias", "IntervaloInicioTurnosMinutos", "RespuestaOfertaAdelantoMinutos", "ToleranciaLlegadaTurnosMinutos", "MargenTiempoInicioTurnoMinutos"
     };
 
     /// <summary>Campos auditables de Proveedor.</summary>
@@ -207,7 +207,11 @@ public static class AuditCampos
             ["TiempoToleranciaMinutos"] = c.TiempoToleranciaMinutos.ToString(),
             ["IntervaloPreguntas"] = c.IntervaloPreguntas.ToString(),
             ["PorcentajeAlertaStock"] = c.PorcentajeAlertaStock.ToString(),
-            ["VigenciaCompraRecienteDias"] = c.VigenciaCompraRecienteDias.ToString()
+            ["VigenciaCompraRecienteDias"] = c.VigenciaCompraRecienteDias.ToString(),
+            ["IntervaloInicioTurnosMinutos"] = c.IntervaloInicioTurnosMinutos.ToString(),
+            ["RespuestaOfertaAdelantoMinutos"] = c.RespuestaOfertaAdelantoMinutos.ToString(),
+            ["ToleranciaLlegadaTurnosMinutos"] = c.ToleranciaLlegadaTurnosMinutos.ToString(),
+            ["MargenTiempoInicioTurnoMinutos"] = c.MargenTiempoInicioTurnoMinutos.ToString()
         };
     }
 

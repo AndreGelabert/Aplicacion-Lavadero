@@ -55,6 +55,14 @@ public class ConfiguracionService
         if (snapshot.Exists)
         {
             config = snapshot.ConvertTo<Configuracion>();
+            if (config.ToleranciaLlegadaTurnosMinutos < 5)
+            {
+                config.ToleranciaLlegadaTurnosMinutos = 5;
+            }
+            if (config.MargenTiempoInicioTurnoMinutos < 10)
+            {
+                config.MargenTiempoInicioTurnoMinutos = 30;
+            }
         }
         else
         {
@@ -191,7 +199,14 @@ public class ConfiguracionService
     /// <param name="config">Configuración actualizada.</param>
     /// <param name="userEmail">Email del usuario que realiza la actualización.</param>
     /// <param name="userId">Identificador del usuario que realiza la actualización.</param>
-    public async Task ActualizarConfiguracion(Configuracion config, string userEmail, string userId)
+    public Task ActualizarConfiguracion(Configuracion config, string userEmail, string userId) =>
+        ActualizarConfiguracion(config, userEmail, userId, false, false);
+
+    public async Task ActualizarConfiguracion(Configuracion config, string userEmail, string userId,
+        bool preservarConsiderarEmpleadosActivos, bool preservarEmpleadosMaximosPorLavado,
+        bool preservarIntervaloInicioTurnosMinutos = false, bool preservarRespuestaOfertaAdelantoMinutos = false,
+        bool preservarToleranciaLlegadaTurnosMinutos = false,
+        bool preservarMargenTiempoInicioTurnoMinutos = false)
     {
         if (config == null)
             throw new ArgumentNullException(nameof(config));
@@ -225,6 +240,32 @@ public class ConfiguracionService
                 existente = CrearConfiguracionPorDefecto();
                 antes = new Dictionary<string, string>();
             }
+
+            // Los campos omitidos se preservan desde la lectura transaccional, no desde la caché.
+            if (preservarConsiderarEmpleadosActivos)
+                config.ConsiderarEmpleadosActivos = existente.ConsiderarEmpleadosActivos;
+            if (preservarEmpleadosMaximosPorLavado)
+                config.EmpleadosMaximosPorLavado = existente.EmpleadosMaximosPorLavado;
+
+            if (preservarIntervaloInicioTurnosMinutos)
+                config.IntervaloInicioTurnosMinutos = existente.IntervaloInicioTurnosMinutos;
+            if (config.IntervaloInicioTurnosMinutos <= 0)
+                throw new ArgumentException("El intervalo de inicio de turnos debe ser positivo");
+
+            if (preservarRespuestaOfertaAdelantoMinutos)
+                config.RespuestaOfertaAdelantoMinutos = existente.RespuestaOfertaAdelantoMinutos;
+            if (config.RespuestaOfertaAdelantoMinutos <= 0)
+                throw new ArgumentException("El tiempo de respuesta de oferta de adelanto debe ser positivo");
+
+            if (preservarToleranciaLlegadaTurnosMinutos)
+                config.ToleranciaLlegadaTurnosMinutos = existente.ToleranciaLlegadaTurnosMinutos;
+            if (config.ToleranciaLlegadaTurnosMinutos is < 5 or > 525600)
+                throw new ArgumentException("La tolerancia de llegada debe estar entre 5 y 525600 minutos");
+
+            if (preservarMargenTiempoInicioTurnoMinutos)
+                config.MargenTiempoInicioTurnoMinutos = existente.MargenTiempoInicioTurnoMinutos;
+            if (config.MargenTiempoInicioTurnoMinutos is < 10 or > 240)
+                throw new ArgumentException("El margen de inicio de turno debe estar entre 10 y 240 minutos");
 
             // Preservar campos no enviados o no solicitados
             if (config.TiempoNotificacionMinutos <= 0)
@@ -310,6 +351,8 @@ public class ConfiguracionService
             EmpleadosMaximosPorLavado = 3,
             SesionDuracionHoras = 8, // 8 horas
             SesionInactividadMinutos = 15, // 15 minutos
+            ToleranciaLlegadaTurnosMinutos = 5,
+            MargenTiempoInicioTurnoMinutos = 30,
             FechaActualizacion = DateTime.UtcNow
         };
     }

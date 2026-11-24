@@ -69,12 +69,16 @@ public class AuditCatalogueCaptureTests
             "TiempoToleranciaMinutos",
             "IntervaloPreguntas",
             "PorcentajeAlertaStock",
-            "VigenciaCompraRecienteDias"
+            "VigenciaCompraRecienteDias",
+            "IntervaloInicioTurnosMinutos",
+            "RespuestaOfertaAdelantoMinutos",
+            "ToleranciaLlegadaTurnosMinutos",
+            "MargenTiempoInicioTurnoMinutos"
         };
 
         Assert.Equal(expectedFields.OrderBy(x => x, StringComparer.Ordinal), snapshot.Keys.OrderBy(x => x, StringComparer.Ordinal));
         Assert.Equal(AuditCampos.Configuracion.OrderBy(x => x, StringComparer.Ordinal), snapshot.Keys.OrderBy(x => x, StringComparer.Ordinal));
-        Assert.Equal(17, snapshot.Count);
+        Assert.Equal(21, snapshot.Count);
 
         // Exclusión estricta de metadatos internos y datos sensibles
         Assert.DoesNotContain("Id", snapshot.Keys);

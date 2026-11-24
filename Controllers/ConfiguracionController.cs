@@ -105,7 +105,13 @@ public class ConfiguracionController : Controller
             configuracion.IntervaloPreguntas = existente.IntervaloPreguntas;
             var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? "Desconocido";
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-            await _configuracionService.ActualizarConfiguracion(configuracion, userEmail, userId);
+            await _configuracionService.ActualizarConfiguracion(configuracion, userEmail, userId,
+                !ModelState.ContainsKey(nameof(Configuracion.ConsiderarEmpleadosActivos)),
+                !ModelState.ContainsKey(nameof(Configuracion.EmpleadosMaximosPorLavado)),
+                !ModelState.ContainsKey(nameof(Configuracion.IntervaloInicioTurnosMinutos)),
+                !ModelState.ContainsKey(nameof(Configuracion.RespuestaOfertaAdelantoMinutos)),
+                !ModelState.ContainsKey(nameof(Configuracion.ToleranciaLlegadaTurnosMinutos)),
+                !ModelState.ContainsKey(nameof(Configuracion.MargenTiempoInicioTurnoMinutos)));
 
             TempData["SuccessMessage"] = "Configuración actualizada correctamente.";
             return RedirectToAction("Index");
