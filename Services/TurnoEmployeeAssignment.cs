@@ -5,7 +5,7 @@ namespace Firebase.Services;
 internal static class TurnoEmployeeAssignment
 {
     internal static IReadOnlyList<string> Seleccionar(int cantidad, IEnumerable<string> activos,
-        IEnumerable<IEnumerable<string>> asignacionesOcupadas)
+        IEnumerable<IEnumerable<string>> asignacionesOcupadas, Random? random = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(cantidad);
         ArgumentNullException.ThrowIfNull(activos);
@@ -30,7 +30,8 @@ internal static class TurnoEmployeeAssignment
         var disponibles = empleados.Where(id => !ocupados.Contains(id)).ToList();
         if (disponibles.Count < cantidad)
             throw new InvalidOperationException($"No hay suficientes empleados disponibles. Se requieren {cantidad} pero solo hay {disponibles.Count} disponibles.");
-        return disponibles.Take(cantidad).ToList().AsReadOnly();
+        var rng = random ?? Random.Shared;
+        return disponibles.OrderBy(_ => rng.Next()).Take(cantidad).ToList().AsReadOnly();
     }
 
     private static void ValidarId(string id)
