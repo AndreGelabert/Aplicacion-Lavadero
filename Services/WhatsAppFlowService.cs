@@ -77,6 +77,14 @@ public partial class WhatsAppFlowService
 
             _logger.LogInformation("WhatsApp session loaded");
 
+            // Si es respuesta directa a botón de oferta de adelanto
+            if (messageBody.StartsWith("oferta_si_", StringComparison.OrdinalIgnoreCase) ||
+                messageBody.StartsWith("oferta_no_", StringComparison.OrdinalIgnoreCase))
+            {
+                await HandleRespuestaOfertaBoton(phoneNumber, session, messageBody);
+                return;
+            }
+
             // Si es el PRIMER mensaje (estado INICIO), verificar si el cliente ya existe
             if (session.CurrentState == WhatsAppFlowStates.INICIO)
             {

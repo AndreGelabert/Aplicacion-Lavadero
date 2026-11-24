@@ -26,7 +26,7 @@ internal sealed class TurnoOfferOutboxRouter
         ArgumentNullException.ThrowIfNull(resolver);
         ArgumentNullException.ThrowIfNull(emailSender);
         ArgumentNullException.ThrowIfNull(clock);
-        var wa = new TurnoWhatsAppOutboxDispatcher(db, whatsappSender.SendTextMessage, resolver, clock, lease);
+        var wa = new TurnoWhatsAppOutboxDispatcher(db, whatsappSender, resolver, clock, lease);
         var offerEmail = new TurnoOfertaEmail(emailSender, origin);
         var mail = new TurnoEmailOutboxDispatcher(
             (id, token, now, duration) => TurnoOutboxPersistence.ClaimBound(db, id, token, now, duration),
@@ -50,7 +50,7 @@ internal sealed class TurnoOfferOutboxRouter
         whatsapp = async (id, token, ct) =>
         {
             var sender = whatsappSender();
-            var dispatcher = new TurnoWhatsAppOutboxDispatcher(db, sender.SendTextMessage, resolver, clock, lease);
+            var dispatcher = new TurnoWhatsAppOutboxDispatcher(db, sender, resolver, clock, lease);
             await dispatcher.Dispatch(id, token, ct);
         };
         email = async (id, token, ct) =>

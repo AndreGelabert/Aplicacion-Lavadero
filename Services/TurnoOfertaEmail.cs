@@ -61,6 +61,21 @@ internal sealed class TurnoOfertaEmail
             var email = Text(customer, "Email");
             if (string.IsNullOrWhiteSpace(email) || !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(email) || email.Contains('\r') || email.Contains('\n')) return null;
             var name = Text(customer, "Nombre");
-            return new EmailMessage(email, "Oferta para adelantar su turno", $"<p>Hola {WebUtility.HtmlEncode(name)}.</p><p>Hay una oferta para adelantar su turno al {TimeZoneHelper.FormatearFechaHoraApp(proposed, "yyyy-MM-dd HH:mm")} (hora de Buenos Aires). Responda antes de {TimeZoneHelper.FormatearFechaHoraApp(expires, "yyyy-MM-dd HH:mm")} (hora de Buenos Aires).</p>");
+            var configDoc = await tx.GetSnapshotAsync(db.Collection("configuracion").Document("system_config"));
+            var lavadero = configDoc.Exists && configDoc.TryGetValue<string>("NombreLavadero", out var nl) && !string.IsNullOrWhiteSpace(nl) ? nl : "Lavadero AutoClean";
+            var patente = a.TryGetValue("VehiculoPatente", out var vp) && vp is string sp && !string.IsNullOrWhiteSpace(sp) ? sp : "";
+            if (string.IsNullOrEmpty(patente) && a.TryGetValue("Vehiculos", out var listObj) && listObj is IEnumerable<object> list)
+            {
+                foreach (var item in list)
+                {
+                    if (item is Dictionary<string, object> map && map.TryGetValue("Patente", out var p) && p is string plate && !string.IsNullOrWhiteSpace(plate))
+                    {
+                        patente = plate;
+                        break;
+                    }
+                }
+            }
+            var vehiculoTexto = !string.IsNullOrWhiteSpace(patente) ? $" para su vehículo (patente {WebUtility.HtmlEncode(patente)})" : "";
+            return new EmailMessage(email, $"Oferta de {WebUtility.HtmlEncode(lavadero)} para adelantar su turno", $"<p>Hola {WebUtility.HtmlEncode(name)}.</p><p>Desde <strong>{WebUtility.HtmlEncode(lavadero)}</strong> le informamos que hay una oferta para adelantar su turno{vehiculoTexto} al {TimeZoneHelper.FormatearFechaHoraApp(proposed, "yyyy-MM-dd HH:mm")} (hora de Buenos Aires). Responda antes de {TimeZoneHelper.FormatearFechaHoraApp(expires, "yyyy-MM-dd HH:mm")} (hora de Buenos Aires).</p>");
     }
 }

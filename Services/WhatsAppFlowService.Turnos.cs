@@ -91,6 +91,53 @@ public partial class WhatsAppFlowService
         await _whatsAppService.SendTextMessage(phone, answer == "no" ? "La oferta fue rechazada." : "✅ Tu turno fue adelantado.");
     }
 
+    internal async Task HandleRespuestaOfertaBoton(string phone, WhatsAppSession session, string messageBody)
+    {
+        var isAccept = messageBody.StartsWith("oferta_si_", StringComparison.OrdinalIgnoreCase);
+        var prefix = isAccept ? "oferta_si_" : "oferta_no_";
+        var offerId = messageBody[prefix.Length..].Trim();
+
+        if (string.IsNullOrWhiteSpace(offerId) || offerId.Contains('/'))
+        {
+            await _whatsAppService.SendTextMessage(phone, "⚠️ Oferta no válida.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(session.ClienteId))
+        {
+            var cliente = await BuscarClientePorTelefono(phone);
+            if (cliente != null)
+            {
+                await _sessionService.AssociateClienteToSession(phone, cliente.Id);
+                session = await _sessionService.GetOrCreateSession(phone);
+            }
+            else
+            {
+                await _whatsAppService.SendTextMessage(phone, "⚠️ No se encontró una cuenta de cliente asociada a este número.");
+                return;
+            }
+        }
+
+        if (!await _sessionService.TryBookingTransition(phone, session, "TURNO_OFERTA_RESPUESTA", offerId, null, null, null))
+        {
+            if (_firestore != null)
+            {
+                await _firestore.Collection("whatsapp_sessions").Document(phone).UpdateAsync(new Dictionary<string, object>
+                {
+                    ["CurrentState"] = "TURNO_OFERTA_RESPUESTA",
+                    ["SelectionId"] = offerId
+                });
+            }
+            session = await _sessionService.GetOrCreateSession(phone);
+        }
+        else
+        {
+            session = await _sessionService.GetOrCreateSession(phone);
+        }
+
+        await HandleRespuestaOferta(phone, session, isAccept ? "si" : "no");
+    }
+
     private async Task HandleReservaFecha(string phone, WhatsAppSession session, string input)
     {
         if (!DateTime.TryParseExact(input, "dd/MM/yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture,

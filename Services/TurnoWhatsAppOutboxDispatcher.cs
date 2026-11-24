@@ -11,7 +11,32 @@ namespace Firebase.Services;
 internal sealed class TurnoWhatsAppOutboxDispatcher
 {
     internal enum Result { Completed, ClaimUnavailable, Unresolved, InvalidRecipient, ClaimLost, Indeterminate, CompletionRejected }
-    internal sealed record Delivery(string Recipient, string Message);
+    internal sealed record Delivery(string Recipient, string Message, IReadOnlyList<(string id, string title)>? Buttons = null)
+    {
+        public bool Equals(Delivery? other)
+        {
+            if (other is null) return false;
+            if (ReferenceEquals(this, other)) return true;
+            if (Recipient != other.Recipient || Message != other.Message) return false;
+            if (Buttons == null && other.Buttons == null) return true;
+            if (Buttons == null || other.Buttons == null || Buttons.Count != other.Buttons.Count) return false;
+            for (int i = 0; i < Buttons.Count; i++)
+            {
+                if (Buttons[i] != other.Buttons[i]) return false;
+            }
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            var hash = HashCode.Combine(Recipient, Message);
+            if (Buttons != null)
+            {
+                foreach (var b in Buttons) hash = HashCode.Combine(hash, b.GetHashCode());
+            }
+            return hash;
+        }
+    }
     // Phase identifies uncertainty: begin may have committed, send may have reached Meta,
     // complete may have committed, and release may have failed or committed.
     internal sealed class DispatchException(string phase, Exception cause) : Exception($"Outbox {phase} outcome is uncertain.", cause)
@@ -26,6 +51,7 @@ internal sealed class TurnoWhatsAppOutboxDispatcher
     private readonly Func<TurnoOutboxPersistence.BoundClaim, Task<Delivery?>> resolve;
     private readonly Func<string, string, TurnoOutboxPersistence.BoundClaim, DateTime, Task<Delivery?>>? beginOffer;
     private readonly Func<string, string, Task<bool>> send;
+    private readonly Func<Delivery, Task<bool>>? sendDelivery;
     private readonly Func<DateTime> clock;
     private readonly TimeSpan lease;
 
@@ -42,8 +68,25 @@ internal sealed class TurnoWhatsAppOutboxDispatcher
     }
 
     internal TurnoWhatsAppOutboxDispatcher(FirestoreDb db, MetaWhatsAppService sender, TurnoOfertaNotificationResolver resolver, TimeSpan lease)
-        : this(db, sender.SendTextMessage, resolver,
+        : this(db, sender, resolver,
             () => { var now = DateTime.UtcNow; return now.AddTicks(-(now.Ticks % 10)); }, lease) { }
+
+    internal TurnoWhatsAppOutboxDispatcher(FirestoreDb db, MetaWhatsAppService sender,
+        TurnoOfertaNotificationResolver resolver, Func<DateTime> clock, TimeSpan lease)
+        : this((id, token, now, duration) => TurnoOutboxPersistence.ClaimBound(db, id, token, now, duration),
+            (id, token, binding, now) => TurnoOutboxPersistence.BeginWhatsAppOffer(db, id, token, binding, now, resolver),
+            (id, token, binding, now) => TurnoOutboxPersistence.ReleaseBound(db, id, token, binding, now),
+            (id, token, generation) => TurnoOutboxPersistence.Complete(db, id, token, generation),
+            sender.SendTextMessage, clock, lease,
+            async delivery =>
+            {
+                if (delivery.Buttons?.Count > 0)
+                {
+                    var sentButtons = await sender.SendButtonMessage(delivery.Recipient, delivery.Message, delivery.Buttons.ToList());
+                    if (sentButtons) return true;
+                }
+                return await sender.SendTextMessage(delivery.Recipient, delivery.Message);
+            }) { }
 
     internal TurnoWhatsAppOutboxDispatcher(FirestoreDb db, Func<string, string, Task<bool>> send,
         TurnoOfertaNotificationResolver resolver, Func<DateTime> clock, TimeSpan lease)
@@ -76,11 +119,13 @@ internal sealed class TurnoWhatsAppOutboxDispatcher
         Func<string, string, TurnoOutboxPersistence.BoundClaim, DateTime, Task<Delivery?>> beginOffer,
         Func<string, string, TurnoOutboxPersistence.BoundClaim, DateTime, Task<bool>> release,
         Func<string, string, long, Task<bool>> complete,
-        Func<string, string, Task<bool>> send, Func<DateTime> clock, TimeSpan lease)
+        Func<string, string, Task<bool>> send, Func<DateTime> clock, TimeSpan lease,
+        Func<Delivery, Task<bool>>? sendDelivery = null)
         : this(claim, (id, token, binding, now) => Task.FromResult(false), release, complete,
             binding => Task.FromResult<Delivery?>(null), send, clock, lease)
     {
         this.beginOffer = beginOffer ?? throw new ArgumentNullException(nameof(beginOffer));
+        this.sendDelivery = sendDelivery;
     }
 
     internal async Task<Result> Dispatch(string id, string token, CancellationToken cancellationToken = default)
@@ -112,7 +157,7 @@ internal sealed class TurnoWhatsAppOutboxDispatcher
             catch (OperationCanceledException) { throw; }
             catch (Exception ex) { throw new DispatchException("begin", ex); }
             if (delivery == null) return await Release(Result.Unresolved);
-            try { if (!await send(delivery.Recipient, delivery.Message)) return Result.Indeterminate; }
+            try { if (!await (sendDelivery != null ? sendDelivery(delivery) : send(delivery.Recipient, delivery.Message))) return Result.Indeterminate; }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex) { throw new DispatchException("send", ex); }
             try { return await complete(id, token, binding.Generation) ? Result.Completed : Result.CompletionRejected; }
@@ -153,7 +198,7 @@ internal sealed class TurnoWhatsAppOutboxDispatcher
         catch (Exception ex) { throw new DispatchException("begin", ex); }
         try
         {
-            if (!await send(recipient, delivery.Message)) return Result.Indeterminate;
+            if (!await (sendDelivery != null ? sendDelivery(delivery) : send(recipient, delivery.Message))) return Result.Indeterminate;
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex) { throw new DispatchException("send", ex); }

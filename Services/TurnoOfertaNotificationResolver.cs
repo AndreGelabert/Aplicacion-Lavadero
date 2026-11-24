@@ -24,6 +24,16 @@ internal sealed class TurnoOfertaNotificationResolver(FirestoreDb db, Func<DateT
     internal static string FormatMessage(DateTime proposed, DateTime expires) =>
         $"Hay una oferta para adelantar su turno al {TimeZoneHelper.FormatearFechaHoraApp(proposed, "yyyy-MM-dd HH:mm")} (hora de Buenos Aires). Responda antes de {TimeZoneHelper.FormatearFechaHoraApp(expires, "yyyy-MM-dd HH:mm")} (hora de Buenos Aires).";
 
+    internal static string FormatMessage(DateTime proposed, DateTime expires, string? lavadero, string? patente)
+    {
+        if (string.IsNullOrWhiteSpace(lavadero) && string.IsNullOrWhiteSpace(patente))
+            return FormatMessage(proposed, expires);
+
+        var nombre = !string.IsNullOrWhiteSpace(lavadero) ? lavadero : "Lavadero AutoClean";
+        var detalleVehiculo = !string.IsNullOrWhiteSpace(patente) ? $" para tu vehículo ({patente})" : "";
+        return $"🏢 *{nombre}*\n\nHay una oferta para adelantar tu turno{detalleVehiculo} al *{TimeZoneHelper.FormatearFechaHoraApp(proposed, "yyyy-MM-dd HH:mm")}* (hora de Buenos Aires).\n\nPodés responder antes de las *{TimeZoneHelper.FormatearFechaHoraApp(expires, "yyyy-MM-dd HH:mm")}* eligiendo una opción:";
+    }
+
     internal async Task<TurnoWhatsAppOutboxDispatcher.Delivery?> Resolve(TurnoOutboxPersistence.BoundClaim? binding)
     {
         if (binding == null || binding.Generation <= 0 || binding.EventType != TurnoOutboxPersistence.Event.Offer ||
@@ -77,7 +87,30 @@ internal sealed class TurnoOfertaNotificationResolver(FirestoreDb db, Func<DateT
                 !Text(customer, "Telefono", out var phone) || phone.Length != 10 || phone.Any(ch => ch is < '0' or > '9')) return null;
             var recipient = PhoneNumberHelper.ToWhatsAppFormat(phone);
             if (!PhoneNumberHelper.IsValidPhoneNumber(recipient)) return null;
+
+            var config = await tx.GetSnapshotAsync(db.Collection("configuracion").Document("system_config"));
+            var lavadero = config.Exists && config.TryGetValue<string>("NombreLavadero", out var nl) && !string.IsNullOrWhiteSpace(nl) ? nl : (a.TryGetValue("VehiculoPatente", out _) ? "Lavadero AutoClean" : null);
+            var patente = a.TryGetValue("VehiculoPatente", out var vp) && vp is string sp && !string.IsNullOrWhiteSpace(sp) ? sp : "";
+            if (string.IsNullOrEmpty(patente) && a.TryGetValue("Vehiculos", out var listObj) && listObj is IEnumerable<object> list)
+            {
+                foreach (var item in list)
+                {
+                    if (item is Dictionary<string, object> map && map.TryGetValue("Patente", out var p) && p is string plate && !string.IsNullOrWhiteSpace(plate))
+                    {
+                        patente = plate;
+                        break;
+                    }
+                }
+            }
+
+            var buttons = new List<(string id, string title)>
+            {
+                ("oferta_si_" + binding.ReferenceId, "Sí, adelantar"),
+                ("oferta_no_" + binding.ReferenceId, "No, gracias")
+            };
+
             return new TurnoWhatsAppOutboxDispatcher.Delivery(recipient,
-                FormatMessage(proposed, expires));
+                FormatMessage(proposed, expires, lavadero, patente),
+                buttons);
     }
 }
