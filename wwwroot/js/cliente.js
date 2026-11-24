@@ -67,6 +67,7 @@
         setupAccordionListener(); // NUEVO: Escuchar apertura del acordeón
         setupDocumentoValidation();// Validación dinámica de número de documento
         setupFormatoDocumentoValidation();
+        setupTelefonoValidation();
         checkEditMode();
     }
 
@@ -365,6 +366,129 @@
 
         return true;
     }
+
+    /**
+     * Valida el formato del teléfono en el formulario de cliente.
+     */
+    function validateTelefono() {
+        const telefonoInput = document.getElementById('Telefono');
+        const errorSpan = document.getElementById('telefono-validation-error');
+        if (!telefonoInput) return true;
+
+        const val = telefonoInput.value.trim();
+        if (val.length === 0) return true;
+
+        const esFormatoValido = /^[0-9]{10}$/.test(val);
+        if (!esFormatoValido) {
+            if (errorSpan) {
+                errorSpan.textContent = 'El teléfono debe contener exactamente 10 dígitos';
+                errorSpan.classList.remove('hidden');
+            }
+            telefonoInput.classList.add('border-red-500');
+            return false;
+        }
+
+        if (errorSpan && errorSpan.textContent.includes('Ya existe')) {
+            return false;
+        }
+
+        if (errorSpan) {
+            errorSpan.classList.add('hidden');
+            errorSpan.textContent = '';
+        }
+        telefonoInput.classList.remove('border-red-500');
+        return true;
+    }
+
+    /**
+     * Consulta al servidor si el número de teléfono ya está registrado por otro cliente.
+     */
+    async function checkTelefonoDuplicado(telefono, clienteId) {
+        if (!telefono || telefono.length !== 10 || !/^[0-9]{10}$/.test(telefono)) {
+            return false;
+        }
+
+        try {
+            const url = `/Cliente/VerificarTelefono?telefono=${encodeURIComponent(telefono)}&id=${encodeURIComponent(clienteId || '')}`;
+            const response = await window.Peticiones.enviar(url);
+            const data = await response.json();
+
+            const telefonoInput = document.getElementById('Telefono');
+            const errorSpan = document.getElementById('telefono-validation-error');
+
+            if (data && data.existe) {
+                if (errorSpan) {
+                    errorSpan.textContent = 'Ya existe un cliente con este número de teléfono.';
+                    errorSpan.classList.remove('hidden');
+                }
+                if (telefonoInput) {
+                    telefonoInput.classList.add('border-red-500');
+                    telefonoInput.setCustomValidity('Ya existe un cliente con este número de teléfono.');
+                }
+                return true;
+            } else {
+                if (errorSpan && errorSpan.textContent.includes('Ya existe')) {
+                    errorSpan.classList.add('hidden');
+                    errorSpan.textContent = '';
+                }
+                if (telefonoInput) {
+                    telefonoInput.classList.remove('border-red-500');
+                    telefonoInput.setCustomValidity('');
+                }
+                return false;
+            }
+        } catch (e) {
+            console.error('Error al verificar teléfono duplicado:', e);
+            return false;
+        }
+    }
+
+    let telefonoValidationTimeout = null;
+
+    /**
+     * Configura la validación en tiempo real del teléfono para prevenir duplicados.
+     */
+    function setupTelefonoValidation() {
+        const telefonoInput = document.getElementById('Telefono');
+        if (!telefonoInput || telefonoInput.dataset.duplicateCheckSetup === 'true') return;
+
+        telefonoInput.dataset.duplicateCheckSetup = 'true';
+
+        telefonoInput.addEventListener('input', function () {
+            const soloDigitos = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+            if (this.value !== soloDigitos) {
+                this.value = soloDigitos;
+            }
+
+            clearTimeout(telefonoValidationTimeout);
+            const errorSpan = document.getElementById('telefono-validation-error');
+
+            if (this.value.length === 10) {
+                telefonoValidationTimeout = setTimeout(async () => {
+                    const id = document.getElementById('Id')?.value || '';
+                    await checkTelefonoDuplicado(this.value, id);
+                }, 300);
+            } else {
+                if (errorSpan && errorSpan.textContent.includes('Ya existe')) {
+                    errorSpan.classList.add('hidden');
+                    errorSpan.textContent = '';
+                }
+                this.classList.remove('border-red-500');
+                this.setCustomValidity('');
+            }
+        });
+
+        telefonoInput.addEventListener('blur', async function () {
+            if (this.value.length === 10) {
+                const id = document.getElementById('Id')?.value || '';
+                await checkTelefonoDuplicado(this.value, id);
+            }
+        });
+    }
+
+    window.validateTelefono = validateTelefono;
+    window.checkTelefonoDuplicado = checkTelefonoDuplicado;
+    window.setupTelefonoValidation = setupTelefonoValidation;
     /**
  * Valida la patente según el formato del tipo de vehículo seleccionado.
  */
@@ -651,8 +775,9 @@
             // CRÍTICO: Esperar a que setupVehiculoSelector termine
             await setupVehiculoSelector();
 
-            // Reconfigurar validación de documento
+            // Reconfigurar validación de documento y teléfono
             await setupDocumentoValidation();
+            setupTelefonoValidation();
             const form = document.querySelector('#cliente-form-container form[data-validate="true"]');
             if (form && window.FormValidation) window.FormValidation.init(form);
 
@@ -687,6 +812,23 @@
         if (!validateDocumentoNumero()) {
             showFormMessage('error', 'El formato del número de documento no es válido.');
             return false;
+        }
+
+        // Validar formato de teléfono antes de enviar
+        if (!validateTelefono()) {
+            showFormMessage('error', 'El formato del número de teléfono no es válido.');
+            return false;
+        }
+
+        // Validar duplicado de teléfono antes de enviar
+        const telefonoInput = form.querySelector('#Telefono');
+        const clienteId = form.querySelector('#Id')?.value || '';
+        if (telefonoInput && telefonoInput.value.trim().length === 10) {
+            const esDuplicado = await checkTelefonoDuplicado(telefonoInput.value.trim(), clienteId);
+            if (esDuplicado) {
+                showFormMessage('error', 'Ya existe un cliente con este número de teléfono.');
+                return false;
+            }
         }
 
         const notificationPreferences = [...form.querySelectorAll('.notification-preference')];
@@ -767,6 +909,7 @@
 
             // CRÍTICO: Esperar setup de vehículos
             await setupVehiculoSelector();
+            setupTelefonoValidation();
             const replacementForm = document.querySelector('#cliente-form-container form[data-validate="true"]');
             if (replacementForm && window.FormValidation) window.FormValidation.init(replacementForm);
 
@@ -1711,6 +1854,15 @@
                     });
                     patenteInput.addEventListener('blur', validatePatenteVehiculo);
                 }
+
+                const btnCrearTipo = modalEl.querySelector('[data-modal-target="tipoVehiculoModal"], [data-modal-toggle="tipoVehiculoModal"]');
+                if (btnCrearTipo) {
+                    btnCrearTipo.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.openTipoVehiculoModal();
+                    });
+                }
             }
         } catch (error) {
             console.error('Error al cargar form vehiculo:', error);
@@ -2491,7 +2643,32 @@
 
     function setupModals() {
         setupTipoDocumentoModal();
+        setupTipoVehiculoModal();
         setupDeleteModal();
+    }
+
+    function setupTipoVehiculoModal() {
+        const formCrear = document.getElementById("formCrearTipoVehiculo");
+        if (formCrear && formCrear.dataset.setup !== 'true') {
+            formCrear.addEventListener("submit", async function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                await handleCrearTipoVehiculo(this);
+            });
+            formCrear.dataset.setup = 'true';
+        }
+
+        if (!document.body.dataset.tipoVehiculoModalDelegated) {
+            document.body.dataset.tipoVehiculoModalDelegated = 'true';
+            document.addEventListener('click', function (e) {
+                const btn = e.target.closest('[data-modal-target="tipoVehiculoModal"], [data-modal-toggle="tipoVehiculoModal"]');
+                if (btn && !btn.closest('#tipoVehiculoModal')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.openTipoVehiculoModal();
+                }
+            });
+        }
     }
 
     function setupTipoDocumentoModal() {
@@ -2611,6 +2788,81 @@
         } catch (error) {
             console.error('Error:', error);
             showTipoDocumentoModalMessage('error', 'Error al crear el tipo de documento.');
+        }
+    }
+
+    async function handleCrearTipoVehiculo(form) {
+        const nombreTipo = document.getElementById('nombreTipoVehiculo')?.value?.trim();
+        const formatoPatente = document.getElementById('formatoPatenteVehiculo')?.value?.trim() || null;
+
+        if (!nombreTipo) {
+            showTipoVehiculoModalMessage('error', 'El nombre del tipo de vehículo es obligatorio.');
+            return;
+        }
+
+        if (nombreTipo.length < 3) {
+            showTipoVehiculoModalMessage('error', 'El nombre debe tener al menos 3 caracteres.');
+            return;
+        }
+
+        try {
+            const formData = new FormData(form);
+            const response = await window.Peticiones.enviar(form.action || '/Servicio/CrearTipoVehiculo', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                body: formData
+            });
+
+            const { ok, data } = await parseJsonSafe(response);
+            const success = data?.success ?? ok;
+            const message = data?.message ?? (success ? 'Tipo de vehículo creado.' : 'No se pudo crear el tipo de vehículo.');
+
+            if (success) {
+                if (data?.tipos) {
+                    actualizarDropdownTipos('TipoVehiculo', data.tipos, nombreTipo);
+                } else {
+                    const tipoSelect = document.getElementById('TipoVehiculo');
+                    if (tipoSelect) {
+                        const opt = document.createElement('option');
+                        opt.value = nombreTipo;
+                        opt.textContent = nombreTipo;
+                        opt.selected = true;
+                        tipoSelect.appendChild(opt);
+                        tipoSelect.value = nombreTipo;
+                    }
+                }
+
+                await loadTiposVehiculoFormatos();
+                updatePatenteFormatoHint(nombreTipo);
+                validatePatenteVehiculo();
+                window.closeTipoVehiculoModal();
+                showFormMessage('success', message);
+            } else {
+                showTipoVehiculoModalMessage('error', message);
+            }
+        } catch (error) {
+            console.error('Error al crear tipo de vehículo:', error);
+            showTipoVehiculoModalMessage('error', 'Error al crear el tipo de vehículo.');
+        }
+    }
+
+    function showTipoVehiculoModalMessage(type, message, disappearMs = 5000) {
+        const container = document.getElementById('tipo-vehiculo-modal-messages');
+        if (!container) return;
+
+        const isSuccess = type === 'success';
+        const bgColor = isSuccess ? 'bg-green-50 text-green-800 dark:bg-gray-800 dark:text-green-400' : 'bg-red-50 text-red-800 dark:bg-gray-800 dark:text-red-400';
+
+        container.innerHTML = `
+            <div class="p-4 mb-4 text-sm rounded-lg ${bgColor}" role="alert">
+                <span class="font-medium">${isSuccess ? 'Éxito:' : 'Error:'}</span> ${escapeHtml(message)}
+            </div>
+        `;
+
+        if (disappearMs > 0) {
+            setTimeout(() => {
+                if (container) container.innerHTML = '';
+            }, disappearMs);
         }
     }
 
@@ -3092,9 +3344,37 @@
 
         modal.classList.add('hidden');
         modal.setAttribute('aria-hidden', 'true');
-        document.querySelectorAll('[modal-backdrop]').forEach(b => b.remove());
-        document.body.classList.remove('overflow-hidden');
+
+        const quick = document.getElementById('quick-create-modal');
+        const quickOpen = quick && !quick.classList.contains('hidden');
+
+        if (!quickOpen) {
+            document.querySelectorAll('[modal-backdrop]').forEach(b => b.remove());
+            document.body.classList.remove('overflow-hidden');
+        } else {
+            const backdrops = document.querySelectorAll('[modal-backdrop]');
+            if (backdrops.length > 1) {
+                backdrops[backdrops.length - 1].remove();
+            }
+            document.body.classList.add('overflow-hidden');
+        }
     }
+
+    window.openTipoVehiculoModal = function () {
+        abrirModal('tipoVehiculoModal');
+    };
+
+    window.closeTipoVehiculoModal = function () {
+        const nombreInput = document.getElementById('nombreTipoVehiculo');
+        const formatoInput = document.getElementById('formatoPatenteVehiculo');
+        if (nombreInput) nombreInput.value = '';
+        if (formatoInput) formatoInput.value = '';
+
+        const messagesContainer = document.getElementById('tipo-vehiculo-modal-messages');
+        if (messagesContainer) messagesContainer.innerHTML = '';
+
+        cerrarModal('tipoVehiculoModal');
+    };
     /**
     * Cierra el modal de tipo documento y limpia campos
     */

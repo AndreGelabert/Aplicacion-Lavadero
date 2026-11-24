@@ -75,11 +75,25 @@
             if (!telefonoInput) return { isValid: true, message: '' };
 
             const value = telefonoInput.value.trim();
-            const isValid = value.length === 10 && /^[0-9]{10}$/.test(value);
+            const formatValid = value.length === 10 && /^[0-9]{10}$/.test(value);
+            if (!formatValid) {
+                return {
+                    isValid: false,
+                    message: 'El teléfono debe contener exactamente 10 dígitos'
+                };
+            }
+
+            const errorSpan = document.getElementById('telefono-validation-error');
+            if (errorSpan && !errorSpan.classList.contains('hidden') && errorSpan.textContent) {
+                return {
+                    isValid: false,
+                    message: errorSpan.textContent
+                };
+            }
 
             return {
-                isValid: isValid,
-                message: isValid ? '' : 'El teléfono debe contener exactamente 10 dígitos'
+                isValid: true,
+                message: ''
             };
         });
         console.log('ClienteValidation: Validador de Telefono registrado');
