@@ -15,6 +15,72 @@ namespace Firebase.Tests.Integration;
 public class AuditWashCaptureTests
 {
     [LocalFirestoreFact]
+    public async Task PartialAndMultiplePaymentsPersistStateAndAllowPickupAfterFullPayment()
+    {
+        var db = new FirestoreDbBuilder { ProjectId = "demo-wash-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
+        using var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+        var services = new ServicioService(db);
+        var packages = new PaqueteServicioService(db, services, cache);
+        var staff = new PersonalService(db);
+        var config = new ConfiguracionService(db, cache);
+        var washes = new LavadoService(db, services, packages, staff, config);
+        var identity = new ClaimsIdentity(new[] {
+            new Claim(ClaimTypes.NameIdentifier, "actor"),
+            new Claim(ClaimTypes.Email, "actor@example.invalid")
+        }, "test");
+        var controller = new LavadosController(
+            NullLogger<LavadosController>.Instance,
+            new AuditService(db),
+            washes,
+            services,
+            packages,
+            new ClienteService(db),
+            new VehiculoService(db),
+            staff,
+            config,
+            new TipoVehiculoService(db),
+            new TipoDocumentoService(db),
+            null!,
+            null!)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
+            }
+        };
+        var wash = new Lavado
+        {
+            Id = "wash",
+            Estado = "EnProceso",
+            ClienteId = "client",
+            VehiculoId = "vehicle",
+            VehiculoPatente = "ABC123",
+            Precio = 100,
+            FechaCreacion = DateTime.UtcNow,
+            Servicios = new() { new ServicioEnLavado { ServicioId = "service", Estado = "Pendiente" } }
+        };
+        await washes.ActualizarLavado(wash);
+
+        Assert.True(Success(await controller.RegistrarPago(wash.Id, 30, "Efectivo", "anticipo")));
+        var partial = (await washes.ObtenerLavado(wash.Id))!;
+        Assert.Equal("Parcial", partial.Pago!.Estado);
+        Assert.Equal(30m, partial.Pago.MontoPagado);
+        Assert.Single(partial.Pago.Pagos);
+        Assert.False(Success(await controller.RegistrarRetiro(wash.Id)));
+
+        Assert.True(Success(await controller.RegistrarPago(wash.Id, 70, "Transferencia", "saldo")));
+        var paid = (await washes.ObtenerLavado(wash.Id))!;
+        Assert.Equal("Pagado", paid.Pago!.Estado);
+        Assert.Equal(100m, paid.Pago.MontoPagado);
+        Assert.Equal(2, paid.Pago.Pagos.Count);
+        Assert.Equal(new[] { "Efectivo", "Transferencia" }, paid.Pago.Pagos.Select(p => p.MedioPago).ToArray());
+
+        Assert.True(Success(await controller.RegistrarRetiro(wash.Id)));
+        var pickedUp = (await washes.ObtenerLavado(wash.Id))!;
+        Assert.Equal(Lavado.EstadosRetiro.Retirado, pickedUp.EstadoRetiro);
+    }
+
+    [LocalFirestoreFact]
     public async Task PaymentAndLifecycleCapturePersistedSnapshotsAndRejectInvalidPayment()
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-wash-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();

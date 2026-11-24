@@ -63,12 +63,12 @@ public class LavadoCreationPricingRefactorTests
     }
 
     [LocalFirestoreFact]
-    public async Task CreationPersistsDefaultCappedAndWithinLimitStaffAssignments()
+    public async Task CreationPersistsDefaultAndFullVehicleStaffAssignments()
     {
         foreach (var (requirement, maximum, expected) in new (int?, int, int)[]
         {
             (null, 3, 1),
-            (4, 2, 2),
+            (4, 2, 4),
             (2, 3, 2),
             (2, 2, 2)
         })
@@ -80,8 +80,8 @@ public class LavadoCreationPricingRefactorTests
                 {
                     ["Nombre"] = "Auto", ["CantidadEmpleadosRequeridos"] = requirement.Value
                 });
-            var staff = new Dictionary<string, string> { ["staff"] = "Empleado", ["staff2"] = "Segundo", ["staff3"] = "Tercero" };
-            foreach (var id in new[] { "staff2", "staff3" })
+            var staff = new Dictionary<string, string> { ["staff"] = "Empleado", ["staff2"] = "Segundo", ["staff3"] = "Tercero", ["staff4"] = "Cuarto" };
+            foreach (var id in new[] { "staff2", "staff3", "staff4" })
                 await fixture.Db.Collection("empleados").Document(id).SetAsync(new Dictionary<string, object>
                 {
                     ["Nombre"] = staff[id], ["Email"] = id + "@example.com", ["Rol"] = "Empleado", ["Estado"] = "Activo"
@@ -94,6 +94,7 @@ public class LavadoCreationPricingRefactorTests
             var lavado = await fixture.Washes.ObtenerLavado(idCreated!);
             Assert.NotNull(lavado);
             Assert.Equal(expected, lavado.CantidadEmpleadosRequeridos);
+            Assert.Equal(10, lavado.TiempoEstimado);
             Assert.Equal(expected, lavado.EmpleadosAsignadosIds.Count);
             Assert.Equal(expected, lavado.EmpleadosAsignadosNombres.Count);
             Assert.Equal(expected, lavado.EmpleadosAsignadosIds.Distinct().Count());
@@ -104,6 +105,34 @@ public class LavadoCreationPricingRefactorTests
             }
             Assert.Equal(1, (await fixture.Db.Collection("lavados").GetSnapshotAsync()).Count);
         }
+    }
+
+    [LocalFirestoreFact]
+    public async Task CreationRejectsFullRequirementWhenActiveAvailableStaffAreInsufficient()
+    {
+        using var fixture = await Fixture.Create();
+        fixture.SetStaffMaximum(1);
+        await fixture.AddSecondEmployee();
+        await fixture.Db.Collection("empleados").Document("inactive").SetAsync(new Dictionary<string, object>
+        {
+            ["Nombre"] = "Inactivo", ["Email"] = "inactive@example.com", ["Rol"] = "Empleado", ["Estado"] = "Inactivo"
+        });
+        var first = Json(await fixture.Controller.CrearLavadoAjax(Request(new[] { Item("one") }, 0m)));
+        Assert.True(first.GetProperty("success").GetBoolean(), first.GetRawText());
+        var firstId = Assert.Single(first.GetProperty("lavadosIds").EnumerateArray()).GetString()!;
+        var before = (await fixture.Db.Collection("lavados").GetSnapshotAsync()).Documents;
+        var audits = (await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Documents;
+        await fixture.Db.Collection("tiposVehiculos").Document("auto").SetAsync(new Dictionary<string, object>
+        {
+            ["Nombre"] = "Auto", ["CantidadEmpleadosRequeridos"] = 2
+        });
+
+        var response = Json(await fixture.Controller.CrearLavadoAjax(Request(new[] { Item("one") }, 0m)));
+        AssertError(response, "No se pudo crear el lavado. Inténtalo nuevamente.");
+        Assert.Equal(before.Select(d => (d.Id, d.UpdateTime)), (await fixture.Db.Collection("lavados").GetSnapshotAsync()).Documents.Select(d => (d.Id, d.UpdateTime)));
+        Assert.Equal(audits.Select(d => (d.Id, d.UpdateTime)), (await fixture.Db.Collection("registros_auditoria").GetSnapshotAsync()).Documents.Select(d => (d.Id, d.UpdateTime)));
+        Assert.Empty((await fixture.Db.Collection("reservasHerramientas").GetSnapshotAsync()).Documents);
+        Assert.Single((await fixture.Washes.ObtenerLavado(firstId))!.EmpleadosAsignadosIds);
     }
 
     [LocalFirestoreFact]

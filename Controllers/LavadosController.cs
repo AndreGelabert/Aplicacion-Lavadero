@@ -247,7 +247,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         [HttpGet]
         [Permiso("Lavados.Consultar")]
-        public async Task<IActionResult> DetailPartial(string id)
+        public async Task<IActionResult> DetailPartial(string id, [FromServices] InsumoService? insumoService = null)
         {
             var lavado = await _lavadoService.ObtenerLavado(id);
             if (lavado == null)
@@ -257,6 +257,10 @@ namespace FirebaseLoginCustom.Controllers
 
             var config = await _configuracionService.ObtenerConfiguracion();
             ViewBag.Configuracion = config;
+            if (insumoService != null)
+            {
+                ViewBag.HerramientasIds = await insumoService.ObtenerIdsHerramientas();
+            }
 
             return PartialView("_LavadoDetail", lavado);
         }
@@ -266,7 +270,7 @@ namespace FirebaseLoginCustom.Controllers
         /// </summary>
         [HttpGet]
         [Permiso("Lavados.Consultar")]
-        public async Task<IActionResult> Detalle(string id)
+        public async Task<IActionResult> Detalle(string id, [FromServices] InsumoService? insumoService = null)
         {
             var lavado = await _lavadoService.ObtenerLavado(id);
             if (lavado == null)
@@ -276,6 +280,10 @@ namespace FirebaseLoginCustom.Controllers
 
             var config = await _configuracionService.ObtenerConfiguracion();
             ViewBag.Configuracion = config;
+            if (insumoService != null)
+            {
+                ViewBag.HerramientasIds = await insumoService.ObtenerIdsHerramientas();
+            }
 
             return View("Detalle", lavado);
         }
@@ -322,7 +330,14 @@ namespace FirebaseLoginCustom.Controllers
                     {
                         return Json(new { success = false, message = resultado.Error });
                     }
-                    entradas.Add((resultado.Lavado!, seleccion));
+                    var duracionTotal = resultado.Lavado!.TiempoEstimado;
+                var config = await _configuracionService.ObtenerConfiguracion();
+                if (config != null && config.ExcedeHorarioDeCierre(DateTime.UtcNow, duracionTotal, out var mensajeCierre))
+                {
+                    return Json(new { success = false, message = mensajeCierre });
+                }
+
+                entradas.Add((resultado.Lavado!, seleccion));
                     empleadosAsignados.UnionWith(resultado.Lavado!.EmpleadosAsignadosIds);
                 }
                 await _lavadoCreationService.CrearLavadosConInicio(entradas);
@@ -390,12 +405,12 @@ namespace FirebaseLoginCustom.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Permiso("Lavados.Modificar")]
-        public async Task<IActionResult> FinalizarServicio(string lavadoId, string servicioId)
+        public async Task<IActionResult> FinalizarServicio(string lavadoId, string servicioId, string? consumoRealJson = null, string? justificacionDesvio = null)
         {
             try
             {
                 var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
-                await _lavadoService.FinalizarServicio(lavadoId, servicioId);
+                await _lavadoService.FinalizarServicio(lavadoId, servicioId, consumoRealJson, justificacionDesvio);
                 await RegistrarLavado("Finalización de servicio en lavado", lavadoId, antes);
                 var aviso = await NotificarCambioLavado(lavadoId, "finalizacion_servicio", servicioId: servicioId);
 
@@ -450,6 +465,16 @@ namespace FirebaseLoginCustom.Controllers
 
                 return Json(new { success = true, message = "Servicio iniciado correctamente." });
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Validación al iniciar servicio {ServicioId} del lavado {LavadoId}: {Mensaje}", servicioId, lavadoId, ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Argumento inválido al iniciar servicio {ServicioId} del lavado {LavadoId}: {Mensaje}", servicioId, lavadoId, ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al iniciar servicio {ServicioId} del lavado {LavadoId}", servicioId, lavadoId);
@@ -472,6 +497,16 @@ namespace FirebaseLoginCustom.Controllers
                 await RegistrarLavado("Inicio de etapa en lavado", lavadoId, antes);
 
                 return Json(new { success = true, message = "Etapa iniciada correctamente." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Validación al iniciar etapa {EtapaId} del servicio {ServicioId} en lavado {LavadoId}: {Mensaje}", etapaId, servicioId, lavadoId, ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Argumento inválido al iniciar etapa {EtapaId} del servicio {ServicioId} en lavado {LavadoId}: {Mensaje}", etapaId, servicioId, lavadoId, ex.Message);
+                return Json(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -534,12 +569,12 @@ namespace FirebaseLoginCustom.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Permiso("Lavados.Modificar")]
-        public async Task<IActionResult> CancelarEtapa(string lavadoId, string servicioId, string etapaId, string motivo)
+        public async Task<IActionResult> CancelarEtapa(string lavadoId, string servicioId, string etapaId, string motivo, string? consumosNoRegistradosJson = null)
         {
             try
             {
                 var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
-                await _lavadoService.CancelarEtapa(lavadoId, servicioId, etapaId, motivo);
+                await _lavadoService.CancelarEtapa(lavadoId, servicioId, etapaId, motivo, LeerConsumos(consumosNoRegistradosJson));
                 await RegistrarLavado("Cancelación de etapa en lavado", lavadoId, antes);
                 var aviso = await NotificarCambioLavado(lavadoId, "cancelacion_etapa", servicioId, etapaId, motivo);
 
@@ -558,15 +593,60 @@ namespace FirebaseLoginCustom.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Permiso("Lavados.Modificar")]
-        public async Task<IActionResult> RegistrarPago(string lavadoId, decimal monto, string medioPago, string? notas)
+        public async Task<IActionResult> RegistrarPago(
+            string lavadoId,
+            [ModelBinder(typeof(FlexibleDecimalModelBinder))] decimal monto,
+            string medioPago,
+            string? notas)
         {
             try
             {
-                var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
+                if (Request?.HasFormContentType == true && Request.Form.TryGetValue("monto", out var rawMonto))
+                {
+                    if (FlexibleDecimalModelBinder.TryParseFlexibleDecimal(rawMonto.ToString(), out var parsedMonto))
+                    {
+                        monto = parsedMonto;
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(lavadoId))
+                {
+                    return Json(new { success = false, message = "El ID del lavado es obligatorio." });
+                }
+
+                if (monto <= 0)
+                {
+                    return Json(new { success = false, message = "El monto debe ser mayor a 0." });
+                }
+
+                var lavado = await _lavadoService.ObtenerLavado(lavadoId);
+                if (lavado == null)
+                {
+                    return Json(new { success = false, message = "No se encontró el lavado." });
+                }
+
+                var yaPagado = lavado.Pago?.MontoPagado ?? 0m;
+                var restante = lavado.Precio - yaPagado;
+                if (monto > restante)
+                {
+                    return Json(new { success = false, message = $"El monto a pagar (${monto:N2}) no puede superar el saldo pendiente (${restante:N2})." });
+                }
+
+                var antes = AuditCampos.CapturarLavado(lavado);
                 await _lavadoService.RegistrarPago(lavadoId, monto, medioPago, notas);
                 await RegistrarLavado("Registro de pago en lavado", lavadoId, antes);
 
                 return Json(new { success = true, message = "Pago registrado correctamente." });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Validación fallida al registrar pago del lavado {LavadoId}", lavadoId);
+                return Json(new { success = false, message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Operación inválida al registrar pago del lavado {LavadoId}", lavadoId);
+                return Json(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -646,15 +726,24 @@ namespace FirebaseLoginCustom.Controllers
 
         [HttpGet]
         [Permiso("Lavados.Modificar")]
-        public async Task<IActionResult> RecursosCancelacion(string lavadoId, string? servicioId, [FromServices] InsumoService insumos, [FromServices] StockService stock)
+        public async Task<IActionResult> RecursosCancelacion(string lavadoId, string? servicioId, [FromServices] InsumoService insumos, [FromServices] StockService stock, string? etapaId = null)
         {
             var lavado = await _lavadoService.ObtenerLavado(lavadoId);
             if (lavado == null) return NotFound();
             var servicios = lavado.Servicios.Where(s => string.IsNullOrEmpty(servicioId) || s.ServicioId == servicioId).ToList();
             if (!string.IsNullOrEmpty(servicioId) && servicios.Count != 1) return NotFound();
-            var recetasActivas = servicios.Where(s => s.Estado == "EnProceso").SelectMany(s => s.Etapas.Any()
-                ? s.Etapas.Where(e => e.Estado == "EnProceso").SelectMany(e => e.Receta)
-                : s.Receta).Where(r => !string.IsNullOrWhiteSpace(r.InsumoId)).ToList();
+            List<RecetaInsumo> recetasActivas;
+            if (!string.IsNullOrEmpty(etapaId))
+            {
+                recetasActivas = servicios.SelectMany(s => s.Etapas.Where(e => e.EtapaId == etapaId && e.Estado == "EnProceso")
+                    .SelectMany(e => e.Receta)).Where(r => !string.IsNullOrWhiteSpace(r.InsumoId)).ToList();
+            }
+            else
+            {
+                recetasActivas = servicios.Where(s => s.Estado == "EnProceso").SelectMany(s => s.Etapas.Any()
+                    ? s.Etapas.Where(e => e.Estado == "EnProceso").SelectMany(e => e.Receta)
+                    : s.Receta).Where(r => !string.IsNullOrWhiteSpace(r.InsumoId)).ToList();
+            }
             var ids = recetasActivas.Select(r => r.InsumoId).Distinct(StringComparer.Ordinal).ToList();
             var productos = new List<object>();
             foreach (var id in ids)
@@ -924,6 +1013,7 @@ namespace FirebaseLoginCustom.Controllers
             {
                 // Calcular precio original sumando los precios de los servicios
                 decimal precioOriginalCalculado = 0;
+                var tiempoCalculado = 0;
                 var serviciosDelPaquete = new List<object>();
                 
                 foreach (var servicioId in p.ServiciosIds)
@@ -932,12 +1022,14 @@ namespace FirebaseLoginCustom.Controllers
                     if (servicio != null)
                     {
                         precioOriginalCalculado += servicio.Precio;
+                        tiempoCalculado += servicio.TiempoEstimado;
                         serviciosDelPaquete.Add(new
                         {
                             id = servicio.Id,
                             nombre = servicio.Nombre,
                             tipo = servicio.Tipo,
-                            precio = servicio.Precio
+                            precio = servicio.Precio,
+                            tiempoEstimado = servicio.TiempoEstimado
                         });
                     }
                 }
@@ -947,10 +1039,10 @@ namespace FirebaseLoginCustom.Controllers
                     id = p.Id,
                     nombre = p.Nombre,
                     tipoVehiculo = p.TipoVehiculo,
-                    precio = p.Precio,
+                    precio = precioOriginalCalculado - precioOriginalCalculado * (p.PorcentajeDescuento / 100m),
                     precioOriginal = precioOriginalCalculado,
                     descuento = p.PorcentajeDescuento,
-                    tiempoEstimado = p.TiempoEstimado,
+                    tiempoEstimado = tiempoCalculado,
                     servicios = serviciosDelPaquete
                 });
             }
@@ -972,8 +1064,7 @@ namespace FirebaseLoginCustom.Controllers
                 {
                     tiempoNotificacionMinutos = 15,
                     tiempoToleranciaMinutos = 15,
-                    intervaloPreguntas = 5,
-                    empleadosMaximosPorLavado = 3
+                    intervaloPreguntas = 5
                 });
             }
 
@@ -981,8 +1072,7 @@ namespace FirebaseLoginCustom.Controllers
             {
                 tiempoNotificacionMinutos = config.TiempoNotificacionMinutos,
                 tiempoToleranciaMinutos = config.TiempoToleranciaMinutos,
-                intervaloPreguntas = config.IntervaloPreguntas,
-                empleadosMaximosPorLavado = config.EmpleadosMaximosPorLavado
+                intervaloPreguntas = config.IntervaloPreguntas
             });
         }
 
@@ -998,7 +1088,7 @@ namespace FirebaseLoginCustom.Controllers
                 var empleadosActivos = await _personalService.ObtenerEmpleados(
                     estados: new List<string> { "Activo" },
                     pageNumber: 1,
-                    pageSize: 100
+                    pageSize: int.MaxValue
                 );
 
                 var empleadosDisponibles = new List<object>();
@@ -1015,16 +1105,15 @@ namespace FirebaseLoginCustom.Controllers
                     }
                 }
 
-                var config = await _configuracionService.ObtenerConfiguracion();
+                await _configuracionService.ObtenerConfiguracion();
 
                 if (!User.TienePermiso("Lavados.Consultar"))
-                    return Json(new { totalActivos = empleadosActivos.Count, totalDisponibles = empleadosDisponibles.Count, empleadosMaximosPorLavado = config.EmpleadosMaximosPorLavado });
+                    return Json(new { totalActivos = empleadosActivos.Count, totalDisponibles = empleadosDisponibles.Count });
 
                 return Json(new
                 {
                     totalActivos = empleadosActivos.Count,
                     totalDisponibles = empleadosDisponibles.Count,
-                    empleadosMaximosPorLavado = config.EmpleadosMaximosPorLavado,
                     empleados = empleadosDisponibles
                 });
             }
@@ -1035,7 +1124,6 @@ namespace FirebaseLoginCustom.Controllers
                 {
                     totalActivos = 0,
                     totalDisponibles = 0,
-                    empleadosMaximosPorLavado = 3,
                     empleados = new List<object>()
                 });
             }
@@ -1072,9 +1160,9 @@ namespace FirebaseLoginCustom.Controllers
             return result;
         }
 
-        private static Dictionary<string, decimal> LeerConsumos(string? json)
+        private static Dictionary<string, decimal>? LeerConsumos(string? json)
         {
-            if (string.IsNullOrWhiteSpace(json)) throw new ArgumentException("Debe informar los consumos adicionales.");
+            if (string.IsNullOrWhiteSpace(json)) return null;
             using var doc = JsonDocument.Parse(json);
             if (doc.RootElement.ValueKind != JsonValueKind.Object) throw new ArgumentException("Consumos inválidos.");
             var result = new Dictionary<string, decimal>(StringComparer.Ordinal);

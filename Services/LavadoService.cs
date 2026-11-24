@@ -132,30 +132,208 @@ namespace Firebase.Services
             }
             await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
             {
-                var recetas = new List<StockService.RecetaServicio>();
-                var pendientes = new Dictionary<string, decimal>(StringComparer.Ordinal);
-                foreach (var (lavado, seleccion) in entradas)
+                var capacity = await LeerCapacidadCreacion(transaction, entradas.Count, config);
+                var membership = await ValidarAsignacionesEnTransaccion(transaction, entradas.Select(x => x.Lavado));
+                var recetas = await PrepararInicioEnTransaccion(transaction, entradas);
+                AvanzarCapacidadCreacion(transaction, capacity);
+                if (membership != null) EmployeeMembershipVersion.Advance(transaction, membership);
+                EscribirInicioEnTransaccion(transaction, entradas, referencias, recetas);
+            });
+        }
+
+        internal Task<string> ConvertirTurnoEnLavado(string turnoId, IReadOnlyDictionary<int, string>? seleccion) =>
+            ConvertirTurnoEnLavado(turnoId, seleccion, () => DateTime.UtcNow);
+
+        // The clock seam is internal and scoped to this invocation; callers cannot supply it over HTTP.
+        internal async Task<string> ConvertirTurnoEnLavado(string turnoId, IReadOnlyDictionary<int, string>? seleccion, Func<DateTime> utcNow)
+        {
+            ArgumentNullException.ThrowIfNull(utcNow);
+            if (string.IsNullOrWhiteSpace(turnoId) || turnoId.Contains('/') || turnoId is "." or "..")
+                throw new ArgumentException("Identificador de turno inválido.", nameof(turnoId));
+            var turnoRef = _firestore.Collection("turnos").Document(turnoId);
+            var lavadoRef = _firestore.Collection(COLLECTION_NAME).Document();
+            var resultado = await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
+            {
+                var coordinator = await transaction.GetSnapshotAsync(_firestore.Collection("coordinacion").Document("turnos"));
+                var doc = await transaction.GetSnapshotAsync(turnoRef);
+                if (!doc.Exists) throw new InvalidOperationException("Turno no encontrado.");
+                var fields = doc.ToDictionary();
+                var estado = doc.GetValue<string>("Estado");
+                if (estado == "EnProceso")
                 {
-                    var primero = lavado.Servicios.OrderBy(s => s.Orden).FirstOrDefault();
-                    if (primero == null) continue;
-                    var etapa = primero.Etapas.FirstOrDefault();
-                    var clave = $"{lavado.Id}_{primero.ServicioId}_{(etapa == null ? "servicio" : etapa.EtapaId)}";
-                    var receta = await _stockService.LeerRecetaServicio(transaction, clave, etapa?.Receta ?? primero.Receta, false, seleccion: seleccion, reservasPendientes: pendientes);
-                    recetas.Add(receta);
-                    foreach (var reserva in receta.Reservas.Where(r => !r.Existe))
-                        pendientes[reserva.Contador.Id] = StockPrecision.Sumar(pendientes.GetValueOrDefault(reserva.Contador.Id), reserva.Cantidad);
-                    primero.Estado = "EnProceso";
-                    primero.TiempoInicio = DateTime.UtcNow;
-                    if (etapa != null)
+                    if (!fields.TryGetValue("LavadoId", out var linked) || linked is not string id || string.IsNullOrWhiteSpace(id) || id.Contains('/') || id is "." or "..")
+                        throw new InvalidOperationException("El vínculo con el turno es inválido.");
+                    var existing = await transaction.GetSnapshotAsync(_firestore.Collection(COLLECTION_NAME).Document(id));
+                    if (!existing.Exists || !existing.ContainsField("TurnoId") || existing.GetValue<string>("TurnoId") != turnoId || existing.GetValue<string>("Estado") != ESTADO_EN_PROCESO)
+                        throw new InvalidOperationException("El vínculo con el turno es inválido.");
+                    return id;
+                }
+                if (estado != "Pendiente" || fields.ContainsKey("LavadoId"))
+                    throw new InvalidOperationException("El turno no está disponible para iniciar.");
+                var config = await transaction.GetSnapshotAsync(_firestore.Collection("configuracion").Document("system_config"));
+                if (!config.Exists) throw new InvalidOperationException("Configuración no encontrada.");
+                long grace = 5;
+                if (config.ToDictionary().TryGetValue("ToleranciaLlegadaTurnosMinutos", out var rawGrace) && rawGrace is long g && g >= 5)
+                    grace = g;
+                if (grace < 5 || grace > 525600)
+                    throw new InvalidOperationException("Tolerancia de llegada no disponible.");
+                if (!doc.TryGetValue<DateTime>("InicioUtc", out var start) || start == default || start.Kind != DateTimeKind.Utc)
+                    throw new InvalidOperationException("Intervalo de turno inválido.");
+                var nowAttempt = utcNow();
+                if (nowAttempt == default || nowAttempt.Kind != DateTimeKind.Utc)
+                    throw new InvalidOperationException("Hora UTC no disponible.");
+                if (nowAttempt.Ticks - start.Ticks > grace * TimeSpan.TicksPerMinute)
+                {
+                    AvanzarCapacidadCreacion(transaction, coordinator);
+                    transaction.Update(turnoRef, "Estado", "Ausente");
+                    return (string?)null;
+                }
+                var turno = doc.ConvertTo<Turno>();
+                var mapped = TurnoLavadoSnapshotMapper.Mapear(turno);
+                var membership = await EmployeeMembershipVersion.ReadAsync(_firestore, transaction);
+                var employees = await transaction.GetSnapshotAsync(_firestore.Collection("empleados").WhereEqualTo("Estado", "Activo"));
+                var occupied = await transaction.GetSnapshotAsync(_firestore.Collection(COLLECTION_NAME).WhereEqualTo("Estado", ESTADO_EN_PROCESO));
+                if (!config.ToDictionary().TryGetValue("CapacidadMaximaConcurrente", out var capacityValue) ||
+                    capacityValue is not long capacity || capacity <= 0 || capacity > int.MaxValue)
+                    throw new InvalidOperationException("Configuración inválida.");
+                if (occupied.Count >= capacity)
+                    throw new InvalidOperationException("Se ha alcanzado la capacidad máxima de lavados concurrentes.");
+                var assigned = TurnoEmployeeAssignment.Seleccionar(turno.Vehiculos[0].CantidadEmpleadosRequeridos,
+                    employees.Documents.Select(x => x.Id), occupied.Documents.Select(x => x.ContainsField("EmpleadosAsignadosIds") ? x.GetValue<List<string>>("EmpleadosAsignadosIds") : new List<string>()));
+                var clientDoc = await transaction.GetSnapshotAsync(_firestore.Collection("clientes").Document(turno.ClienteId));
+                var clienteNombre = clientDoc.Exists
+                    ? (clientDoc.ContainsField("Nombre") && clientDoc.ContainsField("Apellido")
+                        ? $"{clientDoc.GetValue<string>("Nombre")} {clientDoc.GetValue<string>("Apellido")}"
+                        : (clientDoc.ContainsField("NombreCompleto") ? clientDoc.GetValue<string>("NombreCompleto") : null))
+                    : null;
+                var vehicleDoc = await transaction.GetSnapshotAsync(_firestore.Collection("vehiculos").Document(turno.Vehiculos[0].VehiculoId));
+                var vehiculoPatente = vehicleDoc.Exists && vehicleDoc.ContainsField("Patente") ? vehicleDoc.GetValue<string>("Patente") : null;
+                var tipoVehiculo = vehicleDoc.Exists && vehicleDoc.ContainsField("TipoVehiculo") ? vehicleDoc.GetValue<string>("TipoVehiculo") : null;
+                var trajoNombre = clienteNombre;
+                if (!string.IsNullOrWhiteSpace(turno.ClienteTrajoId) && turno.ClienteTrajoId != turno.ClienteId)
+                {
+                    var trajoDoc = await transaction.GetSnapshotAsync(_firestore.Collection("clientes").Document(turno.ClienteTrajoId));
+                    if (trajoDoc.Exists)
+                        trajoNombre = trajoDoc.ContainsField("Nombre") && trajoDoc.ContainsField("Apellido")
+                            ? $"{trajoDoc.GetValue<string>("Nombre")} {trajoDoc.GetValue<string>("Apellido")}"
+                            : (trajoDoc.ContainsField("NombreCompleto") ? trajoDoc.GetValue<string>("NombreCompleto") : trajoNombre);
+                }
+                var retiraNombre = clienteNombre;
+                if (!string.IsNullOrWhiteSpace(turno.ClienteRetiraId) && turno.ClienteRetiraId != turno.ClienteId)
+                {
+                    if (turno.ClienteRetiraId == turno.ClienteTrajoId)
+                        retiraNombre = trajoNombre;
+                    else
                     {
-                        etapa.Estado = "EnProceso";
-                        etapa.TiempoInicio = DateTime.UtcNow;
+                        var retiraDoc = await transaction.GetSnapshotAsync(_firestore.Collection("clientes").Document(turno.ClienteRetiraId));
+                        if (retiraDoc.Exists)
+                            retiraNombre = retiraDoc.ContainsField("Nombre") && retiraDoc.ContainsField("Apellido")
+                                ? $"{retiraDoc.GetValue<string>("Nombre")} {retiraDoc.GetValue<string>("Apellido")}"
+                                : (retiraDoc.ContainsField("NombreCompleto") ? retiraDoc.GetValue<string>("NombreCompleto") : retiraNombre);
                     }
                 }
-                foreach (var receta in recetas) StockService.EscribirReservasServicio(transaction, receta, false);
-                for (var i = 0; i < entradas.Count; i++)
-                    transaction.Create(referencias[i], CrearDiccionarioLavado(entradas[i].Lavado));
+                var empNames = assigned.Select(id =>
+                {
+                    var ed = employees.Documents.FirstOrDefault(x => x.Id == id);
+                    return ed != null && ed.TryGetValue<string>("Nombre", out var nombre) && !string.IsNullOrWhiteSpace(nombre) ? nombre : id;
+                }).ToList();
+                var now = DateTime.UtcNow;
+                var lavado = new Lavado { Id = lavadoRef.Id, Estado = ESTADO_EN_PROCESO, ClienteId = turno.ClienteId,
+                    ClienteNombre = clienteNombre, VehiculoId = turno.Vehiculos[0].VehiculoId,
+                    VehiculoPatente = vehiculoPatente, TipoVehiculo = tipoVehiculo,
+                    Servicios = mapped.Servicios.ToList(), Precio = mapped.Precio,
+                    PrecioOriginal = mapped.PrecioOriginal, Descuento = turno.Descuento, CantidadEmpleadosRequeridos = turno.Vehiculos[0].CantidadEmpleadosRequeridos,
+                    EmpleadosAsignadosIds = assigned.ToList(), EmpleadosAsignadosNombres = empNames,
+                    TiempoEstimado = turno.Vehiculos[0].Servicios.Sum(x => x.TiempoEstimado),
+                    FechaCreacion = now, TiempoInicio = now, Pago = new PagoLavado(), Notas = turno.Notas,
+                    ClienteTrajoId = turno.ClienteTrajoId, ClienteTrajoNombre = trajoNombre,
+                    ClienteRetiraId = turno.ClienteRetiraId, ClienteRetiraNombre = retiraNombre };
+                ValidarLavado(lavado);
+                var entries = new List<(Lavado Lavado, IReadOnlyDictionary<int, string>? Seleccion)> { (lavado, seleccion) };
+                var recetas = await PrepararInicioEnTransaccion(transaction, entries);
+                AvanzarCapacidadCreacion(transaction, coordinator);
+                EmployeeMembershipVersion.Advance(transaction, membership);
+                EscribirInicioEnTransaccion(transaction, entries, new[] { lavadoRef }, recetas, turnoId);
+                transaction.Update(turnoRef, new Dictionary<string, object> { ["Estado"] = "EnProceso", ["LavadoId"] = lavadoRef.Id });
+                return lavadoRef.Id;
             });
+            return resultado ?? throw new InvalidOperationException("El turno no está disponible para iniciar.");
+        }
+
+        private async Task<DocumentSnapshot> LeerCapacidadCreacion(Transaction transaction, int cantidad, Configuracion? fallback)
+        {
+            var coordinator = await transaction.GetSnapshotAsync(_firestore.Collection("coordinacion").Document("turnos"));
+            var configDoc = await transaction.GetSnapshotAsync(_firestore.Collection("configuracion").Document("system_config"));
+            var activos = await transaction.GetSnapshotAsync(_firestore.Collection(COLLECTION_NAME).WhereEqualTo("Estado", ESTADO_EN_PROCESO));
+            var config = configDoc.Exists ? configDoc.ConvertTo<Configuracion>() : fallback;
+            if (config != null && activos.Count + cantidad > config.CapacidadMaximaConcurrente)
+                throw new InvalidOperationException($"Se ha alcanzado la capacidad máxima de {config.CapacidadMaximaConcurrente} lavados concurrentes.");
+            return coordinator;
+        }
+
+        private async Task<DocumentSnapshot?> ValidarAsignacionesEnTransaccion(Transaction transaction, IEnumerable<Lavado> lavados)
+        {
+            var activos = lavados.Where(x => x.Estado == ESTADO_EN_PROCESO && x.EmpleadosAsignadosIds.Count > 0).ToList();
+            if (activos.Count == 0) return null;
+            var membership = await EmployeeMembershipVersion.ReadAsync(_firestore, transaction);
+            var empleados = await transaction.GetSnapshotAsync(_firestore.Collection("empleados").WhereEqualTo("Estado", "Activo"));
+            var ocupados = await transaction.GetSnapshotAsync(_firestore.Collection(COLLECTION_NAME).WhereEqualTo("Estado", ESTADO_EN_PROCESO));
+            var disponibles = empleados.Documents.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+            var asignados = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var lavado in activos)
+            foreach (var id in lavado.EmpleadosAsignadosIds)
+            {
+                if (!disponibles.Contains(id) || !asignados.Add(id) || ocupados.Documents.Any(doc => doc.Id != lavado.Id &&
+                    doc.ContainsField("EmpleadosAsignadosIds") && doc.GetValue<List<string>>("EmpleadosAsignadosIds").Contains(id)))
+                    throw new InvalidOperationException("El empleado asignado no está activo o ya está ocupado.");
+            }
+            return membership;
+        }
+
+        private static void AvanzarCapacidadCreacion(Transaction transaction, DocumentSnapshot coordinator)
+        {
+            var version = coordinator.Exists ? coordinator.GetValue<long>("Version") : 0;
+            transaction.Set(coordinator.Reference, new Dictionary<string, object> { ["Version"] = checked(version + 1) }, SetOptions.MergeAll);
+        }
+
+        // The caller must complete all transaction reads, including these stock reads, before writing.
+        internal async Task<List<StockService.RecetaServicio>> PrepararInicioEnTransaccion(
+            Transaction transaction, IReadOnlyList<(Lavado Lavado, IReadOnlyDictionary<int, string>? Seleccion)> entradas)
+        {
+            var recetas = new List<StockService.RecetaServicio>();
+            var pendientes = new Dictionary<string, decimal>(StringComparer.Ordinal);
+            foreach (var (lavado, seleccion) in entradas)
+            {
+                var primero = lavado.Servicios.OrderBy(s => s.Orden).FirstOrDefault();
+                if (primero == null) continue;
+                var etapa = primero.Etapas.FirstOrDefault();
+                var clave = $"{lavado.Id}_{primero.ServicioId}_{(etapa == null ? "servicio" : etapa.EtapaId)}";
+                var receta = await _stockService.LeerRecetaServicio(transaction, clave, etapa?.Receta ?? primero.Receta, false, seleccion: seleccion, reservasPendientes: pendientes);
+                recetas.Add(receta);
+                foreach (var reserva in receta.Reservas.Where(r => !r.Existe))
+                    pendientes[reserva.Contador.Id] = StockPrecision.Sumar(pendientes.GetValueOrDefault(reserva.Contador.Id), reserva.Cantidad);
+                primero.Estado = "EnProceso";
+                primero.TiempoInicio = DateTime.UtcNow;
+                if (etapa != null)
+                {
+                    etapa.Estado = "EnProceso";
+                    etapa.TiempoInicio = DateTime.UtcNow;
+                }
+            }
+            return recetas;
+        }
+
+        internal static void EscribirInicioEnTransaccion(
+            Transaction transaction, IReadOnlyList<(Lavado Lavado, IReadOnlyDictionary<int, string>? Seleccion)> entradas,
+            IReadOnlyList<DocumentReference> referencias, IReadOnlyList<StockService.RecetaServicio> recetas, string? turnoId = null)
+        {
+            foreach (var receta in recetas) StockService.EscribirReservasServicio(transaction, receta, false);
+            for (var i = 0; i < entradas.Count; i++)
+            {
+                var datos = CrearDiccionarioLavado(entradas[i].Lavado);
+                if (turnoId != null) datos["TurnoId"] = turnoId;
+                transaction.Create(referencias[i], datos);
+            }
         }
 
         public record ResultadoPrecioCreacion(decimal PrecioOriginal, decimal Precio, string? Error = null);
@@ -204,34 +382,30 @@ namespace Firebase.Services
 
         public async Task<ResultadoRetiro> RegistrarRetiro(string lavadoId)
         {
-            var lavado = await ObtenerLavado(lavadoId);
-            if (lavado == null)
+            var referencia = _firestore.Collection(COLLECTION_NAME).Document(lavadoId);
+            var fechaRetiro = DateTime.UtcNow;
+            return await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
             {
-                return new ResultadoRetiro("Lavado no encontrado.");
-            }
+                var snapshot = await transaction.GetSnapshotAsync(referencia);
+                if (!snapshot.Exists) return new ResultadoRetiro("Lavado no encontrado.");
+                var lavado = MapearDocumentoALavado(snapshot);
+                if (lavado.EstadoRetiro == Lavado.EstadosRetiro.Retirado)
+                    return new ResultadoRetiro("El vehículo ya fue retirado.");
+                var estadoPago = lavado.Pago?.Estado ?? "Pendiente";
+                if (lavado.Estado != "Cancelado" && estadoPago != "Pagado")
+                    return new ResultadoRetiro("El lavado debe estar pagado antes de permitir el retiro del vehículo.");
 
-            // Verificar si ya fue retirado
-            if (lavado.EstadoRetiro == Lavado.EstadosRetiro.Retirado)
-            {
-                return new ResultadoRetiro("El vehículo ya fue retirado.");
-            }
-
-            // Verificar si el lavado fue pagado o cancelado
-            var estadoPago = lavado.Pago?.Estado ?? "Pendiente";
-            var estadoLavado = lavado.Estado;
-
-            if (estadoLavado != "Cancelado" && estadoPago != "Pagado")
-            {
-                return new ResultadoRetiro("El lavado debe estar pagado antes de permitir el retiro del vehículo.");
-            }
-
-            var antes = AuditCampos.CapturarLavado(lavado);
-            // Registrar el retiro
-            lavado.EstadoRetiro = Lavado.EstadosRetiro.Retirado;
-            lavado.FechaRetiro = DateTime.UtcNow;
-
-            await ActualizarLavado(lavado);
-            return new ResultadoRetiro(CamposAntes: antes);
+                var antes = AuditCampos.CapturarLavado(lavado);
+                lavado.EstadoRetiro = Lavado.EstadosRetiro.Retirado;
+                lavado.FechaRetiro = fechaRetiro;
+                ValidarLavado(lavado);
+                var datos = CrearDiccionarioLavado(lavado);
+                transaction.Update(referencia, new Dictionary<string, object>
+                {
+                    ["EstadoRetiro"] = datos["EstadoRetiro"], ["FechaRetiro"] = datos["FechaRetiro"]
+                });
+                return new ResultadoRetiro(CamposAntes: antes);
+            });
         }
 
         #region Operaciones de Consulta
@@ -402,8 +576,8 @@ namespace Firebase.Services
             // Validar horario de operación
             await ValidarHorarioOperacion();
 
-            // Validar capacidad concurrente
             await ValidarCapacidadConcurrente();
+            var config = await _configuracionService.ObtenerConfiguracion();
 
             // Validar datos del lavado
             ValidarLavado(lavado);
@@ -422,7 +596,14 @@ namespace Firebase.Services
 
             // Guardar en Firestore
             var lavadoData = CrearDiccionarioLavado(lavado);
-            await lavadoRef.SetAsync(lavadoData);
+            await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
+            {
+                var capacity = await LeerCapacidadCreacion(transaction, 1, config);
+                var membership = await ValidarAsignacionesEnTransaccion(transaction, new[] { lavado });
+                AvanzarCapacidadCreacion(transaction, capacity);
+                if (membership != null) EmployeeMembershipVersion.Advance(transaction, membership);
+                transaction.Create(lavadoRef, lavadoData);
+            });
 
             return lavado;
         }
@@ -442,7 +623,36 @@ namespace Firebase.Services
 
             var lavadoRef = _firestore.Collection(COLLECTION_NAME).Document(lavado.Id);
             var lavadoData = CrearDiccionarioLavado(lavado);
-            await lavadoRef.SetAsync(lavadoData, SetOptions.Overwrite);
+            await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
+            {
+                var coordinator = await transaction.GetSnapshotAsync(_firestore.Collection("coordinacion").Document("turnos"));
+                var snapshot = await transaction.GetSnapshotAsync(lavadoRef);
+                if (snapshot.Exists && snapshot.ContainsField("TurnoId"))
+                {
+                    var turnoId = snapshot.GetValue<string>("TurnoId");
+                    lavadoData["TurnoId"] = turnoId;
+                    if (!string.IsNullOrWhiteSpace(turnoId))
+                    {
+                        var turnoRef = _firestore.Collection("turnos").Document(turnoId);
+                        if (lavado.Estado is ESTADO_REALIZADO or ESTADO_REALIZADO_PARCIALMENTE)
+                        {
+                            transaction.Update(turnoRef, "Estado", "Completado");
+                        }
+                        else if (lavado.Estado == ESTADO_CANCELADO)
+                        {
+                            transaction.Update(turnoRef, new Dictionary<string, object>
+                            {
+                                ["Estado"] = "Cancelado",
+                                ["MotivoCancelacion"] = lavado.MotivoCancelacion ?? "Lavado cancelado"
+                            });
+                        }
+                    }
+                }
+                var membership = await ValidarAsignacionesEnTransaccion(transaction, new[] { lavado });
+                AvanzarCapacidadCreacion(transaction, coordinator);
+                if (membership != null) EmployeeMembershipVersion.Advance(transaction, membership);
+                transaction.Set(lavadoRef, lavadoData, SetOptions.Overwrite);
+            });
         }
 
         /// <summary>
@@ -450,15 +660,44 @@ namespace Firebase.Services
         /// </summary>
         public async Task FinalizarLavado(string id)
         {
-            var lavado = await ObtenerLavado(id);
-            if (lavado == null)
+            if (string.IsNullOrWhiteSpace(id))
+                throw new ArgumentException("El ID del lavado no puede estar vacío", nameof(id));
+
+            var referencia = _firestore.Collection(COLLECTION_NAME).Document(id);
+            await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
+            {
+            var coordinator = await transaction.GetSnapshotAsync(_firestore.Collection("coordinacion").Document("turnos"));
+            var snapshot = await transaction.GetSnapshotAsync(referencia);
+            if (!snapshot.Exists)
                 throw new ArgumentException("No se encontró el lavado", nameof(id));
+            DocumentReference? turnoRef = null;
+            if (snapshot.ContainsField("TurnoId"))
+            {
+                var fields = snapshot.ToDictionary();
+                if (fields["TurnoId"] is not string turnoId || string.IsNullOrWhiteSpace(turnoId) || turnoId.Contains('/') || turnoId == "." || turnoId == "..")
+                    throw new InvalidOperationException("El vínculo con el turno es inválido.");
+                turnoRef = _firestore.Collection("turnos").Document(turnoId);
+                var turno = await transaction.GetSnapshotAsync(turnoRef);
+                if (!turno.Exists || !turno.ToDictionary().TryGetValue("LavadoId", out var lavadoId) || lavadoId is not string linkedId || linkedId != id ||
+                    !turno.ToDictionary().TryGetValue("Estado", out var estado) || estado is not string estadoTurno ||
+                    !fields.TryGetValue("Estado", out var estadoLavado) || estadoLavado is not string estadoActual)
+                    throw new InvalidOperationException("El vínculo con el turno es inválido.");
+                if (estadoTurno == "Completado" && estadoActual is ESTADO_REALIZADO or ESTADO_REALIZADO_PARCIALMENTE)
+                    return;
+                if (estadoTurno != "EnProceso" || estadoActual != ESTADO_EN_PROCESO)
+                    throw new InvalidOperationException("El vínculo con el turno es inválido.");
+            }
+            var lavado = MapearDocumentoALavado(snapshot);
+            if (turnoRef != null && (lavado.Servicios.Count == 0 || lavado.Servicios.All(s => s.Estado == "Cancelado")))
+                throw new InvalidOperationException("No se puede completar el turno con todos los servicios cancelados.");
 
             // Verificar si todos los servicios están finalizados
             var serviciosPendientes = lavado.Servicios.Where(s => s.Estado == "Pendiente" || s.Estado == "EnProceso").ToList();
             
             if (serviciosPendientes.Any())
             {
+                if (turnoRef != null)
+                    throw new InvalidOperationException("No se puede finalizar el lavado porque hay servicios pendientes o en proceso.");
                 // Verificar si hay servicios cancelados
                 var serviciosCancelados = lavado.Servicios.Where(s => s.Estado == "Cancelado").ToList();
                 if (serviciosCancelados.Any() && serviciosCancelados.Count < lavado.Servicios.Count)
@@ -472,9 +711,9 @@ namespace Firebase.Services
             }
             else
             {
-                // Verificar si algún servicio fue cancelado
+                // Verificar si algún servicio fue cancelado o finalizado parcialmente
                 var serviciosCancelados = lavado.Servicios.Where(s => s.Estado == "Cancelado").ToList();
-                if (serviciosCancelados.Any())
+                if (serviciosCancelados.Any() || lavado.Servicios.Any(s => s.Estado == "RealizadoParcialmente"))
                 {
                     lavado.Estado = ESTADO_REALIZADO_PARCIALMENTE;
                 }
@@ -485,23 +724,59 @@ namespace Firebase.Services
             }
 
             lavado.TiempoFinalizacion = DateTime.UtcNow;
-            await ActualizarLavado(lavado);
+            ValidarLavado(lavado);
+            var datos = CrearDiccionarioLavado(lavado);
+            transaction.Update(referencia, new Dictionary<string, object>
+            {
+                ["Estado"] = datos["Estado"],
+                ["TiempoFinalizacion"] = datos["TiempoFinalizacion"]
+            });
+            if (turnoRef != null)
+            {
+                transaction.Update(turnoRef, "Estado", "Completado");
+                AvanzarCapacidadCreacion(transaction, coordinator);
+            }
+            });
+        }
+
+        private async Task<DocumentReference?> LeerTurnoParaFinalizacion(Transaction transaction, DocumentSnapshot snapshot)
+        {
+            if (!snapshot.ContainsField("TurnoId")) return null;
+            var fields = snapshot.ToDictionary();
+            if (fields["TurnoId"] is not string id || string.IsNullOrWhiteSpace(id) || id.Contains('/') || id is "." or "..")
+                throw new InvalidOperationException("El vínculo con el turno es inválido.");
+            var reference = _firestore.Collection("turnos").Document(id);
+            var turno = await transaction.GetSnapshotAsync(reference);
+            var data = turno.Exists ? turno.ToDictionary() : new Dictionary<string, object>();
+            if (!data.TryGetValue("LavadoId", out var linked) || linked is not string washId || washId != snapshot.Id ||
+                !data.TryGetValue("Estado", out var state) || state is not string turnoEstado ||
+                !fields.TryGetValue("Estado", out var washState) || washState is not string lavadoEstado ||
+                !((turnoEstado == "EnProceso" && lavadoEstado == ESTADO_EN_PROCESO) ||
+                  (turnoEstado == "Completado" && lavadoEstado is ESTADO_REALIZADO or ESTADO_REALIZADO_PARCIALMENTE)))
+                throw new InvalidOperationException("El vínculo con el turno es inválido.");
+            return reference;
         }
 
         /// <summary>
         /// Finaliza un servicio específico dentro de un lavado.
         /// </summary>
-        public async Task FinalizarServicio(string lavadoId, string servicioId)
+        public async Task FinalizarServicio(string lavadoId, string servicioId, string? consumoRealJson = null, string? justificacionDesvio = null)
         {
             var referencia = _firestore.Collection(COLLECTION_NAME).Document(lavadoId);
             var resultado = await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
             {
+                var coordinator = await transaction.GetSnapshotAsync(_firestore.Collection("coordinacion").Document("turnos"));
                 var snapshot = await transaction.GetSnapshotAsync(referencia);
                 if (!snapshot.Exists) throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
+                var turnoRef = await LeerTurnoParaFinalizacion(transaction, snapshot);
                 var actual = MapearDocumentoALavado(snapshot);
                 var seleccionado = actual.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
                 if (seleccionado == null) throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
                 if (seleccionado.Estado is "Realizado" or "RealizadoParcialmente") return new List<StockService.ConsumoReceta>();
+                if (turnoRef != null && actual.Estado != ESTADO_EN_PROCESO)
+                    throw new InvalidOperationException("El vínculo con el turno es inválido.");
+                if (turnoRef != null && seleccionado.Estado == "Cancelado")
+                    throw new InvalidOperationException("El servicio está cancelado.");
                 var conEtapas = seleccionado.Etapas.Any();
                 if (conEtapas && seleccionado.Etapas.Any(e => e.Estado is "Pendiente" or "EnProceso"))
                     throw new InvalidOperationException("No se puede finalizar el servicio porque hay etapas pendientes o en proceso.");
@@ -510,19 +785,46 @@ namespace Firebase.Services
                 var consumos = new List<StockService.ConsumoReceta>();
                 if (!conEtapas)
                 {
-                    receta = await _stockService.LeerRecetaServicio(transaction, $"{lavadoId}_{servicioId}_servicio", seleccionado.Receta, true);
-                    consumos = receta.Consumos;
+                    var consumoReal = string.IsNullOrWhiteSpace(consumoRealJson)
+                        ? null
+                        : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, decimal>>(consumoRealJson);
+                    if (consumoReal != null && consumoReal.Any(x => seleccionado.Receta.All(r => r.InsumoId != x.Key) || x.Value < 0))
+                        throw new InvalidOperationException("El consumo real contiene insumos o cantidades inválidas.");
+                    var clave = $"{lavadoId}_{servicioId}_servicio";
+                    receta = await _stockService.LeerRecetaServicio(transaction, clave, seleccionado.Receta, true);
+                    var consumiblesIds = receta.Consumos.Select(c => c.InsumoId).ToHashSet(StringComparer.Ordinal);
+                    var hayDesvio = consumoReal != null && seleccionado.Receta.Where(r => consumiblesIds.Contains(r.InsumoId)).Any(r =>
+                        consumoReal.TryGetValue(r.InsumoId, out var real) && real != r.DosisTeorica);
+                    if (hayDesvio && string.IsNullOrWhiteSpace(justificacionDesvio))
+                        throw new InvalidOperationException("Debe informar la justificación del desvío.");
+                    var realesConvertidos = consumoReal == null ? new List<StockService.ConsumoReceta>() : await _stockService.ConvertirConsumosReales(transaction, seleccionado.Receta, consumoReal);
+                    consumos = receta.Consumos.Select(c => realesConvertidos.FirstOrDefault(r => r.InsumoId == c.InsumoId) ?? c).Where(c => c.Cantidad > 0).ToList();
                 }
                 var siguiente = await LeerSiguienteServicio(transaction, actual, receta, consumos);
                 if (receta != null)
                 {
-                    await _stockService.ConsumirEnTransaccion(transaction, $"{lavadoId}_{servicioId}_servicio", consumos, "Consumo de servicio sin etapas", receta);
+                    await _stockService.ConsumirEnTransaccion(transaction, $"{lavadoId}_{servicioId}_servicio", consumos, justificacionDesvio ?? "Consumo de servicio sin etapas", receta);
                     StockService.EscribirReservasServicio(transaction, receta, true);
                 }
-                seleccionado.Estado = conEtapas && seleccionado.Etapas.Any(e => e.Estado == "Cancelado") ? "RealizadoParcialmente" : "Realizado";
+                var tieneRealizadas = seleccionado.Etapas.Any(e => e.Estado == "Realizado");
+                var tieneCanceladas = seleccionado.Etapas.Any(e => e.Estado == "Cancelado");
+                if (conEtapas && !tieneRealizadas && tieneCanceladas)
+                {
+                    seleccionado.Estado = "Cancelado";
+                    seleccionado.MotivoCancelacion = "Todas las etapas fueron canceladas";
+                }
+                else
+                {
+                    seleccionado.Estado = conEtapas && tieneCanceladas ? "RealizadoParcialmente" : "Realizado";
+                }
                 seleccionado.TiempoFinalizacion = DateTime.UtcNow;
                 AplicarSiguienteServicio(transaction, siguiente);
-                FinalizarLavadoSiCorresponde(actual);
+                var cerrado = FinalizarLavadoSiCorresponde(actual);
+                if (turnoRef != null && cerrado && actual.Estado is ESTADO_REALIZADO or ESTADO_REALIZADO_PARCIALMENTE)
+                {
+                    transaction.Update(turnoRef, "Estado", "Completado");
+                    AvanzarCapacidadCreacion(transaction, coordinator);
+                }
                 ValidarLavado(actual);
                 var datos = CrearDiccionarioLavado(actual);
                 transaction.Update(referencia, new Dictionary<string, object>
@@ -547,23 +849,28 @@ namespace Firebase.Services
             var referencia = _firestore.Collection(COLLECTION_NAME).Document(lavadoId);
             var consumidos = await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
             {
+                var coordinator = await transaction.GetSnapshotAsync(_firestore.Collection("coordinacion").Document("turnos"));
                 var snapshot = await transaction.GetSnapshotAsync(referencia);
                 if (!snapshot.Exists) throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
+                var turnoRef = await LeerTurnoParaFinalizacion(transaction, snapshot);
                 var lavado = MapearDocumentoALavado(snapshot);
                 var servicio = lavado.Servicios.FirstOrDefault(s => s.ServicioId == servicioId)
                     ?? throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
                 var etapa = servicio.Etapas.FirstOrDefault(e => e.EtapaId == etapaId)
                     ?? throw new ArgumentException("No se encontró la etapa en el servicio", nameof(etapaId));
                 if (etapa.Estado == "Realizado") return (Finalizada: false, Consumos: new List<StockService.ConsumoReceta>());
+                if (turnoRef != null && lavado.Estado != ESTADO_EN_PROCESO)
+                    throw new InvalidOperationException("El vínculo con el turno es inválido.");
                 if (etapa.Estado != "EnProceso") throw new InvalidOperationException("La etapa no está en proceso.");
                 if (consumoReal != null && consumoReal.Any(x => etapa.Receta.All(r => r.InsumoId != x.Key) || x.Value < 0))
                     throw new InvalidOperationException("El consumo real contiene insumos o cantidades inválidas.");
-                var hayDesvio = consumoReal != null && etapa.Receta.Any(r =>
+                var clave = $"{lavadoId}_{servicioId}_{etapaId}";
+                var receta = await _stockService.LeerRecetaServicio(transaction, clave, etapa.Receta, true);
+                var consumiblesIds = receta.Consumos.Select(c => c.InsumoId).ToHashSet(StringComparer.Ordinal);
+                var hayDesvio = consumoReal != null && etapa.Receta.Where(r => consumiblesIds.Contains(r.InsumoId)).Any(r =>
                     consumoReal.TryGetValue(r.InsumoId, out var real) && real != r.DosisTeorica);
                 if (hayDesvio && string.IsNullOrWhiteSpace(justificacionDesvio))
                     throw new InvalidOperationException("Debe informar la justificación del desvío.");
-                var clave = $"{lavadoId}_{servicioId}_{etapaId}";
-                var receta = await _stockService.LeerRecetaServicio(transaction, clave, etapa.Receta, true);
                 var realesConvertidos = consumoReal == null ? new List<StockService.ConsumoReceta>() : await _stockService.ConvertirConsumosReales(transaction, etapa.Receta, consumoReal);
                 var cantidades = receta.Consumos.Select(c => realesConvertidos.FirstOrDefault(r => r.InsumoId == c.InsumoId) ?? c).Where(c => c.Cantidad > 0).ToList();
                 var siguiente = servicio.Etapas.FirstOrDefault(e => e.Estado == "Pendiente");
@@ -601,7 +908,12 @@ namespace Firebase.Services
                         siguiente.TiempoInicio = DateTime.UtcNow;
                     }
                 }
-                FinalizarLavadoSiCorresponde(lavado);
+                var cerrado = FinalizarLavadoSiCorresponde(lavado);
+                if (turnoRef != null && cerrado && lavado.Estado is ESTADO_REALIZADO or ESTADO_REALIZADO_PARCIALMENTE)
+                {
+                    transaction.Update(turnoRef, "Estado", "Completado");
+                    AvanzarCapacidadCreacion(transaction, coordinator);
+                }
                 ValidarLavado(lavado);
                 var datos = CrearDiccionarioLavado(lavado);
                 transaction.Update(referencia, new Dictionary<string, object>
@@ -626,8 +938,10 @@ namespace Firebase.Services
             var referencia = _firestore.Collection(COLLECTION_NAME).Document(id);
             var serviciosIds = await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
             {
+                var coordinator = await transaction.GetSnapshotAsync(_firestore.Collection("coordinacion").Document("turnos"));
                 var snapshot = await transaction.GetSnapshotAsync(referencia);
                 if (!snapshot.Exists) throw new ArgumentException("No se encontró el lavado", nameof(id));
+                var turnoRef = await LeerTurnoParaFinalizacion(transaction, snapshot);
                 var lavado = MapearDocumentoALavado(snapshot);
                 var mermas = await _stockService.LeerMermasPendientes(transaction, ReferenciasConsumos(id, lavado.Servicios));
                 if (lavado.Estado == ESTADO_CANCELADO) { _stockService.EscribirMermasPendientes(transaction, mermas, motivo); return new List<string>(); }
@@ -643,6 +957,15 @@ namespace Firebase.Services
                 lavado.TiempoFinalizacion ??= DateTime.UtcNow;
                 lavado.Pago ??= new PagoLavado();
                 if (lavado.Pago.Estado != "Pagado") lavado.Pago.Estado = "Cancelado";
+                if (turnoRef != null)
+                {
+                    transaction.Update(turnoRef, new Dictionary<string, object>
+                    {
+                        ["Estado"] = "Cancelado",
+                        ["MotivoCancelacion"] = motivo
+                    });
+                    AvanzarCapacidadCreacion(transaction, coordinator);
+                }
                 ValidarLavado(lavado);
                 StockService.EscribirReservasServicio(transaction, reservas, true);
                 var datos = CrearDiccionarioLavado(lavado);
@@ -669,8 +992,10 @@ namespace Firebase.Services
             var referencia = _firestore.Collection(COLLECTION_NAME).Document(lavadoId);
             var sinEtapas = await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
             {
+                var coordinator = await transaction.GetSnapshotAsync(_firestore.Collection("coordinacion").Document("turnos"));
                 var snapshot = await transaction.GetSnapshotAsync(referencia);
                 if (!snapshot.Exists) throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
+                var turnoRef = await LeerTurnoParaFinalizacion(transaction, snapshot);
                 var actual = MapearDocumentoALavado(snapshot);
                 var seleccionado = actual.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
                 if (seleccionado == null) throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
@@ -690,6 +1015,24 @@ namespace Firebase.Services
                     actual.TiempoFinalizacion = DateTime.UtcNow;
                     actual.Pago ??= new PagoLavado();
                     if (actual.Pago.Estado != "Pagado") actual.Pago.Estado = "Cancelado";
+                    if (turnoRef != null)
+                    {
+                        transaction.Update(turnoRef, new Dictionary<string, object>
+                        {
+                            ["Estado"] = "Cancelado",
+                            ["MotivoCancelacion"] = "Todos los servicios fueron cancelados"
+                        });
+                        AvanzarCapacidadCreacion(transaction, coordinator);
+                    }
+                }
+                else
+                {
+                    var cerrado = FinalizarLavadoSiCorresponde(actual);
+                    if (turnoRef != null && cerrado && actual.Estado is ESTADO_REALIZADO or ESTADO_REALIZADO_PARCIALMENTE)
+                    {
+                        transaction.Update(turnoRef, "Estado", "Completado");
+                        AvanzarCapacidadCreacion(transaction, coordinator);
+                    }
                 }
                 ValidarLavado(actual);
                 var datos = CrearDiccionarioLavado(actual);
@@ -765,7 +1108,7 @@ namespace Firebase.Services
         /// <summary>
         /// Cancela una etapa específica dentro de un servicio.
         /// </summary>
-        public async Task CancelarEtapa(string lavadoId, string servicioId, string etapaId, string motivo)
+        public async Task CancelarEtapa(string lavadoId, string servicioId, string etapaId, string motivo, IReadOnlyDictionary<string, decimal>? consumosNoRegistrados = null)
         {
             if (string.IsNullOrWhiteSpace(motivo))
                 throw new ArgumentException("El motivo de cancelación es obligatorio", nameof(motivo));
@@ -773,22 +1116,92 @@ namespace Firebase.Services
             var referencia = _firestore.Collection(COLLECTION_NAME).Document(lavadoId);
             await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
             {
+                var coordinator = await transaction.GetSnapshotAsync(_firestore.Collection("coordinacion").Document("turnos"));
                 var snapshot = await transaction.GetSnapshotAsync(referencia);
                 if (!snapshot.Exists) throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
+                var turnoRef = await LeerTurnoParaFinalizacion(transaction, snapshot);
                 var lavado = MapearDocumentoALavado(snapshot);
                 var servicio = lavado.Servicios.FirstOrDefault(s => s.ServicioId == servicioId)
                     ?? throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
                 var etapa = servicio.Etapas.FirstOrDefault(e => e.EtapaId == etapaId)
                     ?? throw new ArgumentException("No se encontró la etapa en el servicio", nameof(etapaId));
                 if (etapa.Estado == "Cancelado") return;
+                if (etapa.Estado == "Realizado") throw new InvalidOperationException("No se puede cancelar una etapa que ya fue realizada.");
                 var receta = await _stockService.LeerRecetaServicio(transaction, $"{lavadoId}_{servicioId}_{etapaId}", etapa.Receta, true);
+                if (consumosNoRegistrados != null)
+                {
+                    var productosEtapa = etapa.Receta.Select(r => r.InsumoId).Where(id => !string.IsNullOrWhiteSpace(id)).ToHashSet(StringComparer.Ordinal);
+                    if (consumosNoRegistrados.Keys.Any(id => !productosEtapa.Contains(id)))
+                        throw new InvalidOperationException("El consumo adicional contiene productos que no pertenecen a la operación activa.");
+                    await _stockService.ConsumirMermaEnTransaccion(transaction, $"{lavadoId}_{servicioId}_{etapaId}", consumosNoRegistrados, motivo, receta);
+                }
                 StockService.EscribirReservasServicio(transaction, receta, true);
                 etapa.Estado = "Cancelado";
                 etapa.MotivoCancelacion = motivo;
                 etapa.TiempoFinalizacion = DateTime.UtcNow;
+
+                var pendientes = servicio.Etapas.Where(e => e.Estado is "Pendiente" or "EnProceso").ToList();
+                if (pendientes.Count == 0)
+                {
+                    var tieneRealizadas = servicio.Etapas.Any(e => e.Estado == "Realizado");
+                    var tieneCanceladas = servicio.Etapas.Any(e => e.Estado == "Cancelado");
+
+                    if (!tieneRealizadas && tieneCanceladas)
+                    {
+                        servicio.Estado = "Cancelado";
+                        servicio.MotivoCancelacion = "Todas las etapas fueron canceladas";
+                    }
+                    else if (tieneRealizadas && tieneCanceladas)
+                    {
+                        servicio.Estado = "RealizadoParcialmente";
+                    }
+                    else
+                    {
+                        servicio.Estado = "Realizado";
+                    }
+                    servicio.TiempoFinalizacion = DateTime.UtcNow;
+                }
+
+                if (lavado.Servicios.All(s => s.Estado == "Cancelado"))
+                {
+                    lavado.Estado = ESTADO_CANCELADO;
+                    lavado.MotivoCancelacion = "Todos los servicios fueron cancelados";
+                    lavado.TiempoFinalizacion = DateTime.UtcNow;
+                    lavado.Pago ??= new PagoLavado();
+                    if (lavado.Pago.Estado != "Pagado") lavado.Pago.Estado = "Cancelado";
+                    if (turnoRef != null)
+                    {
+                        transaction.Update(turnoRef, new Dictionary<string, object>
+                        {
+                            ["Estado"] = "Cancelado",
+                            ["MotivoCancelacion"] = "Todos los servicios fueron cancelados"
+                        });
+                        AvanzarCapacidadCreacion(transaction, coordinator);
+                    }
+                }
+                else
+                {
+                    var cerrado = FinalizarLavadoSiCorresponde(lavado);
+                    if (turnoRef != null && cerrado && lavado.Estado is ESTADO_REALIZADO or ESTADO_REALIZADO_PARCIALMENTE)
+                    {
+                        transaction.Update(turnoRef, "Estado", "Completado");
+                        AvanzarCapacidadCreacion(transaction, coordinator);
+                    }
+                }
+
                 ValidarLavado(lavado);
-                transaction.Update(referencia, "Servicios", CrearDiccionarioLavado(lavado)["Servicios"]);
+                var datos = CrearDiccionarioLavado(lavado);
+                transaction.Update(referencia, new Dictionary<string, object>
+                {
+                    ["Servicios"] = datos["Servicios"],
+                    ["Estado"] = datos["Estado"],
+                    ["MotivoCancelacion"] = datos["MotivoCancelacion"],
+                    ["TiempoFinalizacion"] = datos["TiempoFinalizacion"],
+                    ["Pago"] = datos["Pago"]
+                });
             });
+            if (consumosNoRegistrados != null)
+                await _stockService.EvaluarConsumos(consumosNoRegistrados.Where(x => x.Value > 0).Select(x => x.Key));
         }
 
         /// <summary>
@@ -796,38 +1209,28 @@ namespace Firebase.Services
         /// </summary>
         public async Task RegistrarPago(string lavadoId, decimal monto, string medioPago, string? notas = null)
         {
-            var lavado = await ObtenerLavado(lavadoId);
-            if (lavado == null)
-                throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
-
-            if (monto <= 0)
-                throw new ArgumentException("El monto debe ser mayor a 0", nameof(monto));
-
-            lavado.Pago ??= new PagoLavado();
-
+            var referencia = _firestore.Collection(COLLECTION_NAME).Document(lavadoId);
             var nuevoPago = new DetallePago
             {
-                Id = Guid.NewGuid().ToString(),
-                Monto = monto,
-                MedioPago = medioPago,
-                Fecha = DateTime.UtcNow,
-                Notas = notas
+                Id = Guid.NewGuid().ToString(), Monto = monto, MedioPago = medioPago,
+                Fecha = DateTime.UtcNow, Notas = notas
             };
-
-            lavado.Pago.Pagos.Add(nuevoPago);
-            lavado.Pago.MontoPagado = lavado.Pago.Pagos.Sum(p => p.Monto);
-
-            // Actualizar estado del pago
-            if (lavado.Pago.MontoPagado >= lavado.Precio)
+            await InsumosTransacciones.EjecutarAsync(_firestore, async transaction =>
             {
-                lavado.Pago.Estado = "Pagado";
-            }
-            else if (lavado.Pago.MontoPagado > 0)
-            {
-                lavado.Pago.Estado = "Parcial";
-            }
-
-            await ActualizarLavado(lavado);
+                var snapshot = await transaction.GetSnapshotAsync(referencia);
+                if (!snapshot.Exists)
+                    throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
+                var lavado = MapearDocumentoALavado(snapshot);
+                if (monto <= 0)
+                    throw new ArgumentException("El monto debe ser mayor a 0", nameof(monto));
+                lavado.Pago ??= new PagoLavado();
+                lavado.Pago.Pagos.Add(nuevoPago);
+                lavado.Pago.MontoPagado = lavado.Pago.Pagos.Sum(p => p.Monto);
+                if (lavado.Pago.MontoPagado >= lavado.Precio) lavado.Pago.Estado = "Pagado";
+                else if (lavado.Pago.MontoPagado > 0) lavado.Pago.Estado = "Parcial";
+                ValidarLavado(lavado);
+                transaction.Update(referencia, "Pago", CrearDiccionarioLavado(lavado)["Pago"]);
+            });
         }
 
         /// <summary>
@@ -840,7 +1243,10 @@ namespace Firebase.Services
             {
                 var snapshot = await transaction.GetSnapshotAsync(referencia);
                 if (!snapshot.Exists) throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
+                var turnoRef = await LeerTurnoParaFinalizacion(transaction, snapshot);
                 var lavado = MapearDocumentoALavado(snapshot);
+                if (turnoRef != null && lavado.Estado != ESTADO_EN_PROCESO)
+                    throw new InvalidOperationException("El vínculo con el turno es inválido.");
                 var servicio = lavado.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
                 if (servicio == null) throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
                 if (servicio.Estado == "EnProceso" && seleccion != null &&
@@ -866,7 +1272,10 @@ namespace Firebase.Services
             {
                 var snapshot = await transaction.GetSnapshotAsync(referencia);
                 if (!snapshot.Exists) throw new ArgumentException("No se encontró el lavado", nameof(lavadoId));
+                var turnoRef = await LeerTurnoParaFinalizacion(transaction, snapshot);
                 var lavado = MapearDocumentoALavado(snapshot);
+                if (turnoRef != null && lavado.Estado != ESTADO_EN_PROCESO)
+                    throw new InvalidOperationException("El vínculo con el turno es inválido.");
                 var servicio = lavado.Servicios.FirstOrDefault(s => s.ServicioId == servicioId)
                     ?? throw new ArgumentException("No se encontró el servicio en el lavado", nameof(servicioId));
                 var etapa = servicio.Etapas.FirstOrDefault(e => e.EtapaId == etapaId)
@@ -878,6 +1287,18 @@ namespace Firebase.Services
                 var etapaEnProceso = servicio.Etapas.FirstOrDefault(e => e.Estado == "EnProceso");
                 if (etapaEnProceso != null && etapaEnProceso.EtapaId != etapaId)
                     throw new InvalidOperationException($"No se puede iniciar esta etapa porque la etapa '{etapaEnProceso.Nombre}' está en proceso. Las etapas deben completarse en orden.");
+
+                // Las etapas de un mismo servicio no pueden ejecutarse fuera de orden:
+                // Todas las etapas precedentes deben estar en estado terminal ("Realizado" o "Cancelado").
+                var indiceEtapa = servicio.Etapas.IndexOf(etapa);
+                for (int i = 0; i < indiceEtapa; i++)
+                {
+                    var anterior = servicio.Etapas[i];
+                    if (anterior.Estado is not ("Realizado" or "Cancelado"))
+                    {
+                        throw new InvalidOperationException($"No se puede iniciar la etapa '{etapa.Nombre}' porque la etapa anterior '{anterior.Nombre}' aún no ha finalizado ni ha sido cancelada.");
+                    }
+                }
                 var receta = await _stockService.LeerRecetaServicio(transaction, $"{lavadoId}_{servicioId}_{etapaId}", etapa.Receta, false, seleccion: seleccion);
                 StockService.EscribirReservasServicio(transaction, receta, false);
                 etapa.Estado = "EnProceso";
@@ -901,12 +1322,6 @@ namespace Firebase.Services
         public async Task<ResultadoAsignacionCreacion> PrepararAsignacionCreacion(int? cantidadRequerida, IReadOnlySet<string>? excluidos = null)
         {
             var cantidad = cantidadRequerida ?? 1;
-            var config = await _configuracionService.ObtenerConfiguracion();
-            if (cantidad > config.EmpleadosMaximosPorLavado)
-            {
-                cantidad = config.EmpleadosMaximosPorLavado;
-            }
-
             var empleados = await AsignarEmpleadosAleatorios(cantidad, excluidos);
             return new ResultadoAsignacionCreacion(cantidad, empleados);
         }
@@ -919,7 +1334,7 @@ namespace Firebase.Services
             var empleadosActivos = await _personalService.ObtenerEmpleados(
                 estados: new List<string> { "Activo" },
                 pageNumber: 1,
-                pageSize: 100
+                pageSize: int.MaxValue
             );
 
             // Filtrar empleados que no tienen lavados activos
@@ -1095,8 +1510,9 @@ namespace Firebase.Services
                 }
                 else if (serviciosRealizados.Count == lavadoActualizado.Servicios.Count)
                 {
-                    // Todos los servicios realizados completamente
-                    lavadoActualizado.Estado = ESTADO_REALIZADO;
+                    // Todos los servicios realizados (completamente o parcialmente)
+                    var hayParciales = lavadoActualizado.Servicios.Any(s => s.Estado == "RealizadoParcialmente");
+                    lavadoActualizado.Estado = hayParciales ? ESTADO_REALIZADO_PARCIALMENTE : ESTADO_REALIZADO;
                 }
                 else if (serviciosRealizados.Any())
                 {
@@ -1308,7 +1724,8 @@ namespace Firebase.Services
                     ["InsumoId"] = r.InsumoId,
                     ["NombreInsumo"] = r.NombreInsumo,
                     ["UnidadMedida"] = r.UnidadMedida,
-                    ["DosisTeorica"] = (double)r.DosisTeorica
+                    ["DosisTeorica"] = (double)r.DosisTeorica,
+                    ["EsHerramienta"] = r.EsHerramienta
                 }).ToList(),
                 ["Etapas"] = s.Etapas.Select(e => new Dictionary<string, object>
                 {
@@ -1327,7 +1744,8 @@ namespace Firebase.Services
                         ["InsumoId"] = r.InsumoId,
                         ["NombreInsumo"] = r.NombreInsumo,
                         ["UnidadMedida"] = r.UnidadMedida,
-                        ["DosisTeorica"] = (double)r.DosisTeorica
+                        ["DosisTeorica"] = (double)r.DosisTeorica,
+                        ["EsHerramienta"] = r.EsHerramienta
                     }).ToList()
                 }).ToList()
             }).ToList();
@@ -1472,7 +1890,8 @@ namespace Firebase.Services
             InsumoId = receta.InsumoId,
             NombreInsumo = receta.NombreInsumo,
             UnidadMedida = receta.UnidadMedida,
-            DosisTeorica = receta.DosisTeorica
+            DosisTeorica = receta.DosisTeorica,
+            EsHerramienta = receta.EsHerramienta
         };
 
         private static List<RecetaInsumo> LeerReceta(IDictionary<string, object> map, string campo)
@@ -1488,7 +1907,8 @@ namespace Firebase.Services
                 InsumoId = GetDictValue(x, "InsumoId")?.ToString() ?? string.Empty,
                 NombreInsumo = GetDictValue(x, "NombreInsumo")?.ToString() ?? string.Empty,
                 UnidadMedida = GetDictValue(x, "UnidadMedida")?.ToString() ?? string.Empty,
-                DosisTeorica = GetDictValue(x, "DosisTeorica") == null ? 0m : Convert.ToDecimal(GetDictValue(x, "DosisTeorica"))
+                DosisTeorica = GetDictValue(x, "DosisTeorica") == null ? 0m : Convert.ToDecimal(GetDictValue(x, "DosisTeorica")),
+                EsHerramienta = GetDictValue(x, "EsHerramienta") is bool b && b
             }).ToList();
         }
 

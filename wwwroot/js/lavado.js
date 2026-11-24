@@ -480,8 +480,7 @@
 
             window.lavadoData.empleadosInfo = {
                 totalActivos: empleadosData.totalActivos,
-                totalDisponibles: empleadosData.totalDisponibles,
-                empleadosMaximosPorLavado: empleadosData.empleadosMaximosPorLavado
+                totalDisponibles: empleadosData.totalDisponibles
             };
 
             // Mostrar información al usuario
@@ -516,72 +515,6 @@
         window.lavadoData.clienteId = id;
         window.lavadoData.clienteNombre = nombre;
     };
-
-    async function cargarInfoEmpleados() {
-        try {
-            const response = await window.Peticiones.enviar('/Lavados/ObtenerEmpleadosDisponibles');
-            const data = await response.json();
-
-            window.lavadoData.empleadosInfo = {
-                totalActivos: data.totalActivos,
-                totalDisponibles: data.totalDisponibles,
-                empleadosMaximosPorLavado: data.empleadosMaximosPorLavado
-            };
-
-            // Actualizar el input de cantidad de empleados
-            const cantidadEmpleadosInput = document.getElementById('cantidadEmpleados');
-            if (cantidadEmpleadosInput) {
-                const maxEmpleados = Math.min(
-                    data.totalDisponibles,
-                    data.empleadosMaximosPorLavado
-                );
-
-                cantidadEmpleadosInput.max = maxEmpleados;
-                cantidadEmpleadosInput.min = 1;
-
-                if (parseInt(cantidadEmpleadosInput.value) > maxEmpleados) {
-                    cantidadEmpleadosInput.value = maxEmpleados;
-                }
-
-                // Agregar validación en tiempo real
-                cantidadEmpleadosInput.addEventListener('input', validarCantidadEmpleados);
-                cantidadEmpleadosInput.addEventListener('change', validarCantidadEmpleados);
-            }
-
-            // Mostrar información al usuario
-            const infoDiv = document.getElementById('empleadosInfo');
-            if (infoDiv) {
-                infoDiv.innerHTML = `
-                    <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                        <p>Empleados disponibles: <span class="font-medium text-blue-600 dark:text-blue-400">${data.totalDisponibles}</span> de ${data.totalActivos} activos</p>
-                        <p>Máximo por lavado: <span class="font-medium">${data.empleadosMaximosPorLavado}</span></p>
-                    </div>
-                `;
-            }
-        } catch (e) {
-            console.error('Error cargando info de empleados:', e);
-        }
-    }
-
-    function validarCantidadEmpleados() {
-        const input = document.getElementById('cantidadEmpleados');
-        if (!input || !window.lavadoData.empleadosInfo) return;
-
-        const valor = parseInt(input.value);
-        const maxEmpleados = Math.min(
-            window.lavadoData.empleadosInfo.totalDisponibles,
-            window.lavadoData.empleadosInfo.empleadosMaximosPorLavado
-        );
-
-        if (valor > maxEmpleados) {
-            input.value = maxEmpleados;
-            showTableMessage('error', `Solo hay ${window.lavadoData.empleadosInfo.totalDisponibles} empleados disponibles. Máximo permitido por lavado: ${window.lavadoData.empleadosInfo.empleadosMaximosPorLavado}`);
-        }
-
-        if (valor < 1) {
-            input.value = 1;
-        }
-    }
 
     async function cargarVehiculosCliente(clienteId) {
         const vehiculosSection = document.getElementById('vehiculosSection');
@@ -746,6 +679,33 @@
         if (paqueteExistente) {
             showTableMessage('error', 'Solo se puede seleccionar un paquete por lavado. Elimine el paquete actual primero.');
             event.target.value = '';
+            return;
+        }
+
+        // Validar si algún servicio del paquete genera conflicto con los servicios ya seleccionados
+        const serviciosActuales = window.lavadoData.serviciosPorVehiculo[vehiculoId] || [];
+        const tiposActuales = serviciosActuales.map(s => s.tipo);
+        const idsActuales = new Set(serviciosActuales.map(s => s.id));
+        let valid = Array.isArray(paquete.servicios) && paquete.servicios.length > 0;
+        const nuevosTipos = [...tiposActuales];
+        for (const s of paquete.servicios || []) {
+            const servicioCompleto = window.lavadoData.serviciosDisponibles[vehiculoId]?.find(serv => serv.id === s.id);
+            if (!servicioCompleto || idsActuales.has(s.id) || nuevosTipos.includes(servicioCompleto.tipo)) {
+                valid = false;
+                break;
+            }
+            idsActuales.add(s.id);
+            nuevosTipos.push(servicioCompleto.tipo);
+        }
+
+        if (!valid) {
+            const errorMsg = 'No se puede agregar el paquete completo por servicios duplicados, incompatibles o ya seleccionados.';
+            if (typeof window.Notificaciones !== 'undefined' && window.Notificaciones.mostrar) {
+                window.Notificaciones.mostrar(errorMsg, 'error');
+            } else {
+                showTableMessage('error', errorMsg);
+            }
+            if (event && event.target) event.target.value = '';
             return;
         }
 
@@ -1279,14 +1239,14 @@
         document.getElementById('pagoTotal').textContent = window.SiteModule.formatCurrency(precioTotal);
         document.getElementById('pagoPagado').textContent = window.SiteModule.formatCurrency(pagado);
 
-        const restante = precioTotal - pagado;
+        const restante = Math.round((precioTotal - pagado) * 100) / 100;
         document.getElementById('pagoRestante').textContent = window.SiteModule.formatCurrency(restante);
 
         // Configurar el input para no permitir más del restante
         const montoInput = document.getElementById('montoInput');
-        montoInput.value = restante.toFixed(2);
-        montoInput.max = restante.toFixed(2);
-        montoInput.dataset.restante = restante.toFixed(2);
+        montoInput.value = restante === 0 ? '0.00' : (restante % 1 === 0 ? restante : restante.toFixed(2));
+        montoInput.max = restante;
+        montoInput.dataset.restante = restante;
 
         document.getElementById('notasPago').value = '';
 
@@ -1296,13 +1256,24 @@
     window.validarMontoPago = function () {
         const montoInput = document.getElementById('montoInput');
         const montoError = document.getElementById('montoError');
-        const restante = parseFloat(montoInput.dataset.restante || 0);
-        const monto = parseFloat(montoInput.value || 0);
+        if (!montoInput || !montoError) return true;
+        const restante = parseFloat(montoInput.dataset.restante || '0');
+        const monto = parseFloat(montoInput.value || '0');
 
         if (monto > restante) {
-            montoInput.value = restante.toFixed(2);
+            montoInput.value = restante === 0 ? '0.00' : (restante % 1 === 0 ? restante : restante.toFixed(2));
+            montoError.textContent = 'El monto no puede exceder el restante';
             montoError.classList.remove('hidden');
             setTimeout(() => montoError.classList.add('hidden'), 3000);
+            return false;
+        } else if (monto <= 0) {
+            montoError.textContent = 'El monto debe ser mayor a 0';
+            montoError.classList.remove('hidden');
+            setTimeout(() => montoError.classList.add('hidden'), 3000);
+            return false;
+        } else {
+            montoError.classList.add('hidden');
+            return true;
         }
     };
 
@@ -1336,27 +1307,52 @@
         const consumoFields = document.getElementById('consumoRealFields');
         const consumoJson = document.getElementById('consumoRealJson');
         const justificacion = document.getElementById('justificacionDesvio');
-        if (consumoFields) consumoFields.classList.toggle('hidden', tipo !== 'etapa');
+        const consumoContenedor = document.getElementById('consumoRealContenedor');
+        const herramientasSeccion = document.getElementById('herramientasUtilizadasSeccion');
+        const herramientasList = document.getElementById('herramientasUtilizadasList');
+
         if (consumoJson) consumoJson.value = '';
         if (justificacion) { justificacion.value = ''; justificacion.required = false; }
+
+        let receta = [];
+        try { receta = JSON.parse(sourceButton?.dataset?.receta || '[]'); } catch { receta = []; }
+
+        const consumibles = receta.filter(item => !item.EsHerramienta && !item.esHerramienta);
+        const herramientas = receta.filter(item => item.EsHerramienta || item.esHerramienta);
+
+        const aplicaReceta = (tipo === 'etapa' || tipo === 'servicio') && (consumibles.length > 0 || herramientas.length > 0);
+        if (consumoFields) consumoFields.classList.toggle('hidden', !aplicaReceta);
+        if (consumoContenedor) consumoContenedor.classList.toggle('hidden', consumibles.length === 0);
+        if (herramientasSeccion) herramientasSeccion.classList.toggle('hidden', herramientas.length === 0);
+
         const inputs = document.getElementById('consumoRealInputs');
+        const syncJson = () => {
+            const result = {};
+            const fields = document.querySelectorAll('.consumo-real-input');
+            fields.forEach(field => result[field.dataset.insumoId] = Number(field.value || 0));
+            if (consumoJson) consumoJson.value = JSON.stringify(result);
+            if (justificacion) justificacion.required = Array.from(fields).some(field => Number(field.value || 0) !== Number(field.dataset.teorica));
+        };
+
         if (inputs) {
-            let receta = [];
-            try { receta = JSON.parse(sourceButton?.dataset.receta || '[]'); } catch { receta = []; }
-            inputs.innerHTML = receta.map(item =>
+            inputs.innerHTML = consumibles.map(item =>
                 `<label class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                     <span>${escapeHtml(item.NombreInsumo || item.InsumoId)} (${escapeHtml(item.UnidadMedida === 'l' ? 'Litro (L)' : item.UnidadMedida || '')})</span>
                     <input type="number" min="0" step="any" value="${item.DosisTeorica}" data-insumo-id="${escapeHtml(item.InsumoId)}" data-teorica="${item.DosisTeorica}" class="consumo-real-input w-28 rounded-lg border border-gray-300 p-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
                 </label>`).join('');
-            inputs.querySelectorAll('.consumo-real-input').forEach(input => input.addEventListener('input', () => {
-                const result = {};
-                document.querySelectorAll('.consumo-real-input').forEach(field => result[field.dataset.insumoId] = Number(field.value || 0));
-                if (consumoJson) consumoJson.value = JSON.stringify(result);
-                if (justificacion) justificacion.required = Array.from(inputs.querySelectorAll('.consumo-real-input')).some(field => Number(field.value || 0) !== Number(field.dataset.teorica));
-            }));
-            const result = {};
-            inputs.querySelectorAll('.consumo-real-input').forEach(field => result[field.dataset.insumoId] = Number(field.value || 0));
-            if (consumoJson) consumoJson.value = JSON.stringify(result);
+            inputs.querySelectorAll('.consumo-real-input').forEach(input => input.addEventListener('input', syncJson));
+        }
+
+        if (tipo === 'etapa' || aplicaReceta) {
+            syncJson();
+        }
+
+        if (herramientasList) {
+            herramientasList.innerHTML = herramientas.map(h =>
+                `<div class="flex justify-between items-center bg-gray-50 dark:bg-gray-700/50 p-2 rounded border border-gray-200 dark:border-gray-600">
+                    <span class="font-medium">${escapeHtml(h.NombreInsumo || h.InsumoId)}</span>
+                    <span class="text-gray-500 dark:text-gray-400">${h.DosisTeorica} ${escapeHtml(h.UnidadMedida || 'unidad')}</span>
+                </div>`).join('');
         }
 
         const title = tipo === 'lavado' ? 'Finalizar Lavado' :
@@ -1449,6 +1445,16 @@
             formPago.addEventListener('submit', async function (e) {
                 e.preventDefault();
 
+                const montoInput = document.getElementById('montoInput');
+                const restante = parseFloat(montoInput?.dataset?.restante || '0');
+                const monto = parseFloat(montoInput?.value || '0');
+
+                if (monto <= 0 || monto > restante) {
+                    if (window.validarMontoPago) window.validarMontoPago();
+                    showTableMessage('error', 'El monto no puede ser menor o igual a 0 ni superar el saldo pendiente.');
+                    return;
+                }
+
                 const formData = new FormData(this);
 
                 try {
@@ -1510,21 +1516,25 @@
 
                 formData.append('motivo', motivo);
 
-                if (tipo !== 'etapa') {
-                    try {
-                        const params = new URLSearchParams({ lavadoId });
-                        if (tipo === 'servicio') params.set('servicioId', servicioId);
-                        const consulta = await window.Peticiones.enviar('/Lavados/RecursosCancelacion?' + params);
-                        if (!consulta.ok) throw new Error('No se pudieron consultar los consumos.');
-                        const recursos = await consulta.json();
-                        if (!recursos.success) throw new Error('No se pudieron consultar los consumos.');
+                try {
+                    const params = new URLSearchParams({ lavadoId });
+                    if (tipo === 'servicio') params.set('servicioId', servicioId);
+                    if (tipo === 'etapa') {
+                        params.set('servicioId', servicioId);
+                        params.set('etapaId', etapaId);
+                    }
+                    const consulta = await window.Peticiones.enviar('/Lavados/RecursosCancelacion?' + params);
+                    if (!consulta.ok) throw new Error('No se pudieron consultar los consumos.');
+                    const recursos = await consulta.json();
+                    if (!recursos.success) throw new Error('No se pudieron consultar los consumos.');
+                    if (recursos.productos && recursos.productos.length > 0) {
                         cerrarModal('cancelarModal');
                         suspendido = true;
                         const consumos = await window.LavadoInsumos.consumos(recursos);
                         if (consumos === null) { abrirModal('cancelarModal'); suspendido = false; return; }
                         formData.append('consumosNoRegistradosJson', JSON.stringify(consumos));
-                    } catch (error) { showTableMessage('error', error.message); return; }
-                }
+                    }
+                } catch (error) { showTableMessage('error', error.message); return; }
 
                 if (tipo === 'lavado') {
                     url = '/Lavados/CancelarLavado';
@@ -1579,7 +1589,7 @@
                 const servicioId = document.getElementById('finalizarServicioId').value;
                 const etapaId = document.getElementById('finalizarEtapaId').value;
 
-                if (tipo === 'etapa') {
+                if (tipo === 'etapa' || tipo === 'servicio') {
                     const fields = document.querySelectorAll('.consumo-real-input');
                     if (Array.from(fields).some(field => field.value !== '' && (!Number.isFinite(Number(field.value)) || Number(field.value) < 0))) { showTableMessage('error', 'Cantidad inválida.'); return; }
                     const justification = document.getElementById('justificacionDesvio');
@@ -1595,6 +1605,10 @@
                     url = '/Lavados/FinalizarServicio';
                     formData.append('lavadoId', lavadoId);
                     formData.append('servicioId', servicioId);
+                    const cr = document.getElementById('consumoRealJson')?.value;
+                    if (cr) formData.append('consumoRealJson', cr);
+                    const jd = document.getElementById('justificacionDesvio')?.value;
+                    if (jd) formData.append('justificacionDesvio', jd);
                 } else {
                     url = '/Lavados/FinalizarEtapa';
                     formData.append('lavadoId', lavadoId);

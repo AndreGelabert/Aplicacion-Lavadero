@@ -70,7 +70,7 @@
         },
         async consumos(recursos) {
             const registrados = recursos.registrados.map(x => `<li class="flex justify-between gap-4"><span>${escape(x.nombre)}</span><span>${escape(x.cantidad)} ${escape(unit(x.unidad))}</span></li>`).join('') || '<li>Ninguno</li>';
-            const productos = recursos.productos.map((p, i) => `<label class="flex items-center justify-between gap-3 text-sm text-gray-900 dark:text-white"><span>${escape(p.nombre)} (${escape(unit(p.unidad))})</span><input data-consumo="${i}" type="number" min="0" step="any" value="0" class="w-28 rounded-lg border border-gray-300 p-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"></label>`).join('');
+            const productos = recursos.productos.map((p, i) => `<label class="flex items-center justify-between gap-3 text-sm text-gray-900 dark:text-white"><span>${escape(p.nombre)} (${escape(unit(p.unidad))})</span><input data-consumo="${i}" type="number" min="0" step="any" placeholder="0.00" value="0" class="w-28 rounded-lg border border-gray-300 p-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"></label>`).join('');
             return open('Consumo al cancelar', `<div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-700"><h4 class="font-medium text-gray-900 dark:text-white">Ya registrado (no editable)</h4><ul class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-300">${registrados}</ul></div><h4 class="font-medium text-gray-900 dark:text-white">Consumo adicional no registrado</h4><p class="text-sm text-gray-500 dark:text-gray-400">Deje en cero si no hubo consumo adicional.</p>${productos}`, content => {
                 const result = {};
                 content.querySelectorAll('[data-consumo]').forEach(input => {
