@@ -1,0 +1,199 @@
+@model List<Firebase.Models.TurnoConsultaViewModel>
+@{
+    ViewData["Title"] = "Turnos";
+    var puedeCrear = User.TienePermiso("Turnos.Crear");
+    var puedeConsultar = User.TienePermiso("Turnos.Consultar");
+    var puedeEditar = puedeConsultar && User.TienePermiso("Turnos.Modificar");
+}
+<section class="bg-gray-50 dark:bg-gray-900">
+    <div class="mx-auto bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-visible">
+        <!-- Encabezado -->
+        <div class="p-2 flex justify-between items-center rounded-t border-b dark:border-gray-600">
+            <h1 class="text-2xl md:block font-semibold text-gray-900 dark:text-white">
+                Turnos
+            </h1>
+            <!-- Boton de ayuda -->
+            <button data-popover-target="popover-turnos" data-popover-trigger="click" type="button" class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-2 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800" aria-label="Ayuda">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"></path>
+                </svg>
+            </button>
+            <div data-popover id="popover-turnos" role="tooltip" class="absolute z-10 invisible inline-block w-64 text-sm text-gray-500 transition-opacity duration-300 bg-white border border-gray-200 rounded-lg shadow-xs opacity-0 dark:text-gray-400 dark:border-gray-600 dark:bg-gray-800">
+                <div class="px-3 py-2 bg-gray-100 border-b border-gray-200 rounded-t-lg dark:border-gray-600 dark:bg-gray-700">
+                    <h3 class="font-semibold text-gray-900 dark:text-white">Ayuda</h3>
+                </div>
+                <div class="px-3 py-2">
+                    <p>En esta página puedes ver, reservar y gestionar los turnos programados del lavadero.</p>
+                </div>
+                <div data-popper-arrow></div>
+            </div>
+        </div>
+
+        <!-- Formulario de Registro en Acordeón (Calcomanía de Lavados) -->
+        @if (puedeCrear || puedeEditar)
+        {
+        <div id="accordion-flush" data-accordion="collapse" data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white" data-inactive-classes="text-gray-500 dark:text-gray-400">
+            <h2 id="accordion-flush-heading-1">
+                <button type="button" class="flex items-center justify-between w-full p-2 py-5 font-medium rtl:text-right text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400 gap-3" data-accordion-target="#accordion-flush-body-1" aria-expanded="false" aria-controls="accordion-flush-body-1">
+                    <div class="flex items-center gap-2">
+                        <span id="form-title">Registrando un Turno</span>
+                        <svg data-accordion-icon class="w-3 h-3 rotate-180 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5" />
+                        </svg>
+                    </div>
+                </button>
+            </h2>
+            <div id="accordion-flush-body-1" class="hidden" aria-labelledby="accordion-flush-heading-1">
+                <div class="py-2 border-b border-gray-200 dark:border-gray-700">
+                    <div id="turno-form-container" data-puede-crear="@puedeCrear.ToString().ToLowerInvariant()" data-editar="@Context.Request.Query["editar"]">
+                        @await Html.PartialAsync("_TurnoForm", new Firebase.Models.TurnoWebForm { FormIdentity = (ViewBag.FormIdentity as string) ?? "" })
+                    </div>
+                </div>
+            </div>
+        </div>
+        }
+
+        <!-- Encabezado de la tabla y Filtros -->
+        @if (puedeConsultar)
+        {
+        <div class="flex flex-col md:flex-row items-center justify-between space-y-3 md:space-y-0 md:space-x-4 p-4">
+            <div class="w-full md:w-1/2">
+                <form class="flex items-center" onsubmit="return false;">
+                    <label for="simple-search" class="sr-only">Buscar</label>
+                    <div class="relative w-full md:w-96">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg aria-hidden="true" class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <input type="text" id="simple-search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Buscar por cliente, patente, estado...">
+                    </div>
+                </form>
+            </div>
+            <div class="w-full md:w-auto flex flex-col md:flex-row space-y-2 md:space-y-0 items-stretch md:items-center justify-end md:space-x-3 flex-shrink-0">
+                <div class="flex items-center space-x-3 w-full md:w-auto gap-2">
+                    <!-- Boton de Filtro -->
+                    <button id="filterDropdownButton" data-dropdown-toggle="filterDropdown" data-dropdown-placement="bottom-end" class="w-full md:w-auto flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700" type="button">
+                        <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="h-4 w-4 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
+                        </svg>
+                        Filtros
+                        <svg class="-mr-1 ml-1.5 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                        </svg>
+                    </button>
+                    <!-- Dropdown de Filtro (Calcomanía exacta de Lavados) -->
+                    <div id="filterDropdown" class="z-50 hidden bg-white rounded-lg shadow-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+                        <form method="get" asp-action="Index" id="filterForm" class="p-4">
+                            <input type="hidden" name="pageNumber" value="1" />
+                            <input type="hidden" name="sortBy" value="@ViewBag.SortBy" />
+                            <input type="hidden" name="sortOrder" value="@ViewBag.SortOrder" />
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-w-[300px]">
+                                <!-- Estado -->
+                                <div>
+                                    <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                        Estado
+                                    </h6>
+                                    <div class="space-y-2 text-sm" id="turnoEstadoFiltros">
+                                        @{
+                                            var estadosDisponibles = new Dictionary<string, string>
+                                            {
+                                                { "Pendiente", "Pendiente" },
+                                                { "EnProceso", "En Proceso" },
+                                                { "Completado", "Completado" },
+                                                { "Cancelado", "Cancelado" },
+                                                { "Ausente", "Ausente" }
+                                            };
+                                            var estadosSeleccionados = (ViewBag.FiltroEstado as List<string>) ?? estadosDisponibles.Keys.ToList();
+                                        }
+                                        @foreach (var estado in estadosDisponibles)
+                                        {
+                                            <label class="flex items-center">
+                                                <input type="checkbox" name="filtroEstado" value="@estado.Key"
+                                                       @(estadosSeleccionados.Contains(estado.Key) ? "checked" : "")
+                                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                <span class="ml-2 text-gray-900 dark:text-gray-100">@estado.Value</span>
+                                            </label>
+                                        }
+                                    </div>
+                                    <div class="mt-3 pt-2 border-t border-gray-100 dark:border-gray-600">
+                                        <button type="button" id="limpiarFiltrosTurno" class="text-xs text-blue-600 hover:underline dark:text-blue-400">
+                                            Marcar todos
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Rango de Fechas -->
+                                <div>
+                                    <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                        Rango de Fechas
+                                    </h6>
+                                    <div class="space-y-2">
+                                        <div>
+                                            <label for="fechaDesde" class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Desde:</label>
+                                            <input type="date" id="fechaDesde" name="fechaDesde" 
+                                                   value="@(ViewBag.FechaDesde?.ToString("yyyy-MM-dd") ?? "")"
+                                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        </div>
+                                        <div>
+                                            <label for="fechaHasta" class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Hasta:</label>
+                                            <input type="date" id="fechaHasta" name="fechaHasta" 
+                                                   value="@(ViewBag.FechaHasta?.ToString("yyyy-MM-dd") ?? "")"
+                                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Rango de Precios -->
+                                <div>
+                                    <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
+                                        Rango de Precios
+                                    </h6>
+                                    <div class="space-y-2">
+                                        <div>
+                                            <label for="precioDesde" class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Precio mínimo:</label>
+                                            <input type="number" id="precioDesde" name="precioDesde" step="any" min="0" max="999999999"
+                                                   value="@(((decimal?)ViewBag.PrecioDesde)?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+                                                   placeholder="0.00"
+                                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        </div>
+                                        <div>
+                                            <label for="precioHasta" class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Precio máximo:</label>
+                                            <input type="number" id="precioHasta" name="precioHasta" step="any" min="0" max="999999999"
+                                                   value="@(((decimal?)ViewBag.PrecioHasta)?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+                                                   placeholder="0.00"
+                                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Botones de acción -->
+                            <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
+                                <button type="button" onclick="clearTurnoFilters()"
+                                        class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
+                                    Limpiar filtros
+                                </button>
+                                <button type="submit"
+                                        class="px-6 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300">
+                                    Aplicar Filtros
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        }
+
+        <!-- Contenedor de la Tabla -->
+        <div id="turno-table-container">
+            @await Html.PartialAsync("_TurnoTable", Model)
+        </div>
+    </div>
+</section>
+<script src="~/js/turno-filtros.js" asp-append-version="true"></script>
+@if (puedeConsultar && User.TienePermiso("Turnos.Cancelar") && Model.Any())
+{
+    @await Html.PartialAsync("_TurnoCancelacion", Model.First())
+    <script src="~/js/turno-cancelacion.js" asp-append-version="true"></script>
+}
