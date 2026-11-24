@@ -15,7 +15,34 @@ public partial class WhatsAppFlowService
     {
         var opcion = input.Trim().ToLowerInvariant();
 
-        if (opcion.Contains("vehiculo") || opcion == "vehiculos")
+        if (opcion == "ofertas_turno" || opcion == "ofertas turno")
+        {
+            await IniciarOfertasTurno(phoneNumber, session);
+        }
+        else if (opcion == "reservar_turno" || opcion == "reservar turno")
+        {
+            await IniciarReservaTurno(phoneNumber, session);
+        }
+        else if (opcion == "mis_turnos" || opcion == "mis turnos" || opcion == "turnos")
+        {
+            if (string.IsNullOrWhiteSpace(session.ClienteId) || session.ClienteId.Contains('/'))
+            {
+                await _whatsAppService.SendTextMessage(phoneNumber, "❌ Error: No se pudo identificar tu usuario.");
+                return;
+            }
+            var turnos = _testTurnos != null
+                ? await _testTurnos(session.ClienteId, DateTime.UtcNow)
+                : await (_turnoConsulta ?? throw new InvalidOperationException("Consulta de turnos no disponible")).ProximosDeCliente(session.ClienteId, DateTime.UtcNow);
+            var mensaje = turnos.Count == 0 ? "📭 No tienes próximos turnos." :
+                "📅 *Tus próximos turnos:*\n\n" + string.Join("\n", turnos.Take(10).Select(t => "• " + Firebase.Utils.TimeZoneHelper.FormatearFechaHoraApp(t.InicioUtc))) +
+                (turnos.Count > 10 ? "\nMostrando los primeros 10 turnos." : "");
+            await _whatsAppService.SendTextMessage(phoneNumber, mensaje);
+        }
+        else if (opcion == "cancelar_turno" || opcion == "cancelar turno")
+        {
+            await IniciarCancelacionTurno(phoneNumber, session);
+        }
+        else if (opcion.Contains("vehiculo") || opcion == "vehiculos")
         {
             // Opción: Gestionar vehículos
             await MostrarMenuVehiculos(phoneNumber, session);
@@ -51,6 +78,101 @@ public partial class WhatsAppFlowService
                 "⚠️ Opción no reconocida.\n\n" +
                 "Por favor, selecciona una de las opciones del menú o escribe *MENÚ* para verlas nuevamente.");
         }
+    }
+
+    private async Task IniciarCancelacionTurno(string phone, WhatsAppSession session)
+    {
+        if (string.IsNullOrWhiteSpace(session.ClienteId) || session.ClienteId.Contains('/') ||
+            string.IsNullOrEmpty(session.IncarnationId) || _turnoConsulta == null || _firestore == null)
+        {
+            await _whatsAppService.SendTextMessage(phone, "⚠️ No se puede iniciar la cancelación. Reinicia la conversación.");
+            return;
+        }
+        var turnos = (await _turnoConsulta.ProximosDeCliente(session.ClienteId, DateTime.UtcNow))
+            .Where(t => t.ClienteId == session.ClienteId && !string.IsNullOrWhiteSpace(t.Id) && !t.Id.Contains('/'))
+            .Take(10).ToList();
+        if (turnos.Count == 0) { await _whatsAppService.SendTextMessage(phone, "📭 No tienes próximos turnos."); return; }
+        var identificados = new List<(Turno Turno, string Identificador)>();
+        foreach (var turno in turnos)
+        {
+            var identificador = await IdentificadorCancelacion(turno, session.ClienteId);
+            if (identificador != null) identificados.Add((turno, identificador));
+        }
+        if (identificados.Count != turnos.Count || identificados.Select(x => x.Identificador).Distinct().Count() != identificados.Count)
+        {
+            await _whatsAppService.SendTextMessage(phone, "⚠️ No se pueden distinguir tus turnos. Contacta al lavadero para cancelarlos.");
+            return;
+        }
+        var choices = identificados.ToDictionary(_ => Guid.NewGuid().ToString("N"), x => x.Turno.Id);
+        if (!await _sessionService.TryCancellationTransition(phone, session, "TURNO_SELECCIONAR", null, null, choices))
+        { await _whatsAppService.SendTextMessage(phone, "⚠️ La sesión cambió. Intenta nuevamente."); return; }
+        var rows = choices.Zip(identificados, (choice, item) => (choice.Key, Firebase.Utils.TimeZoneHelper.FormatearFechaHoraApp(item.Turno.InicioUtc), item.Identificador)).ToList();
+        await _whatsAppService.SendListMessage(phone, "Selecciona el turno que deseas cancelar:", "Ver turnos", "Tus turnos", rows);
+    }
+
+    private async Task HandleSeleccionCancelacion(string phone, WhatsAppSession session, string input)
+    {
+        if (session.CancellationChoices == null || !session.CancellationChoices.TryGetValue(input, out var id) ||
+            string.IsNullOrWhiteSpace(id) || id.Contains('/'))
+        { await _whatsAppService.SendTextMessage(phone, "⚠️ Selección inválida. Reinicia la conversación."); return; }
+        if (_firestore == null || string.IsNullOrWhiteSpace(session.ClienteId)) return;
+        var appointment = await _firestore.Collection("turnos").Document(id).GetSnapshotAsync();
+        if (!appointment.Exists || !appointment.UpdateTime.HasValue ||
+            !appointment.TryGetValue<string>("ClienteId", out var owner) || owner != session.ClienteId ||
+            !appointment.TryGetValue<string>("Estado", out var state) || state != "Pendiente" ||
+            !appointment.TryGetValue<DateTime>("InicioUtc", out var start) ||
+            !appointment.TryGetValue<DateTime>("FinUtc", out var end) || end <= start)
+        { await _whatsAppService.SendTextMessage(phone, "⚠️ El turno ya no está disponible. Intenta nuevamente."); return; }
+        var identificador = await IdentificadorCancelacion(appointment.ConvertTo<Turno>(), session.ClienteId);
+        if (identificador == null)
+        { await _whatsAppService.SendTextMessage(phone, "⚠️ No se puede identificar el turno. Contacta al lavadero."); return; }
+        var token = Guid.NewGuid().ToString("N");
+        if (!await _sessionService.TryCancellationTransition(phone, session, "TURNO_CONFIRMAR", token, id, null, appointment.UpdateTime))
+        { await _whatsAppService.SendTextMessage(phone, "⚠️ La sesión cambió. Intenta nuevamente."); return; }
+        await _whatsAppService.SendButtonMessage(phone, $"¿Confirmas la cancelación del turno del {Firebase.Utils.TimeZoneHelper.FormatearFechaHoraApp(start)} hasta {Firebase.Utils.TimeZoneHelper.FormatearFechaHoraApp(end)} ({identificador})?",
+
+            new List<(string id, string title)> { ("confirmar_" + token, "Sí, cancelar"), ("rechazar_" + token, "No") });
+    }
+
+    private async Task<string?> IdentificadorCancelacion(Turno turno, string owner)
+    {
+        var id = turno.Vehiculos?.Count == 1 ? turno.Vehiculos[0]?.VehiculoId : null;
+        if (!string.IsNullOrWhiteSpace(id) && !id.Contains('/'))
+        {
+            var vehicle = await _firestore!.Collection("vehiculos").Document(id).GetSnapshotAsync();
+            if (vehicle.Exists &&
+                ((vehicle.TryGetValue<string>("ClienteId", out var principal) && principal == owner) ||
+                 (vehicle.TryGetValue<List<string>>("ClientesIds", out var owners) && owners.Contains(owner))) &&
+                vehicle.TryGetValue<string>("Patente", out var plate) &&
+                System.Text.RegularExpressions.Regex.IsMatch(plate, @"^[a-zA-Z0-9 -]{1,60}$"))
+                return "Patente: " + plate;
+        }
+        // Only expose a bounded, persisted appointment identifier belonging to the session owner.
+        return turno.ClienteId == owner && System.Text.RegularExpressions.Regex.IsMatch(turno.Id ?? "", @"^[a-zA-Z0-9_-]{1,60}$")
+            ? "Turno: " + turno.Id : null;
+    }
+
+    private async Task HandleConfirmacionCancelacion(string phone, WhatsAppSession session, string input)
+    {
+        if (string.IsNullOrEmpty(session.SelectionId) || string.IsNullOrEmpty(session.IncarnationId) ||
+            string.IsNullOrEmpty(session.ClienteId) || string.IsNullOrEmpty(session.CancellationAppointmentId))
+        { await _whatsAppService.SendTextMessage(phone, "⚠️ Confirmación inválida. Reinicia la conversación."); return; }
+        if (input == "rechazar_" + session.SelectionId)
+        {
+            if (await _sessionService.TryCancellationTransition(phone, session, WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO, null, null, null))
+                await _whatsAppService.SendTextMessage(phone, "No se canceló el turno.");
+            return;
+        }
+        if (input != "confirmar_" + session.SelectionId || _firestore == null)
+        { await _whatsAppService.SendTextMessage(phone, "⚠️ Confirmación inválida. Reinicia la conversación."); return; }
+        try
+        {
+            await new TurnoService(_firestore).CancelarWhatsApp(session.CancellationAppointmentId, session.ClienteId, phone,
+                session.IncarnationId, session.Revision, session.SelectionId);
+            await _whatsAppService.SendTextMessage(phone, "✅ Tu turno fue cancelado.");
+        }
+        catch (InvalidOperationException)
+        { await _whatsAppService.SendTextMessage(phone, "⚠️ No se pudo cancelar el turno. Intenta nuevamente."); }
     }
 
     /// <summary>

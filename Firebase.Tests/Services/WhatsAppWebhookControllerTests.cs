@@ -1,4 +1,7 @@
 using System.Text.Json;
+using System.Text;
+using System.Security.Cryptography;
+using Microsoft.AspNetCore.Http;
 using Firebase.Controllers;
 using Firebase.Models;
 using Firebase.Services;
@@ -13,17 +16,98 @@ public class WhatsAppWebhookControllerTests
 {
     private readonly Mock<ILogger<WhatsAppWebhookController>> _logger = new();
 
-    private WhatsAppWebhookController CreateController() => new(
+    private const string Secret = "synthetic-app-secret";
+    private WhatsAppWebhookController CreateController(string? secret = Secret) => new(
         Options.Create(new WhatsAppSettings
         {
-            AccessToken = "test-access", PhoneNumberId = "test-phone", VerifyToken = "test-verify"
+            AccessToken = "test-access", PhoneNumberId = "test-phone", VerifyToken = "test-verify", AppSecret = secret
         }), null!, null!, _logger.Object);
+
+    private static string Sign(string json) => "sha256=" + Convert.ToHexString(
+        HMACSHA256.HashData(Encoding.UTF8.GetBytes(Secret), Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
+
+    private static void SetRequest(WhatsAppWebhookController controller, string json, string? signature)
+    {
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+        controller.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        if (signature != null) controller.Request.Headers["X-Hub-Signature-256"] = signature;
+    }
 
     private async Task Receive(string json, int expectedStatus = 200)
     {
-        using var document = JsonDocument.Parse(json);
-        var result = await CreateController().ReceiveMessage(document.RootElement);
+        var controller = CreateController();
+        SetRequest(controller, json, Sign(json));
+        var result = await controller.ReceiveMessage();
         Assert.Equal(expectedStatus, Assert.IsAssignableFrom<StatusCodeResult>(result).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("sha256=xyz")]
+    [InlineData("sha1=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")]
+    [InlineData("sha256=0000000000000000000000000000000000000000000000000000000000000000")]
+    public async Task UnauthenticatedMessage_IsRejectedBeforeProcessing(string signature)
+    {
+        const string json = "{\"entry\":[{\"changes\":[{\"field\":\"messages\",\"value\":{\"messaging_product\":\"whatsapp\",\"messages\":[{\"from\":\"test\",\"id\":\"id\",\"timestamp\":\"123\",\"type\":\"text\",\"text\":{\"body\":\"hello\"}}]}}]}]}";
+        var controller = CreateController();
+        SetRequest(controller, json, signature.Length > 0 ? signature : null);
+        var result = await controller.ReceiveMessage();
+        Assert.Equal(401, Assert.IsAssignableFrom<StatusCodeResult>(result).StatusCode);
+        Assert.False(Logged(LogLevel.Information, "WhatsApp message received"));
+    }
+
+    [Fact]
+    public async Task MissingSecret_RejectsCorrectSignature()
+    {
+        var controller = CreateController(null);
+        SetRequest(controller, "{}", Sign("{}"));
+        Assert.IsType<UnauthorizedResult>(await controller.ReceiveMessage());
+    }
+
+    [Fact]
+    public async Task TamperedBody_AndDuplicateSignatures_AreRejected()
+    {
+        var controller = CreateController();
+        SetRequest(controller, "{ }", Sign("{}"));
+        Assert.IsType<UnauthorizedResult>(await controller.ReceiveMessage());
+        SetRequest(controller, "{}", Sign("{}"));
+        controller.Request.Headers.Append("X-Hub-Signature-256", Sign("{}"));
+        Assert.IsType<UnauthorizedResult>(await controller.ReceiveMessage());
+        Assert.False(Logged(LogLevel.Information, "WhatsApp message received"));
+    }
+
+    [Theory]
+    [InlineData("absent")]
+    [InlineData("understated")]
+    [InlineData("chunked")]
+    [InlineData("oversized")]
+    public async Task OversizedBody_IsRejectedBeforeProcessing(string framing)
+    {
+        const int limit = 1024 * 1024;
+        var json = "{\"entry\":[]}" + new string(' ', limit);
+        var controller = CreateController();
+        SetRequest(controller, json, Sign(json));
+        if (framing == "understated") controller.Request.ContentLength = 1;
+        if (framing == "oversized") controller.Request.ContentLength = json.Length;
+        if (framing == "chunked") controller.Request.Headers.TransferEncoding = "chunked";
+        var result = await controller.ReceiveMessage();
+        Assert.Equal(413, Assert.IsAssignableFrom<StatusCodeResult>(result).StatusCode);
+        Assert.False(Logged(LogLevel.Information, "WhatsApp message received"));
+        Assert.False(Logged(LogLevel.Information, "status event received"));
+    }
+
+    [Fact]
+    public async Task SignedBody_AtLimit_IsAccepted()
+    {
+        const int limit = 1024 * 1024;
+        const string envelope = "{\"entry\":[]}";
+        await Receive(envelope + new string(' ', limit - envelope.Length));
+    }
+
+    [Fact]
+    public async Task SignedMalformedJson_ReturnsBadRequest()
+    {
+        await Receive("{", 400);
     }
 
     private bool Logged(LogLevel level, string text) => _logger.Invocations.Any(call =>

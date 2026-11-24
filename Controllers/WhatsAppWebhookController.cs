@@ -16,6 +16,8 @@ namespace Firebase.Controllers;
 [Route("api/whatsapp")]
 public class WhatsAppWebhookController : ControllerBase
 {
+    // Operational memory guard, not a documented Meta payload maximum.
+    private const int MaxWebhookBodyBytes = 1024 * 1024;
     private readonly WhatsAppSettings _settings;
     private readonly WhatsAppFlowService _flowService;
     private readonly MetaWhatsAppService _whatsAppService;
@@ -58,11 +60,62 @@ public class WhatsAppWebhookController : ControllerBase
     /// Endpoint POST para recibir mensajes de WhatsApp
     /// </summary>
     [HttpPost("webhook")]
-    public async Task<IActionResult> ReceiveMessage([FromBody] JsonElement body)
+    public async Task<IActionResult> ReceiveMessage()
     {
         using var requestScope = _logger.BeginScope(new Dictionary<string, object> { ["WhatsAppRequestId"] = Guid.NewGuid().ToString("N") });
         try
         {
+            var signatures = Request.Headers["X-Hub-Signature-256"];
+            if (string.IsNullOrWhiteSpace(_settings.AppSecret) || signatures.Count != 1)
+            {
+                _logger.LogWarning("WhatsApp webhook no autorizado: AppSecret configurado: {HasSecret}, encabezados de firma: {SigCount}",
+                    !string.IsNullOrWhiteSpace(_settings.AppSecret), signatures.Count);
+                return Unauthorized();
+            }
+
+            var signature = signatures[0];
+            if (signature == null || signature.Length != 71 || !signature.StartsWith("sha256=", StringComparison.Ordinal))
+            {
+                _logger.LogWarning("WhatsApp webhook no autorizado: formato de firma inválido");
+                return Unauthorized();
+            }
+
+            byte[] supplied;
+            try { supplied = Convert.FromHexString(signature[7..]); }
+            catch (FormatException)
+            {
+                _logger.LogWarning("WhatsApp webhook no autorizado: firma hexadecimal inválida");
+                return Unauthorized();
+            }
+
+            if (Request.ContentLength > MaxWebhookBodyBytes)
+                return StatusCode(StatusCodes.Status413PayloadTooLarge);
+
+            using var raw = new MemoryStream();
+            var buffer = new byte[8192];
+            while (true)
+            {
+                // Read at most one byte past the limit, even without a trustworthy length.
+                var remaining = MaxWebhookBodyBytes + 1 - (int)raw.Length;
+                var count = await Request.Body.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, remaining)), HttpContext.RequestAborted);
+                if (count == 0) break;
+                if (raw.Length + count > MaxWebhookBodyBytes)
+                    return StatusCode(StatusCodes.Status413PayloadTooLarge);
+                raw.Write(buffer, 0, count);
+            }
+            var bytes = raw.ToArray();
+            var expected = HMACSHA256.HashData(Encoding.UTF8.GetBytes(_settings.AppSecret), bytes);
+            if (!CryptographicOperations.FixedTimeEquals(expected, supplied))
+            {
+                _logger.LogWarning("WhatsApp webhook no autorizado: la firma HMAC calculada no coincide con la recibida");
+                return Unauthorized();
+            }
+
+            JsonDocument document;
+            try { document = JsonDocument.Parse(bytes); }
+            catch (JsonException) { return BadRequest(); }
+            using var parsed = document;
+            var body = parsed.RootElement;
             var options = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -151,6 +204,10 @@ public class WhatsAppWebhookController : ControllerBase
             }
 
             return Ok();
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            throw;
         }
         catch (WhatsAppOperationException ex)
         {

@@ -26,6 +26,30 @@ public class WhatsAppSession
     [FirestoreProperty]
     public required string CurrentState { get; set; }
 
+    [FirestoreProperty]
+    public long Revision { get; set; }
+
+    [FirestoreProperty]
+    public string? SelectionId { get; set; }
+
+    [FirestoreProperty]
+    public string? IncarnationId { get; set; }
+
+    [FirestoreProperty]
+    public string? BookingRequest { get; set; }
+
+    [FirestoreProperty]
+    public int? BookingTolerance { get; set; }
+
+    [FirestoreProperty]
+    public Dictionary<string, string>? BookingChoices { get; set; }
+
+    [FirestoreProperty]
+    public string? CancellationAppointmentId { get; set; }
+
+    [FirestoreProperty]
+    public Dictionary<string, string>? CancellationChoices { get; set; }
+
     /// <summary>
     /// Datos temporales capturados durante el flujo (ej: nombre, apellido, etc.)
     /// </summary>
