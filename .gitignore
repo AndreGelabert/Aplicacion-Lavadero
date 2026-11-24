@@ -381,3 +381,5 @@ FodyWeavers.xsd
 
 # Local AI runtime state
 .atl/
+/appsettings.json
+/appsettings.json
