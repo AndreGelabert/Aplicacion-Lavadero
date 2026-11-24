@@ -707,7 +707,9 @@ internal sealed class TurnoOfertaPersistence(FirestoreDb db)
                 if (email?.HttpErrors == true) throw new TurnoOfertaEmailInvalidException();
                 throw new InvalidOperationException("Turno inexistente.");
             }
-            ValidatePendingBooking(item, appointment.ConvertTo<Turno>());
+            var turno = appointment.ConvertTo<Turno>();
+            if (turno.Id != item.AppointmentId || !ValidId(turno.ClienteId) || turno.ClienteId != item.ClienteId)
+                throw new InvalidOperationException("Oferta incompatible con el turno.");
             if (ledger.Exists) throw new InvalidOperationException("Horario ya ofrecido.");
             if (session != null) ConsumeWhatsApp(tx, session, capability!);
             if (emailAuth != null) ConsumeEmail(tx, emailAuth.Value.Reference, "Reject", offerId, item.AppointmentId);
