@@ -15,7 +15,7 @@
                 </a>
                 <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Detalle del turno</h1>
             </div>
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap items-start gap-2">
                 @if (Model.Estado == "Pendiente" && User.TienePermiso("Turnos.Consultar") && User.TienePermiso("Turnos.Modificar"))
                 {
                     @if (!string.IsNullOrEmpty(Model.VersionEsperada))
@@ -150,7 +150,7 @@
             <!-- Empleados Asignados -->
             <div class="mt-4 bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <h2 class="text-md font-semibold text-gray-900 dark:text-white mb-3">Empleados Asignados (@(Model.EmpleadosAsignados?.Count ?? 0))</h2>
-                <div class="flex flex-wrap gap-2">
+                <div class="flex flex-wrap items-start gap-2">
                     @if (Model.EmpleadosAsignados?.Count > 0)
                     {
                         @foreach (var emp in Model.EmpleadosAsignados)
