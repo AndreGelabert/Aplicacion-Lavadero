@@ -221,28 +221,65 @@
         const selectedIds = new Set();
         function filterSuppliers() {
             choice = null;
-            dropdown.querySelectorAll('[data-supplier-option]').forEach(option => {
-                option.hidden = !option.dataset.name.toLocaleLowerCase().includes(search.value.toLocaleLowerCase()) || selectedIds.has(option.dataset.id);
+            const term = (search?.value || '').trim().toLocaleLowerCase();
+            dropdown?.querySelectorAll?.('[data-supplier-option]')?.forEach(option => {
+                option.hidden = (term && !option.dataset.name.toLocaleLowerCase().includes(term)) || selectedIds.has(option.dataset.id);
             });
-            dropdown.classList.remove('hidden');
+            dropdown?.classList.remove('hidden');
         }
-        search.addEventListener('focus', filterSuppliers); search.addEventListener('input', filterSuppliers);
-        dropdown.addEventListener('click', event => {
-            const option = event.target.closest('[data-supplier-option]'); if (!option) return;
-            choice = { ...option.dataset }; search.value = choice.name; dropdown.classList.add('hidden');
+        function addSupplierChoice(item) {
+            if (!item || !item.id || selectedIds.has(item.id)) return;
+            selectedIds.add(item.id);
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600';
+            const name = document.createElement('span');
+            name.className = 'flex-1 font-medium dark:text-white';
+            name.textContent = item.name;
+            const id = document.createElement('input');
+            id.type = 'hidden';
+            id.name = 'proveedorIds';
+            id.value = item.id;
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'w-8 h-8 rounded-full text-red-600 flex items-center justify-center';
+            removeIcon(remove);
+            remove.setAttribute('aria-label', `Quitar ${item.name}`);
+            const selectedId = item.id;
+            remove.addEventListener('click', () => {
+                selectedIds.delete(selectedId);
+                row.remove();
+                filterSuppliers();
+            });
+            row.append(name, id, remove);
+            selected?.append(row);
+            choice = null;
+            if (search) search.value = '';
+            dropdown?.classList.add('hidden');
+            filterSuppliers();
+        }
+        search?.addEventListener('focus', filterSuppliers);
+        search?.addEventListener('input', filterSuppliers);
+        dropdown?.addEventListener('click', event => {
+            const option = event.target.closest('[data-supplier-option]');
+            if (!option) return;
+            choice = { ...option.dataset };
+            if (search) search.value = choice.name;
+            addSupplierChoice(choice);
         });
-        document.getElementById('supplier-add').addEventListener('click', () => {
+        document.getElementById('supplier-add')?.addEventListener('click', () => {
             if (!choice || selectedIds.has(choice.id)) return;
-            selectedIds.add(choice.id);
-            const row = document.createElement('div'); row.className = 'flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600';
-            const name = document.createElement('span'); name.className = 'flex-1 font-medium'; name.textContent = choice.name;
-            const id = document.createElement('input'); id.type = 'hidden'; id.name = 'proveedorIds'; id.value = choice.id;
-            const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'w-8 h-8 rounded-full text-red-600'; removeIcon(remove); remove.setAttribute('aria-label', `Quitar ${choice.name}`); const selectedId = choice.id; remove.addEventListener('click', () => { selectedIds.delete(selectedId); row.remove(); });
-            row.append(name, id, remove); selected.append(row); choice = null; search.value = ''; dropdown.classList.add('hidden');
+            addSupplierChoice(choice);
         });
-        document.addEventListener('click', event => { if (!supplierPicker.contains(event.target)) dropdown.classList.add('hidden'); });
+        document.addEventListener('click', event => {
+            if (!supplierPicker.contains(event.target)) dropdown?.classList.add('hidden');
+        });
         document.querySelector('[data-quotation-reset]')?.addEventListener('click', () => {
-            selectedIds.clear(); selected.replaceChildren(); choice = null; search.value = ''; dropdown.classList.add('hidden');
+            selectedIds.clear();
+            selected?.replaceChildren();
+            choice = null;
+            if (search) search.value = '';
+            dropdown?.classList.add('hidden');
+            filterSuppliers();
         });
     }
     const picker = document.getElementById('quotation-picker');
@@ -252,8 +289,8 @@
     const list = document.getElementById('quotation-selected');
     const error = document.getElementById('quotation-error');
     const form = picker.closest('form');
-    const fechaPreferida = form.elements.namedItem('fechaEntregaPreferida');
-    const horaPreferida = form.elements.namedItem('horaEntregaPreferida');
+    const fechaPreferida = form?.elements?.namedItem('fechaEntregaPreferida');
+    const horaPreferida = form?.elements?.namedItem('horaEntregaPreferida');
     function actualizarMinimoEntrega() {
         if (!fechaPreferida || !horaPreferida) return;
         const partes = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(Date.now() + 60000)).map(p => [p.type, p.value]));
@@ -268,41 +305,103 @@
     const items = [];
     function filter() {
         selectedOption = null;
-        dropdown.querySelectorAll('[data-quotation-option]').forEach(option => { option.hidden = !(option.dataset.name + ' ' + (option.dataset.category || '')).toLocaleLowerCase().includes(input.value.toLocaleLowerCase()) || items.some(item => item.id === option.dataset.id); });
-        dropdown.querySelectorAll('[data-quotation-group]').forEach(group => { group.hidden = !Array.from(group.querySelectorAll('[data-quotation-option]')).some(option => !option.hidden); });
-        dropdown.classList.remove('hidden');
+        const term = (input?.value || '').trim().toLocaleLowerCase();
+        dropdown?.querySelectorAll?.('[data-quotation-option]')?.forEach(option => {
+            option.hidden = (term && !(option.dataset.name + ' ' + (option.dataset.category || '')).toLocaleLowerCase().includes(term)) || items.some(item => item.id === option.dataset.id);
+        });
+        dropdown?.querySelectorAll?.('[data-quotation-group]')?.forEach(group => {
+            if (typeof group.querySelectorAll === 'function') {
+                group.hidden = !Array.from(group.querySelectorAll('[data-quotation-option]')).some(option => !option.hidden);
+            }
+        });
+        dropdown?.classList.remove('hidden');
     }
-    input.addEventListener('focus', filter);
-    input.addEventListener('input', filter);
+    function addQuotationItem(opt) {
+        if (!opt || !opt.id || items.some(item => item.id === opt.id)) {
+            if (error) error.textContent = 'Seleccione un insumo del listado.';
+            return;
+        }
+        items.push({ id: opt.id, name: opt.name, unit: opt.unit, quantity: '' });
+        selectedOption = null;
+        if (input) input.value = '';
+        if (error) error.textContent = '';
+        dropdown?.classList.add('hidden');
+        render();
+        filter();
+    }
+    input?.addEventListener('focus', filter);
+    input?.addEventListener('input', filter);
     document.addEventListener('click', event => {
-        if (!picker.contains(event.target)) dropdown.classList.add('hidden');
+        if (!picker.contains(event.target)) dropdown?.classList.add('hidden');
     });
-    dropdown.addEventListener('click', event => {
+    dropdown?.addEventListener('click', event => {
         const option = event.target.closest('[data-quotation-option]');
         if (!option) return;
-        selectedOption = option.dataset; input.value = option.dataset.name; dropdown.classList.add('hidden');
+        selectedOption = option.dataset;
+        if (input) input.value = option.dataset.name;
+        addQuotationItem(selectedOption);
     });
     function render() {
-        list.replaceChildren();
+        list?.replaceChildren();
         items.forEach((item, index) => {
-            const row = document.createElement('div'); row.className = 'flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600';
-            const info = document.createElement('div'); info.className = 'flex-1 min-w-0';
-            const name = document.createElement('div'); name.className = 'font-medium dark:text-white'; name.textContent = `${item.name} (${item.unit})`; info.append(name);
-            const id = document.createElement('input'); id.type = 'hidden'; id.name = `items[${index}].InsumoId`; id.value = item.id;
-            const quantity = document.createElement('input'); quantity.type = 'number'; quantity.name = `items[${index}].Cantidad`; quantity.min = '0.0001'; quantity.step = 'any'; quantity.required = true; quantity.value = item.quantity; quantity.setAttribute('aria-label', `Cantidad de ${item.name}`); quantity.className = 'w-24 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2.5 dark:bg-gray-700 dark:text-white'; quantity.addEventListener('input', () => { item.quantity = quantity.value; });
-            const quantityLabel = document.createElement('label'); quantityLabel.className = 'flex items-center gap-2 text-sm'; quantityLabel.textContent = 'Cantidad:'; quantityLabel.append(quantity);
-            const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'w-8 h-8 rounded-full text-red-600'; remove.setAttribute('aria-label', `Quitar ${item.name}`); removeIcon(remove); remove.addEventListener('click', () => { items.splice(index, 1); render(); });
-            row.append(info, id, quantityLabel, remove); list.append(row);
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600';
+            const info = document.createElement('div');
+            info.className = 'flex-1 min-w-0';
+            const name = document.createElement('div');
+            name.className = 'font-medium dark:text-white';
+            name.textContent = `${item.name} (${item.unit})`;
+            info.append(name);
+            const id = document.createElement('input');
+            id.type = 'hidden';
+            id.name = `items[${index}].InsumoId`;
+            id.value = item.id;
+            const quantity = document.createElement('input');
+            quantity.type = 'number';
+            quantity.name = `items[${index}].Cantidad`;
+            quantity.min = '0.0001';
+            quantity.step = 'any';
+            quantity.required = true;
+            quantity.value = item.quantity;
+            quantity.setAttribute('aria-label', `Cantidad de ${item.name}`);
+            quantity.className = 'w-24 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2.5 dark:bg-gray-700 dark:text-white';
+            quantity.addEventListener('input', () => { item.quantity = quantity.value; });
+            const quantityLabel = document.createElement('label');
+            quantityLabel.className = 'flex items-center gap-2 text-sm';
+            quantityLabel.textContent = 'Cantidad:';
+            quantityLabel.append(quantity);
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'w-8 h-8 rounded-full text-red-600 flex items-center justify-center';
+            remove.setAttribute('aria-label', `Quitar ${item.name}`);
+            removeIcon(remove);
+            remove.addEventListener('click', () => {
+                items.splice(index, 1);
+                render();
+                filter();
+            });
+            row.append(info, id, quantityLabel, remove);
+            list?.append(row);
         });
     }
-    document.getElementById('quotation-add').addEventListener('click', () => {
-        if (!selectedOption || items.some(item => item.id === selectedOption.id)) { error.textContent = 'Seleccione un insumo del listado.'; return; }
-        items.push({ id: selectedOption.id, name: selectedOption.name, unit: selectedOption.unit, quantity: '' }); selectedOption = null; input.value = ''; error.textContent = ''; dropdown.classList.add('hidden'); render();
+    document.getElementById('quotation-add')?.addEventListener('click', () => {
+        if (!selectedOption || items.some(item => item.id === selectedOption.id)) {
+            if (error) error.textContent = 'Seleccione un insumo del listado.';
+            return;
+        }
+        addQuotationItem(selectedOption);
     });
     document.querySelector('[data-quotation-reset]')?.addEventListener('click', () => {
-        form.reset(); actualizarMinimoEntrega(); items.length = 0; selectedOption = null; error.textContent = ''; dropdown.classList.add('hidden'); render();
+        form.reset();
+        actualizarMinimoEntrega();
+        items.length = 0;
+        selectedOption = null;
+        if (error) error.textContent = '';
+        dropdown?.classList.add('hidden');
+        render();
+        filter();
     });
-    form.addEventListener('submit', event => {
+    form?.addEventListener('submit', event => {
         actualizarMinimoEntrega();
         if (!items.length || !form.querySelector('input[name="proveedorIds"]')) { event.preventDefault(); error.textContent = 'Seleccione al menos un proveedor y un insumo.'; return; }
         if (items.some(item => !item.quantity.trim() || !Number.isFinite(Number(item.quantity)) || Number(item.quantity) < 0.0001)) { event.preventDefault(); error.textContent = 'Ingrese una cantidad válida para cada insumo.'; }

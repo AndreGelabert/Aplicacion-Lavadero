@@ -68,7 +68,8 @@ test('supplier picker closes outside and on Escape and ignores disabled option a
     f.listeners.get('click')[0]({ target: {} }); assert.equal(f.dropdown.classList.contains('hidden'), true);
     f.search.fire('focus'); f.listeners.get('keydown')[0]({ key: 'Escape', preventDefault() {} }); assert.equal(f.dropdown.classList.contains('hidden'), true); assert.equal(f.search.focused, true);
     f.option.disabled = true; f.option.fire('click'); f.add.fire('click'); assert.equal(f.inputs.children.length, 0);
-    f.option.disabled = false; f.option.fire('click'); f.add.disabled = true; f.add.fire('click'); assert.equal(f.inputs.children.length, 0);
+    f.option.disabled = false; f.add.disabled = true; f.add.fire('click'); assert.equal(f.inputs.children.length, 0);
+    f.option.fire('click'); assert.equal(f.inputs.children.length, 1);
 });
 
 test('clear filters clears search and selected filters through the public click handler', () => {

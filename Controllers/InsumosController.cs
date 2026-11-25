@@ -333,14 +333,18 @@ public sealed class InsumosController(
         if (solicitud == null || proveedor == null || string.IsNullOrWhiteSpace(proveedor.EmailOrdenes))
         {
             TempData["Error"] = "La solicitud o el email del proveedor no están disponibles.";
-            return RedirectToAction(nameof(Cotizaciones));
+            return RedirectToAction(nameof(Cotizaciones), new { grupoId = solicitud?.GrupoId });
         }
 
         var directiva = await compras.ObtenerDirectiva();
         var contexto = await compras.ObtenerContextoEmail(solicitud.Items);
         var resultado = await emailSender.EnviarAsync(InsumosEmailFormatter.FormatearSolicitud(directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades));
+        if (resultado.Enviado)
+        {
+            await compras.MarcarEmailSolicitudEnviado(id);
+        }
         TempData[resultado.Enviado ? "Success" : "Error"] = resultado.Mensaje;
-        return RedirectToAction(nameof(Cotizaciones));
+        return RedirectToAction(nameof(Cotizaciones), new { grupoId = solicitud.GrupoId });
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -384,11 +388,23 @@ public sealed class InsumosController(
             return RedirectToAction(nameof(Cotizaciones));
         }
         var fallidos = new List<string>();
+        var enviadosProveedorIds = new List<string>();
         foreach (var preparado in preparados)
         {
             if (preparado.Mensaje == null) { fallidos.Add(preparado.Id); continue; }
             var envio = await emailSender.EnviarAsync(preparado.Mensaje);
             if (!envio.Enviado) fallidos.Add(preparado.Proveedor!.RazonSocial);
+            else enviadosProveedorIds.Add(preparado.Id);
+        }
+        if (enviadosProveedorIds.Count > 0)
+        {
+            var recientes = (await compras.ObtenerSolicitudes())
+                .Where(s => s.Fecha >= DateTime.UtcNow.AddMinutes(-5) && enviadosProveedorIds.Contains(s.ProveedorId))
+                .ToList();
+            foreach (var r in recientes)
+            {
+                await compras.MarcarEmailSolicitudEnviado(r.Id);
+            }
         }
         if (fallidos.Count > 0) TempData["Error"] = "Solicitudes creadas, pero no se pudo enviar el correo a: " + string.Join(", ", fallidos);
         else TempData["Success"] = resultado.MensajeExito;

@@ -2465,6 +2465,22 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
         });
     }
 
+    public async Task<ResultadoOperacion> MarcarEmailSolicitudEnviado(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return ResultadoOperacion.CrearError("La solicitud no existe.");
+        var docRef = firestore.Collection("solicitudesCotizacion").Document(id);
+        var snap = await docRef.GetSnapshotAsync();
+        if (!snap.Exists) return ResultadoOperacion.CrearError("La solicitud no existe.");
+
+        var ahora = DateTime.UtcNow;
+        await docRef.UpdateAsync(new Dictionary<string, object>
+        {
+            { "EmailEnviado", true },
+            { "FechaEnvioEmailUtc", ahora }
+        });
+        return ResultadoOperacion.CrearExito("Email registrado como enviado.");
+    }
+
     public Task<ResultadoOperacion> CrearSolicitud(SolicitudCotizacion solicitud) =>
         Task.FromResult(ResultadoOperacion.CrearError("Utilice el formulario de cotizaciones para emitir la solicitud."));
 

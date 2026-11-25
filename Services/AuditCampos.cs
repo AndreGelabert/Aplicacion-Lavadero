@@ -314,7 +314,9 @@ public static class AuditCampos
                 i.PrecioUnitario
             })),
             ["Notas"] = s.Notas ?? "",
-            ["FechaEntregaPreferidaUtc"] = s.FechaEntregaPreferidaUtc?.ToString("O", System.Globalization.CultureInfo.InvariantCulture) ?? ""
+            ["FechaEntregaPreferidaUtc"] = s.FechaEntregaPreferidaUtc?.ToString("O", System.Globalization.CultureInfo.InvariantCulture) ?? "",
+            ["EmailEnviado"] = s.EmailEnviado ? "true" : "false",
+            ["FechaEnvioEmailUtc"] = s.FechaEnvioEmailUtc?.ToString("O", System.Globalization.CultureInfo.InvariantCulture) ?? ""
         };
     }
 
