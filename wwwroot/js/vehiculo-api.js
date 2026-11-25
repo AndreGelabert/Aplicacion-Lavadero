@@ -949,15 +949,17 @@
         const colorSelect = document.getElementById('Color');
         const colorInput = document.getElementById('ColorCustom');
         const toggle = document.getElementById('color-custom-toggle');
+        const form = document.getElementById('vehiculo-form');
         
         if (!colorSelect) {
             console.warn('⚠️ No se encontró el select de colores');
             return;
         }
         // CRÍTICO: Leer el valor inicial del data-attribute (viene del servidor)
-        const dataValue = colorSelect.getAttribute('data-initial-value');
-        // Usar color forzado si se proporciona (para AJAX), sino leer del data-attribute
-        const colorActualDelServidor = colorForzado || dataValue?.trim() || colorInput?.value?.trim() || '';
+        const dataValue = colorSelect.getAttribute('data-initial-value') || form?.getAttribute('data-color') || form?.dataset?.color;
+        const valorPrevio = colorSelect.value;
+        // Usar color forzado si se proporciona (para AJAX), sino leer del data-attribute o valor previo
+        const colorActualDelServidor = colorForzado || dataValue?.trim() || (valorPrevio && valorPrevio !== '' ? valorPrevio : '') || colorInput?.value?.trim() || '';
         colorSelect.innerHTML = '<option value="">Seleccione un color...</option>';
 
         // Usar coloresCache en lugar de colores
