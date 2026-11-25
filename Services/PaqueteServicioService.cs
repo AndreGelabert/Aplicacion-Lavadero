@@ -468,6 +468,39 @@ public class PaqueteServicioService
             throw new ArgumentException("El nuevo estado no puede estar vacío", nameof(nuevoEstado));
 
         var paqueteRef = _firestore.Collection(COLLECTION_NAME).Document(id);
+        var snapshot = await paqueteRef.GetSnapshotAsync();
+        if (!snapshot.Exists)
+            throw new InvalidOperationException("El paquete de servicios no existe.");
+
+        if (string.Equals(nuevoEstado, "Activo", StringComparison.OrdinalIgnoreCase))
+        {
+            var paquete = snapshot.ConvertTo<PaqueteServicio>();
+            var serviciosIds = (paquete?.ServiciosIds ?? new List<string>())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            var inactivos = new List<string>();
+            foreach (var servicioId in serviciosIds)
+            {
+                var servicioSnap = await _firestore.Collection("servicios").Document(servicioId).GetSnapshotAsync();
+                if (!servicioSnap.Exists)
+                {
+                    inactivos.Add(servicioId);
+                    continue;
+                }
+                var estadoServicio = servicioSnap.ContainsField("Estado") ? servicioSnap.GetValue<string>("Estado") : "Activo";
+                if (!string.Equals(estadoServicio, "Activo", StringComparison.OrdinalIgnoreCase))
+                {
+                    var nombreServicio = servicioSnap.ContainsField("Nombre") ? servicioSnap.GetValue<string>("Nombre") : servicioId;
+                    inactivos.Add(nombreServicio);
+                }
+            }
+
+            if (inactivos.Count > 0)
+                throw new InvalidOperationException($"No se puede reactivar el paquete porque incluye servicios desactivados: {string.Join(", ", inactivos)}.");
+        }
+
         await paqueteRef.UpdateAsync("Estado", nuevoEstado);
     }
     #endregion

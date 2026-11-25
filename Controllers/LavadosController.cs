@@ -368,6 +368,11 @@ namespace FirebaseLoginCustom.Controllers
             {
                 return Json(new { success = false, message = ex.Message });
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Validación al crear lavado: {Mensaje}", ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al crear lavado");
