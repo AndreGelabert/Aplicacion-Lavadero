@@ -20,6 +20,20 @@ public sealed class ReabastecimientoIntegrationTests
         orden.Id = Assert.Single((await compras.ObtenerOrdenes()).Where(x => x.GrupoCotizacionId == solicitud.GrupoId)).Id;
     }
 
+    private static string Cuit(int n)
+    {
+        var base8 = n.ToString("D8");
+        var digits = "30" + base8;
+        int[] m = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+        var suma = 0;
+        for (var i = 0; i < 10; i++) suma += (digits[i] - '0') * m[i];
+        var resto = suma % 11;
+        var dv = 11 - resto;
+        if (dv == 11) dv = 0;
+        else if (dv == 10) dv = 9;
+        return $"{digits[..2]}-{digits.Substring(2, 8)}-{dv}";
+    }
+
     private sealed class Sender : IEmailSender
     {
         public System.Collections.Concurrent.ConcurrentBag<EmailMessage> Messages { get; } = new();
@@ -37,8 +51,8 @@ public sealed class ReabastecimientoIntegrationTests
         {
             var db = new FirestoreDbBuilder { ProjectId = "demo-reab-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
             var proveedores = new ProveedorService(db);
-            var a = new Proveedor { RazonSocial = "A", IdentificacionTributaria = "1" };
-            var b = new Proveedor { RazonSocial = "B", IdentificacionTributaria = "2" };
+            var a = new Proveedor { RazonSocial = "A", IdentificacionTributaria = "30-00000001-5", Contacto = "1234567890", EmailOrdenes = "a@example.invalid" };
+            var b = new Proveedor { RazonSocial = "B", IdentificacionTributaria = "30-00000002-3", Contacto = "1234567891", EmailOrdenes = "b@example.invalid" };
             Assert.True((await proveedores.Guardar(a, true)).EsExitoso);
             Assert.True((await proveedores.Guardar(b, true)).EsExitoso);
             var insumos = new InsumoService(db);
@@ -74,8 +88,8 @@ public sealed class ReabastecimientoIntegrationTests
         {
             var db = new FirestoreDbBuilder { ProjectId = "demo-reab-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
             var proveedores = new ProveedorService(db);
-            var activo = new Proveedor { RazonSocial = "Activo", IdentificacionTributaria = "1" };
-            var otro = new Proveedor { RazonSocial = "Otro", IdentificacionTributaria = "2" };
+            var activo = new Proveedor { RazonSocial = "Activo", IdentificacionTributaria = "30-00000001-5", Contacto = "1234567890", EmailOrdenes = "activo@example.invalid" };
+            var otro = new Proveedor { RazonSocial = "Otro", IdentificacionTributaria = "30-00000002-3", Contacto = "1234567891", EmailOrdenes = "otro@example.invalid" };
             Assert.True((await proveedores.Guardar(activo, true)).EsExitoso);
             Assert.True((await proveedores.Guardar(otro, true)).EsExitoso);
             if (caso == "inactivo") Assert.True((await proveedores.CambiarEstado(otro.Id, "Inactivo")).EsExitoso);
@@ -119,7 +133,7 @@ public sealed class ReabastecimientoIntegrationTests
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-reab-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var proveedores = new ProveedorService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", EmailOrdenes = "p@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
         Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
         var insumos = new InsumoService(db);
         var insumo = new Insumo { Nombre = "Jabon", StockMinimo = 1, CantidadReabastecimiento = 5, ReabastecimientoAutomatico = true, ProveedoresIds = new() { proveedor.Id } };
@@ -153,7 +167,7 @@ public sealed class ReabastecimientoIntegrationTests
         {
             var db = new FirestoreDbBuilder { ProjectId = "demo-reab-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
             var proveedores = new ProveedorService(db);
-            var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", EmailOrdenes = "p@example.invalid" };
+            var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
             Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
             var insumos = new InsumoService(db);
             var insumo = new Insumo { Nombre = "Jabon", StockMinimo = 1, CantidadReabastecimiento = 5, ReabastecimientoAutomatico = true, ProveedoresIds = new() { proveedor.Id } };
@@ -183,7 +197,7 @@ public sealed class ReabastecimientoIntegrationTests
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-reab-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var proveedores = new ProveedorService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", EmailOrdenes = "p@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
         Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
         Assert.True((await proveedores.CambiarEstado(proveedor.Id, "Inactivo")).EsExitoso);
         var insumos = new InsumoService(db);
@@ -206,8 +220,8 @@ public sealed class ReabastecimientoIntegrationTests
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-reab-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var proveedores = new ProveedorService(db);
-        var activo = new Proveedor { RazonSocial = "Activo", IdentificacionTributaria = "1", EmailOrdenes = "activo@example.invalid" };
-        var inactivo = new Proveedor { RazonSocial = "Inactivo", IdentificacionTributaria = "2", EmailOrdenes = "inactivo@example.invalid" };
+        var activo = new Proveedor { RazonSocial = "Activo", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "activo@example.invalid" };
+        var inactivo = new Proveedor { RazonSocial = "Inactivo", IdentificacionTributaria = Cuit(2), Contacto = "1234567891", EmailOrdenes = "inactivo@example.invalid" };
         Assert.True((await proveedores.Guardar(activo, true)).EsExitoso);
         Assert.True((await proveedores.Guardar(inactivo, true)).EsExitoso);
         Assert.True((await proveedores.CambiarEstado(inactivo.Id, "Inactivo")).EsExitoso);
@@ -231,7 +245,7 @@ public sealed class ReabastecimientoIntegrationTests
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-reab-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var proveedores = new ProveedorService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", EmailOrdenes = "proveedor@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "proveedor@example.invalid" };
         Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
         var insumos = new InsumoService(db);
         var compras = new ComprasService(db);
@@ -271,7 +285,7 @@ public sealed class ReabastecimientoIntegrationTests
         var compras = new ComprasService(db);
         for (int i = 0; i < 10; i++)
         {
-            var proveedor = new Proveedor { RazonSocial = "Proveedor" + i, IdentificacionTributaria = "id" + i };
+            var proveedor = new Proveedor { RazonSocial = "Proveedor" + i, IdentificacionTributaria = Cuit(i + 1), Contacto = "12345678" + i.ToString("D2"), EmailOrdenes = $"proveedor{i}@example.invalid" };
             Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
             var insumo = new Insumo { Nombre = "Jabon" + i, StockMinimo = 1, CantidadReabastecimiento = 5, ReabastecimientoAutomatico = true, ProveedoresIds = new() { proveedor.Id } };
             Assert.True((await insumos.Guardar(insumo, true)).EsExitoso);
@@ -295,7 +309,7 @@ public sealed class ReabastecimientoIntegrationTests
         var db = new FirestoreDbBuilder { ProjectId = "demo-reab-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var sender = new Sender();
         var proveedores = new ProveedorService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", EmailOrdenes = "p@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
         Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
         var insumos = new InsumoService(db);
         var insumo = new Insumo { Nombre = "Jabon", StockMinimo = 1, CantidadReabastecimiento = 5, ReabastecimientoAutomatico = true, ProveedoresIds = new() { proveedor.Id } };
@@ -318,7 +332,7 @@ public sealed class ReabastecimientoIntegrationTests
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-reab-audit-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var proveedores = new ProveedorService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor Audit", IdentificacionTributaria = "30-11111111-9", EmailOrdenes = "proveedor@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor Audit", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "proveedor@example.invalid" };
         Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
 
         var insumos = new InsumoService(db);
@@ -373,7 +387,7 @@ public sealed class ReabastecimientoIntegrationTests
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-reab-rollback-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var proveedores = new ProveedorService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor Rollback", IdentificacionTributaria = "30-22222222-9", EmailOrdenes = "p@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor Rollback", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
         Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
 
         var insumos = new InsumoService(db);
@@ -421,7 +435,7 @@ public sealed class ReabastecimientoIntegrationTests
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-reab-conc-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var proveedores = new ProveedorService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor Concurrente", IdentificacionTributaria = "30-33333333-9", EmailOrdenes = "p@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor Concurrente", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
         Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
 
         var insumos = new InsumoService(db);
@@ -459,7 +473,7 @@ public sealed class ReabastecimientoIntegrationTests
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-reab-coti-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var proveedores = new ProveedorService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor Coti", IdentificacionTributaria = "30-44444444-9", EmailOrdenes = "p@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor Coti", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
         Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
 
         var insumos = new InsumoService(db);
@@ -511,7 +525,7 @@ public sealed class ReabastecimientoIntegrationTests
             Assert.False(configSnap.Exists);
 
             var proveedores = new ProveedorService(db);
-            var proveedor = new Proveedor { RazonSocial = "Proveedor 14d", IdentificacionTributaria = "30-55555555-9", EmailOrdenes = "p@example.invalid" };
+            var proveedor = new Proveedor { RazonSocial = "Proveedor 14d", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
             Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
 
             var insumos = new InsumoService(db);
@@ -590,7 +604,7 @@ public sealed class ReabastecimientoIntegrationTests
             await db.Collection("configuracion").Document("system_config").SetAsync(new Configuracion { VigenciaCompraRecienteDias = vigenciaDias });
 
             var proveedores = new ProveedorService(db);
-            var proveedor = new Proveedor { RazonSocial = "Proveedor Cfg", IdentificacionTributaria = "30-66666666-9", EmailOrdenes = "p@example.invalid" };
+            var proveedor = new Proveedor { RazonSocial = "Proveedor Cfg", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
             Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
 
             var insumos = new InsumoService(db);
@@ -645,9 +659,9 @@ public sealed class ReabastecimientoIntegrationTests
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-ant-mult-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var proveedores = new ProveedorService(db);
-        var p1Activo = new Proveedor { RazonSocial = "P1 Activo", IdentificacionTributaria = "30-1111-1", EmailOrdenes = "p1@example.invalid" };
-        var p2Inactivo = new Proveedor { RazonSocial = "P2 Inactivo", IdentificacionTributaria = "30-2222-2", EmailOrdenes = "p2@example.invalid" };
-        var p3Activo = new Proveedor { RazonSocial = "P3 Activo", IdentificacionTributaria = "30-3333-3", EmailOrdenes = "p3@example.invalid" };
+        var p1Activo = new Proveedor { RazonSocial = "P1 Activo", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "p1@example.invalid" };
+        var p2Inactivo = new Proveedor { RazonSocial = "P2 Inactivo", IdentificacionTributaria = Cuit(2), Contacto = "1234567891", EmailOrdenes = "p2@example.invalid" };
+        var p3Activo = new Proveedor { RazonSocial = "P3 Activo", IdentificacionTributaria = Cuit(3), Contacto = "1234567892", EmailOrdenes = "p3@example.invalid" };
         Assert.True((await proveedores.Guardar(p1Activo, true)).EsExitoso);
         Assert.True((await proveedores.Guardar(p2Inactivo, true)).EsExitoso);
         Assert.True((await proveedores.Guardar(p3Activo, true)).EsExitoso);
@@ -715,7 +729,7 @@ public sealed class ReabastecimientoIntegrationTests
     {
         var db = new FirestoreDbBuilder { ProjectId = "demo-s22-flow-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
         var proveedores = new ProveedorService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor Flow", IdentificacionTributaria = "30-77777777-9", EmailOrdenes = "flow@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor Flow", IdentificacionTributaria = Cuit(1), Contacto = "1234567890", EmailOrdenes = "flow@example.invalid" };
         Assert.True((await proveedores.Guardar(proveedor, true)).EsExitoso);
 
         var insumos = new InsumoService(db);
@@ -788,5 +802,163 @@ public sealed class ReabastecimientoIntegrationTests
         var ordenEnviada = (await db.Collection("ordenesCompra").Document("ord-norm").GetSnapshotAsync()).ConvertTo<OrdenCompra>();
         Assert.Equal("Enviada", ordenEnviada.Estado);
         Assert.Single(sender.Messages);
+    }
+
+    [LocalFirestoreFact]
+    public async Task ConsumoEnLavado_CruzaStockMinimoConAntecedente_CreaOrdenCompraAutomatica()
+    {
+        var db = new FirestoreDbBuilder { ProjectId = "demo-reab-ant-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
+        var proveedores = new ProveedorService(db);
+        var prov = new Proveedor { RazonSocial = "Proveedor Con Antecedente", IdentificacionTributaria = Cuit(701), Contacto = "1133334444", EmailOrdenes = "ant@example.invalid" };
+        Assert.True((await proveedores.Guardar(prov, true)).EsExitoso);
+
+        var insumos = new InsumoService(db);
+        var insumo = new Insumo
+        {
+            Nombre = "Shampoo Concentrado",
+            StockMinimo = 5m,
+            CantidadReabastecimiento = 20m,
+            ReabastecimientoAutomatico = true,
+            ProveedoresIds = new() { prov.Id }
+        };
+        Assert.True((await insumos.Guardar(insumo, true)).EsExitoso);
+
+        // Sembrar antecedente válido de compra recibida hace 2 días con precio $150
+        const string ordenPasadaId = "orden-pasada-150";
+        var ahora = DateTime.UtcNow;
+        var ordenPasada = new OrdenCompra
+        {
+            Id = ordenPasadaId,
+            ProveedorId = prov.Id,
+            Estado = "Recibida",
+            Items = new() { new() { InsumoId = insumo.Id, Cantidad = 10m, PrecioUnitario = 150m } }
+        };
+        await db.Collection("ordenesCompra").Document(ordenPasadaId).SetAsync(ordenPasada);
+        await db.Collection("movimientosStock").Document("mov-rec-150").SetAsync(new MovimientoStock
+        {
+            Id = "mov-rec-150",
+            InsumoId = insumo.Id,
+            ReferenciaId = ordenPasadaId,
+            Tipo = nameof(TipoMovimientoStock.RecepcionOrden),
+            Cantidad = 10m,
+            Fecha = ahora.AddDays(-2)
+        });
+
+        var sender = new Sender();
+        var stock = new StockService(db, sender, proveedores, NullLogger<StockService>.Instance);
+        var compras = new ComprasService(db);
+
+        // Pre-establecer stock inicial por encima del mínimo (6L)
+        await db.Collection("insumos").Document(insumo.Id).UpdateAsync("StockActual", (double)6m);
+
+        // Verificar que solo existe la orden histórica recibida
+        var ordenesIniciales = await compras.ObtenerOrdenes();
+        var ordenInicial = Assert.Single(ordenesIniciales);
+        Assert.Equal(ordenPasadaId, ordenInicial.Id);
+        Assert.Equal("Recibida", ordenInicial.Estado);
+
+        // Consumo que cruza el stock mínimo: de 6L pasa a 4L (<= StockMinimo = 5L)
+        await db.Collection("insumos").Document(insumo.Id).UpdateAsync("StockActual", (double)4m);
+        await stock.EvaluarReabastecimiento(insumo.Id);
+
+        // Se crea automáticamente una OrdenCompra en PendienteAprobacion con precio y cantidad esperados
+        var ordenes = await compras.ObtenerOrdenes();
+        Assert.Equal(2, ordenes.Count);
+        var ordenGenerada = Assert.Single(ordenes, o => o.Id != ordenPasadaId);
+        Assert.Equal("PendienteAprobacion", ordenGenerada.Estado);
+        Assert.Equal(prov.Id, ordenGenerada.ProveedorId);
+        var item = Assert.Single(ordenGenerada.Items);
+        Assert.Equal(insumo.Id, item.InsumoId);
+        Assert.Equal(20m, item.Cantidad);
+        Assert.Equal(150m, item.PrecioUnitario);
+
+        // Sin solicitudes de cotización
+        Assert.Empty(await compras.ObtenerSolicitudes());
+    }
+
+    [LocalFirestoreFact]
+    public async Task ConsumoEnLavado_CruzaStockMinimoSinAntecedente_CreaSolicitudesCotizacionParaProveedoresActivos()
+    {
+        var db = new FirestoreDbBuilder { ProjectId = "demo-reab-rfq-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
+        var proveedores = new ProveedorService(db);
+        var provA = new Proveedor { RazonSocial = "Proveedor Quimica A", IdentificacionTributaria = Cuit(702), Contacto = "1133334445", EmailOrdenes = "qa@example.invalid" };
+        var provB = new Proveedor { RazonSocial = "Proveedor Quimica B", IdentificacionTributaria = Cuit(703), Contacto = "1133334446", EmailOrdenes = "qb@example.invalid" };
+        Assert.True((await proveedores.Guardar(provA, true)).EsExitoso);
+        Assert.True((await proveedores.Guardar(provB, true)).EsExitoso);
+
+        var insumos = new InsumoService(db);
+        var insumo = new Insumo
+        {
+            Nombre = "Cera Liquida Premium",
+            StockMinimo = 3m,
+            CantidadReabastecimiento = 15m,
+            ReabastecimientoAutomatico = true,
+            ProveedoresIds = new() { provA.Id, provB.Id }
+        };
+        Assert.True((await insumos.Guardar(insumo, true)).EsExitoso);
+
+        var sender = new Sender();
+        var stock = new StockService(db, sender, proveedores, NullLogger<StockService>.Instance);
+        var compras = new ComprasService(db);
+
+        // Stock cruza el mínimo sin antecedentes de compra
+        await db.Collection("insumos").Document(insumo.Id).UpdateAsync("StockActual", (double)2m);
+        await stock.EvaluarReabastecimiento(insumo.Id);
+
+        // No debe crear orden directa
+        Assert.Empty(await compras.ObtenerOrdenes());
+
+        // Debe generar Solicitudes de Cotización para ambos proveedores activos
+        var solicitudes = await compras.ObtenerSolicitudes();
+        Assert.Equal(2, solicitudes.Count);
+        var grupoId = solicitudes[0].GrupoId;
+        Assert.NotEmpty(grupoId);
+        Assert.Equal(grupoId, solicitudes[1].GrupoId);
+        Assert.Contains(solicitudes, s => s.ProveedorId == provA.Id && s.Items.Any(i => i.InsumoId == insumo.Id && i.Cantidad == 15m));
+        Assert.Contains(solicitudes, s => s.ProveedorId == provB.Id && s.Items.Any(i => i.InsumoId == insumo.Id && i.Cantidad == 15m));
+    }
+
+    [LocalFirestoreFact]
+    public async Task ConsumoEnLavado_CruzaStockMinimoConOrdenYaAbierta_NoDuplicaOrden()
+    {
+        var db = new FirestoreDbBuilder { ProjectId = "demo-reab-dup-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
+        var proveedores = new ProveedorService(db);
+        var prov = new Proveedor { RazonSocial = "Proveedor Unico", IdentificacionTributaria = Cuit(704), Contacto = "1133334447", EmailOrdenes = "pu@example.invalid" };
+        Assert.True((await proveedores.Guardar(prov, true)).EsExitoso);
+
+        var insumos = new InsumoService(db);
+        var insumo = new Insumo
+        {
+            Nombre = "Aromatizante Frutal",
+            StockMinimo = 5m,
+            CantidadReabastecimiento = 10m,
+            ReabastecimientoAutomatico = true,
+            ProveedoresIds = new() { prov.Id }
+        };
+        Assert.True((await insumos.Guardar(insumo, true)).EsExitoso);
+
+        // Ya existe una orden abierta en proceso
+        const string ordenAbiertaId = "ord-abierta-existente";
+        await db.Collection("ordenesCompra").Document(ordenAbiertaId).SetAsync(new OrdenCompra
+        {
+            Id = ordenAbiertaId,
+            ProveedorId = prov.Id,
+            Estado = "PendienteAprobacion",
+            Items = new() { new() { InsumoId = insumo.Id, Cantidad = 10m, PrecioUnitario = 100m } }
+        });
+
+        var sender = new Sender();
+        var stock = new StockService(db, sender, proveedores, NullLogger<StockService>.Instance);
+        var compras = new ComprasService(db);
+
+        // Consumo posterior que reduce aún más el stock
+        await db.Collection("insumos").Document(insumo.Id).UpdateAsync("StockActual", (double)1m);
+        await stock.EvaluarReabastecimiento(insumo.Id);
+
+        // No se debe duplicar la orden ni crear solicitudes
+        var ordenes = await compras.ObtenerOrdenes();
+        Assert.Single(ordenes);
+        Assert.Equal(ordenAbiertaId, ordenes[0].Id);
+        Assert.Empty(await compras.ObtenerSolicitudes());
     }
 }

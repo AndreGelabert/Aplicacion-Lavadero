@@ -63,18 +63,26 @@ public sealed class ConfiguracionStockIntegrationTests
         {
             using var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, CookieContainer = new CookieContainer() }) { BaseAddress = new Uri(app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single()) };
             var page = WebUtility.HtmlDecode(await client.GetStringAsync("/Configuracion/Index"));
+            Assert.DoesNotContain("Empleados Máximos por Lavado", page);
+            Assert.DoesNotContain("Considerar Empleados Activos", page);
+            Assert.DoesNotContain("name=\"EmpleadosMaximosPorLavado\"", page);
+            Assert.DoesNotContain("name=\"ConsiderarEmpleadosActivos\"", page);
             Assert.Matches("name=\"PorcentajeAlertaStock\"[^>]*value=\"20\"", page);
             Assert.Matches("name=\"VigenciaCompraRecienteDias\"[^>]*value=\"14\"", page);
             var token = Regex.Match(page, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value;
             Assert.NotEmpty(token);
             async Task<HttpResponseMessage> Save(string value, string dias = "21")
             {
-                var form = new Dictionary<string, string> { ["__RequestVerificationToken"] = token, ["PorcentajeAlertaStock"] = value, ["Id"] = "system_config", ["NombreLavadero"] = "Lavadero previo", ["Ubicacion"] = "Dirección previa", ["PaquetesDescuentoStep"] = "10", ["CancelacionAnticipadaDescuento"] = "17", ["CancelacionAnticipadaHorasMinimas"] = "48", ["CancelacionAnticipadaValidezDias"] = "45", ["CapacidadMaximaConcurrente"] = "9", ["ConsiderarEmpleadosActivos"] = "false", ["EmpleadosMaximosPorLavado"] = "7", ["SesionDuracionHoras"] = "12", ["SesionInactividadMinutos"] = "35" };
+                var form = new Dictionary<string, string> { ["__RequestVerificationToken"] = token, ["PorcentajeAlertaStock"] = value, ["Id"] = "system_config", ["NombreLavadero"] = "Lavadero previo", ["Ubicacion"] = "Dirección previa", ["PaquetesDescuentoStep"] = "10", ["CancelacionAnticipadaDescuento"] = "17", ["CancelacionAnticipadaHorasMinimas"] = "48", ["CancelacionAnticipadaValidezDias"] = "45", ["CapacidadMaximaConcurrente"] = "9", ["SesionDuracionHoras"] = "12", ["SesionInactividadMinutos"] = "35" };
                 form["VigenciaCompraRecienteDias"] = dias;
                 foreach (var (day, horario) in horarios)
                     form[$"HorariosOperacion[{day}]"] = horario;
                 return await client.PostAsync("/Configuracion/Actualizar", new FormUrlEncodedContent(form));
             }
+            // La lectura GET llena la caché; otra sesión cambia los campos antes del POST.
+            await doc.UpdateAsync(new Dictionary<string, object> { ["ConsiderarEmpleadosActivos"] = true, ["EmpleadosMaximosPorLavado"] = 11 });
+            original["ConsiderarEmpleadosActivos"] = true;
+            original["EmpleadosMaximosPorLavado"] = 11;
             var saved = await Save("150");
             Assert.Equal(HttpStatusCode.Redirect, saved.StatusCode);
             var audits = (await db.Collection("registros_auditoria").WhereEqualTo("TargetType", "Configuracion").GetSnapshotAsync()).Documents;
@@ -262,8 +270,8 @@ public sealed class ConfiguracionStockIntegrationTests
                     ["CancelacionAnticipadaValidezDias"] = "30",
                     ["PaquetesDescuentoStep"] = "5",
                     ["CapacidadMaximaConcurrente"] = "5",
-                    ["ConsiderarEmpleadosActivos"] = "true",
-                    ["EmpleadosMaximosPorLavado"] = "3",
+                    ["ConsiderarEmpleadosActivos"] = "false",
+                    ["EmpleadosMaximosPorLavado"] = "7",
                     ["SesionDuracionHoras"] = "8",
                     ["SesionInactividadMinutos"] = "15",
                     ["PorcentajeAlertaStock"] = porcentaje,
@@ -282,6 +290,9 @@ public sealed class ConfiguracionStockIntegrationTests
             // 1. Cambio solo de PorcentajeAlertaStock (20 -> 35), VigenciaCompraRecienteDias se mantiene en 14
             var resp1 = await PostForm("35", "14");
             Assert.Equal(HttpStatusCode.Redirect, resp1.StatusCode);
+            var legacySaved = (await doc.GetSnapshotAsync()).ToDictionary();
+            Assert.Equal(false, legacySaved["ConsiderarEmpleadosActivos"]);
+            Assert.Equal  (7L, legacySaved["EmpleadosMaximosPorLavado"]);
 
             var auditsQuery = db.Collection("registros_auditoria").WhereEqualTo("TargetType", "Configuracion");
             var audits1 = (await auditsQuery.GetSnapshotAsync()).Documents;

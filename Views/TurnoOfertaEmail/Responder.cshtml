@@ -1,0 +1,20 @@
+@{ Layout = null; }
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Responder oferta de turno</title>
+    <script nonce="@ViewData["Nonce"]" src="/js/turno-oferta-email.js" defer></script>
+</head>
+<body>
+    <main>
+        <h1>Oferta para adelantar su turno</h1>
+        <p>Revise los detalles en el correo y elija una respuesta.</p>
+        <button id="aceptar" type="button" disabled>Aceptar oferta</button>
+        <button id="rechazar" type="button" disabled>Rechazar oferta</button>
+        <p id="estado" role="status" aria-live="polite"></p>
+        <noscript>Necesita activar JavaScript para responder a la oferta.</noscript>
+    </main>
+</body>
+</html>

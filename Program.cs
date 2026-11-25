@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Localization;
 using Firebase.Services;
 using System.Security.Claims;
 using System.Globalization;
+using FirebaseLoginCustom.Utils;
 
 // Las solicitudes AJAX reciben 401/403 en lugar de una redirección HTML.
 static bool EsSolicitudAjax(HttpRequest request) =>
@@ -28,7 +29,10 @@ builder.Configuration["LocalEmulators:Enabled"] = localEmulators ? "true" : "fal
 if (seedLocalEmulators && !localEmulators)
     throw new InvalidOperationException("The local seed command requires both local emulators in Development.");
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.ModelBinderProviders.Insert(0, new FlexibleDecimalModelBinderProvider());
+});
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<Firebase.Security.AuthenticationSessionRegistry>();
 
@@ -210,6 +214,13 @@ builder.Services.AddScoped<ClienteLifecycleService>();
 builder.Services.AddScoped<ClienteVehicleService>();
 builder.Services.AddScoped<VehiculoService>();
 builder.Services.AddScoped<TipoDocumentoService>();
+builder.Services.AddScoped<ITurnoConsultaService, TurnoConsultaService>();
+builder.Services.AddScoped<ITurnoSelectorService, TurnoSelectorService>();
+builder.Services.AddScoped<TurnoService>();
+builder.Services.AddScoped<TurnoInicioRecursosService>();
+builder.Services.AddScoped<TurnoNoShowSweep>();
+builder.Services.AddScoped<TurnoWebBookingAdapter>();
+builder.Services.AddSingleton<TurnoFormIdentity>();
 builder.Services.AddScoped<Firebase.Services.LavadoService>();
 builder.Services.AddScoped<Firebase.Services.LavadoCreationService>();
 builder.Services.AddScoped<Firebase.Services.LavadoAssociatedClientService>();
@@ -241,11 +252,17 @@ builder.Services.AddHttpClient<Firebase.Services.MetaWhatsAppService>(client =>
 
 // Servicios WhatsApp
 builder.Services.AddScoped<Firebase.Services.WhatsAppSessionService>();
-builder.Services.AddScoped<Firebase.Services.WhatsAppFlowService>();
+builder.Services.AddScoped(provider => new TurnoWhatsAppBookingAdapter(provider.GetRequiredService<TurnoService>()));
+TurnoHostRegistrations.AddWhatsAppFlow(builder.Services);
+
+// Los hosts de ofertas requieren habilitación explícita y configuración válida.
+Firebase.BackgroundServices.TurnoOfferHostRegistration.Add(builder.Services, builder.Configuration, localEmulators);
 
 // Background Service para limpieza automática de sesiones
 if (!localEmulators)
-    builder.Services.AddHostedService<Firebase.BackgroundServices.WhatsAppSessionCleanupService>();
+{
+    TurnoHostRegistrations.AddBackgroundServices(builder.Services);
+}
 
 var app = builder.Build();
 
@@ -320,3 +337,22 @@ if (seedLocalEmulators)
 }
 
 app.Run();
+
+// Shared registrations are internal only; the production emulator guard remains at the call site.
+internal static class TurnoHostRegistrations
+{
+    internal static void AddWhatsAppFlow(IServiceCollection services) => services.AddScoped<WhatsAppFlowService>(provider =>
+    {
+        var flow = ActivatorUtilities.CreateInstance<WhatsAppFlowService>(provider);
+        flow.BookingAdapter = provider.GetRequiredService<TurnoWhatsAppBookingAdapter>();
+        flow.BookingSchedulerEnabled = () => provider.GetServices<Microsoft.Extensions.Hosting.IHostedService>()
+            .OfType<Firebase.BackgroundServices.TurnoNoShowService>().Any(service => service.ExecuteTask is { IsCompleted: false });
+        return flow;
+    });
+
+    internal static void AddBackgroundServices(IServiceCollection services)
+    {
+        services.AddHostedService<Firebase.BackgroundServices.WhatsAppSessionCleanupService>();
+        services.AddHostedService<Firebase.BackgroundServices.TurnoNoShowService>();
+    }
+}

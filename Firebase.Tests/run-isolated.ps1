@@ -1,7 +1,9 @@
 param(
     [int]$Port = 8190,
     [string]$JavaPath = '.local/firebase-emulator/jdk/jdk-21.0.13.0.2+1/bin/java.exe',
-    [string]$EmulatorJar = '.local/firebase-emulator/home/.cache/firebase/emulators/cloud-firestore-emulator-v1.22.0.jar'
+    [string]$EmulatorJar = '.local/firebase-emulator/home/.cache/firebase/emulators/cloud-firestore-emulator-v1.22.0.jar',
+    [string]$TestFilter = '',
+    [string[]]$AdditionalArguments = @()
 )
 
 # Use a disposable emulator, never the application's imported snapshot.
@@ -29,6 +31,7 @@ foreach ($checkPort in @($Port, $authPort)) {
 $previousHost = $env:FIRESTORE_EMULATOR_HOST
 $previousAuthHost = $env:FIREBASE_AUTH_EMULATOR_HOST
 $previousOptIn = $env:ISOLATED_FIREBASE_TESTS
+$previousPassword = $env:LOCAL_EMULATOR_PASSWORD
 $emulator = $null
 $authEmulator = $null
 $exitCode = 1
@@ -61,12 +64,16 @@ try {
     $env:FIRESTORE_EMULATOR_HOST = "127.0.0.1:$Port"
     $env:FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:$authPort"
     $env:ISOLATED_FIREBASE_TESTS = '1'
-    & dotnet test (Join-Path $PSScriptRoot 'Firebase.Tests.csproj') --verbosity minimal
+    $env:LOCAL_EMULATOR_PASSWORD = 'disposable-test-password'
+    $testArguments = @((Join-Path $PSScriptRoot 'Firebase.Tests.csproj'), '--verbosity', 'minimal') + $AdditionalArguments
+    if ($TestFilter) { $testArguments += @('--filter', $TestFilter) }
+    & dotnet test @testArguments
     $exitCode = $LASTEXITCODE
 } finally {
     $env:FIRESTORE_EMULATOR_HOST = $previousHost
     $env:FIREBASE_AUTH_EMULATOR_HOST = $previousAuthHost
     $env:ISOLATED_FIREBASE_TESTS = $previousOptIn
+    $env:LOCAL_EMULATOR_PASSWORD = $previousPassword
     if ($null -ne $authEmulator -and !$authEmulator.HasExited) {
         Stop-Process -Id $authEmulator.Id -ErrorAction Stop
     }

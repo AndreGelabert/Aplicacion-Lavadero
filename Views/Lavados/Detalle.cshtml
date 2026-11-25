@@ -123,7 +123,7 @@
                 <div class="grid gap-4 mb-4">
                     <div>
                         <label for="montoInput" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Monto</label>
-                        <input type="number" id="montoInput" name="monto" step="0.01" min="0" required
+                        <input type="number" id="montoInput" name="monto" step="0.01" min="0" placeholder="0.00" required
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                                onchange="validarMontoPago()">
                         <p id="montoError" class="hidden text-xs text-red-600 mt-1">El monto no puede exceder el restante</p>
@@ -142,7 +142,7 @@
                     </div>
                     <div>
                         <label for="notasPago" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Notas (opcional)</label>
-                        <textarea id="notasPago" name="notas" rows="2"
+                        <textarea id="notasPago" name="notas" rows="2" placeholder="Observaciones o N° de comprobante..."
                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
                     </div>
                 </div>
@@ -185,12 +185,21 @@
                 <input type="hidden" id="finalizarEtapaId" name="etapaId" />
                 <input type="hidden" id="finalizarTipo" name="tipo" />
                 <div id="consumoRealFields" class="hidden mb-4 text-left">
-                    <h4 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white">Consumo real por insumo</h4>
-                    <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">Revise las cantidades y justifique cualquier desvío respecto de la dosis prevista.</p>
-                    <div id="consumoRealInputs" class="space-y-2"></div>
-                    <textarea id="consumoRealJson" name="consumoRealJson" class="hidden"></textarea>
-                    <label for="justificacionDesvio" class="mt-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Justificación del desvío</label>
-                    <textarea id="justificacionDesvio" name="justificacionDesvio" rows="2" class="mt-1 w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"></textarea>
+                    <div id="consumoRealContenedor">
+                        <h4 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white">Consumo real por insumo</h4>
+                        <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">Revise las cantidades y justifique cualquier desvío respecto de la dosis prevista.</p>
+                        <div id="consumoRealInputs" class="space-y-2"></div>
+                        <textarea id="consumoRealJson" name="consumoRealJson" class="hidden"></textarea>
+                        <label for="justificacionDesvio" class="mt-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Justificación del desvío</label>
+                        <textarea id="justificacionDesvio" name="justificacionDesvio" rows="2" placeholder="Motivo de diferencia respecto a receta..." class="mt-1 w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"></textarea>
+                    </div>
+                    <div id="herramientasUtilizadasSeccion" class="hidden mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 text-left">
+                        <h4 class="mb-2 text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            Herramientas en uso (se liberan al finalizar)
+                        </h4>
+                        <div id="herramientasUtilizadasList" class="space-y-1.5 text-xs text-gray-600 dark:text-gray-300"></div>
+                    </div>
                 </div>
                 <div class="flex justify-center items-center space-x-4">
                     <button type="button"

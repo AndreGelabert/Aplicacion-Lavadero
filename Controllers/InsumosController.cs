@@ -103,6 +103,7 @@ public sealed class InsumosController(
 
         var actorId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         var actorEmail = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+        insumos.StockService ??= stock;
         var auditoria = await insumos.GuardarConAuditoria(insumo, crear, actorId, actorEmail);
         var resultado = auditoria.Resultado;
         TempData[resultado.EsExitoso ? "Success" : "Error"] = resultado.EsExitoso ? resultado.MensajeExito : resultado.MensajeError;

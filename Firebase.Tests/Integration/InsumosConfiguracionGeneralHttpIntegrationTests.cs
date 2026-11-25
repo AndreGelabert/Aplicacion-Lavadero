@@ -180,7 +180,7 @@ public sealed class InsumosConfiguracionGeneralHttpIntegrationTests
         public async Task<int> AuditCount() => (await db.Collection("registros_auditoria").GetSnapshotAsync()).Count;
         public static async Task<Fixture> Start()
         {
-            if (Environment.GetEnvironmentVariable("FIRESTORE_EMULATOR_HOST") != "127.0.0.1:8245") throw new InvalidOperationException("Only the disposable local emulator is permitted.");
+            if (Environment.GetEnvironmentVariable("FIRESTORE_EMULATOR_HOST") != "127.0.0.1:8190") throw new InvalidOperationException("Only the disposable local emulator is permitted.");
             var db = new FirestoreDbBuilder { ProjectId = "demo-cfg-http-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" });
             builder.WebHost.ConfigureKestrel(o => o.Listen(IPAddress.Loopback, 0));

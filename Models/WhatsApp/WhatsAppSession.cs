@@ -26,6 +26,30 @@ public class WhatsAppSession
     [FirestoreProperty]
     public required string CurrentState { get; set; }
 
+    [FirestoreProperty]
+    public long Revision { get; set; }
+
+    [FirestoreProperty]
+    public string? SelectionId { get; set; }
+
+    [FirestoreProperty]
+    public string? IncarnationId { get; set; }
+
+    [FirestoreProperty]
+    public string? BookingRequest { get; set; }
+
+    [FirestoreProperty]
+    public int? BookingTolerance { get; set; }
+
+    [FirestoreProperty]
+    public Dictionary<string, string>? BookingChoices { get; set; }
+
+    [FirestoreProperty]
+    public string? CancellationAppointmentId { get; set; }
+
+    [FirestoreProperty]
+    public Dictionary<string, string>? CancellationChoices { get; set; }
+
     /// <summary>
     /// Datos temporales capturados durante el flujo (ej: nombre, apellido, etc.)
     /// </summary>
@@ -77,6 +101,7 @@ public static class WhatsAppFlowStates
 
     // Estados de consulta
     public const string MENU_CLIENTE_AUTENTICADO = "MENU_CLIENTE_AUTENTICADO";
+    public const string MENU_TURNOS = "MENU_TURNOS";
     public const string MOSTRAR_DATOS = "MOSTRAR_DATOS";
     
     // Estados de edicion de cliente

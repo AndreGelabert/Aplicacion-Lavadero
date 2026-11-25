@@ -112,6 +112,85 @@ public sealed class LavadoInsumosHttpWorkflowIntegrationTests
         Assert.Equal(2, audits.Documents.Count(d => d.GetValue<string>("Action") == "Creación de lavado"));
     }
 
+    [LocalFirestoreFact]
+    public async Task PagoYRetiroHttpPersistenEstadoYRechazanRetiroSinSaldoCancelado()
+    {
+        await using var f = await Fixture.Start();
+        await f.Washes.ActualizarLavado(new Lavado
+        {
+            Id = "payment-http",
+            Estado = "EnProceso",
+            ClienteId = "c",
+            VehiculoId = "v",
+            VehiculoPatente = "ABC123",
+            Precio = 100m,
+            FechaCreacion = DateTime.UtcNow,
+            Servicios = new() { new ServicioEnLavado { ServicioId = "s", Estado = "Pendiente" } }
+        });
+
+        await f.Post("RegistrarPago", new() { ["lavadoId"] = "payment-http", ["monto"] = "40", ["medioPago"] = "Efectivo", ["notas"] = "anticipo" }, true, "Pago registrado correctamente.");
+        await f.Post("RegistrarRetiro", new() { ["lavadoId"] = "payment-http" }, false, "El lavado debe estar pagado");
+        await f.Post("RegistrarPago", new() { ["lavadoId"] = "payment-http", ["monto"] = "60", ["medioPago"] = "Transferencia" }, true, "Pago registrado correctamente.");
+        await f.Post("RegistrarRetiro", new() { ["lavadoId"] = "payment-http" }, true, "Retiro registrado correctamente.");
+
+        var stored = (await f.Washes.ObtenerLavado("payment-http"))!;
+        Assert.Equal("Pagado", stored.Pago!.Estado);
+        Assert.Equal(100m, stored.Pago.MontoPagado);
+        Assert.Equal(Lavado.EstadosRetiro.Retirado, stored.EstadoRetiro);
+        Assert.Equal(2, stored.Pago.Pagos.Count);
+    }
+
+    [LocalFirestoreFact]
+    public async Task FinalizarEtapaHttp_ConDesvioSinJustificacion_RechazaYNoAlteraStockNiKardex()
+    {
+        await using var f = await Fixture.Start();
+        await f.Seed(1m, false);
+        var stock = new StockService(f.Db);
+
+        await f.Post("IniciarEtapa", new() { ["lavadoId"] = "l", ["servicioId"] = "s", ["etapaId"] = "e", ["seleccionJson"] = "{\"0\":\"i\"}" }, true, "Etapa iniciada correctamente.");
+        Assert.Equal(1m, (await new InsumoService(f.Db).Obtener("i"))!.StockActual);
+        Assert.Equal(0.25m, (await stock.ObtenerReservasInventario(new[] { "i" }))["i"]);
+
+        // Intento de finalizar con desvío (350ml vs 250ml teórica) SIN justificación
+        await f.Post("FinalizarEtapa", new() { ["lavadoId"] = "l", ["servicioId"] = "s", ["etapaId"] = "e", ["consumoRealJson"] = "{\"i\":350}", ["justificacionDesvio"] = "" }, false, "No se pudo finalizar la etapa. Inténtalo nuevamente.");
+
+        // Stock y reservas intactos, sin movimientos de consumo
+        Assert.Equal(1m, (await new InsumoService(f.Db).Obtener("i"))!.StockActual);
+        Assert.Equal(0.25m, (await stock.ObtenerReservasInventario(new[] { "i" }))["i"]);
+        Assert.Empty(await stock.ObtenerMovimientos("i"));
+
+        // Etapa continúa EnProceso
+        var lavado = (await f.Washes.ObtenerLavado("l"))!;
+        Assert.Equal("EnProceso", lavado.Servicios[0].Etapas[0].Estado);
+    }
+
+    [LocalFirestoreFact]
+    public async Task FinalizarEtapaHttp_ConDesvioYJustificacion_DescuentaConsumoRealYAudita()
+    {
+        await using var f = await Fixture.Start();
+        await f.Seed(1m, false);
+        var stock = new StockService(f.Db);
+
+        await f.Post("IniciarEtapa", new() { ["lavadoId"] = "l", ["servicioId"] = "s", ["etapaId"] = "e", ["seleccionJson"] = "{\"0\":\"i\"}" }, true, "Etapa iniciada correctamente.");
+
+        // Finalizar con desvío (350ml vs 250ml teórica) CON justificación válida
+        const string justificacion = "Vehiculo con exceso de barro en chasis";
+        await f.Post("FinalizarEtapa", new() { ["lavadoId"] = "l", ["servicioId"] = "s", ["etapaId"] = "e", ["consumoRealJson"] = "{\"i\":350}", ["justificacionDesvio"] = justificacion }, true, "Etapa finalizada correctamente.");
+
+        // Stock descontado según consumo real (1.0L - 0.35L = 0.65L) y reserva liberada
+        Assert.Equal(0.65m, (await new InsumoService(f.Db).Obtener("i"))!.StockActual);
+        Assert.Equal(0m, (await stock.ObtenerReservasInventario(new[] { "i" }))["i"]);
+
+        // Movimiento de stock registrado con la cantidad real (-0.35L)
+        var mov = Assert.Single(await stock.ObtenerMovimientos("i"));
+        Assert.Equal("ConsumoEtapa", mov.Tipo);
+        Assert.Equal(-0.35m, mov.Cantidad);
+
+        // Etapa finalizada correctamente
+        var lavado = (await f.Washes.ObtenerLavado("l"))!;
+        Assert.Equal("Realizado", lavado.Servicios[0].Etapas[0].Estado);
+    }
+
     private sealed class Fixture : IAsyncDisposable
     {
         private readonly WebApplication app; private readonly HttpClient client; private readonly string token; private readonly AsyncServiceScope scope;
@@ -119,7 +198,7 @@ public sealed class LavadoInsumosHttpWorkflowIntegrationTests
         private Fixture(WebApplication app, HttpClient client, string token, FirestoreDb db, AsyncServiceScope scope, LavadoService washes) { this.app = app; this.client = client; this.token = token; this.scope = scope; Db = db; Washes = washes; }
         public static async Task<Fixture> Start()
         {
-            if (Environment.GetEnvironmentVariable("FIRESTORE_EMULATOR_HOST") != "127.0.0.1:8245") throw new InvalidOperationException("Disposable local emulator required.");
+            if (Environment.GetEnvironmentVariable("FIRESTORE_EMULATOR_HOST") != "127.0.0.1:8190") throw new InvalidOperationException("Disposable local emulator required.");
             var db = new FirestoreDbBuilder { ProjectId = "demo-wash-http-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" });
             builder.WebHost.ConfigureKestrel(o => o.Listen(IPAddress.Loopback, 0));
@@ -176,7 +255,10 @@ public sealed class LavadoInsumosHttpWorkflowIntegrationTests
             var values = new Dictionary<string,string>(fields) { ["__RequestVerificationToken"] = token };
             using var response = await client.PostAsync("/Lavados/" + action, new FormUrlEncodedContent(values));
             var text = await response.Content.ReadAsStringAsync(); Assert.True(response.StatusCode == HttpStatusCode.OK, text);
-            using var json = JsonDocument.Parse(text); Assert.Equal(success, json.RootElement.GetProperty("success").GetBoolean()); Assert.Equal(message, json.RootElement.GetProperty("message").GetString());
+            using var json = JsonDocument.Parse(text);
+            Assert.Equal(success, json.RootElement.GetProperty("success").GetBoolean());
+            var actualMessage = json.RootElement.GetProperty("message").GetString();
+            Assert.True(actualMessage == message || (actualMessage?.StartsWith(message, StringComparison.Ordinal) == true), $"Expected '{message}' or a notification suffix, got '{actualMessage}'.");
         }
         public async Task<string[]> Snapshot()
         {

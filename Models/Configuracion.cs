@@ -105,6 +105,27 @@ namespace Firebase.Models
 
         #endregion
 
+        /// <summary>Intervalo entre posibles inicios de turnos, en minutos.</summary>
+        [FirestoreProperty]
+        public int IntervaloInicioTurnosMinutos { get; set; } = 15;
+
+        /// <summary>Tiempo para responder una oferta de adelanto, en minutos.</summary>
+        [FirestoreProperty]
+        public int RespuestaOfertaAdelantoMinutos { get; set; } = 10;
+
+        /// <summary>Minutos de espera para llegada; obligatorio, mínimo 5 minutos.</summary>
+        [FirestoreProperty]
+        [Range(5, 525600, ErrorMessage = "La tolerancia de llegada debe estar entre 5 y 525600 minutos")]
+        public int ToleranciaLlegadaTurnosMinutos { get; set; } = 5;
+
+        /// <summary>
+        /// Margen total de tiempo en minutos para habilitar el inicio de un turno (activación del botón Iniciar lavado).
+        /// Se distribuye entre anticipación y tolerancia posterior.
+        /// </summary>
+        [FirestoreProperty]
+        [Range(10, 240, ErrorMessage = "El margen de inicio de turno debe estar entre 10 y 240 minutos")]
+        public int MargenTiempoInicioTurnoMinutos { get; set; } = 30;
+
         #region Configuración de Capacidad
 
         /// <summary>
@@ -187,10 +208,141 @@ namespace Firebase.Models
         #region Metadata
 
         /// <summary>
+        /// Determina si el lavadero se encuentra en horario de atención en un momento dado.
+        /// </summary>
+        /// <param name="utc">Fecha y hora UTC opcional (si es null se utiliza DateTime.UtcNow).</param>
+        /// <returns>True si el lavadero está abierto en el día y horario indicado; false en caso contrario.</returns>
+        public bool EstaEnHorarioDeAtencion(DateTime? utc = null)
+        {
+            var fechaHoraAr = TimeZoneInfo.ConvertTimeFromUtc(utc ?? DateTime.UtcNow, Firebase.Utils.TimeZoneHelper.ArgentinaZone);
+            var diaNombre = fechaHoraAr.DayOfWeek switch
+            {
+                DayOfWeek.Monday => "Lunes",
+                DayOfWeek.Tuesday => "Martes",
+                DayOfWeek.Wednesday => "Miércoles",
+                DayOfWeek.Thursday => "Jueves",
+                DayOfWeek.Friday => "Viernes",
+                DayOfWeek.Saturday => "Sábado",
+                DayOfWeek.Sunday => "Domingo",
+                _ => string.Empty
+            };
+
+            if (HorariosOperacion == null || !HorariosOperacion.TryGetValue(diaNombre, out var horarioDia) || string.IsNullOrWhiteSpace(horarioDia))
+                return false;
+
+            if (horarioDia.Trim().Equals("CERRADO", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var horaActual = TimeOnly.FromTimeSpan(fechaHoraAr.TimeOfDay);
+            var rangos = horarioDia.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var rango in rangos)
+            {
+                var partes = rango.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (partes.Length == 2 &&
+                    TimeOnly.TryParse(partes[0], out var inicio) &&
+                    TimeOnly.TryParse(partes[1], out var fin))
+                {
+                    if (horaActual >= inicio && horaActual <= fin)
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        public bool ExcedeHorarioDeCierre(DateTime? utc, int duracionMinutos, out string? mensaje)
+        {
+            var fechaHoraAr = TimeZoneInfo.ConvertTimeFromUtc(utc ?? DateTime.UtcNow, Firebase.Utils.TimeZoneHelper.ArgentinaZone);
+            var diaNombre = fechaHoraAr.DayOfWeek switch
+            {
+                DayOfWeek.Monday => "Lunes",
+                DayOfWeek.Tuesday => "Martes",
+                DayOfWeek.Wednesday => "Miércoles",
+                DayOfWeek.Thursday => "Jueves",
+                DayOfWeek.Friday => "Viernes",
+                DayOfWeek.Saturday => "Sábado",
+                DayOfWeek.Sunday => "Domingo",
+                _ => string.Empty
+            };
+
+            if (HorariosOperacion == null || !HorariosOperacion.TryGetValue(diaNombre, out var horarioDia) || string.IsNullOrWhiteSpace(horarioDia) || horarioDia.Trim().Equals("CERRADO", StringComparison.OrdinalIgnoreCase))
+            {
+                mensaje = "El lavadero se encuentra cerrado en el horario seleccionado.";
+                return true;
+            }
+
+            var horaActual = TimeOnly.FromTimeSpan(fechaHoraAr.TimeOfDay);
+            var rangos = horarioDia.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var rango in rangos)
+            {
+                var partes = rango.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (partes.Length == 2 &&
+                    TimeOnly.TryParse(partes[0], out var inicio) &&
+                    TimeOnly.TryParse(partes[1], out var fin))
+                {
+                    if (horaActual >= inicio && horaActual <= fin)
+                    {
+                        var finTimeSpan = fin.ToTimeSpan();
+                        var finEstimado = horaActual.ToTimeSpan().Add(TimeSpan.FromMinutes(duracionMinutos));
+                        if (finEstimado > finTimeSpan)
+                        {
+                            mensaje = $"La duración estimada ({duracionMinutos} min) supera el horario de cierre del lavadero ({fin:HH:mm}).";
+                            return true;
+                        }
+                        mensaje = null;
+                        return false;
+                    }
+                }
+            }
+
+            mensaje = "El lavadero se encuentra cerrado o fuera de su horario de atención.";
+            return true;
+        }
+
+        /// <summary>
+        /// Determina si un turno se encuentra dentro de la ventana horaria permitida para iniciar el lavado.
+        /// </summary>
+        /// <param name="inicioUtc">Hora de inicio del turno en UTC.</param>
+        /// <param name="ahoraUtc">Hora actual opcional en UTC (DateTime.UtcNow por defecto).</param>
+        /// <param name="motivoInhabilitado">Mensaje explicativo si el turno no está en la ventana permitida.</param>
+        /// <returns>True si el turno puede ser iniciado en este momento; false en caso contrario.</returns>
+        public bool EstaEnVentanaInicioTurno(DateTime inicioUtc, DateTime? ahoraUtc, out string? motivoInhabilitado)
+        {
+            var ahora = ahoraUtc ?? DateTime.UtcNow;
+            var anticipacion = MargenTiempoInicioTurnoMinutos / 2;
+            var toleranciaDerecha = Math.Max(MargenTiempoInicioTurnoMinutos / 2, ToleranciaLlegadaTurnosMinutos);
+            var ventanaInicio = inicioUtc.AddMinutes(-anticipacion);
+            var ventanaFin = inicioUtc.AddMinutes(toleranciaDerecha);
+
+            if (ahora < ventanaInicio)
+            {
+                var inicioLocal = TimeZoneInfo.ConvertTimeFromUtc(ventanaInicio, Firebase.Utils.TimeZoneHelper.ArgentinaZone);
+                motivoInhabilitado = $"El turno estará habilitado para iniciar a partir de las {inicioLocal:HH:mm}.";
+                return false;
+            }
+
+            if (ahora > ventanaFin)
+            {
+                motivoInhabilitado = "El turno ha superado el tiempo límite de tolerancia para iniciar.";
+                return false;
+            }
+
+            motivoInhabilitado = null;
+            return true;
+        }
+
+        /// <summary>
         /// Fecha de última actualización de la configuración.
         /// </summary>
         [FirestoreProperty]
         public DateTime? FechaActualizacion { get; set; }
+
+        /// <summary>
+        /// Fecha de última actualización convertida a la zona horaria del lavadero (Argentina).
+        /// No se persiste en Firestore.
+        /// </summary>
+        public DateTime? FechaActualizacionLocal => FechaActualizacion.HasValue
+            ? Firebase.Utils.TimeZoneHelper.ConvertirUtcAZonaApp(FechaActualizacion.Value)
+            : null;
 
         /// <summary>
         /// Email del usuario que actualizó la configuración por última vez.

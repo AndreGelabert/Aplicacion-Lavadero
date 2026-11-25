@@ -109,7 +109,7 @@
                     </div>
                     <div>
                         <label for="plantilla-email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Asunto anterior de solicitud de cotización</label>
-                        <input id="plantilla-email" name="PlantillaEmail" value="@directiva.PlantillaEmail" disabled="@(!puedeModificar)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                        <input id="plantilla-email" name="PlantillaEmail" value="@directiva.PlantillaEmail" placeholder="Asunto de respaldo para cotizaciones" disabled="@(!puedeModificar)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
                         <p class="text-sm text-gray-500 dark:text-gray-400">Se conserva como respaldo cuando el asunto de cotización está vacío.</p>
                     </div>
                     <p class="text-sm text-gray-600 dark:text-gray-300">Los campos vacíos usan el formato recomendado. Marcadores comunes: {proveedor}, {contacto_proveedor}, {comprador}, {ubicacion}, {notas}, {items}. {items} solo se admite en el cuerpo. En solicitudes, {fecha_entrega} y {hora_entrega} representan la fecha y hora preferidas, no confirmadas. {total} y {plazo_entrega} solo tienen datos cotizados en una orden. Los datos ausentes se indican como No informado; las plantillas guardadas no se modifican.</p>
@@ -141,17 +141,33 @@
             <input type="hidden" asp-for="ActualizadoPor" />
 
             <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                <h2 class="text-xl font-semibold">Alerta de stock</h2>
-                <label asp-for="PorcentajeAlertaStock">Porcentaje sobre el stock mínimo (%)</label>
-                <input asp-for="PorcentajeAlertaStock" type="number" min="0" step="any" required class="block w-full rounded-lg border p-2 dark:bg-gray-700" />
-                <span asp-validation-for="PorcentajeAlertaStock" class="text-red-600 text-xs"></span>
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Alerta de stock</h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Configure el porcentaje sobre el stock mínimo para generar alertas de reposición de insumos.
+                </p>
+                <div>
+                    <label asp-for="PorcentajeAlertaStock" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                        Porcentaje sobre el stock mínimo (%) <span class="text-red-600">*</span>
+                    </label>
+                    <input asp-for="PorcentajeAlertaStock" type="number" min="0" step="any" placeholder="Ej: 80" required
+                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
+                    <span asp-validation-for="PorcentajeAlertaStock" class="text-red-600 text-xs"></span>
+                </div>
             </div>
 
             <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                <h2 class="text-xl font-semibold">Compras recientes</h2>
-                <label asp-for="VigenciaCompraRecienteDias">Vigencia de compra reciente (días)</label>
-                <input asp-for="VigenciaCompraRecienteDias" type="number" min="0" step="1" required class="block w-full rounded-lg border p-2 dark:bg-gray-700" />
-                <span asp-validation-for="VigenciaCompraRecienteDias" class="text-red-600 text-xs"></span>
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Compras recientes</h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Configure los días de vigencia para considerar compras recientes en el sistema.
+                </p>
+                <div>
+                    <label asp-for="VigenciaCompraRecienteDias" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                        Vigencia de compra reciente (días) <span class="text-red-600">*</span>
+                    </label>
+                    <input asp-for="VigenciaCompraRecienteDias" type="number" min="0" step="1" placeholder="Ej: 30" required
+                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
+                    <span asp-validation-for="VigenciaCompraRecienteDias" class="text-red-600 text-xs"></span>
+                </div>
             </div>
 
             <!-- Sección 1: Descuentos por Cancelación Anticipada -->
@@ -170,7 +186,7 @@
                         </label>
                         <input type="number" asp-for="CancelacionAnticipadaDescuento" 
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                               min="0" max="100" step="1" required />
+                               min="0" max="100" step="1" placeholder="Ej: 10" required />
                         <span asp-validation-for="CancelacionAnticipadaDescuento" class="text-red-600 text-xs"></span>
                     </div>
                     
@@ -180,7 +196,7 @@
                         </label>
                         <input type="number" asp-for="CancelacionAnticipadaHorasMinimas" 
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                               min="1" max="168" step="1" required />
+                               min="1" max="168" step="1" placeholder="Ej: 2" required />
                         <span asp-validation-for="CancelacionAnticipadaHorasMinimas" class="text-red-600 text-xs"></span>
                     </div>
                     
@@ -190,7 +206,7 @@
                         </label>
                         <input type="number" asp-for="CancelacionAnticipadaValidezDias" 
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                               min="1" max="365" step="1" required />
+                               min="1" max="365" step="1" placeholder="Ej: 30" required />
                         <span asp-validation-for="CancelacionAnticipadaValidezDias" class="text-red-600 text-xs"></span>
                     </div>
                 </div>
@@ -250,7 +266,7 @@
                         </label>
                         <input type="number" asp-for="PaquetesDescuentoStep" 
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                               min="5" max="50" step="1" required />
+                               min="5" max="50" step="1" placeholder="Ej: 5" required />
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             Define los incrementos permitidos para los descuentos (ej: 5% permite 5%, 10%, 15%, etc.)
                         </p>
@@ -373,6 +389,51 @@
                 </div>
             </div>
 
+            <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Turnos</h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Configure los intervalos entre inicios de turnos, plazos para responder ofertas de adelanto y la tolerancia de llegada antes de marcar ausencia.
+                </p>
+                <div class="space-y-4">
+                    <div>
+                        <label asp-for="IntervaloInicioTurnosMinutos" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Intervalo entre inicios (minutos) <span class="text-red-600">*</span>
+                        </label>
+                        <input asp-for="IntervaloInicioTurnosMinutos" type="number" min="1" step="1" placeholder="Ej: 15" required
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Separación entre horarios de inicio ofrecidos; no es tolerancia de llegada.</p>
+                        <span asp-validation-for="IntervaloInicioTurnosMinutos" class="text-red-600 text-xs"></span>
+                    </div>
+                    <div>
+                        <label asp-for="RespuestaOfertaAdelantoMinutos" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Tiempo de respuesta a oferta de adelanto (minutos) <span class="text-red-600">*</span>
+                        </label>
+                        <input asp-for="RespuestaOfertaAdelantoMinutos" type="number" min="1" step="1" placeholder="Ej: 10" required
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Plazo para responder la oferta; no es intervalo de inicio ni tolerancia de llegada.</p>
+                        <span asp-validation-for="RespuestaOfertaAdelantoMinutos" class="text-red-600 text-xs"></span>
+                    </div>
+                    <div>
+                        <label asp-for="ToleranciaLlegadaTurnosMinutos" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Tolerancia de llegada al turno (minutos) <span class="text-red-600">*</span>
+                        </label>
+                        <input asp-for="ToleranciaLlegadaTurnosMinutos" type="number" min="5" max="525600" step="1" placeholder="Ej: 5" required
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 5 minutos. Tiempo de espera antes de marcar el turno como ausente. Es independiente de la tolerancia de lavado, el intervalo de inicio y el plazo de oferta.</p>
+                        <span asp-validation-for="ToleranciaLlegadaTurnosMinutos" class="text-red-600 text-xs"></span>
+                    </div>
+                    <div>
+                        <label asp-for="MargenTiempoInicioTurnoMinutos" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Margen de inicio de turnos (minutos) <span class="text-red-600">*</span>
+                        </label>
+                        <input asp-for="MargenTiempoInicioTurnoMinutos" type="number" min="10" max="240" step="1" placeholder="Ej: 30" required
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Ventana de tiempo para habilitar el botón de inicio de lavado alrededor del horario programado del turno.</p>
+                        <span asp-validation-for="MargenTiempoInicioTurnoMinutos" class="text-red-600 text-xs"></span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Sección 5: Capacidad del Lavadero -->
             <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                 <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
@@ -389,38 +450,10 @@
                         </label>
                         <input type="number" asp-for="CapacidadMaximaConcurrente" 
                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                               min="1" max="100" step="1" required />
+                               min="1" max="100" step="1" placeholder="Ej: 3" required />
                         <span asp-validation-for="CapacidadMaximaConcurrente" class="text-red-600 text-xs"></span>
                     </div>
                     
-                    <div>
-                        <label asp-for="ConsiderarEmpleadosActivos" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                            Considerar Empleados Activos
-                        </label>
-                        <div class="flex items-center">
-                            <input type="checkbox" asp-for="ConsiderarEmpleadosActivos" 
-                                   class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600" />
-                            <label asp-for="ConsiderarEmpleadosActivos" class="ml-2 text-sm text-gray-900 dark:text-gray-300">
-                                Limitar capacidad según empleados activos
-                            </label>
-                        </div>
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Si está activado, la capacidad efectiva será el mínimo entre la capacidad configurada y el número de empleados activos.
-                        </p>
-                    </div>
-                    
-                    <div>
-                        <label asp-for="EmpleadosMaximosPorLavado" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                            Empleados Máximos por Lavado <span class="text-red-600">*</span>
-                        </label>
-                        <input type="number" asp-for="EmpleadosMaximosPorLavado" 
-                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                               min="1" max="20" step="1" required />
-                        <span asp-validation-for="EmpleadosMaximosPorLavado" class="text-red-600 text-xs"></span>
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Cantidad máxima de empleados que se pueden asignar a un lavado individual.
-                        </p>
-                    </div>
                 </div>
             </div>
 
@@ -439,7 +472,7 @@
                </label>
       <input type="number" asp-for="SesionDuracionHoras" 
   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-    min="1" max="24" step="1" required />
+    min="1" max="24" step="1" placeholder="Ej: 8" required />
      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                Tiempo máximo que puede durar una sesión activa (1-24 horas). La sesión se cierra al alcanzar este límite.
           </p>
@@ -451,7 +484,7 @@
      </label>
       <input type="number" asp-for="SesionInactividadMinutos" 
        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-              min="5" max="120" step="1" required />
+              min="5" max="120" step="1" placeholder="Ej: 30" required />
                   <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
           Tiempo sin actividad antes de cerrar sesión automáticamente (5-120 min)
  </p>
@@ -465,7 +498,7 @@
             {
                 <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <p class="text-sm text-gray-600 dark:text-gray-400">
-                        <strong>Última actualización:</strong> @Model.FechaActualizacion.Value.ToString("dd/MM/yyyy HH:mm")
+                        <strong>Última actualización:</strong> @(Model.FechaActualizacionLocal?.ToString("dd/MM/yyyy HH:mm"))
                         @if (!string.IsNullOrEmpty(Model.ActualizadoPor))
                         {
                             <span> por @Model.ActualizadoPor</span>

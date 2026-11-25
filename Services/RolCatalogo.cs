@@ -20,10 +20,10 @@ public static class RolCatalogo
     public const string Crear = "Crear";
     public const string Modificar = "Modificar";
     public const string Eliminar = "Eliminar";
+    public const string Cancelar = "Cancelar";
 
     /// <summary>
-    /// Módulos reales del sistema que participan en la matriz de permisos,
-    /// cada uno con las acciones que realmente existen en su controlador.
+    /// Módulos que participan en la matriz de permisos.
     /// </summary>
     public static IReadOnlyList<ModuloPermisos> Modulos { get; } = new[]
     {
@@ -32,6 +32,7 @@ public static class RolCatalogo
         new ModuloPermisos("Servicios", "Servicios", new[] { Consultar, Crear, Modificar, Eliminar }),
         new ModuloPermisos("Paquetes", "Paquetes", new[] { Consultar, Crear, Modificar, Eliminar }),
         new ModuloPermisos("Lavados", "Lavados", new[] { Consultar, Crear, Modificar }),
+        new ModuloPermisos("Turnos", "Turnos", new[] { Consultar, Crear, Modificar, Cancelar }),
         new ModuloPermisos("Personal", "Personal", new[] { Consultar, Modificar }),
         new ModuloPermisos("Configuracion", "Configuración", new[] { Consultar, Modificar }),
         new ModuloPermisos("Auditoria", "Auditoría", new[] { Consultar }),
@@ -73,7 +74,8 @@ public static class RolCatalogo
                 "Clientes.Consultar", "Clientes.Crear", "Clientes.Modificar",
                 "Vehiculos.Consultar", "Vehiculos.Crear", "Vehiculos.Modificar",
                 "Servicios.Consultar", "Paquetes.Consultar",
-                "Lavados.Consultar", "Lavados.Crear", "Lavados.Modificar"
+                "Lavados.Consultar", "Lavados.Crear", "Lavados.Modificar",
+                "Turnos.Consultar", "Turnos.Crear", "Turnos.Modificar", "Turnos.Cancelar"
                 , "Insumos.Consultar", "Insumos.Recepcionar"
             })
     };
@@ -84,7 +86,7 @@ public static class RolCatalogo
     public static string Clave(string modulo, string accion) => $"{modulo}.{accion}";
 
     /// <summary>
-    /// Acciones que existen para un módulo, en el orden en que se muestran.
+    /// Acciones definidas para un módulo, en el orden en que se muestran.
     /// Devuelve una lista vacía si el módulo no existe en el catálogo.
     /// </summary>
     public static IReadOnlyList<string> AccionesPara(string? moduloClave)

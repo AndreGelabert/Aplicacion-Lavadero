@@ -6,6 +6,8 @@ using Google.Cloud.Firestore;
 using Firebase.Models;
 using static Firebase.Models.AuthModels;
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Firebase.Tests")]
+
 namespace Firebase.Services
 {
     /// <summary>
@@ -20,6 +22,8 @@ namespace Firebase.Services
         private readonly IAuditWriter _auditService;
         private readonly HttpClient _httpClient;
         private readonly string _firebaseApiKey;
+        private readonly Func<string, Task<(string Uid, string Email, string Name)>> _verifyGoogleToken;
+        internal Func<Task>? BeforeGoogleProvisioningTransaction { get; set; }
 
         /// <summary>
         /// Constructor del servicio de autenticación.
@@ -29,7 +33,14 @@ namespace Firebase.Services
         /// <param name="auditService">Servicio de auditoría.</param>
         /// <param name="httpClient">Cliente HTTP para llamadas a Firebase.</param>
         public AuthenticationService(IConfiguration configuration, FirestoreDb firestore, IAuditWriter auditService, HttpClient httpClient)
+            : this(configuration, firestore, auditService, httpClient, VerifyGoogleTokenAsync)
         {
+        }
+
+        internal AuthenticationService(IConfiguration configuration, FirestoreDb firestore, IAuditWriter auditService, HttpClient httpClient,
+            Func<string, Task<(string Uid, string Email, string Name)>> verifyGoogleToken)
+        {
+            _verifyGoogleToken = verifyGoogleToken ?? throw new ArgumentNullException(nameof(verifyGoogleToken));
             _configuration = configuration;
             _firestore = firestore;
             _auditService = auditService;
@@ -103,12 +114,24 @@ namespace Firebase.Services
                 // NUEVO: Si el estado es "Pendiente" y el email está verificado, activar cuenta
                 if (estado == "Pendiente" && userRecord.EmailVerified)
                 {
-                    await _firestore.Collection("empleados").Document(loginResponse.localId).UpdateAsync(new Dictionary<string, object>
-            {
-                { "Estado", "Activo" },
-                { "EmailVerificado", true }
-            });
-                    estado = "Activo";
+                    var employeeRef = _firestore.Collection("empleados").Document(loginResponse.localId);
+                    estado = await _firestore.RunTransactionAsync(async transaction =>
+                    {
+                        var current = await transaction.GetSnapshotAsync(employeeRef);
+                        var version = await EmployeeMembershipVersion.ReadAsync(_firestore, transaction);
+                        if (!current.Exists) return "";
+                        var currentState = current.GetValue<string>("Estado");
+                        if (currentState == "Pendiente")
+                        {
+                            transaction.Update(employeeRef, new Dictionary<string, object>
+                            {
+                                ["Estado"] = "Activo", ["EmailVerificado"] = true
+                            });
+                            EmployeeMembershipVersion.Advance(transaction, version);
+                            return "Activo";
+                        }
+                        return currentState;
+                    });
                 }
 
                 if (estado != "Activo")
@@ -171,9 +194,14 @@ namespace Firebase.Services
             { "EmailVerificado", false }
         };
 
-                await _firestore.Collection("empleados")
-                    .Document(userRecord.Uid)
-                    .SetAsync(employeeData);
+                var registeredRef = _firestore.Collection("empleados").Document(userRecord.Uid);
+                await _firestore.RunTransactionAsync(async transaction =>
+                {
+                    await transaction.GetSnapshotAsync(registeredRef);
+                    var version = await EmployeeMembershipVersion.ReadAsync(_firestore, transaction);
+                    transaction.Set(registeredRef, employeeData);
+                    EmployeeMembershipVersion.Advance(transaction, version);
+                });
 
                 // 3. Disparar envío de email de verificación usando plantilla de Firebase
                 try
@@ -290,10 +318,7 @@ namespace Firebase.Services
                 return AuthenticationResult.Failure("El inicio de sesión con Google no está disponible en el entorno local.");
             try
             {
-                var decodedToken = await FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(idToken);
-                var email = decodedToken.Claims["email"].ToString();
-                var displayName = decodedToken.Claims["name"].ToString();
-                var uid = decodedToken.Uid;
+                var (uid, email, displayName) = await _verifyGoogleToken(idToken);
 
                 var employeesCollection = _firestore.Collection("empleados");
                 var employeeDoc = await employeesCollection.Document(uid).GetSnapshotAsync();
@@ -320,9 +345,6 @@ namespace Firebase.Services
                         }
 
                         var antesMigracion = AuditCampos.CapturarEmpleado(await new PersonalService(_firestore).ObtenerEmpleado(existingEmployee.Id));
-                        // Migrar: eliminar documento viejo y crear con UID correcto
-                        await existingEmployee.Reference.DeleteAsync();
-
                         var migratedEmployee = new Dictionary<string, object>
                         {
                             { "Uid", uid },
@@ -331,7 +353,21 @@ namespace Firebase.Services
                             { "Rol", role },
                             { "Estado", estado }
                         };
-                        await employeesCollection.Document(uid).SetAsync(migratedEmployee);
+                        var targetRef = employeesCollection.Document(uid);
+                        var migrated = await _firestore.RunTransactionAsync(async transaction =>
+                        {
+                            var target = await transaction.GetSnapshotAsync(targetRef);
+                            var source = await transaction.GetSnapshotAsync(existingEmployee.Reference);
+                            var version = await EmployeeMembershipVersion.ReadAsync(_firestore, transaction);
+                            if (target.Exists || !source.Exists || source.GetValue<string>("Estado") != "Activo" ||
+                                source.GetValue<string>("Email") != email || source.GetValue<string>("Rol") != role)
+                                return false;
+                            transaction.Delete(existingEmployee.Reference);
+                            transaction.Set(targetRef, migratedEmployee);
+                            EmployeeMembershipVersion.Advance(transaction, version);
+                            return true;
+                        });
+                        if (!migrated) return AuthenticationResult.Failure("Error al autenticar con Google. Por favor, intente de nuevo.");
 
                         await _auditService.LogEvent(uid, email, "Migración a Google Auth", uid, "Empleado", antesMigracion,
                             AuditCampos.CapturarEmpleado(await new PersonalService(_firestore).ObtenerEmpleado(uid) ?? throw new InvalidOperationException("Empleado no encontrado después de migrar.")));
@@ -350,7 +386,19 @@ namespace Firebase.Services
                             { "Rol", role },
                             { "Estado", estado }
                         };
-                        await employeesCollection.Document(uid).SetAsync(newEmployee);
+                        var targetRef = employeesCollection.Document(uid);
+                        if (BeforeGoogleProvisioningTransaction != null) await BeforeGoogleProvisioningTransaction();
+                        var created = await _firestore.RunTransactionAsync(async transaction =>
+                        {
+                            var target = await transaction.GetSnapshotAsync(targetRef);
+                            var existingByEmail = await transaction.GetSnapshotAsync(employeesCollection.WhereEqualTo("Email", email));
+                            var version = await EmployeeMembershipVersion.ReadAsync(_firestore, transaction);
+                            if (target.Exists || existingByEmail.Count > 0) return false;
+                            transaction.Set(targetRef, newEmployee);
+                            EmployeeMembershipVersion.Advance(transaction, version);
+                            return true;
+                        });
+                        if (!created) return AuthenticationResult.Failure("Error al autenticar con Google. Por favor, intente de nuevo.");
 
                         await _auditService.LogEvent(uid, email, "Registro con Google", uid, "Empleado", new(),
                             AuditCampos.CapturarEmpleado(await new PersonalService(_firestore).ObtenerEmpleado(uid) ?? throw new InvalidOperationException("Empleado no encontrado después de registrar.")));
@@ -398,6 +446,12 @@ namespace Firebase.Services
         #endregion
 
         #region Utilidades
+
+        private static async Task<(string Uid, string Email, string Name)> VerifyGoogleTokenAsync(string idToken)
+        {
+            var token = await FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(idToken);
+            return (token.Uid, token.Claims["email"].ToString()!, token.Claims["name"].ToString()!);
+        }
 
         /// <summary>
         /// Firma en Firebase REST para obtener idToken y dispara el envío del correo

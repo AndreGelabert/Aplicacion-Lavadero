@@ -61,8 +61,8 @@ public sealed class InsumoCatalogIntegrationTests
         var quimico = new TipoInsumo { Nombre = "Quimico", Categoria = TipoInsumo.Categorias.Volumen, UnidadResumen = "ml" };
         Assert.True((await tipos.Guardar(quimico, true, "test", "test@example.invalid")).EsExitoso);
         var proveedores = new ProveedorService(db);
-        var p1 = new Proveedor { RazonSocial = "Proveedor Uno", IdentificacionTributaria = "111" };
-        var p2 = new Proveedor { RazonSocial = "Proveedor Dos", IdentificacionTributaria = "222" };
+        var p1 = new Proveedor { RazonSocial = "Proveedor Uno", IdentificacionTributaria = "30-00000001-5", Contacto = "1234567890", EmailOrdenes = "uno@example.invalid" };
+        var p2 = new Proveedor { RazonSocial = "Proveedor Dos", IdentificacionTributaria = "30-00000002-3", Contacto = "1234567891", EmailOrdenes = "dos@example.invalid" };
         Assert.True((await proveedores.Guardar(p1, true)).EsExitoso);
         Assert.True((await proveedores.Guardar(p2, true)).EsExitoso);
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" });
@@ -88,8 +88,7 @@ public sealed class InsumoCatalogIntegrationTests
             async Task<string> Page() { var r = await client.GetAsync("/Insumos/Index"); var html = await r.Content.ReadAsStringAsync(); Assert.True(r.StatusCode == HttpStatusCode.OK, html); return html; }
             var page = await Page();
             Assert.Contains("Reabastecimiento automático", page); Assert.Contains("Proveedor Uno", page); Assert.Contains("Proveedor Dos", page);
-            Assert.Matches($"(?s)<select name=\"TipoId\"[^>]*>.*?<option value=\"{Regex.Escape(herramienta.Id)}\"[^>]*>Herramienta</option>.*?</select>", page);
-            Assert.Matches("(?s)<select name=\"tipo\"[^>]*>.*?<option value=\"Herramienta\">Herramienta</option>.*?</select>", page);
+            Assert.Matches($"(?s)<select[^>]*name=\"TipoId\"[^>]*>.*?<option value=\"{Regex.Escape(herramienta.Id)}\"[^>]*>Herramienta</option>.*?</select>", page);
             var token = Regex.Match(page, "name=\\\"__RequestVerificationToken\\\"[^>]*value=\\\"([^\\\"]+)\\\"").Groups[1].Value;
             Assert.NotEmpty(token);
             async Task Post(string id, string name, bool crear, bool automatico, params string[] ids)
@@ -122,7 +121,7 @@ public sealed class InsumoCatalogIntegrationTests
             Assert.Equal(HttpStatusCode.OK, filtered.StatusCode);
             var html = await filtered.Content.ReadAsStringAsync();
             Assert.Contains("Hidro editada", html); Assert.Contains("Otro", html); Assert.DoesNotContain("Quimico exclusivo", html);
-            Assert.Matches("<option value=\"Herramienta\" selected(?:=\"selected\")?>Herramienta</option>", html);
+            Assert.Matches("<input[^>]*name=\"tipos\"[^>]*value=\"Herramienta\"[^>]*checked", html);
             filtered = await client.GetAsync("/Insumos/Index?tipo=Quimico");
             Assert.Equal(HttpStatusCode.OK, filtered.StatusCode);
             html = await filtered.Content.ReadAsStringAsync();
@@ -157,7 +156,7 @@ public sealed class InsumoCatalogIntegrationTests
         var db = Db();
         var insumos = new InsumoService(db);
         var compras = new ComprasService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "30-00000001-5", Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
         Assert.True((await new ProveedorService(db).Guardar(proveedor, true)).EsExitoso);
         var item = new Insumo { Nombre = "Insumo" };
         Assert.True((await insumos.Guardar(item, true)).EsExitoso);
@@ -177,7 +176,7 @@ public sealed class InsumoCatalogIntegrationTests
         var db = Db();
         var insumos = new InsumoService(db);
         var compras = new ComprasService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", EmailOrdenes = "p@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "30-00000001-5", Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
         Assert.True((await new ProveedorService(db).Guardar(proveedor, true)).EsExitoso);
         for (var n = 0; n < 20; n++)
         {
@@ -203,7 +202,7 @@ public sealed class InsumoCatalogIntegrationTests
         var db = Db();
         var insumos = new InsumoService(db);
         var compras = new ComprasService(db);
-        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "123", EmailOrdenes = "p@example.invalid" };
+        var proveedor = new Proveedor { RazonSocial = "Proveedor", IdentificacionTributaria = "30-00000001-5", Contacto = "1234567890", EmailOrdenes = "p@example.invalid" };
         Assert.True((await new ProveedorService(db).Guardar(proveedor, true)).EsExitoso);
         for (var n = 0; n < 10; n++)
         {
@@ -305,8 +304,9 @@ public sealed class InsumoCatalogIntegrationTests
 
             Assert.Equal(HttpStatusCode.Redirect, (await PostForm("GuardarProveedor",
                 ("crear", "true"),
-                ("IdentificacionTributaria", "20-55555555-5"),
+                ("IdentificacionTributaria", "30-00000001-5"),
                 ("RazonSocial", "Proveedor Insumo"),
+                ("Contacto", "1234567890"),
                 ("EmailOrdenes", "insumo@example.invalid"))).StatusCode);
             var proveedor = Assert.Single(await new ProveedorService(db).ObtenerTodos());
 
@@ -363,7 +363,7 @@ public sealed class InsumoCatalogIntegrationTests
 
             // Desactivación exitosa
             Assert.Equal(HttpStatusCode.Redirect, (await PostForm("CambiarEstado", ("id", insumo.Id), ("estado", "Inactivo"))).StatusCode);
-            page = await Page();
+            page = await Page("/Insumos/Index?estados=Activo&estados=Inactivo");
             Assert.Contains("Insumo desactivado.", page);
             Assert.Contains("Reactivar", page);
             Assert.Equal("Inactivo", (await insumoService.Obtener(insumo.Id))!.Estado);
@@ -389,10 +389,13 @@ public sealed class InsumoCatalogIntegrationTests
                 ("Reactivacion de insumo", insumo.Id, "Shampoo Neutro", esperadoInactivo, esperadoActivo));
 
             // Rechazo por orden pendiente no emite auditoría ni muta estado
-            Assert.Equal(HttpStatusCode.Redirect, (await PostForm("CrearOrdenManual",
-                ("ProveedorId", proveedor.Id),
-                ("Items[0].InsumoId", insumo.Id),
-                ("Items[0].Cantidad", "3"))).StatusCode);
+            await db.Collection("ordenesCompra").Document("orden-pendiente").SetAsync(new OrdenCompra
+            {
+                Id = "orden-pendiente",
+                ProveedorId = proveedor.Id,
+                Estado = "PendienteAprobacion",
+                Items = new() { new() { InsumoId = insumo.Id, Cantidad = 3 } }
+            });
             Assert.Equal(HttpStatusCode.Redirect, (await PostForm("CambiarEstado", ("id", insumo.Id), ("estado", "Inactivo"))).StatusCode);
             page = await Page();
             Assert.Contains("No se puede desactivar un insumo con órdenes pendientes.", page);
@@ -421,8 +424,8 @@ public sealed class InsumoCatalogIntegrationTests
     {
         var db = Db();
         var proveedores = new ProveedorService(db);
-        var p1 = new Proveedor { RazonSocial = "Proveedor Alfa", IdentificacionTributaria = "20-11111111-1", EmailOrdenes = "alfa@example.invalid" };
-        var p2 = new Proveedor { RazonSocial = "Proveedor Beta", IdentificacionTributaria = "20-22222222-2", EmailOrdenes = "beta@example.invalid" };
+        var p1 = new Proveedor { RazonSocial = "Proveedor Alfa", IdentificacionTributaria = "30-00000001-5", Contacto = "1234567890", EmailOrdenes = "alfa@example.invalid" };
+        var p2 = new Proveedor { RazonSocial = "Proveedor Beta", IdentificacionTributaria = "30-00000002-3", Contacto = "1234567891", EmailOrdenes = "beta@example.invalid" };
         Assert.True((await proveedores.Guardar(p1, true)).EsExitoso);
         Assert.True((await proveedores.Guardar(p2, true)).EsExitoso);
 

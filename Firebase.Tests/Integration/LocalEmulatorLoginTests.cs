@@ -34,6 +34,11 @@ public class LocalEmulatorLoginTests
             Environment.SetEnvironmentVariable("FIREBASE_AUTH_EMULATOR_HOST", LocalEmulatorSettings.AuthHost);
             Environment.SetEnvironmentVariable("LOCAL_EMULATOR_PASSWORD", password);
             app = FirebaseApp.Create(new AppOptions { ProjectId = LocalEmulatorSettings.ProjectId, Credential = GoogleCredential.FromAccessToken("owner"), HttpClientFactory = new LocalAuthClientFactory() });
+            var auth = FirebaseAdmin.Auth.FirebaseAuth.GetAuth(app);
+            try { await auth.DeleteUserAsync(LocalEmulatorSeed.UserId); } catch { }
+            try { await auth.DeleteUserAsync(LocalEmulatorSeed.CreateOnlyUserId); } catch { }
+            try { await db.Collection("empleados").Document(LocalEmulatorSeed.UserId).DeleteAsync(); } catch { }
+            try { await db.Collection("empleados").Document(LocalEmulatorSeed.CreateOnlyUserId).DeleteAsync(); } catch { }
             var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["LocalEmulators:Enabled"] = "true" }).Build();
             using var client = new HttpClient(new LocalAuthEmulatorTransport());
             var service = new AuthenticationService(configuration, db, new AuditService(db), client);

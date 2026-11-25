@@ -16,6 +16,7 @@ public class PersonalService
 
     #region Dependencias
     private readonly FirestoreDb _firestore;
+    internal Func<Task> BeforeMembershipTransaction { get; set; }
 
     /// <summary>
     /// Inicializa una nueva instancia del servicio de personal.
@@ -214,7 +215,16 @@ public class PersonalService
             throw new ArgumentException("El nuevo estado no puede estar vacío", nameof(nuevoEstado));
 
         var employeeRef = _firestore.Collection(COLLECTION_NAME).Document(id);
-        await employeeRef.UpdateAsync("Estado", nuevoEstado);
+        if (BeforeMembershipTransaction != null) await BeforeMembershipTransaction();
+        await _firestore.RunTransactionAsync(async transaction =>
+        {
+            var employee = await transaction.GetSnapshotAsync(employeeRef);
+            var version = await Firebase.Services.EmployeeMembershipVersion.ReadAsync(_firestore, transaction);
+            // Update retains Firestore's missing-document failure and atomic rollback.
+            transaction.Update(employeeRef, new Dictionary<string, object> { ["Estado"] = nuevoEstado });
+            if (employee.Exists && (!employee.ContainsField("Estado") || employee.GetValue<string>("Estado") != nuevoEstado))
+                Firebase.Services.EmployeeMembershipVersion.Advance(transaction, version);
+        });
     }
     #endregion
 

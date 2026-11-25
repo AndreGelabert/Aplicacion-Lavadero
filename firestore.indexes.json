@@ -1,6 +1,15 @@
 {
   "indexes": [
     {
+      "collectionGroup": "turnos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ClienteId", "order": "ASCENDING" },
+        { "fieldPath": "Estado", "order": "ASCENDING" },
+        { "fieldPath": "InicioUtc", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "empleados",
       "queryScope": "COLLECTION",
       "fields": [

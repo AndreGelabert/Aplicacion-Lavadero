@@ -18,6 +18,22 @@ public partial class WhatsAppFlowService
     private readonly LavaderoInfoService _lavaderoInfoService;
     private readonly ICarQueryService _carQueryService;
     private readonly ILogger<WhatsAppFlowService> _logger;
+    private readonly Func<string, Task<WhatsAppSession>>? _testSession;
+    private readonly Func<string, DateTime, Task<List<Turno>>>? _testTurnos;
+    private readonly ITurnoConsultaService? _turnoConsulta;
+    private readonly ITurnoSelectorService? _turnoSelector;
+    private readonly Google.Cloud.Firestore.FirestoreDb? _firestore;
+    internal Func<bool> BookingSchedulerEnabled { get; set; } = () => false;
+    internal TurnoWhatsAppBookingAdapter? BookingAdapter { get; set; }
+    internal Func<Task>? AfterOfferSessionRead { get; set; }
+
+    internal WhatsAppFlowService(MetaWhatsAppService meta, Func<string, Task<WhatsAppSession>> session,
+        Func<string, DateTime, Task<List<Turno>>> turnos)
+        : this(null!, meta, null!, null!, null!, null!, null!, null!, Microsoft.Extensions.Logging.Abstractions.NullLogger<WhatsAppFlowService>.Instance)
+    {
+        _testSession = session;
+        _testTurnos = turnos;
+    }
 
     public WhatsAppFlowService(
         WhatsAppSessionService sessionService,
@@ -28,8 +44,14 @@ public partial class WhatsAppFlowService
         TipoVehiculoService tipoVehiculoService,
         LavaderoInfoService lavaderoInfoService,
         ICarQueryService carQueryService,
-        ILogger<WhatsAppFlowService> logger)
+        ILogger<WhatsAppFlowService> logger,
+        ITurnoConsultaService? turnoConsulta = null,
+        Google.Cloud.Firestore.FirestoreDb? firestore = null,
+        ITurnoSelectorService? turnoSelector = null)
     {
+        _turnoSelector = turnoSelector;
+        _firestore = firestore;
+        _turnoConsulta = turnoConsulta;
         _sessionService = sessionService;
         _whatsAppService = whatsAppService;
         _clienteService = clienteService;
@@ -51,9 +73,17 @@ public partial class WhatsAppFlowService
             _logger.LogInformation("🔄 Procesando mensaje entrante (longitud: {MessageLength})", messageBody.Length);
 
             // Obtener o crear sesión
-            var session = await _sessionService.GetOrCreateSession(phoneNumber);
+            var session = _testSession != null ? await _testSession(phoneNumber) : await _sessionService.GetOrCreateSession(phoneNumber);
 
             _logger.LogInformation("WhatsApp session loaded");
+
+            // Si es respuesta directa a botón de oferta de adelanto
+            if (messageBody.StartsWith("oferta_si_", StringComparison.OrdinalIgnoreCase) ||
+                messageBody.StartsWith("oferta_no_", StringComparison.OrdinalIgnoreCase))
+            {
+                await HandleRespuestaOfertaBoton(phoneNumber, session, messageBody);
+                return;
+            }
 
             // Si es el PRIMER mensaje (estado INICIO), verificar si el cliente ya existe
             if (session.CurrentState == WhatsAppFlowStates.INICIO)
@@ -196,6 +226,7 @@ public partial class WhatsAppFlowService
         // Como tenemos 4 opciones, usamos lista desplegable (WhatsApp permite máximo 3 botones)
         var options = new List<(string id, string title, string description)>
         {
+            ("turnos", "📅 Gestionar turnos", "Reservar, consultar o cancelar turnos"),
             ("vehiculos", "🚗 Gestionar vehículos", "Agregar o modificar vehículos"),
             ("datos", "👤 Mis datos", "Ver o editar mi información"),
             ("sobre_nosotros", "ℹ️ Sobre nosotros", "Información del lavadero"),
@@ -308,6 +339,46 @@ public partial class WhatsAppFlowService
                 // ========== MENÚ CLIENTE AUTENTICADO ==========
                 case WhatsAppFlowStates.MENU_CLIENTE_AUTENTICADO:
                     await HandleMenuClienteAutenticado(phoneNumber, session, messageBody);
+                    break;
+
+                case WhatsAppFlowStates.MENU_TURNOS:
+                    await HandleMenuTurnos(phoneNumber, session, messageBody);
+                    break;
+
+                case "TURNO_RESERVA_CONFIRMAR":
+                    await HandleReservaConfirmar(phoneNumber, session, messageBody);
+                    break;
+
+                case "TURNO_RESERVA_FECHA":
+                    await HandleReservaFecha(phoneNumber, session, messageBody);
+                    break;
+
+                case "TURNO_RESERVA_ADELANTO":
+                    await HandleReservaAdelanto(phoneNumber, session, messageBody);
+                    break;
+
+                case "TURNO_RESERVA_SERVICIO":
+                    await HandleReservaServicio(phoneNumber, session, messageBody);
+                    break;
+
+                case "TURNO_RESERVA_VEHICULO":
+                    await HandleReservaVehiculo(phoneNumber, session, messageBody);
+                    break;
+
+                case "TURNO_OFERTA_RESPUESTA":
+                    if (AfterOfferSessionRead != null) await AfterOfferSessionRead();
+                    await HandleRespuestaOferta(phoneNumber, session, messageBody);
+                    break;
+
+                case "TURNO_OFERTA_SELECCIONAR":
+                    await HandleSeleccionOferta(phoneNumber, session, messageBody);
+                    break;
+
+                case "TURNO_SELECCIONAR":
+                    await HandleSeleccionCancelacion(phoneNumber, session, messageBody);
+                    break;
+                case "TURNO_CONFIRMAR":
+                    await HandleConfirmacionCancelacion(phoneNumber, session, messageBody);
                     break;
 
                 // ========== FLUJO DE AGREGAR VEHÍCULO ==========

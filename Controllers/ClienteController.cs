@@ -153,6 +153,14 @@ public class ClienteController : Controller
                 return await PrepararRespuestaAjax(false, cliente, null);
             }
 
+            // Validar duplicados de teléfono
+            var existenteTelefono = await _clienteService.ObtenerClientePorTelefono(cliente.Telefono);
+            if (existenteTelefono != null)
+            {
+                ModelState.AddModelError("Telefono", "Ya existe un cliente con este número de teléfono.");
+                return await PrepararRespuestaAjax(false, cliente, null);
+            }
+
             var vehiculosData = DeserializarVehiculos(vehiculosDataJson);
             var validacion = await _clienteVehicles.Validar(cliente, vehiculosData, true);
             if (validacion.ErrorMessage != null)
@@ -221,6 +229,14 @@ public class ClienteController : Controller
             if (clienteActual == null)
             {
                 ModelState.AddModelError("", "El cliente no existe.");
+                return await PrepararRespuestaAjax(false, cliente, null);
+            }
+
+            // Validar duplicados de teléfono en edición
+            var existenteTelefono = await _clienteService.ObtenerClientePorTelefono(cliente.Telefono);
+            if (existenteTelefono != null && existenteTelefono.Id != cliente.Id)
+            {
+                ModelState.AddModelError("Telefono", "Ya existe un cliente con este número de teléfono.");
                 return await PrepararRespuestaAjax(false, cliente, null);
             }
 
@@ -320,6 +336,18 @@ public class ClienteController : Controller
 
     public static bool PuedeGestionarVehiculosDesdeCliente(ClaimsPrincipal user, string permisoCliente) =>
         user.TienePermiso(permisoCliente) && user.TienePermiso("Vehiculos.Crear");
+
+    [HttpGet]
+    [Permiso("Clientes.Crear", "Clientes.Modificar")]
+    public async Task<IActionResult> VerificarTelefono(string telefono, string? id = null)
+    {
+        if (string.IsNullOrWhiteSpace(telefono))
+            return Json(new { existe = false });
+
+        var existente = await _clienteService.ObtenerClientePorTelefono(telefono);
+        var existe = existente != null && (string.IsNullOrEmpty(id) || existente.Id != id);
+        return Json(new { existe });
+    }
 
     [HttpPost]
     [Permiso("Clientes.Eliminar")]

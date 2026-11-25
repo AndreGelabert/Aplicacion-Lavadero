@@ -47,7 +47,7 @@ public sealed class CotizacionesHttpIntegrationTests
             client.DefaultRequestHeaders.Add("X-Test-Permission", "Insumos.Modificar");
             var page = await client.GetStringAsync("/Insumos/Cotizaciones?grupoId=g");
             var token = Regex.Match(page, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value; Assert.NotEmpty(token);
-            Assert.Contains("Crear solicitud", page);
+            Assert.Contains("Solicitudes de cotización", page);
             Assert.Contains("Registrar respuesta", page);
             Assert.Contains("Items[0].Disponible", page);
             Assert.DoesNotContain("asp-action=\"Adjudicar\"", page);
@@ -101,7 +101,7 @@ public sealed class CotizacionesHttpIntegrationTests
             Assert.Equal(17, Assert.Single(ordenHistorica.Items).PrecioUnitario);
             Assert.Equal("Adjudicada", (await db.Collection("solicitudesCotizacion").Document("historica").GetSnapshotAsync()).GetValue<string>("Estado"));
             Assert.Equal("Descartada", (await db.Collection("solicitudesCotizacion").Document("rival").GetSnapshotAsync()).GetValue<string>("Estado"));
-            email.Verify(x => x.EnviarAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            email.Verify(x => x.EnviarAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(4));
         }
         finally { await app.StopAsync(); }
     }

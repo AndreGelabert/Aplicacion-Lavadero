@@ -1,0 +1,16 @@
+@model Firebase.Models.TurnoConsultaViewModel
+<noscript><p class="text-red-700">Para iniciar el lavado debe habilitar JavaScript.</p></noscript>
+<dialog id="turno-inicio-dialog" aria-labelledby="turno-inicio-title" class="rounded-lg shadow-lg bg-white dark:bg-gray-800 p-6 max-w-lg w-full text-gray-900 dark:text-white">
+    <h2 id="turno-inicio-title" class="text-lg font-semibold mb-3">Iniciar lavado</h2>
+    <p class="mb-3 text-sm">Los empleados se asignan automáticamente. Las opciones son orientativas; la disponibilidad se verifica al iniciar.</p>
+    <form id="turno-inicio-form" method="post" action="@Url.Action("Iniciar", "Turnos")" aria-labelledby="turno-inicio-title"
+          data-turno-id="@Model.Id" data-recursos-url="@Url.Action("RecursosInicio", "Turnos")" data-inicio-url="@Url.Action("Iniciar", "Turnos")" data-lavado-url="@Url.Action("Detalle", "Lavados")/">
+        @Html.AntiForgeryToken()
+        <div id="turno-inicio-items" class="space-y-4"></div>
+        <p id="turno-inicio-error" aria-live="polite" class="text-red-700 dark:text-red-400 my-3"></p>
+        <div class="flex gap-2 justify-end mt-4">
+            <button id="turno-inicio-cancel" type="button" class="px-4 py-2 rounded-lg bg-gray-600 text-white">Cancelar</button>
+            <button id="turno-inicio-submit" type="submit" class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white">Iniciar lavado</button>
+        </div>
+    </form>
+</dialog>

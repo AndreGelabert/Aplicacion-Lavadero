@@ -8,6 +8,9 @@ test('wash detail uses shared transport and notifications while preserving token
     const browser = await chromium.launch({ headless: true });
     try {
         const page = await browser.newPage();
+        await page.route('**/Lavados/RecursosInicio*', async route => {
+            await route.fulfill({ json: { success: true, items: [] } });
+        });
         await page.route('**/Lavados/IniciarServicio', async route => {
             const request = route.request();
             assert.equal(request.headers()['requestverificationtoken'], 'token');
@@ -20,7 +23,10 @@ test('wash detail uses shared transport and notifications while preserving token
         await page.addScriptTag({ path: 'wwwroot/js/notifications.js' });
         await page.addScriptTag({ path: 'wwwroot/js/requests.js' });
         await page.addScriptTag({ path: 'wwwroot/js/lavado-detalle.js' });
-        await page.evaluate(() => window.iniciarServicioDesdeDetalle('lavado', 'servicio'));
+        await page.evaluate(() => {
+            window.LavadoInsumos = { seleccionar: async () => ({}) };
+            return window.iniciarServicioDesdeDetalle('lavado', 'servicio');
+        });
         assert.equal(await page.locator('#app-notifications [data-notification-type="error"] p').textContent(), 'No permitido');
     } finally { await browser.close(); }
 });

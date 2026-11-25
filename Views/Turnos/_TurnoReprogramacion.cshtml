@@ -1,0 +1,39 @@
+@model Firebase.Models.TurnoConsultaViewModel
+@{ var inicio = TimeZoneInfo.ConvertTimeFromUtc(Model.InicioUtc, Firebase.Utils.TimeZoneHelper.ArgentinaZone); }
+<noscript><p>Para reprogramar el turno debe habilitar JavaScript.</p></noscript>
+<dialog id="reprogramacion-dialog" aria-labelledby="reprogramacion-title" class="rounded-lg p-6 bg-white dark:bg-gray-800 dark:text-white">
+    <h2 id="reprogramacion-title">Reprogramar turno</h2>
+    <form id="reprogramacion-form" method="post" action="@Url.Action("Editar", "Turnos")" data-token-url="@Url.Action("EditarToken", "Turnos", new { id = Model.Id })" aria-labelledby="reprogramacion-title">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="Id" value="@Model.Id" />
+        <input type="hidden" name="VersionEsperada" value="@Model.VersionEsperada" />
+        <input type="hidden" name="FormIdentity" value="" />
+        <label for="reprogramacion-fecha">Fecha (Buenos Aires)</label>
+        <input id="reprogramacion-fecha" name="Fecha" type="date" value="@inicio.ToString("yyyy-MM-dd")" required />
+        <label for="reprogramacion-hora">Hora (Buenos Aires)</label>
+        <input id="reprogramacion-hora" name="Hora" type="time" value="@inicio.ToString("HH:mm")" required />
+        <input id="reprogramacion-adelanto" name="AceptaAdelanto" type="checkbox" value="true" checked="@Model.AceptaAdelanto" />
+        <label for="reprogramacion-adelanto">Acepta adelanto</label>
+        <fieldset>
+            <legend>Vehículo y servicios acordados</legend>
+            @foreach (var vehiculo in Model.Vehiculos)
+            {
+                <p data-vehiculo-id="@vehiculo.VehiculoId">@vehiculo.Patente</p>
+                <ul>@foreach (var servicio in vehiculo.Servicios) { <li data-servicio-id="@servicio.ServicioId" data-paquete-id="@servicio.PaqueteId">@servicio.Nombre</li> }</ul>
+            }
+            <p>Para cambiar el vehículo o los servicios, busque un vehículo y seleccione todos los servicios y paquetes deseados. Se recalculará el precio y la receta con el catálogo vigente.</p>
+            <label for="reprogramacion-patente">Patente</label>
+            <input id="reprogramacion-patente" type="text" autocomplete="off" />
+            <button id="reprogramacion-buscar" type="button">Buscar vehículo</button>
+            <div id="reprogramacion-resultados"></div>
+            <p id="reprogramacion-vehiculo"></p>
+            <div id="reprogramacion-servicios"></div>
+        </fieldset>
+        <label for="reprogramacion-descuento">Descuento acordado (%)</label>
+        <input id="reprogramacion-descuento" type="number" min="0" max="100" step="any" value="@Model.Descuento.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+        <p>Si modifica el descuento se recalculará el precio y la receta. Los turnos con cupón pueden rechazar cambios de descuento.</p>
+        <p id="reprogramacion-error" aria-live="polite"></p>
+        <button type="button" id="reprogramacion-cerrar">Volver</button>
+        <button type="submit" id="reprogramacion-submit">Guardar cambios</button>
+    </form>
+</dialog>

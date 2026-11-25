@@ -10,7 +10,8 @@ namespace Firebase.Security
         /// <summary>
         /// Ruta del módulo.
         /// </summary>
-        public string Ruta => "/" + Controlador;
+        public string Ruta => RutaEspecifica ?? "/" + Controlador;
+        public string? RutaEspecifica { get; init; }
 
         /// <summary>
         /// Permiso alternativo que habilita el acceso inicial sin permiso de consulta.
@@ -46,6 +47,7 @@ namespace Firebase.Security
         public static IReadOnlyList<ModuloNavegacion> Modulos { get; } = new[]
         {
             new ModuloNavegacion("Lavados", "Lavados", RolCatalogo.Clave("Lavados", RolCatalogo.Consultar)) { PermisoCrear = RolCatalogo.Clave("Lavados", RolCatalogo.Crear) },
+            new ModuloNavegacion("Turnos", "Turnos", RolCatalogo.Clave("Turnos", RolCatalogo.Consultar)) { PermisoCrear = RolCatalogo.Clave("Turnos", RolCatalogo.Crear) },
             new ModuloNavegacion("Cliente", "Clientes", RolCatalogo.Clave("Clientes", RolCatalogo.Consultar))
             {
                 PermisoCrear = RolCatalogo.Clave("Clientes", RolCatalogo.Crear)
@@ -81,7 +83,7 @@ namespace Firebase.Security
                 permisos ?? Array.Empty<string>(),
                 StringComparer.Ordinal);
 
-            return Modulos.FirstOrDefault(modulo => modulo.EsVisible(disponibles));
+            return ModulosVisibles(disponibles).FirstOrDefault();
         }
 
         /// <summary>
@@ -93,7 +95,9 @@ namespace Firebase.Security
                 permisos ?? Array.Empty<string>(),
                 StringComparer.Ordinal);
 
-            return Modulos.Where(modulo => modulo.EsVisible(disponibles)).ToList();
+            return Modulos.Where(modulo => modulo.EsVisible(disponibles))
+                .Select(modulo => modulo.Controlador == "Turnos" && !disponibles.Contains(modulo.Permiso)
+                    ? modulo with { RutaEspecifica = "/Turnos/Crear" } : modulo).ToList();
         }
 
         /// <summary>

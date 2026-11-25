@@ -99,9 +99,9 @@ test('pagination provides truthful previous and next links', () => {
     assert.match(view, /aria-label="Página anterior"/);
     assert.match(view, /aria-label="Página siguiente"/);
 });
-test('selected type has a confirmation dialog linked to existing delete endpoint', () => {
+test('selected type has a confirmation dialog linked to deactivation endpoint for logical delete', () => {
     assert.match(read('Views/Insumos/_TiposInsumoModal.cshtml'), /id="confirmarEliminarTipoInsumo"/);
-    assert.match(read('wwwroot/js/insumos.js'), /mutate\(typesModal\.dataset\.deleteUrl, \{ id:/);
+    assert.match(read('wwwroot/js/insumos.js'), /mutate\(typesModal\.dataset\.stateUrl, \{ id: deleteId, estado: 'Inactivo' \}\)/);
 });
 test('group pagination displays numbers and preserves query parameters', () => {
     assert.match(view, /aria-current="page"/);

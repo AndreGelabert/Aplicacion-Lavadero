@@ -62,7 +62,7 @@ public class WhatsAppOperationTests
 
     private static readonly IOptions<WhatsAppSettings> Settings = Options.Create(new WhatsAppSettings
     {
-        AccessToken = "private-token", VerifyToken = "private-verify", PhoneNumberId = "123"
+        AccessToken = "private-token", VerifyToken = "private-verify", PhoneNumberId = "123", AppSecret = "synthetic-app-secret"
     });
 
     private static WhatsAppFlowService Flow(MetaWhatsAppService meta, ILogger<WhatsAppFlowService> logger) =>
@@ -95,7 +95,16 @@ public class WhatsAppOperationTests
             "text":{"body":"private-body"}}]}}]}]}
             """);
 
-        var result = await controller.ReceiveMessage(body.RootElement);
+        controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
+        {
+            HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext()
+        };
+        controller.Request.Body = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(body.RootElement.GetRawText()));
+        controller.Request.Headers["X-Hub-Signature-256"] = "sha256=" + Convert.ToHexString(
+            System.Security.Cryptography.HMACSHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(Settings.Value.AppSecret),
+                System.Text.Encoding.UTF8.GetBytes(body.RootElement.GetRawText()))).ToLowerInvariant();
+        var result = await controller.ReceiveMessage();
 
         Assert.Equal(500, Assert.IsType<StatusCodeResult>(result).StatusCode);
         Assert.Single(handler.Requests);
@@ -127,7 +136,17 @@ public class WhatsAppOperationTests
             "text":{"body":"private-body"}}]}}]}]}
             """);
 
-        var result = Assert.IsType<ObjectResult>(await controller.ReceiveMessage(body.RootElement));
+        var resultJson = body.RootElement.GetRawText();
+        controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
+        {
+            HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext()
+        };
+        controller.Request.Body = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(resultJson));
+        controller.Request.Headers["X-Hub-Signature-256"] = "sha256=" + Convert.ToHexString(
+            System.Security.Cryptography.HMACSHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(Settings.Value.AppSecret),
+                System.Text.Encoding.UTF8.GetBytes(resultJson))).ToLowerInvariant();
+        var result = Assert.IsType<ObjectResult>(await controller.ReceiveMessage());
         Assert.Equal(500, result.StatusCode);
         var json = JsonSerializer.Serialize(result.Value);
         Assert.DoesNotContain("private-", json);
@@ -161,8 +180,20 @@ public class WhatsAppOperationTests
             "messages":[{"from":"private-phone","id":"wamid.example","timestamp":"123","type":"text",
             "text":{"body":"private-body"}}]}}]}]}
             """);
-        await controller.ReceiveMessage(body.RootElement);
-        await controller.ReceiveMessage(body.RootElement);
+        var correlationJson = body.RootElement.GetRawText();
+        controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
+        {
+            HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext()
+        };
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            controller.Request.Body = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(correlationJson));
+            controller.Request.Headers["X-Hub-Signature-256"] = "sha256=" + Convert.ToHexString(
+                System.Security.Cryptography.HMACSHA256.HashData(
+                    System.Text.Encoding.UTF8.GetBytes(Settings.Value.AppSecret),
+                    System.Text.Encoding.UTF8.GetBytes(correlationJson))).ToLowerInvariant();
+            await controller.ReceiveMessage();
+        }
 
         var expected = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("wamid.example")));
         foreach (var category in new[] { typeof(MetaWhatsAppService).FullName!, typeof(WhatsAppFlowService).FullName! })

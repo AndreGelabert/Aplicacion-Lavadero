@@ -615,7 +615,8 @@ public class ServicioService
             ["InsumoId"] = item.InsumoId,
             ["NombreInsumo"] = item.NombreInsumo,
             ["UnidadMedida"] = item.UnidadMedida,
-            ["DosisTeorica"] = (double)item.DosisTeorica
+            ["DosisTeorica"] = (double)item.DosisTeorica,
+            ["EsHerramienta"] = item.EsHerramienta
         }).ToList();
 
     private static List<RecetaInsumo> MapearReceta(object raw)
@@ -630,7 +631,8 @@ public class ServicioService
             InsumoId = item.TryGetValue("InsumoId", out var id) ? id?.ToString() ?? string.Empty : string.Empty,
             NombreInsumo = item.TryGetValue("NombreInsumo", out var nombre) ? nombre?.ToString() ?? string.Empty : string.Empty,
             UnidadMedida = item.TryGetValue("UnidadMedida", out var unidad) ? unidad?.ToString() ?? string.Empty : string.Empty,
-            DosisTeorica = item.TryGetValue("DosisTeorica", out var dosis) && dosis != null ? Convert.ToDecimal(dosis) : 0m
+            DosisTeorica = item.TryGetValue("DosisTeorica", out var dosis) && dosis != null ? Convert.ToDecimal(dosis) : 0m,
+            EsHerramienta = item.TryGetValue("EsHerramienta", out var eh) && eh is bool b && b
         }).ToList();
     }
 

@@ -148,7 +148,7 @@ public sealed class PreferredDeliveryIntegrationTests
         public async Task<int> AuditCount() => (await db.Collection("registros_auditoria").GetSnapshotAsync()).Count;
         public static async Task<Fixture> Start()
         {
-            if (Environment.GetEnvironmentVariable("FIRESTORE_EMULATOR_HOST") != "127.0.0.1:8296") throw new InvalidOperationException("Disposable emulator required.");
+            if (Environment.GetEnvironmentVariable("FIRESTORE_EMULATOR_HOST") != "127.0.0.1:8190") throw new InvalidOperationException("Disposable emulator required.");
             var db = new FirestoreDbBuilder { ProjectId = "demo-preferred-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
             foreach (var id in new[] { "p1", "p2" }) await db.Collection("proveedores").Document(id).SetAsync(new Proveedor { Id=id, RazonSocial=id, EmailOrdenes=id+"@example.invalid" });
             await db.Collection("insumos").Document("i").SetAsync(new Insumo { Id="i", Nombre="Jabón", UnidadMedida="ml" });

@@ -1,3 +1,4 @@
+using Firebase.Services;
 using FirebaseAdmin;
 using FirebaseAdmin.Auth;
 using Google.Cloud.Firestore;
@@ -47,7 +48,24 @@ public static class LocalEmulatorSeed
 
         foreach (var (key, data) in Documents())
         {
-            try { await db.Collection(key.Collection).Document(key.Id).CreateAsync(data); }
+            try
+            {
+                var reference = db.Collection(key.Collection).Document(key.Id);
+                if (key.Collection == "empleados" && data.TryGetValue("Estado", out var state) && Equals(state, "Activo"))
+                {
+                    var created = await db.RunTransactionAsync(async transaction =>
+                    {
+                        var existing = await transaction.GetSnapshotAsync(reference);
+                        if (existing.Exists) return false;
+                        var version = await EmployeeMembershipVersion.ReadAsync(db, transaction);
+                        transaction.Create(reference, data);
+                        EmployeeMembershipVersion.Advance(transaction, version);
+                        return true;
+                    });
+                    if (!created) Console.WriteLine($"Existing local document preserved: {key.Collection}/{key.Id}");
+                }
+                else await reference.CreateAsync(data);
+            }
             catch (RpcException ex) when (ex.StatusCode == StatusCode.AlreadyExists)
             {
                 Console.WriteLine($"Existing local document preserved: {key.Collection}/{key.Id}");

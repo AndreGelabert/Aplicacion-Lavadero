@@ -1,4 +1,5 @@
 using Firebase.Models;
+using Firebase.Services;
 using Google.Cloud.Firestore;
 
 /// <summary>
@@ -120,6 +121,35 @@ public class ClienteService
 
         var snapshot = await query.GetSnapshotAsync();
         return snapshot.Documents.Count > 0 ? snapshot.Documents[0].ConvertTo<Cliente>() : null;
+    }
+
+    public async Task<Cliente?> ObtenerClientePorTelefono(string telefono)
+    {
+        if (string.IsNullOrWhiteSpace(telefono)) return null;
+
+        var telefonoLimpio = PhoneNumberHelper.RemoveCountryCode(PhoneNumberHelper.NormalizePhoneNumber(telefono));
+
+        var query = _firestore.Collection("clientes")
+            .WhereEqualTo("Telefono", telefonoLimpio);
+
+        var snapshot = await query.GetSnapshotAsync();
+        if (snapshot.Documents.Count > 0)
+        {
+            return snapshot.Documents[0].ConvertTo<Cliente>();
+        }
+
+        if (telefonoLimpio != telefono.Trim())
+        {
+            var fallbackQuery = _firestore.Collection("clientes")
+                .WhereEqualTo("Telefono", telefono.Trim());
+            var fallbackSnapshot = await fallbackQuery.GetSnapshotAsync();
+            if (fallbackSnapshot.Documents.Count > 0)
+            {
+                return fallbackSnapshot.Documents[0].ConvertTo<Cliente>();
+            }
+        }
+
+        return null;
     }
 
     public async Task CrearCliente(Cliente cliente)

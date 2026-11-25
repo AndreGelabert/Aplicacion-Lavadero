@@ -892,6 +892,10 @@
                     // Abrir el acordeón usando el botón
                     if (accordionBody.classList.contains('hidden')) {
                         accordionBtn.click();
+                        if (accordionBody.classList.contains('hidden')) {
+                            accordionBody.classList.remove('hidden');
+                            accordionBtn.setAttribute('aria-expanded', 'true');
+                        }
                     }
                 }
 
@@ -905,12 +909,14 @@
                         // Si hay color, inicializar el toggle
                         if (colorDelServidor) {
                             // Primero cargar colores si no están cargados
-                            if (!window.VehiculoApi || !window.VehiculoApi.coloresCache || window.VehiculoApi.coloresCache.length === 0) {
-                                await window.VehiculoApi.loadColores();
+                            if (window.VehiculoApi && (!window.VehiculoApi.coloresCache || window.VehiculoApi.coloresCache.length === 0)) {
+                                if (typeof window.VehiculoApi.loadColores === 'function') {
+                                    await window.VehiculoApi.loadColores();
+                                }
                             }
                             
                             // Ahora inicializar el color
-                            if (window.VehiculoApi && window.VehiculoApi.initColor) {
+                            if (window.VehiculoApi && typeof window.VehiculoApi.initColor === 'function') {
                                 window.VehiculoApi.initColor(colorDelServidor);
                             }
                         }
@@ -1041,6 +1047,10 @@
         // Cerrar el body del acordeón si está abierto
         if (accordionBody && accordionBtn && !accordionBody.classList.contains('hidden')) {
             accordionBtn.click();
+            if (!accordionBody.classList.contains('hidden')) {
+                accordionBody.classList.add('hidden');
+                accordionBtn.setAttribute('aria-expanded', 'false');
+            }
         }
         
         // Ocultar todo el acordeón después de la animación
@@ -1057,6 +1067,220 @@
 
     function setupModals() {
         setupDeleteModal();
+        setupCatalogoRevisionModal();
+    }
+
+    function setupCatalogoRevisionModal() {
+        const modalEl = document.getElementById('catalogoRevisionModal');
+        if (!modalEl) return;
+
+        const openBtn = document.querySelector('[data-open-catalogo-revision]') || document.getElementById('btn-catalogo-revision');
+        const closeBtn = modalEl.querySelector('[data-close-catalogo-revision]');
+        const tableBody = document.getElementById('catalogoRevisionTabla');
+        const emptyState = document.getElementById('catalogoRevisionVacio');
+        const mensajeBox = document.getElementById('catalogoRevisionMensaje');
+        const badge = document.getElementById('badge-catalogo-revision');
+
+        const listUrl = modalEl.dataset.listUrl || '/VehicleCatalogueReview/ModalDatos';
+        const resolveUrl = modalEl.dataset.resolveUrl || '/VehicleCatalogueReview/ResolveAjax';
+
+        let revisionModalInstance = null;
+        function getModal() {
+            if (!revisionModalInstance && typeof window.Modal === 'function') {
+                revisionModalInstance = new window.Modal(modalEl, {
+                    backdrop: 'static',
+                    closable: true,
+                    onHide: () => { modalEl.classList.add('hidden'); }
+                });
+            }
+            return revisionModalInstance;
+        }
+
+        function openModal() {
+            const m = getModal();
+            if (m) m.show();
+            else modalEl.classList.remove('hidden');
+            cargarPropuestas();
+        }
+
+        function closeModal() {
+            const m = getModal();
+            if (m) m.hide();
+            else modalEl.classList.add('hidden');
+        }
+
+        if (openBtn) {
+            openBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                openModal();
+            });
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                closeModal();
+            });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !modalEl.classList.contains('hidden')) {
+                closeModal();
+            }
+        });
+
+        async function cargarPropuestas() {
+            if (!tableBody) return;
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-500 dark:text-gray-400">Cargando propuestas pendientes...</td></tr>';
+            if (emptyState) emptyState.classList.add('hidden');
+            if (mensajeBox) mensajeBox.classList.add('hidden');
+
+            try {
+                const resp = await window.Peticiones.enviar(listUrl, { cache: 'no-store' });
+                if (!resp.ok) throw new Error('Error al cargar datos');
+                const data = await resp.json();
+                renderPropuestas(data);
+            } catch (err) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-red-500">Error al cargar propuestas pendientes.</td></tr>';
+            }
+        }
+
+        function actualizarBadgeCount(count) {
+            if (!badge) return;
+            if (count > 0) {
+                badge.textContent = count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.textContent = '';
+                badge.classList.add('hidden');
+            }
+        }
+
+        function renderPropuestas(propuestas) {
+            if (!tableBody) return;
+            tableBody.innerHTML = '';
+            actualizarBadgeCount(propuestas ? propuestas.length : 0);
+
+            if (!propuestas || propuestas.length === 0) {
+                if (emptyState) emptyState.classList.remove('hidden');
+                return;
+            }
+
+            if (emptyState) emptyState.classList.add('hidden');
+
+            propuestas.forEach(p => {
+                const id = p.vehiculoId || p.VehiculoId || '';
+                const tipo = p.tipoVehiculo || p.TipoVehiculo || '';
+                const marca = p.marca || p.Marca || '';
+                const marcaManual = Boolean(p.marcaManual ?? p.MarcaManual);
+                const modelo = p.modelo || p.Modelo || '';
+                const modeloManual = Boolean(p.modeloManual ?? p.ModeloManual);
+
+                const tr = document.createElement('tr');
+                tr.className = 'border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50';
+                tr.dataset.proposalId = id;
+
+                tr.innerHTML = `
+                    <td class="px-3 py-3 font-medium text-gray-900 dark:text-white">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                            ${escapeHtml(tipo)}
+                        </span>
+                    </td>
+                    <td class="px-3 py-3">
+                        <div class="font-medium text-gray-900 dark:text-white">${escapeHtml(marca)}</div>
+                        ${marcaManual ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300">Manual</span>' : ''}
+                    </td>
+                    <td class="px-3 py-3">
+                        <div class="font-medium text-gray-900 dark:text-white">${escapeHtml(modelo)}</div>
+                        ${modeloManual ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300">Manual</span>' : ''}
+                    </td>
+                    <td class="px-3 py-3 space-y-1.5">
+                        <div>
+                            <label class="block text-[10px] font-medium text-gray-500 dark:text-gray-400">Marca a registrar</label>
+                            <input type="text" data-field="brand" value="${escapeHtml(marca)}" placeholder="Marca oficial" maxlength="100" class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded p-1.5 block w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-gray-500 dark:text-gray-400">Modelo a registrar</label>
+                            <input type="text" data-field="model" value="${escapeHtml(modelo)}" placeholder="Modelo oficial" maxlength="100" class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded p-1.5 block w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                        </div>
+                    </td>
+                    <td class="px-3 py-3 text-right">
+                        <div class="flex flex-col sm:flex-row gap-1.5 justify-end">
+                            <button type="button" data-decision="approve" title="Aprobar e incorporar al catálogo oficial" class="app-button app-button--success text-xs px-2.5 py-1">Aprobar</button>
+                            <button type="button" data-decision="link" title="Vincular con datos existentes en catálogo" class="app-button app-button--primary text-xs px-2.5 py-1">Vincular</button>
+                            <button type="button" data-decision="discard" title="Descartar propuesta" class="app-button app-button--danger text-xs px-2.5 py-1">Descartar</button>
+                        </div>
+                    </td>
+                `;
+
+                tr.querySelectorAll('button[data-decision]').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const decision = btn.dataset.decision;
+                        const brandInput = tr.querySelector('input[data-field="brand"]');
+                        const modelInput = tr.querySelector('input[data-field="model"]');
+                        await resolverPropuesta(id, decision, brandInput?.value, modelInput?.value, tr);
+                    });
+                });
+
+                tableBody.appendChild(tr);
+            });
+        }
+
+        async function resolverPropuesta(id, decision, brand, model, rowElement) {
+            const tokenInput = modalEl.querySelector('input[name="__RequestVerificationToken"]') || document.querySelector('input[name="__RequestVerificationToken"]');
+            const fd = new FormData();
+            fd.append('id', id);
+            fd.append('decision', decision);
+            fd.append('brand', (brand || '').trim());
+            fd.append('model', (model || '').trim());
+            if (tokenInput) fd.append('__RequestVerificationToken', tokenInput.value);
+
+            rowElement.querySelectorAll('button').forEach(b => b.disabled = true);
+
+            try {
+                const resp = await window.Peticiones.enviar(resolveUrl, {
+                    method: 'POST',
+                    body: fd,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await resp.json();
+                if (resp.ok && data.exito) {
+                    mostrarMensaje('success', data.mensaje || 'Propuesta procesada correctamente.');
+                    await cargarPropuestas();
+                    if (typeof window.reloadVehiculoTable === 'function') {
+                        window.reloadVehiculoTable();
+                    }
+                } else {
+                    mostrarMensaje('error', data.mensaje || 'Ocurrió un error al procesar la propuesta.');
+                    rowElement.querySelectorAll('button').forEach(b => b.disabled = false);
+                }
+            } catch (err) {
+                mostrarMensaje('error', 'Error de comunicación al procesar la propuesta.');
+                rowElement.querySelectorAll('button').forEach(b => b.disabled = false);
+            }
+        }
+
+        function mostrarMensaje(tipo, texto) {
+            if (!mensajeBox) return;
+            mensajeBox.className = tipo === 'success'
+                ? 'mb-4 p-3 text-sm rounded-lg bg-green-50 text-green-800 dark:bg-gray-800 dark:text-green-400 border border-green-200 dark:border-green-800'
+                : 'mb-4 p-3 text-sm rounded-lg bg-red-50 text-red-800 dark:bg-gray-800 dark:text-red-400 border border-red-200 dark:border-red-800';
+            mensajeBox.textContent = texto;
+            mensajeBox.classList.remove('hidden');
+        }
+
+        // Consultar cantidad inicial de pendientes para el badge
+        window.Peticiones.enviar(listUrl, { cache: 'no-store' })
+            .then(r => r.json())
+            .then(data => {
+                if (Array.isArray(data)) actualizarBadgeCount(data.length);
+            })
+            .catch(() => {});
+
+        // Abrir automáticamente si viene el query param ?abrirRevision=true
+        if (new URLSearchParams(window.location.search).get('abrirRevision') === 'true') {
+            openModal();
+        }
     }
 
     function setupDeleteModal() {
@@ -1183,11 +1407,15 @@
     // ===================== Mensajería =====================
 
     function showFormMessage(type, message, disappearMs = 5000) {
-        return window.Notificaciones.mostrar(message, type);
+        if (window.Notificaciones && typeof window.Notificaciones.mostrar === 'function') {
+            return window.Notificaciones.mostrar(message, type);
+        }
     }
 
     function showTableMessage(type, msg, disappearMs = 5000) {
-        return window.Notificaciones.mostrar(msg, type);
+        if (window.Notificaciones && typeof window.Notificaciones.mostrar === 'function') {
+            return window.Notificaciones.mostrar(msg, type);
+        }
     }
 
     // ===================== Utilidades =====================

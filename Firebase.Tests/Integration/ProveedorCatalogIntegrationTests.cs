@@ -99,13 +99,13 @@ public sealed class ProveedorCatalogIntegrationTests
             client.DefaultRequestHeaders.Add("X-Test-Permission", "Insumos.Crear,Insumos.Modificar");
             var initial = await client.GetAsync("/Insumos/Proveedores"); Assert.Equal(HttpStatusCode.OK, initial.StatusCode);
             var token = Regex.Match(await initial.Content.ReadAsStringAsync(), "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value; Assert.NotEmpty(token);
-            var create = new Dictionary<string, string> { ["__RequestVerificationToken"] = token, ["crear"] = "true", ["IdentificacionTributaria"] = "123", ["RazonSocial"] = "Original", ["Contacto"] = "1234567890", ["EmailOrdenes"] = "original@example.invalid" };
+            var create = new Dictionary<string, string> { ["__RequestVerificationToken"] = token, ["crear"] = "true", ["IdentificacionTributaria"] = "30-00000001-5", ["RazonSocial"] = "Original", ["Contacto"] = "1234567890", ["EmailOrdenes"] = "original@example.invalid" };
             Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/Insumos/GuardarProveedor", new FormUrlEncodedContent(create))).StatusCode);
             var page = WebUtility.HtmlDecode(await (await client.GetAsync("/Insumos/Proveedores")).Content.ReadAsStringAsync());
             var id = Regex.Match(page, "data-provider-edit data-id=\"([^\"]+)\"").Groups[1].Value; Assert.NotEmpty(id);
             client.DefaultRequestHeaders.Remove("X-Test-Permission"); client.DefaultRequestHeaders.Add("X-Test-Permission", "Insumos.Consultar");
             Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/Insumos/Proveedores")).StatusCode);
-            create["IdentificacionTributaria"] = "456"; create["RazonSocial"] = "No autorizado";
+            create["IdentificacionTributaria"] = "30-00000002-3"; create["RazonSocial"] = "No autorizado";
             Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync("/Insumos/GuardarProveedor", new FormUrlEncodedContent(create))).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync("/Insumos/EstadoProveedor", new FormUrlEncodedContent(new Dictionary<string, string> { ["__RequestVerificationToken"] = token, ["id"] = id, ["estado"] = "Inactivo" }))).StatusCode);
             client.DefaultRequestHeaders.Remove("X-Test-Permission"); client.DefaultRequestHeaders.Add("X-Test-Permission", "Insumos.Modificar");
@@ -152,8 +152,8 @@ public sealed class ProveedorCatalogIntegrationTests
                 var response = await client.PostAsync("/Insumos/" + action, new FormUrlEncodedContent(data));
                 Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
             }
-            await Post("GuardarProveedor", ("crear", "true"), ("IdentificacionTributaria", "111"), ("RazonSocial", "Alfa"), ("Contacto", "1234567890"), ("EmailOrdenes", "alfa@example.invalid"));
-            await Post("GuardarProveedor", ("crear", "true"), ("IdentificacionTributaria", "222"), ("RazonSocial", "Beta"), ("Contacto", "1234567890"), ("EmailOrdenes", "beta@example.invalid"));
+            await Post("GuardarProveedor", ("crear", "true"), ("IdentificacionTributaria", "30-00000001-5"), ("RazonSocial", "Alfa"), ("Contacto", "1234567890"), ("EmailOrdenes", "alfa@example.invalid"));
+            await Post("GuardarProveedor", ("crear", "true"), ("IdentificacionTributaria", "30-00000002-3"), ("RazonSocial", "Beta"), ("Contacto", "1234567890"), ("EmailOrdenes", "beta@example.invalid"));
             page = await Page();
             var rows = Regex.Matches(page, "<tr class=\"border-b[^\"]*\">.*?</tr>", RegexOptions.Singleline).Select(m => m.Value).ToArray();
             Assert.Equal(2, rows.Length);
@@ -170,11 +170,11 @@ public sealed class ProveedorCatalogIntegrationTests
                 static string WithoutTokens(string row) => Regex.Replace(row, "(name=\"__RequestVerificationToken\"[^>]*value=\")[^\"]+", "$1TOKEN");
                 Assert.Equal(rows.Select(WithoutTokens), current.Select(WithoutTokens));
             }
-            await Post("GuardarProveedor", ("crear", "true"), ("IdentificacionTributaria", " 111 "), ("RazonSocial", "Otro"), ("Contacto", "1234567890"), ("EmailOrdenes", "otro@example.invalid"));
+            await Post("GuardarProveedor", ("crear", "true"), ("IdentificacionTributaria", " 30-00000001-5 "), ("RazonSocial", "Otro"), ("Contacto", "1234567890"), ("EmailOrdenes", "otro@example.invalid"));
             await VerifyUnchanged("Ya existe un proveedor con esa identificación fiscal.");
-            await Post("GuardarProveedor", ("crear", "true"), ("IdentificacionTributaria", "333"), ("RazonSocial", " alfa "), ("Contacto", "1234567890"), ("EmailOrdenes", "otro@example.invalid"));
+            await Post("GuardarProveedor", ("crear", "true"), ("IdentificacionTributaria", "30-00000003-1"), ("RazonSocial", " alfa "), ("Contacto", "1234567890"), ("EmailOrdenes", "otro@example.invalid"));
             await VerifyUnchanged("Ya existe un proveedor con esa razón social.");
-            await Post("GuardarProveedor", ("crear", "false"), ("Id", betaId), ("IdentificacionTributaria", "222"), ("RazonSocial", " ALFA "), ("Contacto", "1234567890"), ("EmailOrdenes", "beta@example.invalid"));
+            await Post("GuardarProveedor", ("crear", "false"), ("Id", betaId), ("IdentificacionTributaria", "30-00000002-3"), ("RazonSocial", " ALFA "), ("Contacto", "1234567890"), ("EmailOrdenes", "beta@example.invalid"));
             await VerifyUnchanged("Ya existe un proveedor con esa razón social.");
             var orden = new OrdenCompra { Id = "orden-prueba", ProveedorId = id, Estado = "RevisionManual" };
             await db.Collection("ordenesCompra").Document(orden.Id).SetAsync(orden);
@@ -229,22 +229,22 @@ public sealed class ProveedorCatalogIntegrationTests
                 var response = await client.PostAsync("/Insumos/" + action, new FormUrlEncodedContent(data));
                 Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
             }
-            await Post("GuardarProveedor", ("crear", "true"), ("IdentificacionTributaria", "111"), ("RazonSocial", "Original"), ("Contacto", "1234567890"), ("EmailOrdenes", "uno@example.invalid"));
+            await Post("GuardarProveedor", ("crear", "true"), ("IdentificacionTributaria", "30-00000001-5"), ("RazonSocial", "Original"), ("Contacto", "1234567890"), ("EmailOrdenes", "uno@example.invalid"));
             var service = new ProveedorService(db);
             var item = Assert.Single(await service.ObtenerTodos());
             page = await Page();
             Assert.Contains("Editar", page);
             Assert.Contains("Original", page);
             Assert.Contains("data-provider-edit data-id=\"" + item.Id + "\"", page);
-            Assert.Contains("data-tax=\"111\"", page);
+            Assert.Contains("data-tax=\"30-00000001-5\"", page);
             await Post("EstadoProveedor", ("id", item.Id), ("estado", "Inactivo"));
-            await Post("GuardarProveedor", ("crear", "false"), ("Id", item.Id), ("IdentificacionTributaria", "111"), ("RazonSocial", "Editado"), ("Contacto", "0987654321"), ("EmailOrdenes", "dos@example.invalid"), ("Estado", "Activo"));
+            await Post("GuardarProveedor", ("crear", "false"), ("Id", item.Id), ("IdentificacionTributaria", "30-00000001-5"), ("RazonSocial", "Editado"), ("Contacto", "0987654321"), ("EmailOrdenes", "dos@example.invalid"), ("Estado", "Activo"));
             item = (await service.Obtener(item.Id))!;
-            Assert.Equal("Editado", item.RazonSocial); Assert.Equal("0987654321", item.Contacto); Assert.Equal("dos@example.invalid", item.EmailOrdenes); Assert.Equal("111", item.IdentificacionTributaria); Assert.Equal("Inactivo", item.Estado);
-            await Post("GuardarProveedor", ("crear", "false"), ("Id", item.Id), ("IdentificacionTributaria", "222"), ("RazonSocial", "Alterado"), ("Contacto", "0987654321"), ("EmailOrdenes", "dos@example.invalid"));
+            Assert.Equal("Editado", item.RazonSocial); Assert.Equal("0987654321", item.Contacto); Assert.Equal("dos@example.invalid", item.EmailOrdenes); Assert.Equal("30-00000001-5", item.IdentificacionTributaria); Assert.Equal("Inactivo", item.Estado);
+            await Post("GuardarProveedor", ("crear", "false"), ("Id", item.Id), ("IdentificacionTributaria", "30-00000002-3"), ("RazonSocial", "Alterado"), ("Contacto", "0987654321"), ("EmailOrdenes", "dos@example.invalid"));
             page = await Page(); Assert.Contains("La identificación fiscal no se puede modificar", System.Net.WebUtility.HtmlDecode(page));
             var after = (await service.Obtener(item.Id))!;
-            Assert.Equal("111", after.IdentificacionTributaria); Assert.Equal("Editado", after.RazonSocial); Assert.Equal("0987654321", after.Contacto); Assert.Equal("dos@example.invalid", after.EmailOrdenes); Assert.Equal("Inactivo", after.Estado);
+            Assert.Equal("30-00000001-5", after.IdentificacionTributaria); Assert.Equal("Editado", after.RazonSocial); Assert.Equal("0987654321", after.Contacto); Assert.Equal("dos@example.invalid", after.EmailOrdenes); Assert.Equal("Inactivo", after.Estado);
             Assert.Single(await service.ObtenerTodos());
             await Post("EstadoProveedor", ("id", item.Id), ("estado", "Activo"));
             Assert.Equal("Activo", (await service.Obtener(item.Id))!.Estado);
@@ -296,7 +296,7 @@ public sealed class ProveedorCatalogIntegrationTests
 
             var createResp = await PostProveedor(
                 ("crear", "true"),
-                ("IdentificacionTributaria", " 20-11111111-1 "),
+                ("IdentificacionTributaria", " 30-00000001-5 "),
                 ("RazonSocial", " Proveedor Uno "),
                 ("Contacto", "1234567890"),
                 ("EmailOrdenes", "uno@example.invalid"));
@@ -306,7 +306,7 @@ public sealed class ProveedorCatalogIntegrationTests
             var uno = Assert.Single(await service.ObtenerTodos());
             var esperadoUno = new Dictionary<string, string>
             {
-                ["IdentificacionTributaria"] = "20-11111111-1",
+                ["IdentificacionTributaria"] = "30-00000001-5",
                 ["RazonSocial"] = "Proveedor Uno",
                 ["Contacto"] = "1234567890",
                 ["EmailOrdenes"] = "uno@example.invalid",
@@ -339,7 +339,7 @@ public sealed class ProveedorCatalogIntegrationTests
             // Creación rechazada por CUIT duplicado no emite auditoría ni crea proveedor
             Assert.Equal(HttpStatusCode.Redirect, (await PostProveedor(
                 ("crear", "true"),
-                ("IdentificacionTributaria", "20-11111111-1"),
+                ("IdentificacionTributaria", "30-00000001-5"),
                 ("RazonSocial", "Otro"), ("Contacto", "1234567890"), ("EmailOrdenes", "otro@example.invalid"))).StatusCode);
             Assert.Contains("Ya existe un proveedor con esa identificación fiscal.", await Page());
             Assert.Single(await service.ObtenerTodos());
@@ -348,7 +348,7 @@ public sealed class ProveedorCatalogIntegrationTests
             // Creación rechazada por razón social duplicada no emite auditoría ni crea proveedor
             Assert.Equal(HttpStatusCode.Redirect, (await PostProveedor(
                 ("crear", "true"),
-                ("IdentificacionTributaria", "20-22222222-2"),
+                ("IdentificacionTributaria", "30-00000002-3"),
                 ("RazonSocial", "proveedor uno"), ("Contacto", "1234567890"), ("EmailOrdenes", "otro@example.invalid"))).StatusCode);
             Assert.Contains("Ya existe un proveedor con esa razón social.", await Page());
             Assert.Single(await service.ObtenerTodos());
@@ -357,12 +357,12 @@ public sealed class ProveedorCatalogIntegrationTests
             // Segundo proveedor válido para probar rechazo por razón social duplicada en edición
             Assert.Equal(HttpStatusCode.Redirect, (await PostProveedor(
                 ("crear", "true"),
-                ("IdentificacionTributaria", "20-33333333-3"),
+                ("IdentificacionTributaria", "30-00000003-1"),
                 ("RazonSocial", "Beta"), ("Contacto", "1234567890"), ("EmailOrdenes", "beta@example.invalid"))).StatusCode);
-            var beta = Assert.Single(await service.ObtenerTodos(), p => p.IdentificacionTributaria == "20-33333333-3");
+            var beta = Assert.Single(await service.ObtenerTodos(), p => p.IdentificacionTributaria == "30-00000003-1");
             var esperadoBeta = new Dictionary<string, string>
             {
-                ["IdentificacionTributaria"] = "20-33333333-3",
+                ["IdentificacionTributaria"] = "30-00000003-1",
                 ["RazonSocial"] = "Beta",
                 ["Contacto"] = "1234567890",
                 ["EmailOrdenes"] = "beta@example.invalid",
@@ -373,14 +373,14 @@ public sealed class ProveedorCatalogIntegrationTests
             Assert.Equal(HttpStatusCode.Redirect, (await PostProveedor(
                 ("crear", "false"),
                 ("Id", uno.Id),
-                ("IdentificacionTributaria", "20-11111111-1"),
+                ("IdentificacionTributaria", "30-00000001-5"),
                 ("RazonSocial", " Proveedor Editado "),
                 ("Contacto", "0987654321"),
                 ("EmailOrdenes", "dos@example.invalid"),
                 ("Estado", "Inactivo"))).StatusCode);
             var esperadoEditado = new Dictionary<string, string>
             {
-                ["IdentificacionTributaria"] = "20-11111111-1",
+                ["IdentificacionTributaria"] = "30-00000001-5",
                 ["RazonSocial"] = "Proveedor Editado",
                 ["Contacto"] = "0987654321",
                 ["EmailOrdenes"] = "dos@example.invalid",
@@ -395,21 +395,21 @@ public sealed class ProveedorCatalogIntegrationTests
             Assert.Equal(HttpStatusCode.Redirect, (await PostProveedor(
                 ("crear", "false"),
                 ("Id", uno.Id),
-                ("IdentificacionTributaria", "20-99999999-9"),
+                ("IdentificacionTributaria", "30-00000009-0"),
                 ("RazonSocial", "Alterado"), ("Contacto", "1234567890"), ("EmailOrdenes", "uno@example.invalid"))).StatusCode);
             Assert.Contains("La identificación fiscal no se puede modificar.", await Page());
 
             Assert.Equal(HttpStatusCode.Redirect, (await PostProveedor(
                 ("crear", "false"),
                 ("Id", uno.Id),
-                ("IdentificacionTributaria", "20-11111111-1"),
+                ("IdentificacionTributaria", "30-00000001-5"),
                 ("RazonSocial", "BETA"), ("Contacto", "1234567890"), ("EmailOrdenes", "uno@example.invalid"))).StatusCode);
             Assert.Contains("Ya existe un proveedor con esa razón social.", await Page());
 
             Assert.Equal(HttpStatusCode.Redirect, (await PostProveedor(
                 ("crear", "false"),
                 ("Id", "no-existe"),
-                ("IdentificacionTributaria", "20-88888888-8"),
+                ("IdentificacionTributaria", "30-00000008-2"),
                 ("RazonSocial", "Fantasma"), ("Contacto", "1234567890"), ("EmailOrdenes", "otro@example.invalid"))).StatusCode);
             Assert.Contains("El proveedor no existe.", await Page());
 
@@ -418,7 +418,7 @@ public sealed class ProveedorCatalogIntegrationTests
             Assert.Equal(HttpStatusCode.Forbidden, (await PostProveedor(
                 ("crear", "false"),
                 ("Id", uno.Id),
-                ("IdentificacionTributaria", "20-11111111-1"),
+                ("IdentificacionTributaria", "30-00000001-5"),
                 ("RazonSocial", "Sin Permiso"))).StatusCode);
 
             var persisted = (await service.Obtener(uno.Id))!;
@@ -481,7 +481,7 @@ public sealed class ProveedorCatalogIntegrationTests
 
             Assert.Equal(HttpStatusCode.Redirect, (await PostForm("GuardarProveedor",
                 ("crear", "true"),
-                ("IdentificacionTributaria", "20-44444444-4"),
+                ("IdentificacionTributaria", "30-00000004-9"),
                 ("RazonSocial", "Proveedor Estado"),
                 ("Contacto", "1234567890"),
                 ("EmailOrdenes", "estado@example.invalid"))).StatusCode);
@@ -490,7 +490,7 @@ public sealed class ProveedorCatalogIntegrationTests
             var proveedor = Assert.Single(await service.ObtenerTodos());
             var esperadoActivo = new Dictionary<string, string>
             {
-                ["IdentificacionTributaria"] = "20-44444444-4",
+                ["IdentificacionTributaria"] = "30-00000004-9",
                 ["RazonSocial"] = "Proveedor Estado",
                 ["Contacto"] = "1234567890",
                 ["EmailOrdenes"] = "estado@example.invalid",
@@ -620,7 +620,7 @@ public sealed class ProveedorCatalogIntegrationTests
         var prov = new Proveedor
         {
             Id = "prov-original",
-            IdentificacionTributaria = "20-11111111-1",
+            IdentificacionTributaria = "30-00000001-5",
             RazonSocial = "Proveedor Original",
             Contacto = "1234567890",
             EmailOrdenes = "orig@example.invalid",
@@ -662,7 +662,7 @@ public sealed class ProveedorCatalogIntegrationTests
         var prov = new Proveedor
         {
             Id = "prov-estado",
-            IdentificacionTributaria = "20-22222222-2",
+            IdentificacionTributaria = "30-00000002-3",
             RazonSocial = "Proveedor Estado",
             Estado = "Activo"
         };
@@ -691,7 +691,7 @@ public sealed class ProveedorCatalogIntegrationTests
         var prov = new Proveedor
         {
             Id = "prov-noop",
-            IdentificacionTributaria = "20-33333333-3",
+            IdentificacionTributaria = "30-00000003-1",
             RazonSocial = "Proveedor Noop",
             Contacto = "1234567890",
             EmailOrdenes = "noop@example.invalid",
@@ -723,7 +723,7 @@ public sealed class ProveedorCatalogIntegrationTests
         var prov = new Proveedor
         {
             Id = "prov-estado-noop",
-            IdentificacionTributaria = "20-44444444-4",
+            IdentificacionTributaria = "30-00000004-9",
             RazonSocial = "Proveedor Estado Noop",
             Estado = "Activo"
         };
@@ -744,7 +744,7 @@ public sealed class ProveedorCatalogIntegrationTests
         var existente = new Proveedor
         {
             Id = "prov-existente",
-            IdentificacionTributaria = "20-55555555-5",
+            IdentificacionTributaria = "30-00000005-8",
             RazonSocial = "Proveedor Existente",
             Estado = "Activo"
         };
@@ -753,7 +753,7 @@ public sealed class ProveedorCatalogIntegrationTests
         // CUIT duplicado
         var resCuit = await proveedores.GuardarConAuditoria(new Proveedor
         {
-            IdentificacionTributaria = "20-55555555-5",
+            IdentificacionTributaria = "30-00000005-8",
             RazonSocial = "Otro Proveedor", Contacto = "1234567890", EmailOrdenes = "otro@example.invalid"
         }, true, "actor-uid", "actor@example.invalid");
         Assert.False(resCuit.Resultado.EsExitoso);
@@ -761,7 +761,7 @@ public sealed class ProveedorCatalogIntegrationTests
         // Razón social duplicada
         var resRazon = await proveedores.GuardarConAuditoria(new Proveedor
         {
-            IdentificacionTributaria = "20-66666666-6",
+            IdentificacionTributaria = "30-00000006-6",
             RazonSocial = "proveedor existente", Contacto = "1234567890", EmailOrdenes = "otro@example.invalid"
         }, true, "actor-uid", "actor@example.invalid");
         Assert.False(resRazon.Resultado.EsExitoso);
@@ -770,7 +770,7 @@ public sealed class ProveedorCatalogIntegrationTests
         var resModCuit = await proveedores.GuardarConAuditoria(new Proveedor
         {
             Id = existente.Id,
-            IdentificacionTributaria = "20-77777777-7",
+            IdentificacionTributaria = "30-00000007-4",
             RazonSocial = "Proveedor Existente", Contacto = "1234567890", EmailOrdenes = "otro@example.invalid"
         }, false, "actor-uid", "actor@example.invalid");
         Assert.False(resModCuit.Resultado.EsExitoso);
@@ -787,7 +787,7 @@ public sealed class ProveedorCatalogIntegrationTests
         var prov = new Proveedor
         {
             Id = "prov-carrera",
-            IdentificacionTributaria = "20-88888888-8",
+            IdentificacionTributaria = "30-00000008-2",
             RazonSocial = "Proveedor Carrera",
             Contacto = "1234567890",
             EmailOrdenes = "ana@example.invalid",

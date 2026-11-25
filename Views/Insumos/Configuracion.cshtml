@@ -10,7 +10,7 @@
             <option value="EnvioDirecto" selected="@(Model.ModoEmision == "EnvioDirecto")">Envío directo</option>
         </select>
         <label class="block text-sm font-medium dark:text-white">Plantilla de email</label>
-        <textarea name="PlantillaEmail" rows="5" class="rounded border p-2 w-full">@Model.PlantillaEmail</textarea>
+        <textarea name="PlantillaEmail" rows="5" placeholder="Plantilla de respaldo para compras..." class="rounded border p-2 w-full">@Model.PlantillaEmail</textarea>
         <button class="app-button app-button--success">Guardar configuración</button>
     </form>
 </section>

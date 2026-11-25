@@ -1,0 +1,52 @@
+@using Firebase.Security
+<div id="catalogoRevisionModal" tabindex="-1" aria-hidden="true" aria-labelledby="catalogoRevisionTitulo" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full"
+     data-list-url="@Url.Action("ModalDatos", "VehicleCatalogueReview")"
+     data-resolve-url="@Url.Action("ResolveAjax", "VehicleCatalogueReview")"
+     data-can-edit="@User.TienePermiso("Vehiculos.Modificar").ToString().ToLowerInvariant()">
+    <div class="relative p-4 w-full max-w-4xl">
+        <div class="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5" style="max-height: calc(100vh - 2rem); overflow-y: auto;">
+            @Html.AntiForgeryToken()
+            <div class="flex justify-between items-center pb-4 mb-4 border-b dark:border-gray-600">
+                <div>
+                    <h3 id="catalogoRevisionTitulo" class="text-lg font-semibold text-gray-900 dark:text-white">
+                        Revisión de marcas y modelos pendientes
+                    </h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        Las marcas y modelos ingresados manualmente no se incorporan al catálogo oficial hasta su aprobación o vinculación.
+                    </p>
+                </div>
+                <button type="button" data-close-catalogo-revision class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white" aria-label="Cerrar modal">
+                    <svg aria-hidden="true" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div id="catalogoRevisionMensaje" role="status" aria-live="polite" class="hidden mb-4 p-3 text-sm rounded-lg"></div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                        <tr>
+                            <th scope="col" class="px-3 py-2.5">Tipo</th>
+                            <th scope="col" class="px-3 py-2.5">Marca Propuesta</th>
+                            <th scope="col" class="px-3 py-2.5">Modelo Propuesto</th>
+                            <th scope="col" class="px-3 py-2.5 min-w-[220px]">Datos a Asignar</th>
+                            <th scope="col" class="px-3 py-2.5 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="catalogoRevisionTabla">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="catalogoRevisionVacio" class="hidden py-10 text-center text-gray-500 dark:text-gray-400">
+                <svg class="mx-auto mb-3 w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <p class="text-sm font-medium">No hay propuestas de vehículos pendientes de revisión.</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">El catálogo está completamente al día.</p>
+            </div>
+        </div>
+    </div>
+</div>

@@ -46,5 +46,6 @@ namespace Firebase.Models
         [FirestoreProperty] public string NombreInsumo { get; set; } = string.Empty;
         [FirestoreProperty] public string UnidadMedida { get; set; } = string.Empty;
         [FirestoreProperty(ConverterType = typeof(Firebase.Converters.DecimalConverter))] public decimal DosisTeorica { get; set; }
+        [FirestoreProperty] public bool EsHerramienta { get; set; }
     }
 }

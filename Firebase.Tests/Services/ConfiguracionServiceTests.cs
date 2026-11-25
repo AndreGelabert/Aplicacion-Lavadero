@@ -10,6 +10,118 @@ namespace Firebase.Tests.Services
     /// </summary>
     public class ConfiguracionServiceTests
     {
+        [Fact]
+        public void IntervaloTurnos_DefaultAndAuditCapture()
+        {
+            var config = new Configuracion();
+            Assert.Equal(15, config.IntervaloInicioTurnosMinutos);
+            config.IntervaloInicioTurnosMinutos = 20;
+            Assert.Equal("20", AuditCampos.CapturarConfiguracion(config)["IntervaloInicioTurnosMinutos"]);
+            Assert.Contains("IntervaloInicioTurnosMinutos", AuditCampos.Configuracion);
+        }
+
+        [Fact]
+        public void OfertaAdelanto_DefaultAndAuditCapture()
+        {
+            var config = new Configuracion();
+            Assert.Equal(10, config.RespuestaOfertaAdelantoMinutos);
+            config.RespuestaOfertaAdelantoMinutos = 42;
+            Assert.Equal("42", AuditCampos.CapturarConfiguracion(config)["RespuestaOfertaAdelantoMinutos"]);
+            Assert.Contains("RespuestaOfertaAdelantoMinutos", AuditCampos.Configuracion);
+        }
+
+        [Fact]
+        public void ArrivalTolerance_DefaultIsFiveAndAuditedSeparately()
+        {
+            var config = new Configuracion();
+            Assert.Equal(5, config.ToleranciaLlegadaTurnosMinutos);
+            Assert.Equal("5", AuditCampos.CapturarConfiguracion(config)["ToleranciaLlegadaTurnosMinutos"]);
+            config.ToleranciaLlegadaTurnosMinutos = 10;
+            Assert.Equal("10", AuditCampos.CapturarConfiguracion(config)["ToleranciaLlegadaTurnosMinutos"]);
+            Assert.Contains("ToleranciaLlegadaTurnosMinutos", AuditCampos.Configuracion);
+        }
+
+        [Theory]
+        [InlineData(0, false)]
+        [InlineData(4, false)]
+        [InlineData(5, true)]
+        [InlineData(15, true)]
+        [InlineData(525600, true)]
+        [InlineData(-1, false)]
+        [InlineData(525601, false)]
+        public void ArrivalTolerance_ValidatesBounds(int value, bool valid)
+        {
+            var config = new Configuracion { ToleranciaLlegadaTurnosMinutos = value };
+            var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+            System.ComponentModel.DataAnnotations.Validator.TryValidateProperty(value,
+                new System.ComponentModel.DataAnnotations.ValidationContext(config) { MemberName = nameof(Configuracion.ToleranciaLlegadaTurnosMinutos) }, results);
+            Assert.Equal(valid, results.Count == 0);
+        }
+
+        [Fact]
+        public void MargenTiempoInicioTurno_DefaultAndAuditCapture()
+        {
+            var config = new Configuracion();
+            Assert.Equal(30, config.MargenTiempoInicioTurnoMinutos);
+            Assert.Equal("30", AuditCampos.CapturarConfiguracion(config)["MargenTiempoInicioTurnoMinutos"]);
+            config.MargenTiempoInicioTurnoMinutos = 45;
+            Assert.Equal("45", AuditCampos.CapturarConfiguracion(config)["MargenTiempoInicioTurnoMinutos"]);
+            Assert.Contains("MargenTiempoInicioTurnoMinutos", AuditCampos.Configuracion);
+        }
+
+        [Theory]
+        [InlineData(9, false)]
+        [InlineData(10, true)]
+        [InlineData(30, true)]
+        [InlineData(240, true)]
+        [InlineData(241, false)]
+        public void MargenTiempoInicioTurno_ValidatesBounds(int value, bool valid)
+        {
+            var config = new Configuracion { MargenTiempoInicioTurnoMinutos = value };
+            var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+            System.ComponentModel.DataAnnotations.Validator.TryValidateProperty(value,
+                new System.ComponentModel.DataAnnotations.ValidationContext(config) { MemberName = nameof(Configuracion.MargenTiempoInicioTurnoMinutos) }, results);
+            Assert.Equal(valid, results.Count == 0);
+        }
+
+        [Fact]
+        public void EstaEnVentanaInicioTurno_CalculatesCorrectly()
+        {
+            var config = new Configuracion
+            {
+                MargenTiempoInicioTurnoMinutos = 30, // anticipacion = 15m, tolerancia = max(15, 10) = 15m
+                ToleranciaLlegadaTurnosMinutos = 10
+            };
+            var inicio = new DateTime(2026, 11, 24, 16, 0, 0, DateTimeKind.Utc);
+
+            // 15:44 (antes de ventana)
+            Assert.False(config.EstaEnVentanaInicioTurno(inicio, inicio.AddMinutes(-16), out var motivoAntes));
+            Assert.NotNull(motivoAntes);
+            Assert.Contains("habilitado", motivoAntes);
+
+            // 15:45 (justo en el inicio de la ventana)
+            Assert.True(config.EstaEnVentanaInicioTurno(inicio, inicio.AddMinutes(-15), out var motivoInicio));
+            Assert.Null(motivoInicio);
+
+            // 16:00 (hora del turno)
+            Assert.True(config.EstaEnVentanaInicioTurno(inicio, inicio, out _));
+
+            // 16:15 (extremo de la ventana)
+            Assert.True(config.EstaEnVentanaInicioTurno(inicio, inicio.AddMinutes(15), out _));
+
+            // 16:16 (pasado el límite)
+            Assert.False(config.EstaEnVentanaInicioTurno(inicio, inicio.AddMinutes(16), out var motivoDespues));
+            Assert.NotNull(motivoDespues);
+            Assert.Contains("límite de tolerancia", motivoDespues);
+
+            // Ahora con ToleranciaLlegadaTurnosMinutos mayor que Margen / 2 (ej. 25m)
+            config.ToleranciaLlegadaTurnosMinutos = 25;
+            // A los 20 minutos después, debe estar habilitado porque respeta la tolerancia de llegada (25m)
+            Assert.True(config.EstaEnVentanaInicioTurno(inicio, inicio.AddMinutes(20), out _));
+            Assert.True(config.EstaEnVentanaInicioTurno(inicio, inicio.AddMinutes(25), out _));
+            Assert.False(config.EstaEnVentanaInicioTurno(inicio, inicio.AddMinutes(26), out _));
+        }
+
         #region Model Tests
 
         [Fact]

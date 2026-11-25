@@ -244,6 +244,10 @@
             div.dataset.marcaId = id;
             div.dataset.marcaNombre = nombre;
 
+            div.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                selectMarca(id, nombre);
+            });
             div.addEventListener('click', function () {
                 selectMarca(id, nombre);
             });
@@ -268,7 +272,10 @@
 
             // Limpiar validación custom
             this.setCustomValidity('');
-            this.dataset.catalogueManual = 'false';
+            if (this.dataset.catalogueManual === 'true') {
+                this.dataset.catalogueManual = 'false';
+                quitarBadgeManual('marca');
+            }
             this.dataset.marcaId = '';
 
             // Resetear marca válida si se modifica
@@ -330,7 +337,10 @@
 
             // Limpiar validación custom
             this.setCustomValidity('');
-            this.dataset.catalogueManual = 'false';
+            if (this.dataset.catalogueManual === 'true') {
+                this.dataset.catalogueManual = 'false';
+                quitarBadgeManual('modelo');
+            }
 
             // Resetear modelo válido si se modifica
             if (modeloSeleccionadoValido !== valor) {
@@ -438,6 +448,10 @@
             div.textContent = nombre;
             div.dataset.modeloNombre = nombre;
 
+            div.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                selectModelo(nombre);
+            });
             div.addEventListener('click', function () {
                 selectModelo(nombre);
             });
@@ -466,9 +480,31 @@
             modeloInput.disabled = true;
             modeloInput.placeholder = 'Primero seleccione una marca...';
             modeloInput.dataset.catalogueManual = 'false';
+            modeloInput.setCustomValidity('');
         }
+        quitarBadgeManual('modelo');
         modeloSeleccionadoValido = null;
         modelosCache = null;
+    }
+
+    // ==================== BADGES DE CATÁLOGO PERSONALIZADO ====================
+    function mostrarBadgeManual(tipo, valor) {
+        const container = document.getElementById(`${tipo}-manual-badge-container`);
+        if (!container) return;
+        const etiqueta = tipo === 'marca' ? 'Marca nueva' : 'Modelo nuevo';
+        container.innerHTML = `
+            <div class="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 px-2.5 py-1 rounded-md">
+                <svg class="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <span><strong>${etiqueta}:</strong> “${valor}” (pendiente de revisión)</span>
+            </div>
+        `;
+    }
+
+    function quitarBadgeManual(tipo) {
+        const container = document.getElementById(`${tipo}-manual-badge-container`);
+        if (container) container.innerHTML = '';
     }
 
     // ==================== POSICIONAR DROPDOWN ====================
@@ -499,11 +535,14 @@
         const marcaInput = document.getElementById('Marca');
         const marcaDropdown = document.getElementById('marca-dropdown');
 
+        quitarBadgeManual('marca');
+
         if (marcaInput) {
             marcaInput.value = nombre;
             marcaSeleccionadaValida = { id, nombre };
             marcaInput.dataset.marcaId = id;
             marcaInput.dataset.catalogueManual = 'false';
+            marcaInput.setCustomValidity('');
         }
 
         if (marcaDropdown) {
@@ -519,10 +558,13 @@
         const modeloInput = document.getElementById('Modelo');
         const modeloDropdown = document.getElementById('modelo-dropdown');
 
+        quitarBadgeManual('modelo');
+
         if (modeloInput) {
             modeloInput.value = nombre;
             modeloSeleccionadoValido = nombre;
             modeloInput.dataset.catalogueManual = 'false';
+            modeloInput.setCustomValidity('');
         }
 
         if (modeloDropdown) {
@@ -657,6 +699,10 @@
         const option = document.createElement('div');
         option.className = 'px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-white';
         option.textContent = isSuggestion ? `¿Quisiste decir “${nombre}”?` : nombre;
+        option.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            selectMarca(id, nombre);
+        });
         option.addEventListener('click', () => selectMarca(id, nombre));
         dropdown.appendChild(option);
     }
@@ -666,6 +712,10 @@
         const option = document.createElement('div');
         option.className = 'px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm text-gray-900 dark:text-white';
         option.textContent = isSuggestion ? `¿Quisiste decir “${nombre}”?` : nombre;
+        option.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            selectModelo(nombre);
+        });
         option.addEventListener('click', () => selectModelo(nombre));
         dropdown.appendChild(option);
     }
@@ -680,22 +730,38 @@
     function appendManualCatalogueOption(dropdown, value, kind, onSelect) {
         const item = document.createElement('button');
         item.type = 'button';
-        item.className = 'block w-full border-t border-gray-200 dark:border-gray-600 px-3 py-2 text-left text-sm font-medium text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-gray-600';
+        item.className = 'block w-full border-t border-gray-200 dark:border-gray-600 px-3 py-2 text-left text-sm font-medium text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-gray-600 cursor-pointer';
         item.textContent = value.length <= 100
             ? `Ninguna coincide: usar “${value}” como ${kind} nueva`
             : 'El valor no puede superar los 100 caracteres';
         item.disabled = value.length > 100;
-        item.addEventListener('click', onSelect);
+        // Prevenir blur del input en mousedown para que no se oculte el dropdown antes del click
+        item.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            onSelect();
+        });
+        item.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            onSelect();
+        });
         dropdown.appendChild(item);
     }
 
     function confirmManualMarca(value) {
         const input = document.getElementById('Marca');
-        if (!input || input.value.trim() !== value || !value || value.length > 100) return;
+        const val = (value || input?.value || '').trim();
+        if (!input || !val || val.length > 100) return;
+
+        input.value = val;
         input.dataset.catalogueManual = 'true';
         input.dataset.marcaId = '';
         marcaSeleccionadaValida = null;
         input.setCustomValidity('');
+
+        mostrarBadgeManual('marca', val);
+
         const dropdown = document.getElementById('marca-dropdown');
         dropdown?.classList.add('hidden');
 
@@ -705,15 +771,27 @@
         if (modeloInput) {
             modeloInput.disabled = false;
             modeloInput.placeholder = 'Seleccione o escriba un modelo...';
+            setTimeout(() => modeloInput.focus(), 50);
         }
     }
 
     function confirmManualModelo(value) {
         const input = document.getElementById('Modelo');
-        if (!input || input.value.trim() !== value || !value || value.length > 100) return;
+        const val = (value || input?.value || '').trim();
+        if (!input || !val || val.length > 100) return;
+
+        input.value = val;
         input.dataset.catalogueManual = 'true';
+        modeloSeleccionadoValido = null;
         input.setCustomValidity('');
-        document.getElementById('modelo-dropdown')?.classList.add('hidden');
+
+        mostrarBadgeManual('modelo', val);
+
+        const dropdown = document.getElementById('modelo-dropdown');
+        dropdown?.classList.add('hidden');
+
+        const colorSelect = document.getElementById('Color');
+        if (colorSelect) setTimeout(() => colorSelect.focus(), 50);
     }
 
     function catalogueNameKey(value) {

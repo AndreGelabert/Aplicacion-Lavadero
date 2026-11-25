@@ -25,10 +25,6 @@ public sealed class TipoInsumoModalInput
 [Authorize]
 public sealed class TiposInsumoController(TipoInsumoService tipos) : Controller
 {
-    [HttpGet]
-    [Permiso("Insumos.Crear", "Insumos.Modificar")]
-    public async Task<IActionResult> Index() => View(await tipos.ObtenerTodos());
-
     [HttpPost, ValidateAntiForgeryToken]
     [Permiso("Insumos.Crear", "Insumos.Modificar")]
     public async Task<IActionResult> Guardar(TipoInsumo tipo, bool crear)
@@ -36,7 +32,7 @@ public sealed class TiposInsumoController(TipoInsumoService tipos) : Controller
         if (!User.TienePermiso(crear ? "Insumos.Crear" : "Insumos.Modificar")) return Forbid();
         var resultado = await tipos.Guardar(tipo, crear, Actor());
         Mensaje(resultado);
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction("Index", "Insumos");
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -50,7 +46,7 @@ public sealed class TiposInsumoController(TipoInsumoService tipos) : Controller
         TempData[valido ? "Success" : "Error"] = valido
             ? "El tipo Herramienta está disponible."
             : "El tipo Herramienta existente tiene una configuración incompatible o está inactivo; no se modificó.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction("Index", "Insumos");
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -59,16 +55,10 @@ public sealed class TiposInsumoController(TipoInsumoService tipos) : Controller
     {
         if (estado != "Activo" && estado != "Inactivo") return BadRequest();
         Mensaje(await tipos.CambiarEstado(id, estado, Actor()));
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction("Index", "Insumos");
     }
 
-    [HttpPost, ValidateAntiForgeryToken]
-    [Permiso("Insumos.Modificar")]
-    public async Task<IActionResult> Eliminar(string id)
-    {
-        Mensaje(await tipos.Eliminar(id, Actor()));
-        return RedirectToAction(nameof(Index));
-    }
+
 
     [HttpGet]
     [Permiso("Insumos.Crear", "Insumos.Modificar")]
@@ -103,14 +93,7 @@ public sealed class TiposInsumoController(TipoInsumoService tipos) : Controller
         return Json(new { mensaje = resultado.MensajeExito });
     }
 
-    [HttpPost, ValidateAntiForgeryToken]
-    [Permiso("Insumos.Modificar")]
-    public async Task<IActionResult> ModalEliminar(string id)
-    {
-        var resultado = await tipos.Eliminar(id, Actor());
-        if (!resultado.EsExitoso) return BadRequest(new { mensaje = resultado.MensajeError });
-        return Json(new { mensaje = resultado.MensajeExito });
-    }
+
 
     [HttpPost, ValidateAntiForgeryToken]
     [Permiso("Insumos.Crear")]

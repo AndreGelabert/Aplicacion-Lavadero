@@ -4,6 +4,7 @@
     var tiempoNotificacion = config?.TiempoNotificacionMinutos ?? 15;
     var tiempoTolerancia = config?.TiempoToleranciaMinutos ?? 15;
     var puedeModificar = User.TienePermiso("Lavados.Modificar");
+    var herramientasIds = (ViewBag.HerramientasIds as HashSet<string>) ?? new HashSet<string>(StringComparer.Ordinal);
 }
 
 <div class="grid gap-4 md:grid-cols-2">
@@ -256,7 +257,7 @@
     <div class="space-y-3">
         @foreach (var servicio in Model.Servicios.OrderBy(s => s.Orden))
         {
-            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border-l-4 @(servicio.Estado == "Realizado" ? "border-green-500" : servicio.Estado == "EnProceso" ? "border-blue-500" : servicio.Estado == "Cancelado" ? "border-red-500" : "border-gray-300")">
+            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border-l-4 @(servicio.Estado == "Realizado" ? "border-green-500" : servicio.Estado == "RealizadoParcialmente" ? "border-yellow-500" : servicio.Estado == "EnProceso" ? "border-blue-500" : servicio.Estado == "Cancelado" ? "border-red-500" : "border-gray-300")">
                 <div class="flex justify-between items-start">
                     <div>
                         <h5 class="font-medium text-gray-900 dark:text-white">@servicio.ServicioNombre</h5>
@@ -272,6 +273,10 @@
                         @if (servicio.Estado == "Realizado")
                         {
                             <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-green-900 dark:text-green-300">Realizado</span>
+                        }
+                        else if (servicio.Estado == "RealizadoParcialmente")
+                        {
+                            <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-yellow-900 dark:text-yellow-300">Realizado Parcialmente</span>
                         }
                         else if (servicio.Estado == "EnProceso")
                         {
@@ -300,7 +305,14 @@
                             }
                             @if (servicio.Estado == "EnProceso" && !servicio.Etapas.Any())
                             {
-                                <button type="button" onclick="abrirModalFinalizar('@Model.Id', '@servicio.ServicioId', null, 'servicio', '@servicio.ServicioNombre')"
+                                var servicioRecetaPayload = servicio.Receta.Select(r => new {
+                                    r.InsumoId,
+                                    r.NombreInsumo,
+                                    r.UnidadMedida,
+                                    r.DosisTeorica,
+                                    EsHerramienta = r.EsHerramienta || herramientasIds.Contains(r.InsumoId)
+                                });
+                                <button type="button" data-receta='@System.Text.Json.JsonSerializer.Serialize(servicioRecetaPayload)' onclick="abrirModalFinalizar('@Model.Id', '@servicio.ServicioId', null, 'servicio', '@servicio.ServicioNombre', this)"
                                         class="p-1 text-green-600 hover:text-green-800 dark:text-green-400" title="Finalizar">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -328,6 +340,8 @@
                 <!-- Etapas -->
                 @if (servicio.Etapas.Any())
                 {
+                    var hayEtapaEnProceso = servicio.Etapas.Any(e => e.Estado == "EnProceso");
+                    var siguienteEtapaPendienteId = servicio.Etapas.FirstOrDefault(e => e.Estado == "Pendiente")?.EtapaId;
                     <div class="mt-3 pl-4 border-l-2 border-gray-200 dark:border-gray-600">
                         <h6 class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Etapas:</h6>
                         <div class="space-y-2">
@@ -381,7 +395,7 @@
                                         
                                         @if (puedeModificar && Model.Estado == "EnProceso" && servicio.Estado == "EnProceso" && (etapa.Estado == "Pendiente" || etapa.Estado == "EnProceso"))
                                         {
-                                            @if (etapa.Estado == "Pendiente")
+                                            @if (etapa.Estado == "Pendiente" && !hayEtapaEnProceso && etapa.EtapaId == siguienteEtapaPendienteId)
                                             {
                                                 <button type="button" onclick="iniciarEtapaDesdeDetalle('@Model.Id', '@servicio.ServicioId', '@etapa.EtapaId')"
                                                         class="p-1 text-blue-600 hover:text-blue-800" title="Iniciar">
@@ -392,7 +406,14 @@
                                             }
                                             @if (etapa.Estado == "EnProceso")
                                             {
-                                                <button type="button" data-receta='@System.Text.Json.JsonSerializer.Serialize(etapa.Receta)' onclick="abrirModalFinalizar('@Model.Id', '@servicio.ServicioId', '@etapa.EtapaId', 'etapa', '@etapa.Nombre', this)"
+                                                var etapaRecetaPayload = etapa.Receta.Select(r => new {
+                                                    r.InsumoId,
+                                                    r.NombreInsumo,
+                                                    r.UnidadMedida,
+                                                    r.DosisTeorica,
+                                                    EsHerramienta = r.EsHerramienta || herramientasIds.Contains(r.InsumoId)
+                                                });
+                                                <button type="button" data-receta='@System.Text.Json.JsonSerializer.Serialize(etapaRecetaPayload)' onclick="abrirModalFinalizar('@Model.Id', '@servicio.ServicioId', '@etapa.EtapaId', 'etapa', '@etapa.Nombre', this)"
                                                         class="p-1 text-green-600 hover:text-green-800" title="Finalizar">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -417,20 +438,6 @@
     </div>
 </div>
 
-<!-- Botón de Finalizar Lavado (solo si todos los servicios están finalizados) -->
-@if (puedeModificar && Model.Estado == "EnProceso")
-{
-    var todosServiciosFinalizados = Model.Servicios.All(s => s.Estado == "Realizado" || s.Estado == "Cancelado");
-    @if (todosServiciosFinalizados)
-    {
-        <div class="mt-4 flex justify-end">
-            <button type="button" onclick="abrirModalFinalizar('@Model.Id', null, null, 'lavado', '')"
-                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
-                Finalizar Lavado
-            </button>
-        </div>
-    }
-}
 
 @if (!string.IsNullOrEmpty(Model.Notas))
 {

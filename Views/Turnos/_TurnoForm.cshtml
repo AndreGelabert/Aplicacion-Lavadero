@@ -1,0 +1,243 @@
+@model Firebase.Models.TurnoWebForm
+@using Firebase.Security
+<form id="turno-form" method="post" asp-action="Crear">
+    @Html.AntiForgeryToken()
+    <input asp-for="FormIdentity" type="hidden" />
+    <p id="turnoEdicionAviso" class="m-4 text-sm text-gray-700 dark:text-gray-300" hidden></p>
+
+    <div class="grid gap-4 m-4 grid-cols-1 lg:grid-cols-2">
+        <!-- Búsqueda de Vehículo por Patente -->
+        <div>
+            <label for="turnoPatente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Patente del Vehículo <span class="text-red-600">*</span></label>
+            <div class="relative">
+                <input id="turnoPatente" type="text" autocomplete="off" required placeholder="Buscar vehículo por patente..."
+                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
+                <input asp-for="VehiculoId" type="hidden" />
+                <input asp-for="ClienteId" type="hidden" />
+                <div id="turnoPatenteResultados" aria-live="polite" class="absolute z-50 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg mt-1 max-h-48 overflow-y-auto hidden shadow-lg"></div>
+            </div>
+            <p id="turnoVehiculoSeleccionado" class="mt-1 text-sm text-green-600 dark:text-green-400 hidden">
+                Vehículo seleccionado: <span id="turnoVehiculoNombre" class="font-medium"></span>
+            </p>
+        </div>
+
+        <!-- Información del vehículo seleccionado -->
+        <div id="turnoInfoVehiculoSection" style="display: none;">
+            <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Información del Vehículo</label>
+            <div id="turnoInfoVehiculo" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Clientes Asociados al Vehículo -->
+    <div class="m-4" id="clientesAsociadosSection" style="display: none;">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Información de Entrega y Retiro</h3>
+        <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
+            <!-- Quién traerá el vehículo -->
+            <div>
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <label asp-for="ClienteTrajoId" class="block text-sm font-medium text-gray-900 dark:text-white">¿Quién traerá el vehículo?</label>
+                    @if (User.TienePermiso("Clientes.Crear"))
+                    {
+                    <button type="button" id="abrirRegistroCliente" class="inline-flex items-center gap-1 text-sm font-medium text-blue-700 hover:underline dark:text-blue-400" disabled>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14" /></svg>
+                        Registrar cliente
+                    </button>
+                    }
+                </div>
+                <select asp-for="ClienteTrajoId" required
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </select>
+            </div>
+            
+            <!-- Quién retirará el vehículo -->
+            <div>
+                <label asp-for="ClienteRetiraId" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">¿Quién retirará el vehículo?</label>
+                <select asp-for="ClienteRetiraId" required
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Servicios por Vehículo -->
+    <div class="m-4" id="serviciosSection" style="display: none;">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Servicios a Realizar</h3>
+        <div id="turnoServiciosPorVehiculo">
+            <!-- Se genera dinámicamente -->
+        </div>
+    </div>
+
+    <!-- Distribución de Programación y Resumen -->
+    <div class="grid gap-4 m-4 grid-cols-1 lg:grid-cols-2">
+        <!-- Programación del Turno -->
+        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg flex flex-col justify-between" id="programacionSection" style="display: none;">
+            <div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Programación del Turno</h3>
+                <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                    <div>
+                        <label asp-for="Fecha" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Fecha del Turno <span class="text-red-600">*</span></label>
+                        <input asp-for="Fecha" type="date" required min="@DateTime.UtcNow.AddHours(-3).ToString("yyyy-MM-dd")"
+                               class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" />
+                    </div>
+                    <div>
+                        <label asp-for="Hora" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Hora del Turno <span class="text-red-600">*</span></label>
+                        <input asp-for="Hora" type="time" required
+                               class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" />
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4">
+                <div class="flex items-center">
+                    <input asp-for="AceptaAdelanto" type="checkbox"
+                           class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600" />
+                    <label asp-for="AceptaAdelanto" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                        Acepta adelantar su turno si se libera un espacio previo
+                    </label>
+                </div>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Si se activa, el cliente podrá recibir ofertas para adelantar su cita cuando ocurran cancelaciones.</p>
+            </div>
+        </div>
+
+        <!-- Resumen y Descuento -->
+        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg flex flex-col justify-between" id="resumenSection" style="display: none;">
+            <div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Resumen</h3>
+                <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                        <label asp-for="CuponId" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cupón (opcional)</label>
+                        <select asp-for="CuponId" aria-describedby="turnoCuponAyuda turnoCuponMensaje"
+                                class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:text-white">
+                            <option value="">Sin cupón</option>
+                        </select>
+                        <p id="turnoCuponAyuda" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Reemplaza el descuento extra y combina con paquetes.</p>
+                        <p id="turnoCuponMensaje" role="status" class="mt-1 text-xs text-gray-600 dark:text-gray-400"></p>
+                    </div>
+                    <div>
+                        <label asp-for="Descuento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Descuento (%)</label>
+                        <input asp-for="Descuento" type="number" min="0" max="100" step="5" placeholder="0"
+                               class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:text-white" />
+                    </div>
+                    <div>
+                        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Precio Total</label>
+                        <div class="flex items-center gap-2">
+                            <span id="turnoPrecioOriginal" class="text-sm text-gray-500 line-through hidden"></span>
+                            <span id="turnoPrecio" class="text-xl font-bold text-green-600 dark:text-green-400">$0.00</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Tiempo Estimado</label>
+                        <span id="turnoTiempo" class="text-xl font-bold text-blue-600 dark:text-blue-400">0 min</span>
+                    </div>
+                </div>
+                <p id="turnoResumen" aria-live="polite" class="mt-2 text-xs text-gray-500 dark:text-gray-400"></p>
+            </div>
+            <div class="mt-4">
+                <label asp-for="Notas" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Notas (opcional)</label>
+                <textarea asp-for="Notas" maxlength="2000" rows="2" placeholder="Notas adicionales sobre el turno..."
+                          class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:text-white"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botones de acción -->
+    <div class="flex flex-wrap justify-end m-4 gap-2">
+        <button type="submit" id="submit-button" class="app-button app-button--success" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-1.5 shrink-0" aria-hidden="true">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+            </svg>
+            Registrar Turno
+        </button>
+        <button type="button" id="clear-button" class="app-button app-button--danger">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-1.5 shrink-0" aria-hidden="true">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+            </svg>
+            Limpiar Campos
+        </button>
+    </div>
+</form>
+
+@if (User.TienePermiso("Clientes.Crear"))
+{
+<!-- Modal para registrar una persona relacionada con el vehículo seleccionado -->
+<div id="registroClienteModal" class="hidden fixed inset-0 z-50 items-center justify-center overflow-y-auto bg-gray-900/50 p-3 sm:p-4" aria-hidden="true">
+    <div class="relative my-auto flex w-full max-w-2xl max-h-[90vh] flex-col rounded-lg bg-white shadow dark:bg-gray-800">
+        <div class="flex items-center justify-between border-b p-4 dark:border-gray-600">
+            <h3 id="registroClienteTitulo" class="text-xl font-semibold text-gray-900 dark:text-white">Registrar cliente asociado</h3>
+            <button type="button" id="cerrarRegistroCliente" class="rounded-lg p-2 text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white" aria-label="Cerrar">✕</button>
+        </div>
+        <form id="registroClienteForm" class="flex flex-col min-h-0">
+            <div class="min-h-0 overflow-y-auto p-4">
+                <p class="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                    Ingresa la clave de asociación correspondiente al vehículo con patente <strong id="registroClientePatente"></strong> para asociarlo a este cliente. No se registrará un vehículo nuevo.
+                </p>
+                <div id="registroClienteMensaje" class="mb-3 hidden rounded-lg p-3 text-sm" role="alert"></div>
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                        <label for="registroClienteTipoDocumento" class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">Tipo de Documento <span class="text-red-600">*</span></label>
+                        <select id="registroClienteTipoDocumento" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" required>
+                            <option value="">Seleccione...</option>
+                            @foreach (var tipo in (ViewBag.TiposDocumento as List<Firebase.Models.TipoDocumento>) ?? new List<Firebase.Models.TipoDocumento>())
+                            {
+                                <option value="@tipo.Nombre" data-formato="@tipo.Formato" data-regex="@(string.IsNullOrWhiteSpace(tipo.Formato) ? "" : tipo.ObtenerRegexPattern())">@tipo.Nombre</option>
+                            }
+                        </select>
+                        <p id="registroClienteTipoDocumentoHint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Seleccione un tipo de documento</p>
+                    </div>
+                    <div>
+                        <label for="registroClienteNumeroDocumento" class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">Número de Documento <span class="text-red-600">*</span></label>
+                        <input id="registroClienteNumeroDocumento" type="text" inputmode="text" placeholder="Ingrese número" required
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" />
+                        <p id="registroClienteDocumentoHint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Selecciona el tipo de documento para ver el formato requerido</p>
+                    </div>
+                    <div>
+                        <label for="registroClienteNombre" class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">Nombre <span class="text-red-600">*</span></label>
+                        <input id="registroClienteNombre" type="text" placeholder="Ej: Juan María" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ]{3,}(\s+[a-zA-ZáéíóúÁÉÍÓÚñÑ]{3,})*$" title="El nombre debe tener al menos 3 letras por palabra. Ejemplo: Juan María" required
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 letras por palabra</p>
+                    </div>
+                    <div>
+                        <label for="registroClienteApellido" class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">Apellido <span class="text-red-600">*</span></label>
+                        <input id="registroClienteApellido" type="text" placeholder="Ej: García López" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ]{3,}(\s+[a-zA-ZáéíóúÁÉÍÓÚñÑ]{3,})*$" title="El apellido debe tener al menos 3 letras por palabra. Ejemplo: García López" required
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 letras por palabra</p>
+                    </div>
+                    <div>
+                        <label for="registroClienteTelefono" class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">Teléfono <span class="text-red-600">*</span></label>
+                        <input id="registroClienteTelefono" type="tel" placeholder="Teléfono" pattern="[0-9]{10}" title="Debe contener exactamente 10 dígitos" maxlength="10" required
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Exactamente 10 dígitos</p>
+                    </div>
+                    <div>
+                        <label for="registroClienteEmail" class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">Email <span class="text-red-600">*</span></label>
+                        <input id="registroClienteEmail" type="email" placeholder="Email" required
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" />
+                    </div>
+                    <div class="col-span-2">
+                        <label for="registroClienteClave" class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">Clave de asociación <span class="text-red-600">*</span></label>
+                        <input id="registroClienteClave" type="text" placeholder="Ej: ABCD-2345" autocomplete="off" required
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Clave entregada por el titular del vehículo</p>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <div class="flex flex-wrap justify-end gap-2 border-t p-4 dark:border-gray-600">
+            <button type="submit" form="registroClienteForm" id="guardarRegistroCliente" class="text-white inline-flex items-center bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900 font-medium text-sm px-4 py-2 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-1.5 shrink-0" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                </svg>
+                <span id="registroClienteButtonText">Registrar</span>
+            </button>
+            <button type="button" id="cancelarRegistroCliente" class="text-white inline-flex items-center bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900 font-medium text-sm px-4 py-2 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-1.5 shrink-0" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                </svg>
+                Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+}
+<script src="~/js/turnos.js" asp-append-version="true"></script>
