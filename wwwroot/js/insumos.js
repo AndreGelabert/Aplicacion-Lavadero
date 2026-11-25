@@ -63,12 +63,47 @@
     }
     inventoryForm?.querySelector('[data-reset-insumo]')?.addEventListener('click', resetInventory);
     if (inventoryForm && inventoryForm.dataset.canCreate !== 'true') resetInventory();
+    if (inventoryForm && inventoryForm.elements) {
+        const minEl = inventoryForm.elements.StockMinimo;
+        const maxEl = inventoryForm.elements.StockMaximo;
+        const repoEl = inventoryForm.elements.CantidadReabastecimiento;
+        if (minEl && maxEl && repoEl && typeof minEl.addEventListener === 'function' && typeof maxEl.addEventListener === 'function' && typeof repoEl.addEventListener === 'function') {
+            maxEl.addEventListener('input', () => {
+                const maxVal = parseFloat(maxEl.value);
+                const minVal = parseFloat(minEl.value) || 0;
+                if (!isNaN(maxVal) && maxVal > minVal) {
+                    repoEl.value = (maxVal - minVal).toFixed(2).replace(/\.?0+$/, '');
+                }
+            });
+            minEl.addEventListener('input', () => {
+                const minVal = parseFloat(minEl.value) || 0;
+                const maxVal = parseFloat(maxEl.value);
+                if (!isNaN(maxVal) && maxVal > minVal) {
+                    repoEl.value = (maxVal - minVal).toFixed(2).replace(/\.?0+$/, '');
+                } else if (!isNaN(parseFloat(repoEl.value)) && parseFloat(repoEl.value) > 0) {
+                    maxEl.value = (minVal + parseFloat(repoEl.value)).toFixed(2).replace(/\.?0+$/, '');
+                }
+            });
+            repoEl.addEventListener('input', () => {
+                const repoVal = parseFloat(repoEl.value);
+                const minVal = parseFloat(minEl.value) || 0;
+                if (!isNaN(repoVal) && repoVal > 0) {
+                    maxEl.value = (minVal + repoVal).toFixed(2).replace(/\.?0+$/, '');
+                }
+            });
+        }
+    }
     document.querySelectorAll('[data-edit-insumo]').forEach(button => button.addEventListener('click', () => {
         const record = JSON.parse(button.dataset.record);
         resetInventory();
         inventoryForm.elements.crear.value = 'false'; inventoryForm.elements.Id.value = record.Id;
         inventoryForm.elements.Nombre.value = record.Nombre;
         inventoryForm.elements.StockMinimo.value = record.StockMinimo;
+        if (inventoryForm.elements.StockMaximo) {
+            inventoryForm.elements.StockMaximo.value = record.StockMaximo !== undefined && record.StockMaximo !== null && record.StockMaximo > 0
+                ? record.StockMaximo
+                : (Number(record.StockMinimo || 0) + Number(record.CantidadReabastecimiento || 0));
+        }
         inventoryForm.elements.CantidadReabastecimiento.value = record.CantidadReabastecimiento;
         inventoryForm.elements.ReabastecimientoAutomatico.checked = record.ReabastecimientoAutomatico;
         inventoryForm.elements.Tipo.value = record.Tipo || '';

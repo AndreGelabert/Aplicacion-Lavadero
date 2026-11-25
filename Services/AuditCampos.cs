@@ -65,7 +65,7 @@ public static class AuditCampos
     /// <summary>Campos auditables de Insumo.</summary>
     public static readonly IReadOnlyList<string> Insumo = new[]
     {
-        "Nombre", "Tipo", "UnidadMedida", "StockActual", "StockMinimo",
+        "Nombre", "Tipo", "UnidadMedida", "StockActual", "StockMinimo", "StockMaximo",
         "CantidadReabastecimiento", "ReabastecimientoAutomatico", "ProveedoresIds", "Estado"
     };
 
@@ -251,6 +251,7 @@ public static class AuditCampos
             ["UnidadMedida"] = i.UnidadMedida ?? "",
             ["StockActual"] = i.StockActual.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["StockMinimo"] = i.StockMinimo.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["StockMaximo"] = i.StockMaximo.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["CantidadReabastecimiento"] = i.CantidadReabastecimiento.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["ReabastecimientoAutomatico"] = i.ReabastecimientoAutomatico.ToString(),
             ["ProveedoresIds"] = System.Text.Json.JsonSerializer.Serialize((i.ProveedoresIds ?? new()).OrderBy(p => p, StringComparer.Ordinal)),

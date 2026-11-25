@@ -158,8 +158,12 @@ public sealed class InsumoService(
         insumo.Nombre = (insumo.Nombre ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(insumo.Nombre))
             return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("El nombre del insumo es obligatorio."));
-        if (insumo.StockMinimo < 0 || insumo.CantidadReabastecimiento < 0)
+        if (insumo.StockMinimo < 0 || insumo.StockMaximo < 0 || insumo.CantidadReabastecimiento < 0)
             return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("Los niveles de stock no pueden ser negativos."));
+        if (insumo.StockMaximo > 0 && insumo.StockMaximo <= insumo.StockMinimo)
+            return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("El stock máximo debe ser mayor al stock mínimo."));
+        if (insumo.ReabastecimientoAutomatico && insumo.StockMaximo <= insumo.StockMinimo)
+            return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("El stock máximo debe ser mayor al stock mínimo para el reabastecimiento automático."));
         insumo.ProveedoresIds = (insumo.ProveedoresIds ?? new()).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToList();
         if (insumo.ReabastecimientoAutomatico && insumo.ProveedoresIds.Count == 0)
             return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("Seleccione al menos un proveedor para el reabastecimiento automático."));
@@ -359,6 +363,7 @@ public sealed class InsumoService(
                     UnidadMedida = actual.UnidadMedida,
                     StockActual = actual.StockActual,
                     StockMinimo = insumo.StockMinimo,
+                    StockMaximo = insumo.StockMaximo,
                     CantidadReabastecimiento = insumo.CantidadReabastecimiento,
                     ReabastecimientoAutomatico = insumo.ReabastecimientoAutomatico,
                     ProveedoresIds = insumo.ProveedoresIds,
@@ -384,6 +389,7 @@ public sealed class InsumoService(
                     ["Tipo"] = insumoActualizado.Tipo,
                     ["UnidadMedida"] = insumoActualizado.UnidadMedida,
                     ["StockMinimo"] = DecimalFirestore.ToFirestore(insumoActualizado.StockMinimo),
+                    ["StockMaximo"] = DecimalFirestore.ToFirestore(insumoActualizado.StockMaximo),
                     ["CantidadReabastecimiento"] = DecimalFirestore.ToFirestore(insumoActualizado.CantidadReabastecimiento),
                     ["ReabastecimientoAutomatico"] = insumoActualizado.ReabastecimientoAutomatico,
                     ["ProveedoresIds"] = insumoActualizado.ProveedoresIds
@@ -1287,6 +1293,7 @@ public sealed class StockService(
                 UnidadMedida = insumo.UnidadMedida,
                 StockActual = saldo,
                 StockMinimo = insumo.StockMinimo,
+                StockMaximo = insumo.StockMaximo,
                 CantidadReabastecimiento = insumo.CantidadReabastecimiento,
                 ReabastecimientoAutomatico = insumo.ReabastecimientoAutomatico,
                 ProveedoresIds = insumo.ProveedoresIds,
@@ -1711,7 +1718,7 @@ public sealed class StockService(
                     Estado = "PendienteAprobacion",
                     Notas = "El precio y la disponibilidad requieren confirmación del proveedor.",
                     Items = new() { new OrdenCompraItem { InsumoId = insumo.Id, NombreInsumo = insumo.Nombre,
-                        Cantidad = insumo.CantidadReabastecimiento, PrecioUnitario = antecedente.Item.PrecioUnitario } },
+                        Cantidad = insumo.CalcularCantidadReposicion(), PrecioUnitario = antecedente.Item.PrecioUnitario } },
                     FechaEmision = ahoraUtc
                 };
                 transaction.Create(nueva, orden);
@@ -1739,7 +1746,7 @@ public sealed class StockService(
                     Estado = directiva.ModoEmision == "RequiereAprobacion" ? "PendienteAprobacion" : "Pendiente",
                     Items = new List<OrdenCompraItem>
                     {
-                        new() { InsumoId = insumo.Id, NombreInsumo = insumo.Nombre, Cantidad = insumo.CantidadReabastecimiento }
+                        new() { InsumoId = insumo.Id, NombreInsumo = insumo.Nombre, Cantidad = insumo.CalcularCantidadReposicion() }
                     }
                 };
                 transaction.Create(reference, solicitud);

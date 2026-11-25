@@ -7,6 +7,9 @@ namespace Firebase.Models;
 [FirestoreData]
 public sealed class Insumo
 {
+    private decimal _stockMaximo;
+    private decimal _cantidadReabastecimiento;
+
     [FirestoreProperty] public string Id { get; set; } = string.Empty;
     [FirestoreProperty, Required, StringLength(120)] public string Nombre { get; set; } = string.Empty;
     [FirestoreProperty] public string TipoId { get; set; } = string.Empty;
@@ -14,10 +17,41 @@ public sealed class Insumo
     [FirestoreProperty, Required] public string UnidadMedida { get; set; } = "unidad";
     [FirestoreProperty(ConverterType = typeof(DecimalConverter))] public decimal StockActual { get; set; }
     [FirestoreProperty(ConverterType = typeof(DecimalConverter))] public decimal StockMinimo { get; set; }
-    [FirestoreProperty(ConverterType = typeof(DecimalConverter))] public decimal CantidadReabastecimiento { get; set; }
+
+    [FirestoreProperty(ConverterType = typeof(DecimalConverter))]
+    public decimal CantidadReabastecimiento
+    {
+        get => _cantidadReabastecimiento > 0
+            ? _cantidadReabastecimiento
+            : (_stockMaximo > StockMinimo ? _stockMaximo - StockMinimo : 0);
+        set => _cantidadReabastecimiento = value;
+    }
+
+    [FirestoreProperty(ConverterType = typeof(DecimalConverter))]
+    public decimal StockMaximo
+    {
+        get => _stockMaximo > 0
+            ? _stockMaximo
+            : (StockMinimo + (_cantidadReabastecimiento > 0 ? _cantidadReabastecimiento : 0));
+        set => _stockMaximo = value;
+    }
+
     [FirestoreProperty] public bool ReabastecimientoAutomatico { get; set; }
     [FirestoreProperty] public List<string> ProveedoresIds { get; set; } = new();
     [FirestoreProperty] public string Estado { get; set; } = "Activo";
+
+    public decimal CalcularCantidadReposicion()
+    {
+        var objetivo = StockMaximo > 0 ? StockMaximo : (StockMinimo + (CantidadReabastecimiento > 0 ? CantidadReabastecimiento : 0));
+        var faltante = objetivo - StockActual;
+        var minimoLote = CantidadReabastecimiento > 0 ? CantidadReabastecimiento : 0;
+        var resultado = Math.Max(faltante, minimoLote);
+        if (resultado <= 0)
+        {
+            resultado = objetivo > StockMinimo ? objetivo - StockMinimo : 1;
+        }
+        return resultado;
+    }
 }
 
 [FirestoreData]

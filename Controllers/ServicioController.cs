@@ -482,7 +482,14 @@ public class ServicioController : Controller
         await CargarListasForm();
         Servicio servicio = null;
         if (!string.IsNullOrEmpty(id))
+        {
             servicio = await _servicioService.ObtenerServicio(id);
+            if (servicio != null && _insumoService != null)
+            {
+                var insumos = await _insumoService.ObtenerTodos(false);
+                SincronizarNombresInsumosReceta(servicio, insumos);
+            }
+        }
 
         return PartialView("_ServicioForm", servicio);
     }
@@ -550,6 +557,11 @@ public class ServicioController : Controller
         if (!string.IsNullOrEmpty(editId))
         {
             var servicio = await _servicioService.ObtenerServicio(editId);
+            if (servicio != null && _insumoService != null)
+            {
+                var insumos = await _insumoService.ObtenerTodos(false);
+                SincronizarNombresInsumosReceta(servicio, insumos);
+            }
             ViewBag.EditServicio = servicio;
             ViewBag.FormTitle = "Editando un Servicio";
             ViewBag.SubmitButtonText = "Guardar";
@@ -562,6 +574,39 @@ public class ServicioController : Controller
             ViewBag.SubmitButtonText = "Registrar";
             ViewBag.ClearButtonText = "Limpiar Campos";
             ViewBag.FormAction = "CrearServicioAjax";
+        }
+    }
+
+    /// <summary>
+    /// Sincroniza en memoria los nombres de insumos en la receta de un servicio con el catálogo vigente por InsumoId.
+    /// </summary>
+    private static void SincronizarNombresInsumosReceta(Servicio servicio, IEnumerable<Insumo> insumosCatalog)
+    {
+        if (servicio == null || insumosCatalog == null) return;
+        var catalogoDict = insumosCatalog
+            .Where(i => !string.IsNullOrEmpty(i.Id) && !string.IsNullOrEmpty(i.Nombre))
+            .GroupBy(i => i.Id, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First().Nombre, StringComparer.Ordinal);
+
+        void ActualizarLista(List<RecetaInsumo> receta)
+        {
+            if (receta == null) return;
+            foreach (var item in receta)
+            {
+                if (!string.IsNullOrEmpty(item.InsumoId) && catalogoDict.TryGetValue(item.InsumoId, out var nombreActualizado))
+                {
+                    item.NombreInsumo = nombreActualizado;
+                }
+            }
+        }
+
+        ActualizarLista(servicio.Receta);
+        if (servicio.Etapas != null)
+        {
+            foreach (var etapa in servicio.Etapas)
+            {
+                ActualizarLista(etapa.Receta);
+            }
         }
     }
 
