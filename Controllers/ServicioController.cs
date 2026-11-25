@@ -624,6 +624,7 @@ public class ServicioController : Controller
             TryValidateModel(servicio);
         }
 
+        await MarcarReutilizablesEnRecetas(servicio);
         ValidateServicio(servicio);
         if (!ModelState.IsValid)
         {
@@ -640,6 +641,7 @@ public class ServicioController : Controller
     /// <returns>Resultado de la operación con éxito o detalle de error.</returns>
     private async Task<ResultadoOperacion> ProcesarActualizacionServicio(Servicio servicio)
     {
+        await MarcarReutilizablesEnRecetas(servicio);
         ValidateServicio(servicio);
         if (!ModelState.IsValid)
         {
@@ -647,6 +649,22 @@ public class ServicioController : Controller
         }
 
         return AplicarResultadoFormulario(await _form.Actualizar(servicio));
+    }
+
+    private async Task MarcarReutilizablesEnRecetas(Servicio servicio)
+    {
+        if (_insumoService == null) return;
+        var reutilizables = await _insumoService.ObtenerIdsHerramientas();
+        if (reutilizables.Count == 0) return;
+
+        foreach (var r in servicio.Receta ?? new())
+            if (r.Modalidad != "Tipo" && !string.IsNullOrWhiteSpace(r.InsumoId))
+                r.EsHerramienta = reutilizables.Contains(r.InsumoId);
+
+        foreach (var etapa in servicio.Etapas ?? new())
+            foreach (var r in etapa.Receta ?? new())
+                if (r.Modalidad != "Tipo" && !string.IsNullOrWhiteSpace(r.InsumoId))
+                    r.EsHerramienta = reutilizables.Contains(r.InsumoId);
     }
 
     private ResultadoOperacion AplicarResultadoFormulario(ServicioFormService.ResultadoFormulario resultado)

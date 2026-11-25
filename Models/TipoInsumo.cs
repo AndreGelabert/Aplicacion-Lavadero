@@ -54,7 +54,13 @@ public sealed class TipoInsumo
     public bool EsProtegido { get; set; }
 
     [FirestoreProperty]
+    public bool EsReutilizable { get; set; }
+
+    [FirestoreProperty]
     public string Estado { get; set; } = "Activo";
+
+    public bool EsInsumoReutilizable() =>
+        EsReutilizable || EsProtegido || string.Equals(Nombre, TipoHerramienta, StringComparison.OrdinalIgnoreCase);
 
     public static bool EsCategoriaValida(string? categoria)
     {

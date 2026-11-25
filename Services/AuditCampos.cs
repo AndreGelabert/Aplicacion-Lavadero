@@ -269,6 +269,7 @@ public static class AuditCampos
             ["Categoria"] = t.Categoria ?? "",
             ["UnidadResumen"] = t.UnidadResumen ?? "",
             ["EsProtegido"] = t.EsProtegido.ToString(),
+            ["EsReutilizable"] = t.EsReutilizable.ToString(),
             ["Estado"] = t.Estado ?? ""
         };
     }

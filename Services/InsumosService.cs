@@ -128,9 +128,16 @@ public sealed class InsumoService(
 
     public async Task<HashSet<string>> ObtenerIdsHerramientas()
     {
+        var tiposSnap = await firestore.Collection(TipoInsumoService.Collection).GetSnapshotAsync();
+        var tiposReutilizablesIds = tiposSnap.Documents
+            .Select(d => { var t = d.ConvertTo<TipoInsumo>(); t.Id = d.Id; return t; })
+            .Where(t => t.EsInsumoReutilizable())
+            .Select(t => t.Id)
+            .ToHashSet(StringComparer.Ordinal);
         var insumos = await ObtenerTodos(true);
         return insumos
-            .Where(i => string.Equals(i.Tipo, TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase))
+            .Where(i => (!string.IsNullOrWhiteSpace(i.TipoId) && tiposReutilizablesIds.Contains(i.TipoId)) ||
+                        string.Equals(i.Tipo, TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase))
             .Select(i => i.Id)
             .ToHashSet(StringComparer.Ordinal);
     }
@@ -1102,7 +1109,12 @@ public sealed class StockService(
         if (!string.IsNullOrWhiteSpace(insumo.TipoId))
         {
             var tipo = await transaction.GetSnapshotAsync(firestore.Collection(TipoInsumoService.Collection).Document(insumo.TipoId));
-            if (tipo.Exists) return string.Equals(tipo.ConvertTo<TipoInsumo>().Nombre, TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase);
+            if (tipo.Exists)
+            {
+                var t = tipo.ConvertTo<TipoInsumo>();
+                t.Id = tipo.Id;
+                return t.EsInsumoReutilizable();
+            }
         }
         return string.Equals(insumo.Tipo, TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase);
     }

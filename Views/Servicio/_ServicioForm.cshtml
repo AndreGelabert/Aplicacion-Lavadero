@@ -10,7 +10,7 @@
     var puedeEliminarTipoVehiculo = User.TieneAlgunPermiso("Servicios.Eliminar", "Vehiculos.Eliminar");
     var tiposReceta = (ViewBag.TiposInsumoDisponibles as List<Firebase.Models.TipoInsumo>) ?? new List<Firebase.Models.TipoInsumo>();
     // The service creates random IDs; legacy Herramienta records can lack EsProtegido.
-    var tiposHerramientaIds = tiposReceta.Where(t => t.EsProtegido || (string.Equals(t.Nombre, Firebase.Models.TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase) && string.Equals(t.Categoria, Firebase.Models.TipoInsumo.Categorias.Unidades, StringComparison.OrdinalIgnoreCase))).Select(t => t.Id).ToArray();
+    var tiposHerramientaIds = tiposReceta.Where(t => t.EsInsumoReutilizable()).Select(t => t.Id).ToArray();
 }
 <form id="servicio-form" data-validate="true" data-edit="@edit" method="post" action="@formAction" onsubmit="return submitServicioAjax(this);">
     @Html.AntiForgeryToken()

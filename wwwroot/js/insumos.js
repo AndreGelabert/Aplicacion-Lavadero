@@ -408,9 +408,15 @@
             form: { querySelector: () => unit }
         });
         unit.value = selected;
+        const reusableToggle = form.elements.EsReutilizable;
+        if (reusableToggle) {
+            const isUnits = form.elements.Categoria.value === 'Unidades';
+            reusableToggle.disabled = !isUnits;
+            if (!isUnits) reusableToggle.checked = false;
+        }
     }
     form.elements.Categoria.addEventListener('change', () => updateSummaryUnits());
-    function resetForm() { form.reset(); form.elements.crear.value = 'true'; form.elements.Id.value = ''; updateSummaryUnits(); }
+    function resetForm() { form.reset(); form.elements.crear.value = 'true'; form.elements.Id.value = ''; if (form.elements.EsReutilizable) form.elements.EsReutilizable.checked = false; updateSummaryUnits(); }
     updateSummaryUnits();
     typesModal.querySelector('[data-reset-tipo]').addEventListener('click', resetForm);
     function button(label, handler) {
@@ -434,10 +440,10 @@
                 const protectedType = type.esProtegido || type.nombre.toLowerCase() === 'herramienta';
                 hasTool ||= type.nombre.toLowerCase() === 'herramienta';
                 if (type.estado === 'Activo') {
-                    const option = new Option(type.nombre, type.id); option.dataset.categoria = type.categoria; selector.add(option);
+                    const option = new Option(type.nombre, type.id); option.dataset.categoria = type.categoria; option.dataset.reutilizable = String(Boolean(type.esReutilizable || protectedType)); selector.add(option);
                 }
                 const row = document.createElement('tr'); row.className = 'border-b dark:border-gray-700';
-                for (const value of [type.nombre, type.categoria, window.etiquetaUnidadInsumo(type.unidadResumen), type.estado]) {
+                for (const value of [type.nombre, (type.esReutilizable || protectedType) ? `${type.categoria} (Reutilizable)` : type.categoria, window.etiquetaUnidadInsumo(type.unidadResumen), type.estado]) {
                     const cell = document.createElement('td'); cell.className = 'p-2'; cell.textContent = value; row.append(cell);
                 }
                 const actions = document.createElement('td'); actions.className = 'p-2 flex flex-wrap gap-1';
@@ -446,7 +452,9 @@
                     actions.append(button('Editar', () => {
                         form.elements.crear.value = 'false'; form.elements.Id.value = type.id;
                         form.elements.Nombre.value = type.nombre; form.elements.Categoria.value = type.categoria;
-                        updateSummaryUnits(type.unidadResumen); form.elements.Nombre.focus();
+                        updateSummaryUnits(type.unidadResumen);
+                        if (form.elements.EsReutilizable) form.elements.EsReutilizable.checked = Boolean(type.esReutilizable);
+                        form.elements.Nombre.focus();
                     }));
                     actions.append(button(type.estado === 'Activo' ? 'Desactivar' : 'Reactivar', () => mutate(typesModal.dataset.stateUrl, { id: type.id, estado: type.estado === 'Activo' ? 'Inactivo' : 'Activo' })));
                 }
