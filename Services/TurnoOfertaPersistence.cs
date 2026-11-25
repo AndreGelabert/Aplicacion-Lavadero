@@ -187,6 +187,13 @@ internal sealed class TurnoOfertaPersistence(FirestoreDb db)
                 tx.Update(cascadeRef, "ContinuationState", "Finalizada");
                 return null;
             }
+            string? vacatingClientId = null;
+            if (cascade.TryGetValue<string>("VacancySourceOfferId", out var sourceOfferId) && ValidId(sourceOfferId))
+            {
+                var sourceOffer = await tx.GetSnapshotAsync(db.Collection("turno_ofertas").Document(sourceOfferId));
+                if (sourceOffer.Exists && sourceOffer.TryGetValue<string>("ClienteId", out var vc))
+                    vacatingClientId = vc;
+            }
             var candidates = await tx.GetSnapshotAsync(db.Collection("turnos")
                 .WhereGreaterThan("InicioUtc", start).WhereLessThanOrEqualTo("InicioUtc", start.AddDays(7)));
             var eligible = new List<TurnoAdelantoCandidate>();
@@ -194,7 +201,7 @@ internal sealed class TurnoOfertaPersistence(FirestoreDb db)
             foreach (var doc in candidates.Documents)
             {
                 var booking = doc.ConvertTo<Turno>();
-                if (booking.Estado != "Pendiente" || !booking.AceptaAdelanto) continue;
+                if (booking.Estado != "Pendiente" || !booking.AceptaAdelanto || (!string.IsNullOrEmpty(vacatingClientId) && booking.ClienteId == vacatingClientId)) continue;
                 if (booking.Id != doc.Id || booking.Validar().Count != 0 || !ValidId(booking.ClienteId) || !doc.CreateTime.HasValue)
                     throw new InvalidOperationException("Turno persistido inválido.");
                 var claim = await ReadClaim(tx, doc.Id);
