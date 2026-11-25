@@ -100,3 +100,62 @@ test('wwwroot/js/servicio.js rechaza cantidades decimales en recetas con unidad'
     // Debe haber fallado y mostrado mensaje específico
     assert.equal(context.result, false);
 });
+
+test('wwwroot/js/insumos.js muestra advertencia si la brecha entre mínimo y máximo es inferior al 15%', () => {
+    const window = { etiquetaUnidadInsumo: x => x };
+    const elements = {
+        StockMinimo: { value: '4', addEventListener(evt, cb) { this.oninput = cb; } },
+        StockMaximo: { value: '4.01', addEventListener(evt, cb) { this.oninput = cb; }, setCustomValidity() {} },
+        CantidadReabastecimiento: { value: '0.01', addEventListener(evt, cb) { this.oninput = cb; } },
+        crear: { value: 'true' },
+        Id: { value: '' }
+    };
+    const form = {
+        elements,
+        dataset: { canCreate: 'true' },
+        querySelector: sel => sel === 'select[name="UnidadMedida"]' ? { value: 'l', addEventListener() {} } : null,
+        querySelectorAll: () => [],
+        addEventListener: () => {},
+        reset() {}
+    };
+    const warningClasses = new Set(['hidden']);
+    const warningEl = {
+        classList: {
+            add(c) { warningClasses.add(c); },
+            remove(c) { warningClasses.delete(c); },
+            toggle(c, force) {
+                if (force === undefined) {
+                    if (warningClasses.has(c)) warningClasses.delete(c); else warningClasses.add(c);
+                } else if (force) {
+                    warningClasses.add(c);
+                } else {
+                    warningClasses.delete(c);
+                }
+            },
+            contains(c) { return warningClasses.has(c); }
+        }
+    };
+    const document = {
+        addEventListener() {},
+        getElementById: id => {
+            if (id === 'insumo-form') return form;
+            if (id === 'stock-brecha-warning') return warningEl;
+            return null;
+        },
+        querySelector: () => null,
+        querySelectorAll: () => []
+    };
+
+    function Option(text, value) { this.text = text; this.value = value; }
+    vm.runInNewContext(read('wwwroot/js/tipos-insumo.js'), { window, Option });
+    vm.runInNewContext(read('wwwroot/js/insumos.js'), { window, document, URL, Option });
+
+    // Con min=4 y max=4.01 (brecha=0.01 < 0.60), debe mostrarse la advertencia (hidden false)
+    elements.StockMaximo.oninput();
+    assert.equal(warningEl.classList.contains('hidden'), false);
+
+    // Si aumentamos max a 6 (brecha=2 >= 0.60), debe ocultarse (hidden true)
+    elements.StockMaximo.value = '6';
+    elements.StockMaximo.oninput();
+    assert.equal(warningEl.classList.contains('hidden'), true);
+});

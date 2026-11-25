@@ -78,6 +78,23 @@
         }
     }
 
+    function verificarAlertaBrecha() {
+        const warningEl = document.getElementById('stock-brecha-warning');
+        if (!warningEl || !inventoryForm || !inventoryForm.elements) return;
+        const minEl = inventoryForm.elements.StockMinimo;
+        const maxEl = inventoryForm.elements.StockMaximo;
+        const minVal = parseFloat(minEl?.value);
+        const maxVal = parseFloat(maxEl?.value);
+        if (!isNaN(minVal) && !isNaN(maxVal) && minVal > 0 && maxVal > minVal) {
+            const brecha = maxVal - minVal;
+            const margenMinimo = minVal * 0.15;
+            const esBaja = brecha < margenMinimo;
+            warningEl.classList.toggle('hidden', !esBaja);
+        } else {
+            warningEl.classList.add('hidden');
+        }
+    }
+
     function resetInventory() {
         if (!inventoryForm) return;
         inventoryForm.reset();
@@ -95,6 +112,7 @@
         inventoryForm.querySelector('[type="submit"]').disabled = inventoryForm.dataset.canCreate !== 'true';
         title.textContent = 'Registrando un Insumo';
         ajustarPasosSegunUnidad();
+        document.getElementById('stock-brecha-warning')?.classList.add('hidden');
     }
     inventoryForm?.querySelector('[data-reset-insumo]')?.addEventListener('click', resetInventory);
     const unitSelectEl = inventoryForm?.querySelector ? inventoryForm.querySelector('select[name="UnidadMedida"]') : null;
@@ -125,6 +143,7 @@
                 } else if (!isNaN(maxVal) && maxVal <= minVal && maxVal > 0) {
                     if (typeof maxEl.setCustomValidity === 'function') maxEl.setCustomValidity('El stock máximo debe ser mayor al stock mínimo.');
                 }
+                verificarAlertaBrecha();
             });
             minEl.addEventListener('input', () => {
                 const esEntero = esUnidadEnteraActual();
@@ -148,6 +167,7 @@
                     maxEl.value = formatVal(minVal + repoVal, esEntero);
                     if (typeof maxEl.setCustomValidity === 'function') maxEl.setCustomValidity('');
                 }
+                verificarAlertaBrecha();
             });
             repoEl.addEventListener('input', () => {
                 const esEntero = esUnidadEnteraActual();
@@ -157,6 +177,7 @@
                     maxEl.value = formatVal(minVal + repoVal, esEntero);
                     if (typeof maxEl.setCustomValidity === 'function') maxEl.setCustomValidity('');
                 }
+                verificarAlertaBrecha();
             });
         }
     }
@@ -231,6 +252,7 @@
         inventoryForm.querySelector('[type="submit"]').disabled = false;
         title.textContent = 'Editando un Insumo';
         ajustarPasosSegunUnidad();
+        verificarAlertaBrecha();
         if (accordion.classList.contains('hidden')) accordionButton.click();
         inventoryForm.scrollIntoView({ block: 'start' }); inventoryForm.elements.Nombre.focus();
     }));
