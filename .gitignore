@@ -383,3 +383,4 @@ FodyWeavers.xsd
 
 # Local AI runtime state
 .atl/
+/NUL
