@@ -1204,9 +1204,11 @@
 titleSpan.textContent = isEdit ? 'Editando un Servicio' : 'Registrando un Servicio';
    }
 
- // Proteger ambos selects
-          protegerTipoVehiculoEnEdicion();
+            // Proteger ambos selects
+            protegerTipoVehiculoEnEdicion();
             protegerTipoServicioEnEdicion();
+            renderServicioRecipeList();
+            actualizarVisibilidadReceta();
 
 const accordionBody = document.getElementById('accordion-flush-body-1');
     const accordionInstance = window.FlowbiteInstances?.getInstance('Accordion', 'accordion-flush');
@@ -1267,6 +1269,8 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
                 // Proteger ambos selects
                 protegerTipoVehiculoEnEdicion();
                 protegerTipoServicioEnEdicion(); // AGREGAR ESTA LÍNEA
+                renderServicioRecipeList();
+                actualizarVisibilidadReceta();
 
                 if (result.valid) {
                     showServicioMessage('success', result.msg || 'Operación exitosa.', 4000);
