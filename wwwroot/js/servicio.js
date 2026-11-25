@@ -1690,12 +1690,111 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
         openRecipeEditor(recetaEditorTarget);
     };
 
+    function syncRecipeAvailableOptions() {
+        const items = recetaEditorTarget?.Receta || [];
+        const selectedProductIds = new Set(items.filter(x => x.Modalidad !== 'Tipo' && x.InsumoId).map(x => x.InsumoId));
+        const selectedTipoIds = new Set(items.filter(x => x.Modalidad === 'Tipo' && x.TipoId).map(x => x.TipoId));
+
+        const insumoSelect = document.getElementById('recetaInsumo');
+        if (insumoSelect && insumoSelect.options) {
+            Array.from(insumoSelect.options).forEach(opt => {
+                if (!opt.value) return;
+                const used = selectedProductIds.has(opt.value);
+                opt.disabled = used;
+                opt.hidden = used;
+            });
+        }
+
+        const tipoSelect = document.getElementById('recetaTipo');
+        if (tipoSelect && tipoSelect.options) {
+            Array.from(tipoSelect.options).forEach(opt => {
+                if (!opt.value) return;
+                const protegido = opt.dataset?.protegido === 'true';
+                const used = protegido || selectedTipoIds.has(opt.value);
+                opt.disabled = used;
+                opt.hidden = used;
+            });
+        }
+
+        const searchInput = document.getElementById('recetaInsumoSearch');
+        const dropdown = document.getElementById('recetaInsumoDropdown');
+        if (dropdown && typeof dropdown.querySelectorAll === 'function') {
+            const term = (searchInput?.value || '').trim().toLocaleLowerCase('es');
+            dropdown.querySelectorAll('[data-receta-insumo-option]').forEach(btn => {
+                const used = selectedProductIds.has(btn.dataset.id);
+                const text = `${btn.dataset.nombre || ''} ${btn.dataset.categoriaTipo || ''}`.toLocaleLowerCase('es');
+                const hide = used || (Boolean(term) && !text.includes(term));
+                btn.hidden = hide;
+                btn.disabled = used;
+                if (typeof btn.classList?.toggle === 'function') btn.classList.toggle('hidden', hide);
+            });
+            dropdown.querySelectorAll('[data-receta-insumo-group]').forEach(group => {
+                if (typeof group.querySelectorAll === 'function') {
+                    const allHidden = !Array.from(group.querySelectorAll('[data-receta-insumo-option]')).some(o => !o.hidden);
+                    group.hidden = allHidden;
+                    if (typeof group.classList?.toggle === 'function') group.classList.toggle('hidden', allHidden);
+                }
+            });
+        }
+    }
+
+    if (typeof document.addEventListener === 'function') {
+        document.addEventListener('focusin', event => {
+            if (event.target?.id !== 'recetaInsumoSearch') return;
+            syncRecipeAvailableOptions();
+            document.getElementById('recetaInsumoDropdown')?.classList?.remove('hidden');
+        });
+        document.addEventListener('input', event => {
+            if (event.target?.id !== 'recetaInsumoSearch') return;
+            const select = document.getElementById('recetaInsumo');
+            if (select && select.value) {
+                const currentOpt = Array.from(select.options || []).find(o => o.value === select.value);
+                if (!currentOpt || currentOpt.dataset?.nombre !== event.target.value) {
+                    select.value = '';
+                    actualizarUnidadesReceta();
+                }
+            }
+            syncRecipeAvailableOptions();
+            document.getElementById('recetaInsumoDropdown')?.classList?.remove('hidden');
+        });
+        document.addEventListener('click', event => {
+            const optionBtn = event.target?.closest?.('[data-receta-insumo-option]');
+            if (optionBtn && !optionBtn.disabled) {
+                const select = document.getElementById('recetaInsumo');
+                const search = document.getElementById('recetaInsumoSearch');
+                const dropdown = document.getElementById('recetaInsumoDropdown');
+                if (select) {
+                    select.value = optionBtn.dataset.id;
+                    const idx = Array.from(select.options || []).findIndex(o => o.value === optionBtn.dataset.id);
+                    if (idx >= 0) {
+                        select.selectedIndex = idx;
+                        if ('selectedOptions' in select && !select.selectedOptions?.length) {
+                            // native browser updates selectedOptions automatically
+                        }
+                    }
+                }
+                if (search) search.value = optionBtn.dataset.nombre || '';
+                dropdown?.classList?.add('hidden');
+                actualizarUnidadesReceta();
+                return;
+            }
+            const picker = document.getElementById('recetaInsumoPicker');
+            if (picker && !picker.contains?.(event.target)) {
+                document.getElementById('recetaInsumoDropdown')?.classList?.add('hidden');
+            }
+        });
+    }
+
     function openRecipeEditor(target) {
         recetaEditorTarget = target;
         recetaEditorOriginal = JSON.parse(JSON.stringify(target.Receta || []));
         recetaEditorReturnFocus = document.activeElement;
         recetaEditorStageId = target.Id || null;
+        const search = document.getElementById('recetaInsumoSearch');
+        if (search) search.value = '';
+        document.getElementById('recetaInsumoDropdown')?.classList?.add('hidden');
         renderRecipeEditor();
+        syncRecipeAvailableOptions();
         // Suspend the stage modal without calling openEtapasModal again: that reloads
         // the hidden JSON and would discard the unsaved stage draft.
         if (recetaEditorStageId) cerrarModal('etapasModal');
@@ -1733,6 +1832,9 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
         // another recipe, including when the user cancels.
         document.getElementById('recetaModalidad').value = 'Producto';
         document.getElementById('recetaInsumo').value = '';
+        const recetaInsumoSearch = document.getElementById('recetaInsumoSearch');
+        if (recetaInsumoSearch) recetaInsumoSearch.value = '';
+        document.getElementById('recetaInsumoDropdown')?.classList?.add('hidden');
         document.getElementById('recetaTipo').value = '';
         document.getElementById('recetaDosis').value = '';
         cambiarModalidadReceta();
@@ -1826,9 +1928,13 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
         if (index >= 0) items[index] = item; else items.push(item);
         recetaEditorTarget.Receta = items;
         select.value = '';
+        const recetaInsumoSearch = document.getElementById('recetaInsumoSearch');
+        if (recetaInsumoSearch) recetaInsumoSearch.value = '';
+        document.getElementById('recetaInsumoDropdown')?.classList?.add('hidden');
         doseInput.value = '';
         actualizarUnidadesReceta();
         renderRecipeEditor();
+        syncRecipeAvailableOptions();
         return true;
     }
 
@@ -1837,6 +1943,7 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
     window.removeRecipeItem = function (index) {
         recetaEditorTarget.Receta.splice(index, 1);
         renderRecipeEditor();
+        syncRecipeAvailableOptions();
     };
 
     function renderRecipeEditor() {

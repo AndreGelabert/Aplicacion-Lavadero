@@ -889,10 +889,10 @@ public class ServicioController : Controller
         ViewBag.TiposInsumoDisponibles = _tipoInsumoService == null ? new List<TipoInsumo>() : await _tipoInsumoService.ObtenerTodos(false);
         ViewBag.UnidadesReceta = TipoInsumo.Categorias.Todas.ToDictionary(c => c, c => TipoInsumo.ObtenerUnidadesPermitidas(c).OrderBy(u => u).ToArray());
         var insumos = _insumoService == null ? new List<Insumo>() : await _insumoService.ObtenerTodos(false);
-        ViewBag.InsumosDisponibles = insumos.Select(i => new InsumoRecetaOpcion(i.Id, i.Nombre, i.UnidadMedida)).ToList();
+        ViewBag.InsumosDisponibles = insumos.Select(i => new InsumoRecetaOpcion(i.Id, i.Nombre, i.UnidadMedida, i.Tipo)).ToList();
     }
 
-    public sealed record InsumoRecetaOpcion(string Id, string Nombre, string UnidadMedida);
+    public sealed record InsumoRecetaOpcion(string Id, string Nombre, string UnidadMedida, string Tipo = "");
 
     private async Task<IActionResult> ResponderCreacionTipo(ServicioTypeService.Creacion resultado, string entidad, string accionAuditoria)
     {
