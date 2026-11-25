@@ -63,7 +63,7 @@ public sealed class CotizacionesHttpIntegrationTests
             email.Verify(x => x.EnviarAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
             page = WebUtility.HtmlDecode(await client.GetStringAsync("/Insumos/Cotizaciones"));
             var grupos = Regex.Matches(page, "/Insumos/Cotizaciones\\?grupoId=([^\"&]+)").Select(m => m.Groups[1].Value).ToArray();
-            Assert.Equal(3, grupos.Length); Assert.Equal(2, grupos.Distinct().Count());
+            Assert.Equal(2, grupos.Length); Assert.Equal(2, grupos.Distinct().Count());
             var fields = new Dictionary<string, string> { ["__RequestVerificationToken"] = token, ["SolicitudId"] = "s", ["PlazoEntrega"] = "2", ["Items[0].InsumoId"] = "i", ["Items[0].Cantidad"] = "2", ["Items[0].PrecioUnitario"] = "5", ["Items[0].Disponible"] = "false" };
             Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/Insumos/RegistrarRespuesta", new FormUrlEncodedContent(fields))).StatusCode);
             page = WebUtility.HtmlDecode(await client.GetStringAsync("/Insumos/Cotizaciones?grupoId=g"));
@@ -179,6 +179,80 @@ public sealed class CotizacionesHttpIntegrationTests
             Assert.Equal("test@example.invalid", log.UserEmail);
             Assert.Equal("Aprobación de solicitud de cotización", log.Action);
             Assert.Equal("SolicitudCotizacion", log.TargetType);
+        }
+        finally
+        {
+            await app.StopAsync();
+        }
+    }
+
+    [LocalFirestoreFact]
+    public async Task AprobacionGrupoSolicitudesHttpApruebaTodasLasSolicitudesDelGrupo()
+    {
+        var db = new FirestoreDbBuilder { ProjectId = "demo-aprob-grp-" + Guid.NewGuid().ToString("N")[..16], EmulatorDetection = EmulatorDetection.EmulatorOnly }.Build();
+        var sol1 = new SolicitudCotizacion { Id = "sol-grp-1", GrupoId = "grupo-compulsa", ProveedorId = "p1", Estado = "PendienteAprobacion", Items = new() { new OrdenCompraItem { InsumoId = "ins-1", Cantidad = 5m } } };
+        var sol2 = new SolicitudCotizacion { Id = "sol-grp-2", GrupoId = "grupo-compulsa", ProveedorId = "p2", Estado = "PendienteAprobacion", Items = new() { new OrdenCompraItem { InsumoId = "ins-1", Cantidad = 5m } } };
+        await db.Collection("solicitudesCotizacion").Document(sol1.Id).SetAsync(sol1);
+        await db.Collection("solicitudesCotizacion").Document(sol2.Id).SetAsync(sol2);
+        await db.Collection("proveedores").Document("p1").SetAsync(new Proveedor { Id = "p1", RazonSocial = "Prov 1", EmailOrdenes = "p1@example.invalid", Estado = "Activo" });
+        await db.Collection("proveedores").Document("p2").SetAsync(new Proveedor { Id = "p2", RazonSocial = "Prov 2", EmailOrdenes = "p2@example.invalid", Estado = "Activo" });
+
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" });
+        builder.WebHost.ConfigureKestrel(o => o.Listen(IPAddress.Loopback, 0));
+        builder.Services.AddControllersWithViews().AddApplicationPart(typeof(InsumosController).Assembly);
+        builder.Services.AddAuthentication("Test").AddScheme<AuthenticationSchemeOptions, ProveedorCatalogIntegrationTests.HeaderAuth>("Test", _ => { });
+        builder.Services.AddAuthorization();
+        builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermisoPolicyProvider>();
+        builder.Services.AddSingleton(db);
+        builder.Services.AddMemoryCache();
+        builder.Services.AddScoped<ConfiguracionService>();
+        builder.Services.AddScoped<InsumoService>();
+        builder.Services.AddScoped<ProveedorService>();
+        builder.Services.AddScoped<StockService>();
+        builder.Services.AddScoped<ComprasService>();
+        builder.Services.AddSingleton(Mock.Of<IAuditWriter>());
+        builder.Services.AddSingleton(Mock.Of<IEmailSender>());
+
+        await using var app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
+        await app.StartAsync();
+
+        try
+        {
+            using var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, CookieContainer = new CookieContainer() })
+            {
+                BaseAddress = new Uri(app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single())
+            };
+            client.DefaultRequestHeaders.Add("X-Test-Permission", "Insumos.Modificar");
+
+            var page = await client.GetStringAsync("/Insumos/Cotizaciones");
+            var token = Regex.Match(page, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value;
+            Assert.NotEmpty(token);
+
+            var post = await client.PostAsync("/Insumos/AprobarGrupo", new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+                ["grupoId"] = "grupo-compulsa"
+            }));
+            Assert.Equal(HttpStatusCode.Redirect, post.StatusCode);
+
+            var sol1Db = (await db.Collection("solicitudesCotizacion").Document("sol-grp-1").GetSnapshotAsync()).ConvertTo<SolicitudCotizacion>();
+            var sol2Db = (await db.Collection("solicitudesCotizacion").Document("sol-grp-2").GetSnapshotAsync()).ConvertTo<SolicitudCotizacion>();
+            Assert.Equal("Pendiente", sol1Db.Estado);
+            Assert.Equal("Pendiente", sol2Db.Estado);
+
+            var auditorias = (await db.Collection("registros_auditoria").GetSnapshotAsync()).Documents
+                .Select(d => d.ConvertTo<AuditLog>()).ToList();
+            Assert.Equal(2, auditorias.Count);
+            Assert.All(auditorias, log =>
+            {
+                Assert.Equal("test", log.UserId);
+                Assert.Equal("test@example.invalid", log.UserEmail);
+                Assert.Equal("Aprobación de solicitud de cotización (concurso)", log.Action);
+                Assert.Equal("SolicitudCotizacion", log.TargetType);
+            });
         }
         finally
         {

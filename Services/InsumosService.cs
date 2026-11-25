@@ -2287,6 +2287,101 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
         });
     }
 
+    public sealed record ResultadoAuditoriaSolicitudesGrupo(
+        ResultadoOperacion Resultado,
+        string GrupoId = "",
+        List<string>? SolicitudesAprobadas = null);
+
+    public Task<ResultadoOperacion> AprobarGrupoSolicitudes(string grupoId, ActorAuditoria actor) =>
+        AprobarGrupoSolicitudes(grupoId, actor.UserId, actor.UserEmail);
+
+    public Task<ResultadoAuditoriaSolicitudesGrupo> AprobarGrupoSolicitudesConAuditoria(string grupoId, ActorAuditoria actor) =>
+        AprobarGrupoSolicitudesConAuditoria(grupoId, actor.UserId, actor.UserEmail);
+
+    public Task<ResultadoOperacion> AprobarGrupoSolicitudes(string grupoId) =>
+        AprobarGrupoSolicitudes(grupoId, string.Empty, string.Empty);
+
+    public async Task<ResultadoOperacion> AprobarGrupoSolicitudes(string grupoId, string userId = "", string userEmail = "") =>
+        (await AprobarGrupoSolicitudesConAuditoria(grupoId, userId, userEmail)).Resultado;
+
+    public async Task<ResultadoAuditoriaSolicitudesGrupo> AprobarGrupoSolicitudesConAuditoria(string grupoId, string userId = "", string userEmail = "")
+    {
+        if (string.IsNullOrWhiteSpace(grupoId))
+            return new ResultadoAuditoriaSolicitudesGrupo(ResultadoOperacion.CrearError("El concurso de cotización no existe."));
+
+        return await InsumosTransacciones.EjecutarAsync(firestore, async transaction =>
+        {
+            var query = firestore.Collection("solicitudesCotizacion").WhereEqualTo("GrupoId", grupoId);
+            var snapshot = await transaction.GetSnapshotAsync(query);
+            if (snapshot.Count == 0)
+                return new ResultadoAuditoriaSolicitudesGrupo(ResultadoOperacion.CrearError("El concurso de cotización no existe."));
+
+            var pendientes = new List<(DocumentReference Ref, SolicitudCotizacion Solicitud, string SolId)>();
+            var yaAprobadas = 0;
+
+            foreach (var doc in snapshot.Documents)
+            {
+                var solicitud = doc.ConvertTo<SolicitudCotizacion>();
+                var solId = string.IsNullOrEmpty(solicitud.Id) ? doc.Id : solicitud.Id;
+
+                if (solicitud.Estado == "PendienteAprobacion")
+                {
+                    pendientes.Add((doc.Reference, solicitud, solId));
+                }
+                else if (solicitud.Estado == "Pendiente")
+                {
+                    yaAprobadas++;
+                }
+            }
+
+            if (pendientes.Count == 0)
+            {
+                if (yaAprobadas > 0)
+                    return new ResultadoAuditoriaSolicitudesGrupo(
+                        ResultadoOperacion.CrearExito("El concurso de cotización ya se encuentra aprobado."),
+                        grupoId,
+                        new List<string>());
+
+                return new ResultadoAuditoriaSolicitudesGrupo(
+                    ResultadoOperacion.CrearError("El concurso no tiene solicitudes pendientes de aprobación."),
+                    grupoId);
+            }
+
+            var ahora = DateTime.UtcNow;
+            var timestamp = new DateTime(ahora.Ticks - (ahora.Ticks % TimeSpan.TicksPerMillisecond), DateTimeKind.Utc);
+            var aprobadasIds = new List<string>();
+
+            foreach (var (docRef, solicitud, solId) in pendientes)
+            {
+                var antes = AuditCampos.CapturarSolicitudCotizacion(solicitud);
+                solicitud.Estado = "Pendiente";
+                var despues = AuditCampos.CapturarSolicitudCotizacion(solicitud);
+
+                transaction.Update(docRef, "Estado", "Pendiente");
+
+                RegistrarAuditoriaEnTransaccion(transaction, new AuditLog
+                {
+                    UserId = userId ?? string.Empty,
+                    UserEmail = userEmail ?? string.Empty,
+                    Action = "Aprobación de solicitud de cotización (concurso)",
+                    TargetId = solId,
+                    TargetType = "SolicitudCotizacion",
+                    NombreHistorico = $"Solicitud {solId}",
+                    Antes = antes,
+                    Despues = despues,
+                    Timestamp = timestamp
+                });
+
+                aprobadasIds.Add(solId);
+            }
+
+            return new ResultadoAuditoriaSolicitudesGrupo(
+                ResultadoOperacion.CrearExito($"Concurso de cotización aprobado ({aprobadasIds.Count} solicitudes autorizadas)."),
+                grupoId,
+                aprobadasIds);
+        });
+    }
+
     public async Task<ResultadoOperacion> RegistrarRespuesta(CotizacionRespuesta respuesta, string userId = "", string userEmail = "")
     {
         if (string.IsNullOrWhiteSpace(respuesta.SolicitudId)) return ResultadoOperacion.CrearError("La solicitud de cotización no existe.");

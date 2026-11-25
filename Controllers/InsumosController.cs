@@ -306,6 +306,17 @@ public sealed class InsumosController(
 
     [HttpPost, ValidateAntiForgeryToken]
     [Permiso("Insumos.Modificar")]
+    public async Task<IActionResult> AprobarGrupo(string grupoId)
+    {
+        var actorId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var actorEmail = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+        var resultado = await compras.AprobarGrupoSolicitudes(grupoId, actorId, actorEmail);
+        TempData[resultado.EsExitoso ? "Success" : "Error"] = resultado.EsExitoso ? resultado.MensajeExito : resultado.MensajeError;
+        return RedirectToAction(nameof(Cotizaciones), new { grupoId });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    [Permiso("Insumos.Modificar")]
     public async Task<IActionResult> RegistrarRespuesta(CotizacionRespuesta respuesta)
     {
         var resultado = await compras.RegistrarRespuesta(respuesta, User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty, User.FindFirstValue(ClaimTypes.Email) ?? string.Empty);

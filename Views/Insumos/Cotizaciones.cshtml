@@ -18,22 +18,91 @@
         </form></div></div>
     }
     <div class="overflow-x-auto">
-    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400" data-finite-table><thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700"><tr class="border-b"><th class="text-left p-2 select-none"><button type="button" data-sort-column="0" class="flex items-center gap-1">Grupo <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M10 3l4 5H6l4-5zm0 14-4-5h8l-4 5z" /></svg></button></th><th><button type="button" data-sort-column="1" class="flex items-center gap-1">Proveedor <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l4 5H6l4-5zm0 14-4-5h8l-4 5z" /></svg></button></th><th>Estado</th><th><button type="button" data-sort-column="3" data-sort-type="date" class="flex items-center gap-1">Fecha <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l4 5H6l4-5zm0 14-4-5h8l-4 5z" /></svg></button></th><th></th></tr></thead><tbody>
-    @foreach (var solicitud in Model)
+    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400" data-finite-table><thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700"><tr class="border-b"><th class="text-left p-2 select-none"><button type="button" data-sort-column="0" class="flex items-center gap-1">Concurso / Grupo <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M10 3l4 5H6l4-5zm0 14-4-5h8l-4 5z" /></svg></button></th><th><button type="button" data-sort-column="1" class="flex items-center gap-1">Proveedores convocados <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l4 5H6l4-5zm0 14-4-5h8l-4 5z" /></svg></button></th><th>Estado</th><th><button type="button" data-sort-column="3" data-sort-type="date" class="flex items-center gap-1">Fecha <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l4 5H6l4-5zm0 14-4-5h8l-4 5z" /></svg></button></th><th></th></tr></thead><tbody>
+    @{
+        var grupos = Model
+            .GroupBy(s => s.GrupoId)
+            .OrderByDescending(g => g.Max(s => s.Fecha))
+            .ToList();
+        var grupoSeleccionadoId = (string?)ViewBag.GrupoId;
+    }
+    @foreach (var grupo in grupos)
     {
-        var proveedorNombre = proveedores.FirstOrDefault(p => p.Id == solicitud.ProveedorId)?.RazonSocial ?? "Proveedor no disponible";
-        var nombresGrupo = Model.Where(s => s.GrupoId == solicitud.GrupoId).Select(s => proveedores.FirstOrDefault(p => p.Id == s.ProveedorId)?.RazonSocial ?? "Proveedor no disponible").Distinct().OrderBy(n => n).ToList();
-        <tr class="border-b"><td class="p-2"><a asp-action="Cotizaciones" asp-route-grupoId="@solicitud.GrupoId" class="text-blue-600">@solicitud.GrupoId</a></td><td data-sort-value="@proveedorNombre" title="@string.Join(", ", nombresGrupo)">@proveedorNombre @if (nombresGrupo.Count > 1) { <span class="text-xs text-gray-500">(Grupo: @string.Join(", ", nombresGrupo.Where(n => n != proveedorNombre).Take(2))@(nombresGrupo.Count > 3 ? "..." : ""))</span> }</td><td><span class="@(solicitud.Estado.StartsWith("Pendiente") || solicitud.Estado == "Enviada" ? "bg-yellow-100 text-yellow-800" : solicitud.Estado == "Cancelada" ? "bg-red-100 text-red-800" : solicitud.Estado == "Respondida" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800") text-xs font-medium px-2.5 py-0.5 rounded">@solicitud.Estado</span></td><td data-sort-value="@solicitud.Fecha.ToUniversalTime().ToString("O")">@solicitud.Fecha.ToLocalTime().ToString("g")</td><td>
-            @if (solicitud.Estado == "PendienteAprobacion")
-            {
-                <form method="post" asp-action="AprobarSolicitud">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@solicitud.Id" /><button aria-label="Aprobar" title="Aprobar" class="p-1.5 text-white bg-blue-600 rounded-lg"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg></button></form>
-            }
-            @if (solicitud.Estado == "Pendiente")
-            {
-                <button type="button" data-open-modal="response-@solicitud.Id" aria-label="Registrar respuesta" class="p-1.5 text-white bg-blue-600 rounded-lg"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"></path></svg></button>
-                <form method="post" asp-action="EnviarSolicitudEmail" class="ml-2">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@solicitud.Id" /><button aria-label="Enviar email" title="Enviar email" class="p-1.5 text-white bg-blue-600 rounded-lg"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6l9 7 9-7M4 5h16v14H4z" /></svg></button></form>
-            }
-        </td></tr>
+        var fechaGrupo = grupo.Max(s => s.Fecha);
+        var nombresProveedores = grupo.Select(s => proveedores.FirstOrDefault(p => p.Id == s.ProveedorId)?.RazonSocial ?? "Proveedor no disponible").Distinct().OrderBy(n => n).ToList();
+        var proveedoresTexto = string.Join(", ", nombresProveedores);
+
+        var tienePendienteAprobacion = grupo.Any(s => s.Estado == "PendienteAprobacion");
+        var tieneAdjudicada = grupo.Any(s => s.Estado == "Adjudicada");
+        var todasCanceladas = grupo.All(s => s.Estado == "Cancelada");
+        var respondidasCount = grupo.Count(s => s.Estado == "Respondida");
+
+        string estadoTexto;
+        string estadoClase;
+
+        if (tienePendienteAprobacion)
+        {
+            estadoTexto = "PendienteAprobacion";
+            estadoClase = "bg-yellow-100 text-yellow-800";
+        }
+        else if (tieneAdjudicada)
+        {
+            estadoTexto = "Adjudicada";
+            estadoClase = "bg-blue-100 text-blue-800";
+        }
+        else if (todasCanceladas)
+        {
+            estadoTexto = "Cancelada";
+            estadoClase = "bg-red-100 text-red-800";
+        }
+        else if (respondidasCount > 0)
+        {
+            estadoTexto = respondidasCount == grupo.Count() ? "Respondida" : $"Respondida ({respondidasCount}/{grupo.Count()})";
+            estadoClase = "bg-green-100 text-green-800";
+        }
+        else
+        {
+            estadoTexto = "Pendiente";
+            estadoClase = "bg-yellow-100 text-yellow-800";
+        }
+
+        var esSeleccionado = !string.IsNullOrWhiteSpace(grupoSeleccionadoId) && grupoSeleccionadoId == grupo.Key;
+
+        <tr class="border-b @(esSeleccionado ? "bg-blue-50/50 dark:bg-blue-900/20" : "")">
+            <td class="p-2">
+                <a asp-action="Cotizaciones" asp-route-grupoId="@grupo.Key" class="text-blue-600 font-medium">@grupo.Key</a>
+                @if (esSeleccionado)
+                {
+                    <span class="ml-1 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded dark:bg-blue-800 dark:text-blue-100">Abierto</span>
+                }
+            </td>
+            <td data-sort-value="@proveedoresTexto" title="@proveedoresTexto">
+                <div class="flex flex-wrap gap-1 items-center">
+                    @foreach (var nom in nombresProveedores)
+                    {
+                        <span class="inline-block bg-gray-100 text-gray-800 text-xs px-2 py-0.5 rounded dark:bg-gray-700 dark:text-gray-300">@nom</span>
+                    }
+                </div>
+            </td>
+            <td>
+                <span class="@estadoClase text-xs font-medium px-2.5 py-0.5 rounded">@estadoTexto</span>
+            </td>
+            <td data-sort-value="@fechaGrupo.ToUniversalTime().ToString("O")">
+                @fechaGrupo.ToLocalTime().ToString("g")
+            </td>
+            <td>
+                @if (tienePendienteAprobacion)
+                {
+                    <form method="post" asp-action="AprobarGrupo">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="grupoId" value="@grupo.Key" />
+                        <button aria-label="Aprobar" title="Aprobar concurso completo" class="p-1.5 text-white bg-blue-600 rounded-lg">
+                            <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg>
+                        </button>
+                    </form>
+                }
+            </td>
+        </tr>
     }
     </tbody></table>
     </div>
@@ -44,14 +113,30 @@
     }
     @if (!string.IsNullOrWhiteSpace((string?)ViewBag.GrupoId))
     {
-        <h2 class="mt-6 mb-2 text-lg font-semibold dark:text-white">Comparación del grupo</h2>
+        <div class="mt-6 mb-2 flex items-center justify-between">
+            <h2 class="text-lg font-semibold dark:text-white">Comparación del concurso (@ViewBag.GrupoId)</h2>
+            <a asp-action="Cotizaciones" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">Cerrar detalle</a>
+        </div>
         var comparaciones = (List<Firebase.Models.ComparacionCotizacion>)ViewBag.Comparacion;
         <div class="overflow-x-auto">
         <table aria-label="Comparación del grupo" class="w-full min-w-max text-sm text-left text-gray-500 dark:text-gray-400" data-finite-table><thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700"><tr><th class="px-4 py-3">Proveedor</th><th>Estado</th><th>Detalle</th><th><button type="button" data-sort-column="3" data-sort-type="number" class="flex items-center gap-1">Total <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l4 5H6l4-5zm0 14-4-5h8l-4 5z" /></svg></button></th><th><button type="button" data-sort-column="4" data-sort-type="number" class="flex items-center gap-1">Plazo <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l4 5H6l4-5zm0 14-4-5h8l-4 5z" /></svg></button></th><th></th></tr></thead><tbody>
         @foreach (var item in comparaciones)
         {
             var proveedor = proveedores.FirstOrDefault(p => p.Id == item.Solicitud.ProveedorId);
-            <tr class="border-b dark:border-gray-700"><td class="px-4 py-3">@(proveedor?.RazonSocial ?? "Proveedor no disponible")</td><td><span class="@(item.Solicitud.Estado.StartsWith("Pendiente") ? "bg-yellow-100 text-yellow-800" : item.Solicitud.Estado == "Cancelada" ? "bg-red-100 text-red-800" : item.Solicitud.Estado == "Respondida" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800") text-xs font-medium px-2.5 py-0.5 rounded">@item.Solicitud.Estado</span></td><td>@if (item.Respuesta != null) { foreach (var detalle in item.Respuesta.Items) { <div>@detalle.NombreInsumo — Cantidad: @detalle.Cantidad — Precio unitario: @detalle.PrecioUnitario.ToString("N2") — @(detalle.Disponible ? "Disponible" : "Sin disponibilidad")</div> } }</td><td data-sort-value="@item.Total.ToString(System.Globalization.CultureInfo.InvariantCulture)">@(item.Total == 0 ? "-" : item.Total.ToString("N2"))</td><td data-sort-value="@(item.Respuesta?.PlazoEntrega.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")">@item.Respuesta?.PlazoEntrega</td><td>@if (item.Respuesta != null && (item.Solicitud.Estado == "Pendiente" || item.Solicitud.Estado == "Respondida")) { <form method="post" asp-action="Adjudicar">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Solicitud.Id" /><input type="hidden" name="respuestaId" value="@item.Respuesta.Id" /><button aria-label="Adjudicar esta solicitud" title="Adjudicar" class="p-1.5 text-white bg-blue-600 rounded-lg"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg></button></form> }</td></tr>
+            <tr class="border-b dark:border-gray-700"><td class="px-4 py-3">@(proveedor?.RazonSocial ?? "Proveedor no disponible")</td><td><span class="@(item.Solicitud.Estado.StartsWith("Pendiente") ? "bg-yellow-100 text-yellow-800" : item.Solicitud.Estado == "Cancelada" ? "bg-red-100 text-red-800" : item.Solicitud.Estado == "Respondida" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800") text-xs font-medium px-2.5 py-0.5 rounded">@item.Solicitud.Estado</span></td><td>@if (item.Respuesta != null) { foreach (var detalle in item.Respuesta.Items) { <div>@detalle.NombreInsumo — Cantidad: @detalle.Cantidad — Precio unitario: @detalle.PrecioUnitario.ToString("N2") — @(detalle.Disponible ? "Disponible" : "Sin disponibilidad")</div> } } else { <span class="text-gray-400 italic">Esperando cotización</span> }</td><td data-sort-value="@item.Total.ToString(System.Globalization.CultureInfo.InvariantCulture)">@(item.Total == 0 ? "-" : item.Total.ToString("N2"))</td><td data-sort-value="@(item.Respuesta?.PlazoEntrega.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")">@(item.Respuesta != null ? item.Respuesta.PlazoEntrega + " días" : "-")</td><td>
+                <div class="flex items-center gap-1">
+                @if (item.Solicitud.Estado == "PendienteAprobacion")
+                {
+                    <form method="post" asp-action="AprobarSolicitud">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Solicitud.Id" /><button aria-label="Aprobar" title="Aprobar" class="p-1.5 text-white bg-blue-600 rounded-lg"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg></button></form>
+                }
+                @if (item.Solicitud.Estado == "Pendiente")
+                {
+                    <button type="button" data-open-modal="response-@item.Solicitud.Id" aria-label="Registrar respuesta" class="p-1.5 text-white bg-blue-600 rounded-lg"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"></path></svg></button>
+                    <form method="post" asp-action="EnviarSolicitudEmail" class="ml-2">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Solicitud.Id" /><button aria-label="Enviar email" title="Enviar email" class="p-1.5 text-white bg-blue-600 rounded-lg"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6l9 7 9-7M4 5h16v14H4z" /></svg></button></form>
+                }
+                @if (item.Respuesta != null && (item.Solicitud.Estado == "Pendiente" || item.Solicitud.Estado == "Respondida")) { <form method="post" asp-action="Adjudicar">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Solicitud.Id" /><input type="hidden" name="respuestaId" value="@item.Respuesta.Id" /><button aria-label="Adjudicar esta solicitud" title="Adjudicar" class="p-1.5 text-white bg-blue-600 rounded-lg"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l4 4L19 6" /></svg></button></form> }
+                </div>
+            </td></tr>
         }
         </tbody></table>
         </div>
