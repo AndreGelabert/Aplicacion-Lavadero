@@ -118,11 +118,13 @@
 
         const inputs = document.getElementById('consumoRealInputs');
         if (inputs) {
-            inputs.innerHTML = consumibles.map(item =>
-                `<label class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+            inputs.innerHTML = consumibles.map(item => {
+                const esEntero = ['unidad', 'unidades', 'u'].includes((item.UnidadMedida || '').trim().toLowerCase());
+                return `<label class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                     <span>${escapeConsumo(item.NombreInsumo || item.InsumoId)} (${escapeConsumo(item.UnidadMedida === 'l' ? 'Litro (L)' : item.UnidadMedida || '')})</span>
-                    <input type="number" min="0" step="any" value="${item.DosisTeorica}" data-insumo-id="${escapeConsumo(item.InsumoId)}" data-teorica="${item.DosisTeorica}" class="consumo-real-input w-28 rounded-lg border border-gray-300 p-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
-                </label>`).join('');
+                    <input type="number" min="0" step="${esEntero ? '1' : 'any'}" value="${item.DosisTeorica}" data-insumo-id="${escapeConsumo(item.InsumoId)}" data-teorica="${item.DosisTeorica}" data-es-entero="${esEntero}" class="consumo-real-input w-28 rounded-lg border border-gray-300 p-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
+                </label>`;
+            }).join('');
             inputs.querySelectorAll('.consumo-real-input').forEach(input => input.addEventListener('input', actualizarConsumoRealJson));
         }
 
@@ -168,7 +170,12 @@
         const result = {};
         const inputs = document.querySelectorAll('.consumo-real-input');
         inputs.forEach(input => {
-            result[input.dataset.insumoId] = Number(input.value || 0);
+            let val = Number(input.value || 0);
+            if (input.dataset.esEntero === 'true' && val % 1 !== 0) {
+                val = Math.floor(val);
+                input.value = val;
+            }
+            result[input.dataset.insumoId] = val;
         });
         output.value = JSON.stringify(result);
         const justificacion = document.getElementById('justificacionDesvio');

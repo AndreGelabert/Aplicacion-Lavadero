@@ -1777,6 +1777,12 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
             vistos.add(canonica);
             unidad.add(new Option(etiquetaUnidadReceta(canonica), canonica));
         });
+        const esConteo = categoria === 'Unidades' || [...disponibles].some(u => ['unidad', 'unidades', 'u'].includes(u.trim().toLowerCase()));
+        const doseInput = document.getElementById('recetaDosis');
+        if (doseInput) {
+            doseInput.step = esConteo ? '1' : '0.0001';
+            doseInput.min = esConteo ? '1' : '0.0001';
+        }
     };
     // Mirrors ConversionUnidadesService.NormalizarUnidad; unknown codes remain untouched.
     function normalizarUnidadReceta(unidad) {
@@ -1803,6 +1809,11 @@ const accordionBody = document.getElementById('accordion-flush-body-1');
             return false;
         }
         const option = select.options[select.selectedIndex];
+        const esUnidadEntera = option?.dataset?.categoria === 'Unidades' || ['unidad', 'unidades', 'u'].includes((unidad || '').trim().toLowerCase());
+        if (esUnidadEntera && !Number.isInteger(dose)) {
+            showTableMessage('error', 'Los insumos medidos en unidades no permiten cantidades decimales.');
+            return false;
+        }
         let tiposHerramienta = [];
         try { tiposHerramienta = JSON.parse(document.getElementById('tipos-herramienta-json')?.value || '[]'); } catch { }
         if (modalidad === 'Tipo' && (tiposHerramienta.includes(select.value) || [...select.options].some(o => o.value === select.value && o.dataset.protegido === 'true'))) {

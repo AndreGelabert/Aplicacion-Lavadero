@@ -158,12 +158,23 @@ public sealed class InsumoService(
         insumo.Nombre = (insumo.Nombre ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(insumo.Nombre))
             return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("El nombre del insumo es obligatorio."));
-        if (insumo.StockMinimo < 0 || insumo.StockMaximo < 0 || insumo.CantidadReabastecimiento < 0)
+        if (insumo.StockMinimo <= 0)
+            return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("El stock mínimo debe ser mayor a cero."));
+        if (insumo.StockMaximo < 0 || insumo.CantidadReabastecimiento < 0)
             return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("Los niveles de stock no pueden ser negativos."));
         if (insumo.StockMaximo > 0 && insumo.StockMaximo <= insumo.StockMinimo)
             return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("El stock máximo debe ser mayor al stock mínimo."));
         if (insumo.ReabastecimientoAutomatico && insumo.StockMaximo <= insumo.StockMinimo)
             return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("El stock máximo debe ser mayor al stock mínimo para el reabastecimiento automático."));
+        if (TipoInsumo.EsUnidadEntera(insumo.UnidadMedida))
+        {
+            if (TipoInsumo.TieneDecimales(insumo.StockMinimo) ||
+                TipoInsumo.TieneDecimales(insumo.StockMaximo) ||
+                TipoInsumo.TieneDecimales(insumo.CantidadReabastecimiento))
+            {
+                return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("Los insumos medidos en unidades no permiten valores decimales en los niveles de stock."));
+            }
+        }
         insumo.ProveedoresIds = (insumo.ProveedoresIds ?? new()).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToList();
         if (insumo.ReabastecimientoAutomatico && insumo.ProveedoresIds.Count == 0)
             return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("Seleccione al menos un proveedor para el reabastecimiento automático."));
@@ -1064,16 +1075,22 @@ public sealed class StockService(
                 throw new InvalidOperationException("El consumo real requiere una única unidad de receta por producto.");
             var snapshot = await transaction.GetSnapshotAsync(firestore.Collection("insumos").Document(grupo.Key));
             if (!snapshot.Exists) throw new InvalidOperationException("La receta contiene un insumo inexistente.");
+            var insumoPersistido = snapshot.ConvertTo<Insumo>();
             var unidad = items[0].UnidadMedida;
             StockPrecision.ExigirRepresentable(cantidad);
             if (!string.IsNullOrWhiteSpace(unidad))
             {
-                var destino = snapshot.ConvertTo<Insumo>().UnidadMedida;
+                var destino = insumoPersistido.UnidadMedida;
                 var conversion = new ConversionUnidadesService();
                 var convertida = conversion.Convertir(cantidad, unidad, destino);
                 if (conversion.Convertir(convertida, destino, unidad) != cantidad)
                     throw new InvalidOperationException("La conversión del consumo pierde precisión.");
                 cantidad = StockPrecision.ExigirRepresentable(convertida);
+            }
+            if (TipoInsumo.EsUnidadEntera(insumoPersistido.UnidadMedida) || TipoInsumo.EsUnidadEntera(unidad))
+            {
+                if (TipoInsumo.TieneDecimales(cantidad))
+                    throw new InvalidOperationException($"El insumo '{insumoPersistido.Nombre}' medido en unidades no permite consumos decimales.");
             }
             resultado.Add(new ConsumoReceta(grupo.Key, cantidad));
         }
@@ -1253,6 +1270,8 @@ public sealed class StockService(
                 return new ResultadoAuditoriaStock(ResultadoOperacion.CrearError("El insumo no existe."));
 
             var insumo = insumoSnapshot.ConvertTo<Insumo>();
+            if (TipoInsumo.EsUnidadEntera(insumo.UnidadMedida) && TipoInsumo.TieneDecimales(cantidad))
+                return new ResultadoAuditoriaStock(ResultadoOperacion.CrearError("Los insumos medidos en unidades no permiten ajustes con cantidades decimales."));
             var delta = ingreso ? cantidad : -cantidad;
             var saldo = insumo.StockActual + delta;
 

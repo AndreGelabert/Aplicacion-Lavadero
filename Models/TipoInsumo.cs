@@ -104,6 +104,22 @@ public sealed class TipoInsumo
     }
 
     /// <summary>
+    /// Determina si una unidad de medida representa cantidades discretas (conteo entero),
+    /// como "unidad", "unidades", "u".
+    /// </summary>
+    public static bool EsUnidadEntera(string? unidad)
+    {
+        if (string.IsNullOrWhiteSpace(unidad)) return false;
+        var u = unidad.Trim();
+        return UnidadesConteo.Contains(u);
+    }
+
+    /// <summary>
+    /// Determina si un valor decimal posee parte fraccionaria (no es entero).
+    /// </summary>
+    public static bool TieneDecimales(decimal valor) => decimal.Remainder(valor, 1m) != 0m;
+
+    /// <summary>
     /// Determina si dos unidades de medida pertenecen a la misma magnitud física (compatibles)
     /// según las unidades definidas en TipoInsumo (S24, S25).
     /// </summary>

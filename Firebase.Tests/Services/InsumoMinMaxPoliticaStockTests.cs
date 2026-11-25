@@ -100,4 +100,33 @@ public class InsumoMinMaxPoliticaStockTests
         var campos = AuditCampos.CapturarInsumo(insumo);
         Assert.Equal("16", campos["StockMaximo"]);
     }
+
+    [Fact]
+    public void TipoInsumo_EsUnidadEntera_IdentificaUnidadesDiscretasCorrectamente()
+    {
+        Assert.True(TipoInsumo.EsUnidadEntera("unidad"));
+        Assert.True(TipoInsumo.EsUnidadEntera("unidades"));
+        Assert.True(TipoInsumo.EsUnidadEntera("u"));
+        Assert.True(TipoInsumo.EsUnidadEntera(" UNIDAD "));
+
+        Assert.False(TipoInsumo.EsUnidadEntera("l"));
+        Assert.False(TipoInsumo.EsUnidadEntera("ml"));
+        Assert.False(TipoInsumo.EsUnidadEntera("kg"));
+        Assert.False(TipoInsumo.EsUnidadEntera("g"));
+        Assert.False(TipoInsumo.EsUnidadEntera(""));
+        Assert.False(TipoInsumo.EsUnidadEntera(null));
+    }
+
+    [Fact]
+    public void TipoInsumo_TieneDecimales_DetectaFracciones()
+    {
+        Assert.True(TipoInsumo.TieneDecimales(2.5m));
+        Assert.True(TipoInsumo.TieneDecimales(0.01m));
+        Assert.True(TipoInsumo.TieneDecimales(1.0001m));
+
+        Assert.False(TipoInsumo.TieneDecimales(0m));
+        Assert.False(TipoInsumo.TieneDecimales(1m));
+        Assert.False(TipoInsumo.TieneDecimales(5.00m));
+        Assert.False(TipoInsumo.TieneDecimales(100m));
+    }
 }
