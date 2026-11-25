@@ -926,7 +926,10 @@
 
     // ==================== CARGAR COLORES ====================
     async function loadColores() {
-
+        if (coloresCache && coloresCache.length > 0) {
+            renderColorOptions();
+            return coloresCache;
+        }
 
         try {
             const response = await window.Peticiones.enviar('/Vehiculo/GetColores', { cache: 'no-cache' });
@@ -934,15 +937,15 @@
 
             const colores = await response.json();
 
-
             if (colores && colores.length > 0) {
                 coloresCache = colores;
-                renderColorOptions();
             }
         } catch (error) {
-            console.warn('?? Error colores, usando fallback');
+            console.warn('⚠️ Error colores, usando fallback');
+        } finally {
             renderColorOptions();
         }
+        return coloresCache;
     }
 
     function renderColorOptions(colorForzado = null) {
@@ -959,43 +962,46 @@
         const dataValue = colorSelect.getAttribute('data-initial-value') || form?.getAttribute('data-color') || form?.dataset?.color;
         const valorPrevio = colorSelect.value;
         // Usar color forzado si se proporciona (para AJAX), sino leer del data-attribute o valor previo
-        const colorActualDelServidor = colorForzado || dataValue?.trim() || (valorPrevio && valorPrevio !== '' ? valorPrevio : '') || colorInput?.value?.trim() || '';
+        const colorActualDelServidor = colorForzado !== null && colorForzado !== undefined
+            ? colorForzado
+            : (dataValue?.trim() || (valorPrevio && valorPrevio !== '' ? valorPrevio : '') || colorInput?.value?.trim() || '');
         colorSelect.innerHTML = '<option value="">Seleccione un color...</option>';
 
         // Usar coloresCache en lugar de colores
-        if (coloresCache && coloresCache.length > 0) {
-            coloresCache.forEach(color => {
-                const option = document.createElement('option');
-                option.value = color;
-                option.textContent = color;
-                colorSelect.appendChild(option);
-            });
-        } else {
-            console.warn('⚠️ No hay colores cacheados, usando fallback');
-            ['Blanco', 'Negro', 'Gris', 'Plata', 'Rojo', 'Azul'].forEach(color => {
-                const option = document.createElement('option');
-                option.value = color;
-                option.textContent = color;
-                colorSelect.appendChild(option);
-            });
-        }
+        const listaColores = (coloresCache && coloresCache.length > 0)
+            ? coloresCache
+            : ['Blanco', 'Negro', 'Gris', 'Plata', 'Rojo', 'Azul'];
+
+        listaColores.forEach(color => {
+            const option = document.createElement('option');
+            option.value = color;
+            option.textContent = color;
+            colorSelect.appendChild(option);
+        });
 
         // CRÍTICO: Si hay un color del servidor, procesarlo
         if (colorActualDelServidor && colorActualDelServidor.length > 0) {
-            // Buscar si el color actual existe en la lista de colores oficiales
-            const esColorOficial = Array.from(colorSelect.options).some(
-                opt => opt.value === colorActualDelServidor
+            // Buscar si el color actual existe en la lista de colores oficiales (case-insensitive)
+            const optEncontrada = Array.from(colorSelect.options).find(
+                opt => opt.value && opt.value.trim().toLowerCase() === colorActualDelServidor.trim().toLowerCase()
             );         
-            if (esColorOficial) {
+            if (optEncontrada) {
                 // Es un color oficial, seleccionarlo en el dropdown
-                colorSelect.value = colorActualDelServidor;
+                colorSelect.value = optEncontrada.value;
+                if (toggle) toggle.checked = false;
+                colorSelect.style.display = 'block';
+                colorSelect.setAttribute('required', 'required');
+                colorSelect.setAttribute('name', 'Color');
+                if (colorInput) {
+                    colorInput.style.display = 'none';
+                    colorInput.removeAttribute('required');
+                    colorInput.removeAttribute('name');
+                }
             } else {
                 // Es un color personalizado, activar el toggle
                 if (toggle && colorInput) {
                     toggle.checked = true;
-                    // Asignar el valor al input personalizado
                     colorInput.value = colorActualDelServidor;
-                    // Mostrar input personalizado
                     colorSelect.style.display = 'none';
                     colorSelect.removeAttribute('required');
                     colorSelect.removeAttribute('name');
@@ -1004,39 +1010,75 @@
                     colorInput.setAttribute('name', 'Color');
                 }
             }
+        } else {
+            if (toggle) toggle.checked = false;
+            colorSelect.style.display = 'block';
+            colorSelect.setAttribute('required', 'required');
+            colorSelect.setAttribute('name', 'Color');
+            if (colorInput) {
+                colorInput.style.display = 'none';
+                colorInput.removeAttribute('required');
+                colorInput.removeAttribute('name');
+            }
         }
     }
 
     // ==================== TOGGLE COLOR ====================
-    function setupColorToggle() {
-        const toggle = document.getElementById('color-custom-toggle');
+    function handleColorToggleChange(toggle) {
+        if (!toggle) return;
         const colorSelect = document.getElementById('Color');
         const colorInput = document.getElementById('ColorCustom');
-        toggle.addEventListener('change', function () {
-            if (this.checked) {
-                // Activar modo personalizado
-                colorSelect.style.display = 'none';
-                colorSelect.removeAttribute('required');
-                colorSelect.removeAttribute('name');
-                colorInput.style.display = 'block';
-                colorInput.setAttribute('required', 'required');
-                colorInput.setAttribute('name', 'Color');
-                // Si había un valor seleccionado en el dropdown, transferirlo
-                if (colorSelect.value) {
-                    colorInput.value = colorSelect.value;
-                }
-                colorInput.focus();
-            } else {
-                // Volver a modo dropdown
-                colorInput.style.display = 'none';
-                colorInput.removeAttribute('required');
-                colorInput.removeAttribute('name');
-                colorSelect.style.display = 'block';
-                colorSelect.setAttribute('required', 'required');
-                colorSelect.setAttribute('name', 'Color');
+        if (!colorSelect || !colorInput) return;
+
+        if (toggle.checked) {
+            // Activar modo personalizado
+            colorSelect.style.display = 'none';
+            colorSelect.removeAttribute('required');
+            colorSelect.removeAttribute('name');
+            colorInput.style.display = 'block';
+            colorInput.setAttribute('required', 'required');
+            colorInput.setAttribute('name', 'Color');
+            // Si había un valor seleccionado en el dropdown, transferirlo
+            if (colorSelect.value) {
+                colorInput.value = colorSelect.value;
             }
-        });
+            colorInput.focus();
+        } else {
+            // Volver a modo dropdown
+            colorInput.style.display = 'none';
+            colorInput.removeAttribute('required');
+            colorInput.removeAttribute('name');
+            colorSelect.style.display = 'block';
+            colorSelect.setAttribute('required', 'required');
+            colorSelect.setAttribute('name', 'Color');
+            // Si el input personalizado contenía un color oficial, seleccionarlo en el dropdown
+            if (colorInput.value) {
+                const match = Array.from(colorSelect.options).find(
+                    opt => opt.value && opt.value.trim().toLowerCase() === colorInput.value.trim().toLowerCase()
+                );
+                if (match) {
+                    colorSelect.value = match.value;
+                }
+            }
+        }
     }
+
+    function setupColorToggle() {
+        const toggle = document.getElementById('color-custom-toggle');
+        if (toggle && !toggle._hasColorToggleListener) {
+            toggle._hasColorToggleListener = true;
+            toggle.addEventListener('change', function () {
+                handleColorToggleChange(this);
+            });
+        }
+    }
+
+    // Delegación global: nunca se pierde aunque el formulario se recargue vía AJAX o modal
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.id === 'color-custom-toggle') {
+            handleColorToggleChange(e.target);
+        }
+    });
 
     // ==================== UTILIDADES ====================
     function convertToTextInput(selectElement, fieldName) {
@@ -1086,8 +1128,16 @@
 
     // ==================== INICIALIZACIÓN DE COLOR DESPUÉS DE AJAX ====================
     function initColorAfterAjax(colorDelServidor) {
-        // Simular que tenemos el color del servidor
-        renderColorOptions(colorDelServidor);
+        const form = document.getElementById('vehiculo-form');
+        const targetColor = colorDelServidor !== undefined && colorDelServidor !== null
+            ? colorDelServidor
+            : (form?.dataset?.color || form?.getAttribute('data-color') || '');
+
+        if (coloresCache && coloresCache.length > 0) {
+            renderColorOptions(targetColor);
+        } else {
+            loadColores().then(() => renderColorOptions(targetColor));
+        }
     }
 
     // ==================== EXPONER FUNCIONES ====================
@@ -1098,7 +1148,9 @@
         loadColores,
         resetInitialized: () => { initialized = false; },
         initColor: initColorAfterAjax,
-        coloresCache: coloresCache  // Exponer para verificar si está cargado
+        get coloresCache() { return coloresCache; },
+        renderColorOptions,
+        setupColorToggle
     };
 
 })();

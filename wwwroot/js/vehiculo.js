@@ -903,25 +903,14 @@
                 setTimeout(async () => {
                     const vehiculoForm = document.getElementById('vehiculo-form');
                     if (vehiculoForm) {
-                        // Leer el color del data-attribute del formulario
-                        const colorDelServidor = vehiculoForm.dataset.color || '';
-                        
-                        // Si hay color, inicializar el toggle
-                        if (colorDelServidor) {
-                            // Primero cargar colores si no están cargados
-                            if (window.VehiculoApi && (!window.VehiculoApi.coloresCache || window.VehiculoApi.coloresCache.length === 0)) {
-                                if (typeof window.VehiculoApi.loadColores === 'function') {
-                                    await window.VehiculoApi.loadColores();
-                                }
-                            }
-                            
-                            // Ahora inicializar el color
-                            if (window.VehiculoApi && typeof window.VehiculoApi.initColor === 'function') {
-                                window.VehiculoApi.initColor(colorDelServidor);
-                            }
+                        const colorDelServidor = vehiculoForm.dataset.color || vehiculoForm.getAttribute('data-color') || '';
+                        if (window.VehiculoApi && typeof window.VehiculoApi.initColor === 'function') {
+                            window.VehiculoApi.initColor(colorDelServidor);
+                        } else if (typeof window.initVehiculoApiSelects === 'function') {
+                            window.initVehiculoApiSelects();
                         }
                     }
-                }, 100);
+                }, 50);
 
                 setTimeout(() => {
                     const formContainer = document.getElementById('accordion-flush');
@@ -989,6 +978,10 @@
                 document.getElementById('vehiculo-form-container').innerHTML = result.html;
                 const replacementForm = document.querySelector('#vehiculo-form-container form[data-validate="true"]');
                 if (replacementForm && window.FormValidation) window.FormValidation.init(replacementForm);
+                if (window.VehiculoApi && typeof window.VehiculoApi.initColor === 'function') {
+                    const colorVal = replacementForm?.dataset?.color || replacementForm?.getAttribute('data-color') || '';
+                    window.VehiculoApi.initColor(colorVal);
+                }
 
                 if (result.valid) {
                     showFormMessage('success', result.msg || 'Vehículo actualizado correctamente.', 4000);
