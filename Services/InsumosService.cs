@@ -1784,10 +1784,13 @@ public sealed class StockService(
                     logger.LogWarning("No se pudo enviar la solicitud automática {SolicitudId}: proveedor sin email.", solicitud.Id);
                     continue;
                 }
-                var contexto = await new ComprasService(firestore).ObtenerContextoEmail(solicitud.Items);
+                var comprasService = new ComprasService(firestore);
+                var contexto = await comprasService.ObtenerContextoEmail(solicitud.Items);
                 var resultado = await emailSender.EnviarAsync(InsumosEmailFormatter.FormatearSolicitud(
                     directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades));
-                if (!resultado.Enviado)
+                if (resultado.Enviado)
+                    await comprasService.MarcarEmailSolicitudEnviado(solicitud.Id);
+                else
                     logger.LogWarning("No se pudo enviar la solicitud automática {SolicitudId}: {Mensaje}", solicitud.Id, resultado.Mensaje);
             }
         }
