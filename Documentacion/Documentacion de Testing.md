@@ -2,7 +2,7 @@
 
 ## 1. Resumen Ejecutivo
 
-Este documento constituye el informe técnico y ejecutivo del estado actual del aseguramiento de calidad (QA) y la infraestructura de pruebas del sistema **LavaFácil**. Reemplaza las estimaciones históricas anteriores para reflejar con fidelidad la totalidad del código de prueba existente en el repositorio, incluyendo las pruebas agregadas recientemente para el **Módulo de Notificaciones al Cliente** (`ClienteNotificationService`) y las preferencias de entrega en cotizaciones de insumos.
+Este documento constituye el informe técnico y ejecutivo del estado actual del aseguramiento de calidad (QA) y la infraestructura de pruebas del sistema **LavaFácil**. Reemplaza las estimaciones históricas anteriores para reflejar con fidelidad la totalidad del código de prueba existente en el repositorio, incluyendo las pruebas agregadas para el **Módulo de Turnos, Agenda, Ofertas de Adelanto y No-Show**, el **Módulo de Notificaciones al Cliente** (`ClienteNotificationService`) y las preferencias de entrega en cotizaciones de insumos.
 
 ### 1.1 Tipos de Pruebas Existentes
 
@@ -27,6 +27,7 @@ El repositorio cuenta con una estrategia de pruebas estructurada en niveles comp
 
 El inventario de pruebas existente cubre los siguientes módulos del sistema:
 
+- **Turnos, Agenda, Ofertas de Adelanto y No-Show**: Reserva de turnos (web y WhatsApp), capacidad por franja horaria y tolerancias, consultas y filtros, edición, cancelación, cupones de descuento, conversión de turno a lavado, detección y cierre por *No-Show*, ofertas automáticas de adelanto por correo/WhatsApp con outbox transaccional e idempotencia, y permisos RBAC específicos.
 - **Notificaciones al Cliente**: Despacho automático y multicanal (WhatsApp y Email) por eventos operativos del lavado, cálculo de etapa siguiente, prevención de mensajes engañosos en cancelaciones, normalización estricta de preferencias (`NotificarPorWhatsApp`, `NotificarPorEmail`), diagnóstico seguro de transporte en Meta WhatsApp sin fuga de tokens o datos sensibles, e idempotencia ante eventos repetidos.
 - **Clientes**: Registro, ciclo de vida, asociación a vehículos, normalización de datos personales y preferencias de comunicación, y búsqueda insensible a mayúsculas.
 - **Vehículos y Catálogo**: Detección de tipos de vehículo (CarQuery y catálogo local), propuestas de nuevos modelos, validación y generación de claves de asociación (algoritmo SHA-256), titularidad, vehículos huérfanos y guardias transaccionales de patentes.
@@ -58,9 +59,17 @@ El inventario de pruebas existente cubre los siguientes módulos del sistema:
 
 ### 1.4 Límites de la Evidencia Disponible
 
-- **Porcentaje global medido, no certificado como cobertura funcional**: El proyecto cuenta con cobertura .NET medida mediante `coverlet.collector`. Tras el saneamiento total de la suite ejecutado en la Fase 1 (1.475 tests en C# y 297 en JS, 100% éxito) la medición inicial registró 63,88% de líneas (13.123 de 20.541) y 49,94% de ramas (7.292 de 14.601). Tras completar la **Fase 2** de expansión de pruebas de integración reales en 4 módulos críticos (Proveedores, Clientes/Vehículos, Lavados/Pagos y Stock/Compra Automática), la nueva medición con Coverlet (`CoverageResults/phase2/34ecfd32-c447-4b53-a198-d5ccc3ac4784/coverage.cobertura.xml`) aumentó la cobertura global a **64,08% de líneas** (13.164 de 20.541, +41 líneas) y **50,45% de ramas** (7.367 de 14.601, +75 ramas reales), superando el umbral del 50% de ramas.
+- **Porcentaje global medido, no certificado como cobertura funcional**: El proyecto cuenta con cobertura .NET medida mediante `coverlet.collector`. En la medición completa actual (**25 de noviembre de 2026**, incluyendo el módulo de Turnos sin filtros de exclusión, artefacto `CoverageResults/run-current/5cd1eb45-4355-4c9f-bd46-a47b55fd9990/coverage.cobertura.xml`), la cobertura global registrada sobre `Firebase.csproj` es de **70,54% de líneas** (17.571 de 24.908) y **62,33% de ramas** (12.309 de 19.745).
+- **Cuotas de pruebas unitarias vs. integración (inventario del repositorio)**:
+  - **Backend C# (.NET 9 / xUnit — 235 archivos de prueba, 1.510 métodos declarados)**:
+    - **Pruebas unitarias y de seguridad en memoria (`Services/`, `Controllers/`, `Security/` y `PasswordResetSecurityTests.cs` sin emulador)**: **707 métodos** (`529 [Fact]` + `178 [Theory]` parametrizados) — **46,8%** de los métodos C#.
+    - **Pruebas de integración con emuladores / Kestrel (`Integration/` y métodos `[LocalFirestoreFact]` / `[LocalSeedFact]`)**: **803 métodos** con atributos de emulador (`759 [LocalFirestoreFact]` + `7 [LocalSeedFact]`) más `45` `[Fact]`/`[Theory]` en `Integration/` — **53,2%** de los métodos C# (**793** métodos en `Integration/` + **18** con `[LocalFirestoreFact]` en `Services/` y `Controllers/`).
+  - **Frontend JS (`node:test` + `node:vm` — 66 archivos)**: **380 casos de prueba** unitarios/regresión de scripts cliente (359 en `Firebase.Tests/*.test.cjs` + 21 en `tests/lavado-finalizacion.test.js`).
+  - **Navegador (Playwright — 17 archivos `.spec.cjs`) + E2E**: **49 pruebas** declaradas contra fixtures estáticos + **1 suite E2E autenticada** (`scripts/test-authenticated-notifications.ps1`).
 - **Alcance de las pruebas de navegador**: Con excepción del script específico de notificaciones autenticadas, las 17 suites de Playwright (`tests/browser/*.spec.cjs`) se ejecutan contra un servidor de fixtures estático que sirve HTML pre-renderizado con respuestas HTTP simuladas. No evalúan la compilación dinámica de Razor ni la integración con la base de datos real.
-- **Ejecución observada en esta actualización (21 de noviembre de 2026 - Conclusión de Fase 2)**: Se ejecutó y verificó con emuladores locales aislados el 100% de la suite del sistema: **1.489 pruebas de C# (.NET 9 / xUnit)** con 0 errores y 0 omitidas (+14 pruebas respecto al baseline de saneamiento), y **297 pruebas de JavaScript (`node:test`)** con 0 errores (276 en `Firebase.Tests/*.test.cjs` y 21 en `tests/lavado-finalizacion.test.js`). Total del repositorio: **1.786 pruebas aprobadas con 0 fallos (100% éxito)**. No existen fallos activos en el repositorio.
+- **Ejecución observada en esta actualización (25 de noviembre de 2026)**:
+  - **Backend C# (`run-isolated.ps1`, sin filtro de exclusión)**: **2.103** pruebas ejecutadas en `Firebase.Tests.dll` con **1.887 aprobadas**, **216 con error** (104 en casos de `Turno` y 112 en otras suites de integración contra emuladores) y **0 omitidas** (duración `2 m 3 s`).
+  - **Frontend JS (`node:test`)**: **380/380** pruebas aprobadas con **0 fallos** y **0 omitidas** (359 en `Firebase.Tests/*.test.cjs` + 21 en `tests/lavado-finalizacion.test.js`).
 
 ---
 
@@ -80,10 +89,11 @@ Aplicacion-Lavadero/
 │   │   ├── TestFactory.cs                         # Factoría de entidades de dominio
 │   │   ├── LocalAuthEmulatorTransport.cs          # Transporte de cliente para Auth emulator
 │   │   └── firebase-auth-emulator.cjs             # Helper de inicio del emulador de autenticación
-│   ├── Services/                                  # 46 archivos .cs de pruebas unitarias de servicios
-│   ├── Integration/                               # 61 archivos .cs (60 activos) de integración con emulador
+│   ├── Services/                                  # 79 archivos .cs de pruebas unitarias de servicios
+│   ├── Controllers/                               # 6 archivos .cs de pruebas de controladores MVC
+│   ├── Integration/                               # 131 archivos .cs de integración con emulador / Kestrel
 │   ├── Security/                                  # 18 archivos .cs de pruebas de seguridad y RBAC
-│   └── *.test.cjs                                 # 44 suites de pruebas JavaScript unitarias (node:test)
+│   └── *.test.cjs                                 # 65 suites de pruebas JavaScript unitarias (node:test)
 ├── tests/                                         # Pruebas de integración frontend y navegador
 │   ├── lavado-finalizacion.test.js                # Suite unitaria JS de modal de consumos (node:test)
 │   └── browser/                                   # 17 archivos .spec.cjs de pruebas Playwright
@@ -298,6 +308,17 @@ Este módulo fue implementado para orquestar la comunicación transaccional dire
 | [ConfiguracionStockIntegrationTests.cs](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration/ConfiguracionStockIntegrationTests.cs) (4 tests) | Integración (.NET) | Firestore Emulator (`[LocalFirestoreFact]`) | Parámetros de configuración de inventario y alertas en base de datos. | Requiere emulador. |
 | 13 Suites JavaScript Transversales (`*.test.cjs`) | Frontend JS | Node.js `node:test` + `node:vm` | Botones de formulario (`FormButtons.test.cjs`), contraste de colores (`FormButtonContrastRegression.test.cjs`), inicialización de validación dinámica (`DynamicFormValidation.test.cjs`), controles de tabla (`TableControlsConsistency.test.cjs`), tema claro/oscuro (`Theme.test.cjs`), e integración del helper de peticiones (`NotificationIntegration.test.cjs`). | DOM sintético. |
 | 13 Suites Playwright Transversales (`tests/browser/*.spec.cjs`) | Navegador (Playwright) | Fixture local (puerto 41783) | Validación en navegador de botones, formularios dinámicos, notificaciones (apilamiento, auto-cierre, descarte), menú lateral móvil (sidebar overlay), controles de tabla y diseño adaptativo. | Respuestas simuladas. |
+
+### 3.12 Módulo de Turnos, Agenda, Ofertas de Adelanto y No-Show
+
+El módulo de **Turnos** concentra la mayor expansión reciente de pruebas en el repositorio, abarcando **84 archivos específicos** distribuidos entre lógica unitaria de servicios, controladores MVC, integración con Firestore/Auth Emulators + Kestrel y frontend JavaScript:
+
+| Componente / Grupo | Tipo de Prueba | Dependencias / Mecanismo | Escenarios y Comportamientos Verificados | Límites Relevantes |
+|---|---|---|---|---|
+| 26 Suites Unitarias de Turnos en [Firebase.Tests/Services/](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Services) (`91 [Fact]`, `22 [Theory]`, `1 [LocalFirestoreFact]`) | Unitaria (.NET) | En memoria / Moq / Fakes | - Modelo, estados y construcción de snapshots (`TurnoModelTests`, `TurnoSnapshotBuilderTests`, `TurnoLavadoSnapshotMapperTests`, `TurnoFormIdentityTests`).<br>- Políticas de disponibilidad, preview de agenda, tolerancias de cancelación, cupones y pronóstico de insumos (`TurnoAvailabilityPolicyTests`, `TurnoAvailabilityPreviewTests`, `TurnoCancelacionPolicyTests`, `TurnoCuponPolicyTests`, `TurnoInsumosForecastTests`).<br>- Selección y elegibilidad de adelantos (`TurnoAdelantoCandidateSelectorTests`, `TurnoAdelantoEligibilityTests`).<br>- Infraestructura de ofertas, barrido, reloj, seguridad de origen de enlaces, composición y outbox email/WhatsApp (`TurnoOfertaClockTests`, `TurnoOfertaEmailTests`, `TurnoOfertaHostTests`, `TurnoOfertaMessageTimeTests`, `TurnoOfertaSweepTests`, `TurnoOfferCompositionTests`, `TurnoOfferHostRegistrationTests`, `TurnoOfferOutboxRouterTests`, `TurnoOutboxHostTests`, `TurnoEmailOriginSecurityTests`, `TurnoEmailOriginWiringTests`, `TurnoEmailOutboxDispatcherTests`, `TurnoOfertaEmailPageScriptTests`, `TurnoWhatsAppOutboxDispatcherTests`).<br>- Adaptador de reservas por WhatsApp (`TurnoWhatsAppBookingAdapterTests`, `WhatsAppTurnosTests`). | Sin persistencia real en BD (excepto 1 caso `[LocalFirestoreFact]`). |
+| 5 Suites de Controladores en [Firebase.Tests/Controllers/](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Controllers) (`26 [Fact]`, `1 [Theory]`, `2 [LocalFirestoreFact]`) | Unitaria / Integración MVC (.NET) | Controller / En memoria / Emulador | `TurnosControllerTests`, `TurnoConsultaFiltrosTests`, `TurnoCuponSelectorTests`, `TurnoOfertaEmailPageTests` y `TurnoOfertaEmailResponseControllerTests`: filtros de consulta, selector de cupones, endpoints de respuesta por email y autorización en acciones de `TurnosController`. | Complementado por pruebas HTTP con Kestrel en `Integration/`. |
+| 43 Suites de Integración de Turnos en [Firebase.Tests/Integration/](file:///C:/Users/Andre/Documents/Aplicacion-Lavadero/Firebase.Tests/Integration) (`17 [Fact]`, `5 [Theory]`, `247 [LocalFirestoreFact]`) | Integración (.NET) | Firestore Emulator + Kestrel local | - Reserva, capacidad, tolerancia y clientes asociados (`TurnoBookingHttpIntegrationTests`, `TurnoBookingToleranceTests`, `TurnoCapacityIntegrationTests`, `TurnoEnProcesoCapacityIntegrationTests`, `TurnoWebBookingAdapterIntegrationTests`, `TurnoAssociatedClientTests`, `TurnoSelectorIntegrationTests`).<br>- Consulta, edición, catálogo y asignación de empleados (`TurnoConsultaServiceIntegrationTests`, `TurnoEditIntegrationTests`, `TurnoEditHttpIntegrationTests`, `TurnoEditCatalogHttpIntegrationTests`, `TurnoEmployeeAssignmentIntegrationTests`).<br>- Inicio, recursos congelados, cupones, cancelación y conversión a lavado (`TurnoInicioHttpTests`, `TurnoInicioRecursosHttpTests`, `TurnoCuponConsultaHttpIntegrationTests`, `TurnoCuponRedemptionIntegrationTests`, `TurnoCuponReservaIntegrationTests`, `TurnoCuponWebIntegrationTests`, `TurnoCancelacionIntegrationTests`, `TurnoCancelacionHttpIntegrationTests`, `TurnoLavadoInicioIntegrationTests`, `TurnoLavadoCierreIntegrationTests`, `TurnoLavadoCierreServiceIntegrationTests`, `TurnoLavadoConversionIntegrationTests`).<br>- Ciclo *No-Show* (`TurnoNoShowIntegrationTests`, `TurnoNoShowCapacityIntegrationTests`, `TurnoNoShowInicioIntegrationTests`, `TurnoNoShowSchedulerIntegrationTests`, `TurnoNoShowHostRegistrationTests`).<br>- Ofertas de adelanto, outbox transaccional, barrido e idempotencia (`TurnoAdelantoCandidateIntegrationTests`, `TurnoOfertaPersistenceTests`, `TurnoOfertaSeleccionIntegrationTests`, `TurnoOfertaOrquestacionIntegrationTests`, `TurnoOfertaSweepIntegrationTests`, `TurnoOfertaHostIntegrationTests`, `TurnoOfertaNotificationIntegrationTests`, `TurnoOfertaOutboxIntegrationTests`, `TurnoOutboxPersistenceTests`, `TurnoOfertaEmailResponseIntegrationTests`, `TurnoOfertaEmailResponseHttpTests`, `TurnoOfertaRespuestaIntegrationTests`, `TurnoOfertaRespuestaIdempotenciaTests`).<br>- Permisos base (`RolTurnosBaseIntegrationTests`). | Requiere emulador en puerto `8190`. |
+| 10 Suites JavaScript de Turnos (`Turno*.test.cjs` en `Firebase.Tests/`) | Frontend JS | Node.js `node:test` + `node:vm` | `TurnoCancelacionUi.test.cjs`, `TurnoFiltrosUi.test.cjs`, `TurnoFormularioCorrecciones.test.cjs`, `TurnoFormularioEdicion.test.cjs`, `TurnoInicioUi.test.cjs`, `TurnoLavadoNombresEtapas.test.cjs`, `TurnoReprogramacionUi.test.cjs`, `TurnoReservaSubmit.test.cjs`, `TurnoTablaAcciones.test.cjs`, `TurnoTablaEdicion.test.cjs`: validaciones de formulario, identidad de reintento ante ambigüedad, filtros, selección de cupones, cancelación, reprogramación e inicio operativo. | DOM sintético. |
 
 ---
 
@@ -579,6 +600,34 @@ El artefacto de cobertura final generado se ubica en:
    - `ConsumoEnLavado_CruzaStockMinimoSinAntecedente_CreaSolicitudesCotizacionParaProveedoresActivos`: Generación agrupada de Solicitudes de Cotización a todos los proveedores activos ante cruce de stock mínimo sin antecedente.
    - `ConsumoEnLavado_CruzaStockMinimoConOrdenYaAbierta_NoDuplicaOrden`: Idempotencia estricta que previene duplicación de órdenes ante consumos posteriores si ya existe una orden abierta en proceso.
 
+### 6.2.4 Cobertura y Ejecución Completa Medida el 25 de Noviembre de 2026 (Incluyendo Módulo de Turnos)
+
+Se ejecutó la suite completa de .NET **sin filtro de exclusión** (incluyendo todas las pruebas del módulo de Turnos) mediante emuladores locales aislados e instrumentación con Coverlet XPlat:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& ./Firebase.Tests/run-isolated.ps1 -AdditionalArguments @('--collect:XPlat Code Coverage','--results-directory','CoverageResults/run-current')"
+```
+
+El artefacto de cobertura generado se ubica en:
+
+`CoverageResults/run-current/5cd1eb45-4355-4c9f-bd46-a47b55fd9990/coverage.cobertura.xml`
+
+| Métrica global .NET (`Firebase.csproj`) | Resultado medido (25/11/2026) | Variación respecto a Fase 2 (21/11/2026) |
+|---|---:|---|
+| Líneas válidas totales | **24.908** | +4.367 líneas por incorporación completa de Turnos |
+| Líneas cubiertas | **17.571** | +4.407 líneas cubiertas |
+| Cobertura de líneas | **70,54%** | **+6,46%** |
+| Ramas válidas totales | **19.745** | +5.144 ramas |
+| Ramas cubiertas | **12.309** | +4.942 ramas cubiertas |
+| Cobertura de ramas | **62,33%** | **+11,88%** |
+| Pruebas C# (.NET 9 / xUnit) ejecutadas | **2.103** | **1.887 aprobadas, 216 con error, 0 omitidas** (`2 m 3 s`) |
+| Pruebas JS (`Firebase.Tests/*.test.cjs`, 65 archivos) | **359** | **359 aprobadas, 0 fallos, 0 omitidas** (`9,95 s`) |
+| Pruebas JS (`tests/lavado-finalizacion.test.js`) | **21** | **21 aprobadas, 0 fallos, 0 omitidas** (`0,20 s`) |
+
+> [!WARNING]
+> **Observación sobre los 216 fallos en la corrida global de integración .NET**:
+> En la ejecución completa contra el emulador único en `demo-suite`, **1.887** pruebas pasaron y **216** fallaron (**104** correspondientes a pruebas del módulo `Turno` y **112** en otras suites de integración como `TurnoOfertaPersistenceTests`, `TurnoEditHttpIntegrationTests`, `TurnoInicioRecursosHttpTests`, `InsumoRecetaPrecisionIntegrationTests`, `ServicioRecetaIntegrationTests` y `VehicleOwnershipRegressionTests`). Por lo tanto, el **70,54% de líneas / 62,33% de ramas** refleja la cobertura real ejecutada en esa corrida y **no** equivale a una aprobación del 100% de la suite .NET. Las suites JavaScript (`node:test`) sí aprobaron al **100% (380/380)**.
+
 ### 6.4 Resumen de Cifras del Repositorio
 
 Para contextualizar el progreso del repositorio y evitar confusiones con la documentación anterior:
@@ -587,17 +636,18 @@ Para contextualizar el progreso del repositorio y evitar confusiones con la docu
   - Fase inicial del proyecto con solo 11 clases de prueba unitaria en `Firebase.Tests/Services/`. No contemplaba integración, seguridad RBAC, insumos ni frontend.
 - **Cifra Histórica de 843 Tests Aislados (Registro de Titularidad y Patentes)**:
   - Registrada en archivos de log de corridas pasadas (`ownership-live-lifecycle.*.log`) con emuladores locales levantados para verificar las regresiones de titularidad de vehículos huérfanos.
-- **Inventario Actual de Código de Prueba en el Repositorio (Noviembre 2026 - Fin de Fase 2)**:
-  - **920 métodos de prueba definidos en C# (.NET)** en 127 archivos de prueba (+ 2 helpers):
-    - 390 métodos `[Fact]`
-    - 134 métodos `[Theory]` (con múltiples casos parametrizados cada uno)
-    - 395 métodos `[LocalFirestoreFact]` (pruebas contra Firestore Emulator)
-    - 1 método `[LocalSeedFact]` (prueba contra Auth Emulator)
-  - **297 casos de prueba JavaScript (`node:test`)**:
-    - 276 pruebas en `Firebase.Tests/*.test.cjs` (44 archivos)
-    - 21 pruebas en `tests/lavado-finalizacion.test.js`
-  - **49 pruebas de navegador declaradas en Playwright** en 17 archivos `.spec.cjs`.
-  - **1 suite completa de integración E2E autenticada** con Playwright, Kestrel y emuladores.
+- **Cifra Histórica Fin de Fase 2 (21 de Noviembre, 2026 — sin Turnos)**:
+  - `1.489` pruebas C# ejecutadas con `FullyQualifiedName!~Turno` + `297` JS (`1.786` aprobadas), con `64,08%` de líneas y `50,45%` de ramas.
+- **Inventario Actual de Código de Prueba en el Repositorio (25 de Noviembre, 2026)**:
+  - **1.510 métodos de prueba definidos en C# (.NET 9 / xUnit)** en **235 archivos `.cs`** (+ helpers):
+    - **Cuota Unitaria / Seguridad en memoria (`529 [Fact]` + `178 [Theory]` sin emulador = 707 métodos, 46,8%):** distribuidos en `Services/` (79 archivos: `439 [Fact]`, `143 [Theory]`, `16 [LocalFirestoreFact]`), `Controllers/` (6 archivos: `28 [Fact]`, `1 [Theory]`, `2 [LocalFirestoreFact]`), `Security/` (18 archivos: `59 [Fact]`, `23 [Theory]`) y `PasswordResetSecurityTests.cs` (`3 [Fact]`, `3 [Theory]`).
+    - **Cuota de Integración (`Integration/` + atributos de emulador = 803 métodos con `[LocalFirestoreFact]`/`[LocalSeedFact]` + `45` `[Fact]`/`[Theory]` en `Integration/`, 53,2%):** `Integration/` suma 131 archivos (`741 [LocalFirestoreFact]`, `7 [LocalSeedFact]`, `37 [Fact]`, `8 [Theory]`), más `18 [LocalFirestoreFact]` en `Services/` y `Controllers/`.
+    - Al expandirse los casos parametrizados (`[Theory]`), la corrida completa de `Firebase.Tests.dll` ejecuta **2.103 pruebas**.
+  - **380 casos de prueba JavaScript (`node:test`)** en **66 archivos**:
+    - **359** pruebas en `Firebase.Tests/*.test.cjs` (65 archivos).
+    - **21** pruebas en `tests/lavado-finalizacion.test.js` (1 archivo).
+  - **49 pruebas de navegador declaradas en Playwright** en **17 archivos `.spec.cjs`**.
+  - **1 suite completa de integración E2E autenticada** con Playwright, Kestrel y emuladores (`scripts/test-authenticated-notifications.ps1`).
 
 ---
 
@@ -611,7 +661,7 @@ Para contextualizar el progreso del repositorio y evitar confusiones con la docu
    - Se actualizaron y validaron los formateos numéricos en `lavado.js` y `lavado-detalle.js`, manteniendo 100% de aprobación en las suites de frontend sin regresar ninguna pantalla.
 4. **Adopción de Reportes Formales de Cobertura**:
    - Se publicó la corrida de cobertura como artefacto del pipeline, junto a su XML Cobertura y al conteo de aprobadas/fallidas.
-   - El porcentaje global observado verificado al 21 de noviembre de 2026 (suite 100% pasando sin fallos) es **64,08% de líneas y 50,45% de ramas** para .NET (con el denominador expandido por las adiciones del módulo Turnos en el worktree).
-5. **Cierre Exitoso de la Fase 2 (Calidad e Integración Real)**:
-   - Se incorporaron 14 nuevas pruebas de integración focalizadas en los 4 módulos críticos (Proveedores, Clientes/Vehículos, Lavados/Pagos y Stock/Compra Automática), cubriendo 75 ramas reales de lógica de negocio, concurrencia en Firestore y autorización HTTP sin inflar métricas.
-   - La suite completa del repositorio cuenta con **1.786 pruebas ejecutadas y aprobadas al 100% (0 fallos, 0 omitidas)**.
+   - El porcentaje global observado el **25 de noviembre de 2026** (corrida completa incluyendo el módulo Turnos sin filtro de exclusión) es **70,54% de líneas** (17.571/24.908) y **62,33% de ramas** (12.309/19.745) para .NET.
+5. **Estado Actual y Próximo Paso de Estabilización**:
+   - La cobertura de frontend JS (`node:test`) alcanzó **380/380 pruebas aprobadas (100%)** incorporando las 10 nuevas suites de Turnos.
+   - En backend .NET, de **2.103** pruebas ejecutadas aprobaron **1.887** y **216** registraron error contra el emulador local (104 en Turnos y 112 en otras suites de integración), quedando como prioridad diagnosticar y aislar esos fallos en `Integration/`.
