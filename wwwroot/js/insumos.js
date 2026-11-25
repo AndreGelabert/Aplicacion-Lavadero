@@ -12,15 +12,20 @@
     const providerOptions = providerDropdown ? [...providerDropdown.querySelectorAll('[data-provider-option]')] : [];
     let selectedProvider = null;
     function closeProviders() { if (!providerDropdown) return; providerDropdown.classList.add('hidden'); providerSearch.setAttribute('aria-expanded', 'false'); }
+    function syncProviders() {
+        if (!providerDropdown) return;
+        const term = (providerSearch?.value || '').trim().toLocaleLowerCase('es');
+        providerOptions.forEach(option => {
+            const isSelected = [...(providerInputs?.children || [])].some(input => input.value === option.dataset.id);
+            const matches = !term || option.dataset.name.toLocaleLowerCase('es').includes(term);
+            option.classList.toggle('hidden', !matches || isSelected);
+            option.hidden = !matches || isSelected;
+        });
+    }
     function filterProviders() {
         if (!providerDropdown || providerSearch.disabled) return;
         selectedProvider = null;
-        const term = providerSearch.value.trim().toLocaleLowerCase('es');
-        providerOptions.forEach(option => {
-            const isSelected = [...providerInputs.children].some(input => input.value === option.dataset.id);
-            const matches = !term || option.dataset.name.toLocaleLowerCase('es').includes(term);
-            option.classList.toggle('hidden', !matches || isSelected);
-        });
+        syncProviders();
         providerDropdown.classList.remove('hidden'); providerSearch.setAttribute('aria-expanded', 'true');
     }
     function addProvider(id, name) {
@@ -30,8 +35,9 @@
         const label = document.createElement('span'); label.className = 'flex-1 dark:text-white'; label.textContent = name;
         const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'w-8 h-8 flex items-center justify-center text-red-600 hover:text-red-800'; remove.setAttribute('aria-label', 'Quitar proveedor ' + name);
         remove.innerHTML = '<svg aria-hidden="true" fill="currentColor" class="w-5 h-5" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd"/></svg>';
-        remove.addEventListener('click', () => { if (remove.disabled) return; row.remove(); input.remove(); filterProviders(); closeProviders(); providerSearch?.focus(); });
+        remove.addEventListener('click', () => { if (remove.disabled) return; row.remove(); input.remove(); syncProviders(); closeProviders(); });
         row.append(label, remove); providerList.append(row); providerInputs.append(input);
+        syncProviders();
     }
     providerSearch?.addEventListener('focus', filterProviders);
     providerSearch?.addEventListener('input', filterProviders);
@@ -42,7 +48,6 @@
         selectedProvider = null;
         if (providerSearch) providerSearch.value = '';
         closeProviders();
-        providerSearch?.focus();
     }));
     inventoryForm?.querySelector('[data-add-provider]')?.addEventListener('click', e => {
         if (e.currentTarget.disabled || !selectedProvider || providerSearch.disabled) return;
@@ -50,7 +55,6 @@
         selectedProvider = null;
         if (providerSearch) providerSearch.value = '';
         closeProviders();
-        providerSearch?.focus();
     });
     if (providerBox) {
         document.addEventListener('click', e => { if (!providerBox.contains(e.target)) closeProviders(); });
@@ -123,7 +127,7 @@
         type.disabled = unit.disabled = false; hiddenType.disabled = hiddenUnit.disabled = true;
         inventoryForm.querySelectorAll('[data-open-tipos], [data-delete-tipo]').forEach(b => b.disabled = false);
         providerList?.replaceChildren(); providerInputs?.replaceChildren(); selectedProvider = null;
-        if (providerSearch) { providerSearch.value = ''; closeProviders(); }
+        if (providerSearch) { providerSearch.value = ''; syncProviders(); closeProviders(); }
         const resetLabel = inventoryForm.querySelector('[data-reset-label]'); if (resetLabel) resetLabel.textContent = 'Limpiar campos';
         inventoryForm.querySelector('[type="submit"]').disabled = inventoryForm.dataset.canCreate !== 'true';
         title.textContent = 'Registrando un Insumo';

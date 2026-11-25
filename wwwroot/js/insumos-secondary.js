@@ -212,6 +212,17 @@
         path.setAttribute('d', 'M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z');
         svg.append(path); button.append(svg);
     }
+    function setElementHidden(el, hidden) {
+        if (!el) return;
+        el.hidden = hidden;
+        if (typeof el.classList?.toggle === 'function') {
+            el.classList.toggle('hidden', hidden);
+        } else if (hidden) {
+            el.classList?.add?.('hidden');
+        } else {
+            el.classList?.remove?.('hidden');
+        }
+    }
     const supplierPicker = document.getElementById('supplier-picker');
     if (supplierPicker) {
         const search = document.getElementById('supplier-search');
@@ -219,13 +230,21 @@
         const selected = document.getElementById('supplier-selected');
         let choice = null;
         const selectedIds = new Set();
-        function filterSuppliers() {
-            choice = null;
+        function syncSuppliers() {
             const term = (search?.value || '').trim().toLocaleLowerCase();
             dropdown?.querySelectorAll?.('[data-supplier-option]')?.forEach(option => {
-                option.hidden = (term && !option.dataset.name.toLocaleLowerCase().includes(term)) || selectedIds.has(option.dataset.id);
+                const isHidden = (Boolean(term) && !option.dataset.name.toLocaleLowerCase().includes(term)) || selectedIds.has(option.dataset.id);
+                setElementHidden(option, isHidden);
+                option.disabled = selectedIds.has(option.dataset.id);
             });
+        }
+        function openSuppliers() {
+            choice = null;
+            syncSuppliers();
             dropdown?.classList.remove('hidden');
+        }
+        function closeSuppliers() {
+            dropdown?.classList.add('hidden');
         }
         function addSupplierChoice(item) {
             if (!item || !item.id || selectedIds.has(item.id)) return;
@@ -248,22 +267,21 @@
             remove.addEventListener('click', () => {
                 selectedIds.delete(selectedId);
                 row.remove();
-                filterSuppliers();
+                syncSuppliers();
             });
             row.append(name, id, remove);
             selected?.append(row);
             choice = null;
             if (search) search.value = '';
-            dropdown?.classList.add('hidden');
-            filterSuppliers();
+            syncSuppliers();
+            closeSuppliers();
         }
-        search?.addEventListener('focus', filterSuppliers);
-        search?.addEventListener('input', filterSuppliers);
+        search?.addEventListener('focus', openSuppliers);
+        search?.addEventListener('input', openSuppliers);
         dropdown?.addEventListener('click', event => {
             const option = event.target.closest('[data-supplier-option]');
-            if (!option) return;
+            if (!option || option.disabled) return;
             choice = { ...option.dataset };
-            if (search) search.value = choice.name;
             addSupplierChoice(choice);
         });
         document.getElementById('supplier-add')?.addEventListener('click', () => {
@@ -271,15 +289,15 @@
             addSupplierChoice(choice);
         });
         document.addEventListener('click', event => {
-            if (!supplierPicker.contains(event.target)) dropdown?.classList.add('hidden');
+            if (!supplierPicker.contains(event.target)) closeSuppliers();
         });
         document.querySelector('[data-quotation-reset]')?.addEventListener('click', () => {
             selectedIds.clear();
             selected?.replaceChildren();
             choice = null;
             if (search) search.value = '';
-            dropdown?.classList.add('hidden');
-            filterSuppliers();
+            syncSuppliers();
+            closeSuppliers();
         });
     }
     const picker = document.getElementById('quotation-picker');
@@ -303,18 +321,28 @@
     actualizarMinimoEntrega();
     let selectedOption = null;
     const items = [];
-    function filter() {
-        selectedOption = null;
+    function syncQuotationOptions() {
         const term = (input?.value || '').trim().toLocaleLowerCase();
         dropdown?.querySelectorAll?.('[data-quotation-option]')?.forEach(option => {
-            option.hidden = (term && !(option.dataset.name + ' ' + (option.dataset.category || '')).toLocaleLowerCase().includes(term)) || items.some(item => item.id === option.dataset.id);
+            const isSelected = items.some(item => item.id === option.dataset.id);
+            const isHidden = (Boolean(term) && !(option.dataset.name + ' ' + (option.dataset.category || '')).toLocaleLowerCase().includes(term)) || isSelected;
+            setElementHidden(option, isHidden);
+            option.disabled = isSelected;
         });
         dropdown?.querySelectorAll?.('[data-quotation-group]')?.forEach(group => {
             if (typeof group.querySelectorAll === 'function') {
-                group.hidden = !Array.from(group.querySelectorAll('[data-quotation-option]')).some(option => !option.hidden);
+                const allHidden = !Array.from(group.querySelectorAll('[data-quotation-option]')).some(option => !option.hidden);
+                setElementHidden(group, allHidden);
             }
         });
+    }
+    function openQuotationDropdown() {
+        selectedOption = null;
+        syncQuotationOptions();
         dropdown?.classList.remove('hidden');
+    }
+    function closeQuotationDropdown() {
+        dropdown?.classList.add('hidden');
     }
     function addQuotationItem(opt) {
         if (!opt || !opt.id || items.some(item => item.id === opt.id)) {
@@ -325,20 +353,19 @@
         selectedOption = null;
         if (input) input.value = '';
         if (error) error.textContent = '';
-        dropdown?.classList.add('hidden');
         render();
-        filter();
+        syncQuotationOptions();
+        closeQuotationDropdown();
     }
-    input?.addEventListener('focus', filter);
-    input?.addEventListener('input', filter);
+    input?.addEventListener('focus', openQuotationDropdown);
+    input?.addEventListener('input', openQuotationDropdown);
     document.addEventListener('click', event => {
-        if (!picker.contains(event.target)) dropdown?.classList.add('hidden');
+        if (!picker.contains(event.target)) closeQuotationDropdown();
     });
     dropdown?.addEventListener('click', event => {
         const option = event.target.closest('[data-quotation-option]');
-        if (!option) return;
+        if (!option || option.disabled) return;
         selectedOption = option.dataset;
-        if (input) input.value = option.dataset.name;
         addQuotationItem(selectedOption);
     });
     function render() {
@@ -378,7 +405,7 @@
             remove.addEventListener('click', () => {
                 items.splice(index, 1);
                 render();
-                filter();
+                syncQuotationOptions();
             });
             row.append(info, id, quantityLabel, remove);
             list?.append(row);
@@ -397,9 +424,9 @@
         items.length = 0;
         selectedOption = null;
         if (error) error.textContent = '';
-        dropdown?.classList.add('hidden');
         render();
-        filter();
+        syncQuotationOptions();
+        closeQuotationDropdown();
     });
     form?.addEventListener('submit', event => {
         actualizarMinimoEntrega();
