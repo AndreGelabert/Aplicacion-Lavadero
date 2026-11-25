@@ -113,13 +113,20 @@
     }
     @if (!string.IsNullOrWhiteSpace((string?)ViewBag.GrupoId))
     {
-        <div class="mt-6 mb-2 flex items-center justify-between">
-            <h2 class="text-lg font-semibold dark:text-white">Comparación del concurso (@ViewBag.GrupoId)</h2>
-            <a asp-action="Cotizaciones" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">Cerrar detalle</a>
-        </div>
-        var comparaciones = (List<Firebase.Models.ComparacionCotizacion>)ViewBag.Comparacion;
-        <div class="overflow-x-auto">
-        <table aria-label="Comparación del grupo" class="w-full min-w-max text-sm text-left text-gray-500 dark:text-gray-400" data-finite-table><thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700"><tr><th class="px-4 py-3">Proveedor</th><th>Estado</th><th>Detalle</th><th><button type="button" data-sort-column="3" data-sort-type="number" class="flex items-center gap-1">Total <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l4 5H6l4-5zm0 14-4-5h8l-4 5z" /></svg></button></th><th><button type="button" data-sort-column="4" data-sort-type="number" class="flex items-center gap-1">Plazo <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l4 5H6l4-5zm0 14-4-5h8l-4 5z" /></svg></button></th><th></th></tr></thead><tbody>
+        <div class="mt-8 border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div class="px-4 py-2 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Comparación del concurso</h2>
+                    <span class="text-xs font-mono bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-0.5 rounded font-medium">@ViewBag.GrupoId</span>
+                </div>
+                <a asp-action="Cotizaciones" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    Cerrar detalle
+                </a>
+            </div>
+            @{ var comparaciones = (List<Firebase.Models.ComparacionCotizacion>)ViewBag.Comparacion; }
+            <div class="overflow-x-auto">
+            <table aria-label="Comparación del grupo" class="w-full min-w-max text-sm text-left text-gray-500 dark:text-gray-400" data-finite-table data-no-pagination><thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700"><tr><th class="px-4 py-3">Proveedor</th><th>Estado</th><th>Detalle</th><th><button type="button" data-sort-column="3" data-sort-type="number" class="flex items-center gap-1">Total <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l4 5H6l4-5zm0 14-4-5h8l-4 5z" /></svg></button></th><th><button type="button" data-sort-column="4" data-sort-type="number" class="flex items-center gap-1">Plazo <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l4 5H6l4-5zm0 14-4-5h8l-4 5z" /></svg></button></th><th></th></tr></thead><tbody>
         @foreach (var item in comparaciones)
         {
             var proveedor = proveedores.FirstOrDefault(p => p.Id == item.Solicitud.ProveedorId);
@@ -139,6 +146,7 @@
             </td></tr>
         }
         </tbody></table>
+        </div>
         </div>
     }
 </div></section>

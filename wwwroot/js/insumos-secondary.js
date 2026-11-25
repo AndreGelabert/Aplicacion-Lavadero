@@ -140,11 +140,12 @@
         const pageSize = 10;
         let page = 1;
         const pages = Math.max(1, Math.ceil(rows.length / pageSize));
-        const nav = document.createElement('nav');
-        nav.className = 'flex flex-col md:flex-row justify-between items-center gap-3 p-4';
-        nav.setAttribute('aria-label', 'Paginación de tabla');
-        const label = document.createElement('span'); label.className = 'text-sm text-gray-500 dark:text-gray-400';
-        const controls = document.createElement('div'); controls.className = 'inline-flex items-stretch -space-x-px';
+        const hasPagination = !(
+            (typeof table.hasAttribute === 'function' && table.hasAttribute('data-no-pagination')) ||
+            (typeof table.getAttribute === 'function' && table.getAttribute('data-no-pagination') !== null) ||
+            Boolean(table.dataset && 'noPagination' in table.dataset)
+        );
+        let nav = null, label = null, previous = null, next = null, numbers = [];
         const arrowClass = 'flex items-center justify-center h-full py-1.5 px-3 bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-700';
         const numberClass = 'flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white';
         const activeClass = 'flex items-center justify-center text-sm z-10 py-2 px-3 leading-tight text-primary-600 bg-primary-50 border border-primary-300 dark:border-gray-700 dark:bg-gray-700 dark:text-white';
@@ -154,14 +155,22 @@
             button.innerHTML = `<svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="${path}" clip-rule="evenodd" /></svg>`;
             return button;
         }
-        const previous = arrow('Anterior', 'M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z', 'rounded-l-lg');
-        const next = arrow('Siguiente', 'M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z', 'rounded-r-lg');
-        const numbers = Array.from({ length: pages }, (_, index) => {
-            const button = document.createElement('button'); button.type = 'button'; button.textContent = index + 1;
-            button.addEventListener('click', () => { page = index + 1; renderPage(); }); return button;
-        });
-        controls.append(previous, ...numbers, next); nav.append(label, controls); table.parentElement.after(nav);
+        if (hasPagination) {
+            nav = document.createElement('nav');
+            nav.className = 'flex flex-col md:flex-row justify-between items-center gap-3 p-4';
+            nav.setAttribute('aria-label', 'Paginación de tabla');
+            label = document.createElement('span'); label.className = 'text-sm text-gray-500 dark:text-gray-400';
+            const controls = document.createElement('div'); controls.className = 'inline-flex items-stretch -space-x-px';
+            previous = arrow('Anterior', 'M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z', 'rounded-l-lg');
+            next = arrow('Siguiente', 'M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z', 'rounded-r-lg');
+            numbers = Array.from({ length: pages }, (_, index) => {
+                const button = document.createElement('button'); button.type = 'button'; button.textContent = index + 1;
+                button.addEventListener('click', () => { page = index + 1; renderPage(); }); return button;
+            });
+            controls.append(previous, ...numbers, next); nav.append(label, controls); table.parentElement.after(nav);
+        }
         function renderPage() {
+            if (!hasPagination) return;
             rows.forEach((row, index) => { row.hidden = index < (page - 1) * pageSize || index >= page * pageSize; });
             label.textContent = `Mostrando página ${page} de ${pages}`;
             numbers.forEach((number, index) => {
@@ -186,12 +195,14 @@
                     return (ascending ? 1 : -1) * (Number.isFinite(comparison) ? comparison : 0);
                 });
                 rows.forEach(row => table.tBodies[0].appendChild(row));
-                page = 1; renderPage();
+                if (hasPagination) { page = 1; renderPage(); }
             });
         });
-        previous.addEventListener('click', () => { if (page > 1) { page--; renderPage(); } });
-        next.addEventListener('click', () => { if (page < pages) { page++; renderPage(); } });
-        renderPage();
+        if (hasPagination) {
+            previous.addEventListener('click', () => { if (page > 1) { page--; renderPage(); } });
+            next.addEventListener('click', () => { if (page < pages) { page++; renderPage(); } });
+            renderPage();
+        }
     });
     function removeIcon(button) {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
