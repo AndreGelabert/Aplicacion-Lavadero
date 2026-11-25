@@ -270,6 +270,29 @@
                 </div>
             </div>
 
+            <!-- Sección 5: Capacidad del Lavadero -->
+            <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                    Capacidad del Lavadero
+                </h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Configure la cantidad máxima de lavados/citas que se pueden aceptar simultáneamente.
+                </p>
+                
+                <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
+                    <div>
+                        <label asp-for="CapacidadMaximaConcurrente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Capacidad Máxima Concurrente <span class="text-red-600">*</span>
+                        </label>
+                        <input type="number" asp-for="CapacidadMaximaConcurrente" 
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                               min="1" max="100" step="1" placeholder="Ej: 3" required />
+                        <span asp-validation-for="CapacidadMaximaConcurrente" class="text-red-600 text-xs"></span>
+                    </div>
+                    
+                </div>
+            </div>
+
             <!-- Sección 4: Horarios de Operación -->
             <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg col-span-2">
                 <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
@@ -428,30 +451,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Sección 5: Capacidad del Lavadero -->
-            <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                    Capacidad del Lavadero
-                </h2>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    Configure la cantidad máxima de lavados/citas que se pueden aceptar simultáneamente.
-                </p>
-                
-                <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
-                    <div>
-                        <label asp-for="CapacidadMaximaConcurrente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                            Capacidad Máxima Concurrente <span class="text-red-600">*</span>
-                        </label>
-                        <input type="number" asp-for="CapacidadMaximaConcurrente" 
-                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                               min="1" max="100" step="1" placeholder="Ej: 3" required />
-                        <span asp-validation-for="CapacidadMaximaConcurrente" class="text-red-600 text-xs"></span>
-                    </div>
-                    
-                </div>
-            </div>
-
             <!-- Sección 6: Configuración de Sesiones -->
             <div class="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
