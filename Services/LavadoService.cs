@@ -297,6 +297,21 @@ namespace Firebase.Services
         }
 
         // The caller must complete all transaction reads, including these stock reads, before writing.
+        internal Task<ResultadoOperacion> ValidarDisponibilidadInicio(
+            IReadOnlyList<(Lavado Lavado, IReadOnlyDictionary<int, string>? Seleccion)> entradas)
+        {
+            var recetas = entradas
+                .Select(e => (e.Lavado.Servicios.OrderBy(s => s.Orden).FirstOrDefault(), e.Seleccion))
+                .Where(x => x.Item1 != null)
+                .Select(x =>
+                {
+                    var primero = x.Item1!;
+                    var etapa = primero.Etapas.FirstOrDefault();
+                    return ((IEnumerable<RecetaInsumo>)(etapa?.Receta ?? primero.Receta), x.Seleccion);
+                });
+            return _stockService.ValidarDisponibilidadConReservas(recetas);
+        }
+
         internal async Task<List<StockService.RecetaServicio>> PrepararInicioEnTransaccion(
             Transaction transaction, IReadOnlyList<(Lavado Lavado, IReadOnlyDictionary<int, string>? Seleccion)> entradas)
         {

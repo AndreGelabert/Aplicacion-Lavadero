@@ -1191,6 +1191,75 @@ public sealed class StockService(
         transaction.Create(markerRef, new Dictionary<string, object> { ["Fecha"] = Timestamp.GetCurrentTimestamp() });
     }
 
+    internal async Task<ResultadoOperacion> ValidarDisponibilidadConReservas(
+        IEnumerable<(IEnumerable<RecetaInsumo> Receta, IReadOnlyDictionary<int, string>? Seleccion)> recetas)
+    {
+        var dosisPorInsumo = new Dictionary<string, decimal>(StringComparer.Ordinal);
+        var snapshotsInsumos = new Dictionary<string, Insumo>(StringComparer.Ordinal);
+
+        foreach (var (receta, seleccion) in recetas)
+        {
+            var lista = (receta ?? Enumerable.Empty<RecetaInsumo>()).ToList();
+            for (var i = 0; i < lista.Count; i++)
+            {
+                var r = lista[i];
+                if (r.DosisTeorica <= 0) continue;
+                var esTipo = string.Equals(r.Modalidad, "Tipo", StringComparison.OrdinalIgnoreCase);
+                var id = r.InsumoId;
+                if (esTipo && seleccion != null && seleccion.TryGetValue(i, out var elegido) && !string.IsNullOrWhiteSpace(elegido))
+                    id = elegido;
+                if (string.IsNullOrWhiteSpace(id)) continue;
+
+                if (!snapshotsInsumos.TryGetValue(id, out var insumo))
+                {
+                    var snap = await firestore.Collection("insumos").Document(id).GetSnapshotAsync();
+                    if (!snap.Exists)
+                        return ResultadoOperacion.CrearError("La receta contiene un insumo inexistente.");
+                    insumo = snap.ConvertTo<Insumo>();
+                    snapshotsInsumos[id] = insumo;
+                }
+
+                var conversion = new ConversionUnidadesService();
+                var dosis = conversion.Convertir(r.DosisTeorica, string.IsNullOrWhiteSpace(r.UnidadMedida) ? insumo.UnidadMedida : r.UnidadMedida, insumo.UnidadMedida);
+                if (dosis <= 0)
+                    return ResultadoOperacion.CrearError("La dosis debe ser mayor a cero.");
+
+                dosisPorInsumo[id] = StockPrecision.Sumar(dosisPorInsumo.GetValueOrDefault(id), dosis);
+            }
+        }
+
+        foreach (var (insumoId, requerido) in dosisPorInsumo)
+        {
+            var insumo = snapshotsInsumos[insumoId];
+            var herramienta = false;
+            if (!string.IsNullOrWhiteSpace(insumo.TipoId))
+            {
+                var tipoSnap = await firestore.Collection(TipoInsumoService.Collection).Document(insumo.TipoId).GetSnapshotAsync();
+                if (tipoSnap.Exists)
+                {
+                    var t = tipoSnap.ConvertTo<TipoInsumo>();
+                    t.Id = tipoSnap.Id;
+                    herramienta = t.EsInsumoReutilizable();
+                }
+            }
+            else
+            {
+                herramienta = string.Equals(insumo.Tipo, TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase);
+            }
+
+            var contador = await firestore.Collection("reservasHerramientasTotales").Document(insumoId).GetSnapshotAsync();
+            var reservado = contador.Exists ? Convert.ToDecimal(contador.GetValue<double>("Cantidad")) : 0m;
+            if (insumo.StockActual - reservado < requerido)
+            {
+                return ResultadoOperacion.CrearError(herramienta
+                    ? "No hay herramientas suficientes disponibles."
+                    : $"No hay stock suficiente de '{insumo.Nombre}' para iniciar la operación.");
+            }
+        }
+
+        return ResultadoOperacion.CrearExito("Stock suficiente.");
+    }
+
     public async Task<ResultadoOperacion> ValidarDisponibilidad(IEnumerable<RecetaInsumo> receta)
     {
         var cantidades = receta.Where(x => x.DosisTeorica > 0)

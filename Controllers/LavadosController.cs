@@ -340,6 +340,11 @@ namespace FirebaseLoginCustom.Controllers
                 entradas.Add((resultado.Lavado!, seleccion));
                     empleadosAsignados.UnionWith(resultado.Lavado!.EmpleadosAsignadosIds);
                 }
+                var disponibilidad = await _lavadoCreationService.ValidarDisponibilidadInicio(entradas);
+                if (!disponibilidad.EsExitoso)
+                {
+                    return Json(new { success = false, message = disponibilidad.MensajeError });
+                }
                 await _lavadoCreationService.CrearLavadosConInicio(entradas);
                 var lavadosCreados = entradas.Select(e => e.Lavado).ToList();
                 var falloAuditoria = false;
