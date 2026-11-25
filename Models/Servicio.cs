@@ -37,7 +37,7 @@ namespace Firebase.Models
         [FirestoreProperty]
         [Required(ErrorMessage = "El nombre del servicio es obligatorio")]
         [MinLength(3, ErrorMessage = "El nombre debe tener al menos 3 caracteres")]
-        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", ErrorMessage = "El nombre solo puede contener letras y espacios")]
+        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$", ErrorMessage = "El nombre solo puede contener letras y espacios")]
         public required string Nombre { get; set; }
 
         /// <summary>

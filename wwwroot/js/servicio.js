@@ -512,7 +512,7 @@
 
         // Validar nombre
         const nombreValue = nombreInput?.value.trim();
-        const nombreRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+        const nombreRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
         if (nombreValue && (!nombreRegex.test(nombreValue) || nombreValue === '')) {
             nombreInput.classList.add('border-red-500');
             errors.push("El nombre solo puede contener letras y espacios");
