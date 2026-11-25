@@ -373,6 +373,11 @@ namespace FirebaseLoginCustom.Controllers
                 _logger.LogWarning(ex, "Validación al crear lavado: {Mensaje}", ex.Message);
                 return Json(new { success = false, message = ex.Message });
             }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Argumento inválido al crear lavado: {Mensaje}", ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al crear lavado");
@@ -397,6 +402,16 @@ namespace FirebaseLoginCustom.Controllers
 
                 return Json(new { success = true, message = $"Lavado finalizado correctamente. {aviso}" });
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Validación al finalizar lavado {LavadoId}: {Mensaje}", id, ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Argumento inválido al finalizar lavado {LavadoId}: {Mensaje}", id, ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al finalizar lavado {LavadoId}", id);
@@ -420,6 +435,16 @@ namespace FirebaseLoginCustom.Controllers
                 var aviso = await NotificarCambioLavado(lavadoId, "finalizacion_servicio", servicioId: servicioId);
 
                 return Json(new { success = true, message = $"Servicio finalizado correctamente. {aviso}" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Validación al finalizar servicio {ServicioId} del lavado {LavadoId}: {Mensaje}", servicioId, lavadoId, ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Argumento inválido al finalizar servicio {ServicioId} del lavado {LavadoId}: {Mensaje}", servicioId, lavadoId, ex.Message);
+                return Json(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -446,6 +471,16 @@ namespace FirebaseLoginCustom.Controllers
                 var aviso = await NotificarCambioLavado(lavadoId, "finalizacion_etapa", servicioId, etapaId);
 
                 return Json(new { success = true, message = $"Etapa finalizada correctamente. {aviso}" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Validación al finalizar etapa {EtapaId} del servicio {ServicioId} en lavado {LavadoId}: {Mensaje}", etapaId, servicioId, lavadoId, ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Argumento inválido al finalizar etapa {EtapaId} del servicio {ServicioId} en lavado {LavadoId}: {Mensaje}", etapaId, servicioId, lavadoId, ex.Message);
+                return Json(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -537,6 +572,16 @@ namespace FirebaseLoginCustom.Controllers
 
                 return Json(new { success = true, message = $"Lavado cancelado correctamente. {aviso}" });
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Validación al cancelar lavado {LavadoId}: {Mensaje}", id, ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Argumento inválido al cancelar lavado {LavadoId}: {Mensaje}", id, ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al cancelar lavado {LavadoId}", id);
@@ -561,6 +606,16 @@ namespace FirebaseLoginCustom.Controllers
 
                 return Json(new { success = true, message = $"Servicio cancelado correctamente. {aviso}" });
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Validación al cancelar servicio {ServicioId} del lavado {LavadoId}: {Mensaje}", servicioId, lavadoId, ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Argumento inválido al cancelar servicio {ServicioId} del lavado {LavadoId}: {Mensaje}", servicioId, lavadoId, ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al cancelar servicio {ServicioId} del lavado {LavadoId}", servicioId, lavadoId);
@@ -584,6 +639,16 @@ namespace FirebaseLoginCustom.Controllers
                 var aviso = await NotificarCambioLavado(lavadoId, "cancelacion_etapa", servicioId, etapaId, motivo);
 
                 return Json(new { success = true, message = $"Etapa cancelada correctamente. {aviso}" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Validación al cancelar etapa {EtapaId} del servicio {ServicioId} en lavado {LavadoId}: {Mensaje}", etapaId, servicioId, lavadoId, ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Argumento inválido al cancelar etapa {EtapaId} del servicio {ServicioId} en lavado {LavadoId}: {Mensaje}", etapaId, servicioId, lavadoId, ex.Message);
+                return Json(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
