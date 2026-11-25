@@ -52,7 +52,8 @@ public sealed class InsumosConfiguracionGeneralHttpIntegrationTests
                     if (insumos)
                     {
                         Assert.Contains("Original", body);
-                        Assert.Equal(modificar, body.Contains("Guardar reabastecimiento"));
+                        Assert.DoesNotContain("Guardar reabastecimiento", body);
+                        Assert.Equal(modificar, body.Contains("Guardar Configuración"));
                     }
                 }
             }
