@@ -434,6 +434,10 @@ namespace FirebaseLoginCustom.Controllers
         {
             try
             {
+                var validacion = await _lavadoService.ValidarFinalizacionServicio(lavadoId, servicioId, consumoRealJson, justificacionDesvio);
+                if (!validacion.EsExitoso)
+                    return Json(new { success = false, message = validacion.MensajeError });
+
                 var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
                 await _lavadoService.FinalizarServicio(lavadoId, servicioId, consumoRealJson, justificacionDesvio);
                 await RegistrarLavado("Finalización de servicio en lavado", lavadoId, antes);
@@ -468,6 +472,10 @@ namespace FirebaseLoginCustom.Controllers
         {
             try
             {
+                var validacion = await _lavadoService.ValidarFinalizacionEtapa(lavadoId, servicioId, etapaId, consumoRealJson, justificacionDesvio);
+                if (!validacion.EsExitoso)
+                    return Json(new { success = false, message = validacion.MensajeError });
+
                 var antes = AuditCampos.CapturarLavado((await _lavadoService.ObtenerLavado(lavadoId))!);
                 var finalizada = await _lavadoService.FinalizarEtapa(lavadoId, servicioId, etapaId, consumoRealJson, justificacionDesvio);
                 if (!finalizada)

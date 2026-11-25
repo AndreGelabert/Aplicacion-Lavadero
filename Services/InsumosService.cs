@@ -1231,21 +1231,7 @@ public sealed class StockService(
         foreach (var (insumoId, requerido) in dosisPorInsumo)
         {
             var insumo = snapshotsInsumos[insumoId];
-            var herramienta = false;
-            if (!string.IsNullOrWhiteSpace(insumo.TipoId))
-            {
-                var tipoSnap = await firestore.Collection(TipoInsumoService.Collection).Document(insumo.TipoId).GetSnapshotAsync();
-                if (tipoSnap.Exists)
-                {
-                    var t = tipoSnap.ConvertTo<TipoInsumo>();
-                    t.Id = tipoSnap.Id;
-                    herramienta = t.EsInsumoReutilizable();
-                }
-            }
-            else
-            {
-                herramienta = string.Equals(insumo.Tipo, TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase);
-            }
+            var herramienta = await EsHerramientaSinTransaccion(insumo);
 
             var contador = await firestore.Collection("reservasHerramientasTotales").Document(insumoId).GetSnapshotAsync();
             var reservado = contador.Exists ? Convert.ToDecimal(contador.GetValue<double>("Cantidad")) : 0m;
@@ -1258,6 +1244,144 @@ public sealed class StockService(
         }
 
         return ResultadoOperacion.CrearExito("Stock suficiente.");
+    }
+
+    private async Task<bool> EsHerramientaSinTransaccion(Insumo insumo)
+    {
+        if (!string.IsNullOrWhiteSpace(insumo.TipoId))
+        {
+            var tipoSnap = await firestore.Collection(TipoInsumoService.Collection).Document(insumo.TipoId).GetSnapshotAsync();
+            if (tipoSnap.Exists)
+            {
+                var t = tipoSnap.ConvertTo<TipoInsumo>();
+                t.Id = tipoSnap.Id;
+                return t.EsInsumoReutilizable();
+            }
+        }
+        return string.Equals(insumo.Tipo, TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal async Task<ResultadoOperacion> ValidarConsumoFinalizacion(
+        string referencia,
+        IEnumerable<RecetaInsumo> receta,
+        string? consumoRealJson,
+        string? justificacionDesvio)
+    {
+        Dictionary<string, decimal>? consumoReal = null;
+        if (!string.IsNullOrWhiteSpace(consumoRealJson))
+        {
+            try
+            {
+                consumoReal = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, decimal>>(consumoRealJson);
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return ResultadoOperacion.CrearError("El formato del consumo real es inválido.");
+            }
+        }
+
+        var items = (receta ?? Enumerable.Empty<RecetaInsumo>()).ToList();
+        if (consumoReal != null && consumoReal.Any(x => items.All(r => r.InsumoId != x.Key) || x.Value < 0))
+            return ResultadoOperacion.CrearError("El consumo real contiene insumos o cantidades inválidas.");
+
+        var markerSnap = await firestore.Collection("consumosEtapa").Document(referencia).GetSnapshotAsync();
+        if (markerSnap.Exists)
+            return ResultadoOperacion.CrearExito("Consumo ya registrado.");
+
+        var snapshotsInsumos = new Dictionary<string, Insumo>(StringComparer.Ordinal);
+        var consumosTeoricos = new Dictionary<string, decimal>(StringComparer.Ordinal);
+        var conversion = new ConversionUnidadesService();
+
+        foreach (var r in items)
+        {
+            if (string.IsNullOrWhiteSpace(r.InsumoId)) continue;
+
+            if (!snapshotsInsumos.TryGetValue(r.InsumoId, out var insumo))
+            {
+                var snap = await firestore.Collection("insumos").Document(r.InsumoId).GetSnapshotAsync();
+                if (!snap.Exists)
+                    return ResultadoOperacion.CrearError("La receta contiene un insumo inexistente.");
+                insumo = snap.ConvertTo<Insumo>();
+                snapshotsInsumos[r.InsumoId] = insumo;
+            }
+
+            if (r.DosisTeorica < 0)
+                return ResultadoOperacion.CrearError("La dosis debe ser mayor a cero.");
+
+            var dosis = r.DosisTeorica;
+            if (!string.IsNullOrWhiteSpace(r.UnidadMedida))
+            {
+                var convertida = conversion.Convertir(dosis, r.UnidadMedida, insumo.UnidadMedida);
+                if (conversion.Convertir(convertida, insumo.UnidadMedida, r.UnidadMedida) != dosis)
+                    return ResultadoOperacion.CrearError("La conversión de la dosis pierde precisión.");
+                dosis = convertida;
+            }
+            if (dosis <= 0)
+                return ResultadoOperacion.CrearError("La dosis debe ser mayor a cero.");
+
+            if (!await EsHerramientaSinTransaccion(insumo))
+                consumosTeoricos[r.InsumoId] = StockPrecision.Sumar(consumosTeoricos.GetValueOrDefault(r.InsumoId), dosis);
+        }
+
+        var hayDesvio = consumoReal != null && items
+            .Where(r => consumosTeoricos.ContainsKey(r.InsumoId))
+            .Any(r => consumoReal.TryGetValue(r.InsumoId, out var real) && real != r.DosisTeorica);
+        if (hayDesvio && string.IsNullOrWhiteSpace(justificacionDesvio))
+            return ResultadoOperacion.CrearError("Debe informar la justificación del desvío.");
+
+        var realesConvertidos = new Dictionary<string, decimal>(StringComparer.Ordinal);
+        if (consumoReal != null)
+        {
+            foreach (var grupo in items.Where(r => !string.IsNullOrWhiteSpace(r.InsumoId)).GroupBy(r => r.InsumoId, StringComparer.Ordinal))
+            {
+                if (!consumoReal.TryGetValue(grupo.Key, out var cantidad)) continue;
+                var grupoItems = grupo.ToList();
+                if (grupoItems.Select(r => r.UnidadMedida).Distinct(StringComparer.OrdinalIgnoreCase).Count() != 1)
+                    return ResultadoOperacion.CrearError("El consumo real requiere una única unidad de receta por producto.");
+
+                var insumo = snapshotsInsumos[grupo.Key];
+                var unidad = grupoItems[0].UnidadMedida;
+                var convertida = cantidad;
+                if (!string.IsNullOrWhiteSpace(unidad))
+                {
+                    convertida = conversion.Convertir(cantidad, unidad, insumo.UnidadMedida);
+                    if (conversion.Convertir(convertida, insumo.UnidadMedida, unidad) != cantidad)
+                        return ResultadoOperacion.CrearError("La conversión del consumo pierde precisión.");
+                }
+
+                if ((TipoInsumo.EsUnidadEntera(insumo.UnidadMedida) || TipoInsumo.EsUnidadEntera(unidad)) &&
+                    TipoInsumo.TieneDecimales(convertida))
+                {
+                    return ResultadoOperacion.CrearError($"El insumo '{insumo.Nombre}' medido en unidades no permite consumos decimales.");
+                }
+
+                realesConvertidos[grupo.Key] = convertida;
+            }
+        }
+
+        foreach (var (insumoId, teorico) in consumosTeoricos)
+        {
+            var cantidadAConsumir = realesConvertidos.TryGetValue(insumoId, out var real) ? real : teorico;
+            if (cantidadAConsumir <= 0) continue;
+
+            var insumo = snapshotsInsumos[insumoId];
+            var clave = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(referencia + "_" + insumoId)));
+            var reserva = await firestore.Collection("reservasHerramientas").Document(clave).GetSnapshotAsync();
+            var contador = await firestore.Collection("reservasHerramientasTotales").Document(insumoId).GetSnapshotAsync();
+            var reservado = contador.Exists ? Convert.ToDecimal(contador.GetValue<double>("Cantidad")) : 0m;
+            var propio = reserva.Exists && !reserva.GetValue<bool>("Liberada")
+                ? Convert.ToDecimal(reserva.GetValue<double>("Cantidad"))
+                : 0m;
+            if (reservado < propio)
+                return ResultadoOperacion.CrearError("El contador de reservas es inconsistente.");
+
+            var saldo = StockPrecision.Restar(insumo.StockActual, cantidadAConsumir);
+            if (saldo < StockPrecision.Restar(reservado, propio))
+                return ResultadoOperacion.CrearError($"Stock insuficiente para el insumo '{insumo.Nombre}'.");
+        }
+
+        return ResultadoOperacion.CrearExito("Consumo válido.");
     }
 
     public async Task<ResultadoOperacion> ValidarDisponibilidad(IEnumerable<RecetaInsumo> receta)
