@@ -184,7 +184,7 @@ internal sealed class TurnoOfertaPersistence(FirestoreDb db)
                 throw new InvalidOperationException("Cascada incompatible.");
             if (start <= createdUtc)
             {
-                tx.Update(cascadeRef, "ContinuationState", "Finalizada");
+                tx.Update(cascade.Reference, "ContinuationState", "Finalizada");
                 return null;
             }
             string? vacatingClientId = null;
