@@ -19,6 +19,8 @@ internal sealed class TurnoOfertaOrquestacion(FirestoreDb db, Func<DateTime>? cl
     {
         var now = NormalizeClock(clock?.Invoke() ?? DateTime.UtcNow);
         var cascade = await db.Collection("turno_cascadas").Document(cascadeId).GetSnapshotAsync();
+        if (cascade.Exists && cascade.TryGetValue<string>("ContinuationState", out var state) && state != "Pendiente")
+            return null;
         if (cascade.Exists && cascade.TryGetValue<string>("PendingId", out var pending) && !string.IsNullOrEmpty(pending))
         {
             var offer = await db.Collection("turno_ofertas").Document(pending).GetSnapshotAsync();

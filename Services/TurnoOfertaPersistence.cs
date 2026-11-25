@@ -182,6 +182,11 @@ internal sealed class TurnoOfertaPersistence(FirestoreDb db)
             var end = cascade.GetValue<DateTime>("VacancyEndUtc");
             if (start.Ticks > DateTime.MaxValue.Ticks - TimeSpan.FromDays(7).Ticks)
                 throw new InvalidOperationException("Cascada incompatible.");
+            if (start <= createdUtc)
+            {
+                tx.Update(cascadeRef, "ContinuationState", "Finalizada");
+                return null;
+            }
             var candidates = await tx.GetSnapshotAsync(db.Collection("turnos")
                 .WhereGreaterThan("InicioUtc", start).WhereLessThanOrEqualTo("InicioUtc", start.AddDays(7)));
             var eligible = new List<TurnoAdelantoCandidate>();
