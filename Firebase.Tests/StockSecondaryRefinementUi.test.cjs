@@ -79,13 +79,12 @@ test('la validación compartida muestra y limpia errores al recibir input y blur
   email.value = 'a@example.com'; email.blur(); assert.equal(errors['provider-email-validation-error'].textContent, ''); assert.equal(email.classList.contains('border-red-500'), false);
 });
 
-test('la vista conserva filas por proveedor y limita el resumen del grupo', () => {
+test('la vista agrupa por concurso y muestra detalle por proveedor en la comparativa', () => {
   const source = readFileSync('Views/Insumos/Cotizaciones.cshtml', 'utf8');
-  assert.match(source, /foreach \(var solicitud in Model\)/);
-  assert.match(source, /title="@string.Join\(", ", nombresGrupo\)"/);
-  assert.match(source, /nombresGrupo\.Where\(n => n != proveedorNombre\)\.Take\(2\)/);
-  assert.match(source, /nombresGrupo\.Count > 3 \? "\.\.\."/);
-  assert.match(source, /name="id" value="@solicitud.Id"/);
+  assert.match(source, /GroupBy\(s => s\.GrupoId\)/);
+  assert.match(source, /asp-action="AprobarGrupo"/);
+  assert.match(source, /name="grupoId" value="@grupo\.Key"/);
+  assert.match(source, /name="id" value="@item\.Solicitud\.Id"/);
 });
 
 test('el formulario de proveedor impide guardar datos inválidos mediante la validación compartida', () => {

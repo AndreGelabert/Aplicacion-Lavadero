@@ -540,13 +540,24 @@ public class PaqueteServicioController : Controller
     /// </summary>
     private async Task<IActionResult> CambiarEstadoPaquete(string id, string nuevoEstado, string accionAuditoria)
     {
-        var antes = await CapturarPaquete(await _paqueteServicioService.ObtenerPaquete(id));
-        await _paqueteServicioService.CambiarEstadoPaquete(id, nuevoEstado);
-        TempData["StateChangeEvent_UserId"] = id;
-        TempData["StateChangeEvent_NewState"] = nuevoEstado;
-        var actual = await _paqueteServicioService.ObtenerPaquete(id);
-        await RegistrarEvento(accionAuditoria, id, "PaqueteServicio", antes, await CapturarPaquete(actual), actual?.Nombre);
-        return RedirectToAction("Index");
+        var isAjax = string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+        try
+        {
+            var antes = await CapturarPaquete(await _paqueteServicioService.ObtenerPaquete(id));
+            await _paqueteServicioService.CambiarEstadoPaquete(id, nuevoEstado);
+            TempData["StateChangeEvent_UserId"] = id;
+            TempData["StateChangeEvent_NewState"] = nuevoEstado;
+            var actual = await _paqueteServicioService.ObtenerPaquete(id);
+            await RegistrarEvento(accionAuditoria, id, "PaqueteServicio", antes, await CapturarPaquete(actual), actual?.Nombre);
+            if (isAjax) return Json(new { success = true });
+            return RedirectToAction("Index");
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (isAjax) return BadRequest(new { success = false, message = ex.Message });
+            TempData["ErrorMessage"] = ex.Message;
+            return RedirectToAction("Index");
+        }
     }
     #endregion
 

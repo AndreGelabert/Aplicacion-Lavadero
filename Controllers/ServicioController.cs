@@ -482,7 +482,14 @@ public class ServicioController : Controller
         await CargarListasForm();
         Servicio servicio = null;
         if (!string.IsNullOrEmpty(id))
+        {
             servicio = await _servicioService.ObtenerServicio(id);
+            if (servicio != null && _insumoService != null)
+            {
+                var insumos = await _insumoService.ObtenerTodos(false);
+                SincronizarNombresInsumosReceta(servicio, insumos);
+            }
+        }
 
         return PartialView("_ServicioForm", servicio);
     }
@@ -550,6 +557,11 @@ public class ServicioController : Controller
         if (!string.IsNullOrEmpty(editId))
         {
             var servicio = await _servicioService.ObtenerServicio(editId);
+            if (servicio != null && _insumoService != null)
+            {
+                var insumos = await _insumoService.ObtenerTodos(false);
+                SincronizarNombresInsumosReceta(servicio, insumos);
+            }
             ViewBag.EditServicio = servicio;
             ViewBag.FormTitle = "Editando un Servicio";
             ViewBag.SubmitButtonText = "Guardar";
@@ -562,6 +574,39 @@ public class ServicioController : Controller
             ViewBag.SubmitButtonText = "Registrar";
             ViewBag.ClearButtonText = "Limpiar Campos";
             ViewBag.FormAction = "CrearServicioAjax";
+        }
+    }
+
+    /// <summary>
+    /// Sincroniza en memoria los nombres de insumos en la receta de un servicio con el catálogo vigente por InsumoId.
+    /// </summary>
+    private static void SincronizarNombresInsumosReceta(Servicio servicio, IEnumerable<Insumo> insumosCatalog)
+    {
+        if (servicio == null || insumosCatalog == null) return;
+        var catalogoDict = insumosCatalog
+            .Where(i => !string.IsNullOrEmpty(i.Id) && !string.IsNullOrEmpty(i.Nombre))
+            .GroupBy(i => i.Id, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First().Nombre, StringComparer.Ordinal);
+
+        void ActualizarLista(List<RecetaInsumo> receta)
+        {
+            if (receta == null) return;
+            foreach (var item in receta)
+            {
+                if (!string.IsNullOrEmpty(item.InsumoId) && catalogoDict.TryGetValue(item.InsumoId, out var nombreActualizado))
+                {
+                    item.NombreInsumo = nombreActualizado;
+                }
+            }
+        }
+
+        ActualizarLista(servicio.Receta);
+        if (servicio.Etapas != null)
+        {
+            foreach (var etapa in servicio.Etapas)
+            {
+                ActualizarLista(etapa.Receta);
+            }
         }
     }
 
@@ -579,6 +624,7 @@ public class ServicioController : Controller
             TryValidateModel(servicio);
         }
 
+        await MarcarReutilizablesEnRecetas(servicio);
         ValidateServicio(servicio);
         if (!ModelState.IsValid)
         {
@@ -595,6 +641,7 @@ public class ServicioController : Controller
     /// <returns>Resultado de la operación con éxito o detalle de error.</returns>
     private async Task<ResultadoOperacion> ProcesarActualizacionServicio(Servicio servicio)
     {
+        await MarcarReutilizablesEnRecetas(servicio);
         ValidateServicio(servicio);
         if (!ModelState.IsValid)
         {
@@ -602,6 +649,22 @@ public class ServicioController : Controller
         }
 
         return AplicarResultadoFormulario(await _form.Actualizar(servicio));
+    }
+
+    private async Task MarcarReutilizablesEnRecetas(Servicio servicio)
+    {
+        if (_insumoService == null) return;
+        var reutilizables = await _insumoService.ObtenerIdsHerramientas();
+        if (reutilizables.Count == 0) return;
+
+        foreach (var r in servicio.Receta ?? new())
+            if (r.Modalidad != "Tipo" && !string.IsNullOrWhiteSpace(r.InsumoId))
+                r.EsHerramienta = reutilizables.Contains(r.InsumoId);
+
+        foreach (var etapa in servicio.Etapas ?? new())
+            foreach (var r in etapa.Receta ?? new())
+                if (r.Modalidad != "Tipo" && !string.IsNullOrWhiteSpace(r.InsumoId))
+                    r.EsHerramienta = reutilizables.Contains(r.InsumoId);
     }
 
     private ResultadoOperacion AplicarResultadoFormulario(ServicioFormService.ResultadoFormulario resultado)
@@ -844,10 +907,10 @@ public class ServicioController : Controller
         ViewBag.TiposInsumoDisponibles = _tipoInsumoService == null ? new List<TipoInsumo>() : await _tipoInsumoService.ObtenerTodos(false);
         ViewBag.UnidadesReceta = TipoInsumo.Categorias.Todas.ToDictionary(c => c, c => TipoInsumo.ObtenerUnidadesPermitidas(c).OrderBy(u => u).ToArray());
         var insumos = _insumoService == null ? new List<Insumo>() : await _insumoService.ObtenerTodos(false);
-        ViewBag.InsumosDisponibles = insumos.Select(i => new InsumoRecetaOpcion(i.Id, i.Nombre, i.UnidadMedida)).ToList();
+        ViewBag.InsumosDisponibles = insumos.Select(i => new InsumoRecetaOpcion(i.Id, i.Nombre, i.UnidadMedida, i.Tipo)).ToList();
     }
 
-    public sealed record InsumoRecetaOpcion(string Id, string Nombre, string UnidadMedida);
+    public sealed record InsumoRecetaOpcion(string Id, string Nombre, string UnidadMedida, string Tipo = "");
 
     private async Task<IActionResult> ResponderCreacionTipo(ServicioTypeService.Creacion resultado, string entidad, string accionAuditoria)
     {

@@ -70,10 +70,27 @@ public class ConfiguracionController : Controller
     /// <param name="configuracion">Modelo de configuración a actualizar.</param>
     /// <param name="HorariosOperacion">Horarios de operación opcionales.</param>
     /// <returns>Redirección a Index tras actualizar.</returns>
+    private async Task CargarDirectivaSiAplica()
+    {
+        if (User.TienePermiso("Insumos.Modificar") && _comprasService != null)
+        {
+            try { ViewBag.DirectivaReabastecimiento = await _comprasService.ObtenerDirectiva(); }
+            catch { }
+        }
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Permiso("Configuracion.Modificar")]
-    public async Task<IActionResult> Actualizar(Configuracion configuracion, Dictionary<string, string>? HorariosOperacion)
+    public async Task<IActionResult> Actualizar(
+        Configuracion configuracion,
+        Dictionary<string, string>? HorariosOperacion,
+        string? ModoEmision = null,
+        string? PlantillaEmail = null,
+        string? AsuntoCotizacion = null,
+        string? CuerpoCotizacion = null,
+        string? AsuntoOrden = null,
+        string? CuerpoOrden = null)
     {
         try
         {
@@ -86,6 +103,7 @@ public class ConfiguracionController : Controller
             // Validar modelo
             if (!ModelState.IsValid)
             {
+                await CargarDirectivaSiAplica();
                 TempData["ErrorMessage"] = "Por favor, corrija los errores en el formulario.";
                 return View("Index", configuracion);
             }
@@ -93,9 +111,32 @@ public class ConfiguracionController : Controller
             // Validar que PaquetesDescuentoStep sea >= 5
             if (configuracion.PaquetesDescuentoStep < 5)
             {
+                await CargarDirectivaSiAplica();
                 ModelState.AddModelError("PaquetesDescuentoStep", "El paso de descuento debe ser al menos 5%");
                 TempData["ErrorMessage"] = "El paso de descuento debe ser al menos 5%";
                 return View("Index", configuracion);
+            }
+
+            if (User.TienePermiso("Insumos.Modificar") && _comprasService != null && Request.Form.ContainsKey("ModoEmision"))
+            {
+                var existenteDirectiva = await _comprasService.ObtenerDirectiva();
+                var directiva = new DirectivaReabastecimiento
+                {
+                    Id = existenteDirectiva.Id,
+                    ModoEmision = string.IsNullOrWhiteSpace(ModoEmision) ? existenteDirectiva.ModoEmision : ModoEmision,
+                    PlantillaEmail = Request.Form.ContainsKey("PlantillaEmail") ? (PlantillaEmail ?? string.Empty) : existenteDirectiva.PlantillaEmail,
+                    AsuntoCotizacion = Request.Form.ContainsKey("AsuntoCotizacion") ? (AsuntoCotizacion ?? string.Empty) : existenteDirectiva.AsuntoCotizacion,
+                    CuerpoCotizacion = Request.Form.ContainsKey("CuerpoCotizacion") ? (CuerpoCotizacion ?? string.Empty) : existenteDirectiva.CuerpoCotizacion,
+                    AsuntoOrden = Request.Form.ContainsKey("AsuntoOrden") ? (AsuntoOrden ?? string.Empty) : existenteDirectiva.AsuntoOrden,
+                    CuerpoOrden = Request.Form.ContainsKey("CuerpoOrden") ? (CuerpoOrden ?? string.Empty) : existenteDirectiva.CuerpoOrden
+                };
+                var resDirectiva = await _comprasService.GuardarDirectiva(directiva);
+                if (!resDirectiva.EsExitoso)
+                {
+                    ViewBag.DirectivaReabastecimiento = directiva;
+                    TempData["ErrorMessage"] = resDirectiva.MensajeError;
+                    return View("Index", configuracion);
+                }
             }
 
             var existente = await _configuracionService.ObtenerConfiguracion();
@@ -118,12 +159,14 @@ public class ConfiguracionController : Controller
         }
         catch (ArgumentException ex)
         {
+            await CargarDirectivaSiAplica();
             // Errores de validación específicos
             TempData["ErrorMessage"] = $"Error de validación: {ex.Message}";
             return View("Index", configuracion);
         }
         catch (Exception ex)
         {
+            await CargarDirectivaSiAplica();
             TempData["ErrorMessage"] = $"Error al actualizar la configuración: {ex.Message}";
             return View("Index", configuracion);
         }

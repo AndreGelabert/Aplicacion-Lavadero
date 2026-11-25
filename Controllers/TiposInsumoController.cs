@@ -20,6 +20,8 @@ public sealed class TipoInsumoModalInput
 
     [Required(ErrorMessage = "La unidad resumen es obligatoria")]
     public string UnidadResumen { get; set; } = string.Empty;
+
+    public bool EsReutilizable { get; set; }
 }
 
 [Authorize]
@@ -76,7 +78,8 @@ public sealed class TiposInsumoController(TipoInsumoService tipos) : Controller
             Id = crear ? string.Empty : input.Id!,
             Nombre = input.Nombre,
             Categoria = input.Categoria,
-            UnidadResumen = input.UnidadResumen
+            UnidadResumen = input.UnidadResumen,
+            EsReutilizable = input.EsReutilizable
         };
         var resultado = await tipos.GuardarConAuditoria(tipo, crear, Actor());
         if (!resultado.Resultado.EsExitoso) return BadRequest(new { mensaje = resultado.Resultado.MensajeError });

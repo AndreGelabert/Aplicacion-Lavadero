@@ -1405,8 +1405,15 @@ setupTipoVehiculoChangeHandler();
     window.submitPaqueteEstado = function (form) {
         const fd = new FormData(form);
         window.Peticiones.enviar(form.action, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(r => {
-                if (!r.ok) throw new Error('Estado HTTP ' + r.status);
+            .then(async r => {
+                if (!r.ok) {
+                    let errorMsg = 'No se pudo completar la acción.';
+                    try {
+                        const data = await r.json();
+                        if (data?.message) errorMsg = data.message;
+                    } catch { }
+                    throw new Error(errorMsg);
+                }
                 const accion = form.action.includes('Deactivate') ? 'desactivado' : 'reactivado';
                 showTableMessage('success', `Paquete ${accion} correctamente.`);
                 closePaqueteConfirmModal();
@@ -1414,7 +1421,7 @@ setupTipoVehiculoChangeHandler();
             })
             .catch(err => {
                 console.error('submitPaqueteEstado error:', err);
-                showTableMessage('error', 'No se pudo completar la acción.');
+                showTableMessage('error', err.message || 'No se pudo completar la acción.');
                 closePaqueteConfirmModal();
             });
         return false;

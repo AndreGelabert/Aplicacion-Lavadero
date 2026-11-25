@@ -26,7 +26,7 @@ namespace Firebase.Models
         [FirestoreProperty]
         [Required(ErrorMessage = "El nombre de la etapa es obligatorio")]
         [MinLength(3, ErrorMessage = "El nombre debe tener al menos 3 caracteres")]
-        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]{3,}$", 
+        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]{3,}$", 
         ErrorMessage = "El nombre debe contener al menos 3 letras")]
         public string Nombre { get; set; } = string.Empty;
 

@@ -65,7 +65,7 @@ public static class AuditCampos
     /// <summary>Campos auditables de Insumo.</summary>
     public static readonly IReadOnlyList<string> Insumo = new[]
     {
-        "Nombre", "Tipo", "UnidadMedida", "StockActual", "StockMinimo",
+        "Nombre", "Tipo", "UnidadMedida", "StockActual", "StockMinimo", "StockMaximo",
         "CantidadReabastecimiento", "ReabastecimientoAutomatico", "ProveedoresIds", "Estado"
     };
 
@@ -251,6 +251,7 @@ public static class AuditCampos
             ["UnidadMedida"] = i.UnidadMedida ?? "",
             ["StockActual"] = i.StockActual.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["StockMinimo"] = i.StockMinimo.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["StockMaximo"] = i.StockMaximo.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["CantidadReabastecimiento"] = i.CantidadReabastecimiento.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["ReabastecimientoAutomatico"] = i.ReabastecimientoAutomatico.ToString(),
             ["ProveedoresIds"] = System.Text.Json.JsonSerializer.Serialize((i.ProveedoresIds ?? new()).OrderBy(p => p, StringComparer.Ordinal)),
@@ -268,6 +269,7 @@ public static class AuditCampos
             ["Categoria"] = t.Categoria ?? "",
             ["UnidadResumen"] = t.UnidadResumen ?? "",
             ["EsProtegido"] = t.EsProtegido.ToString(),
+            ["EsReutilizable"] = t.EsReutilizable.ToString(),
             ["Estado"] = t.Estado ?? ""
         };
     }
@@ -313,7 +315,9 @@ public static class AuditCampos
                 i.PrecioUnitario
             })),
             ["Notas"] = s.Notas ?? "",
-            ["FechaEntregaPreferidaUtc"] = s.FechaEntregaPreferidaUtc?.ToString("O", System.Globalization.CultureInfo.InvariantCulture) ?? ""
+            ["FechaEntregaPreferidaUtc"] = s.FechaEntregaPreferidaUtc?.ToString("O", System.Globalization.CultureInfo.InvariantCulture) ?? "",
+            ["EmailEnviado"] = s.EmailEnviado ? "true" : "false",
+            ["FechaEnvioEmailUtc"] = s.FechaEnvioEmailUtc?.ToString("O", System.Globalization.CultureInfo.InvariantCulture) ?? ""
         };
     }
 

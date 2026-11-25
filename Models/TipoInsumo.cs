@@ -54,7 +54,13 @@ public sealed class TipoInsumo
     public bool EsProtegido { get; set; }
 
     [FirestoreProperty]
+    public bool EsReutilizable { get; set; }
+
+    [FirestoreProperty]
     public string Estado { get; set; } = "Activo";
+
+    public bool EsInsumoReutilizable() =>
+        EsReutilizable || EsProtegido || string.Equals(Nombre, TipoHerramienta, StringComparison.OrdinalIgnoreCase);
 
     public static bool EsCategoriaValida(string? categoria)
     {
@@ -102,6 +108,22 @@ public sealed class TipoInsumo
         if (UnidadesConteo.Contains(u)) return Categorias.Unidades;
         return null;
     }
+
+    /// <summary>
+    /// Determina si una unidad de medida representa cantidades discretas (conteo entero),
+    /// como "unidad", "unidades", "u".
+    /// </summary>
+    public static bool EsUnidadEntera(string? unidad)
+    {
+        if (string.IsNullOrWhiteSpace(unidad)) return false;
+        var u = unidad.Trim();
+        return UnidadesConteo.Contains(u);
+    }
+
+    /// <summary>
+    /// Determina si un valor decimal posee parte fraccionaria (no es entero).
+    /// </summary>
+    public static bool TieneDecimales(decimal valor) => decimal.Remainder(valor, 1m) != 0m;
 
     /// <summary>
     /// Determina si dos unidades de medida pertenecen a la misma magnitud física (compatibles)

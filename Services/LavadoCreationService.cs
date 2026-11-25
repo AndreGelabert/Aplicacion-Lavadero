@@ -60,6 +60,9 @@ public class LavadoCreationService
         return new(new Contexto(cliente, vehiculosConServicios, paquetesPorId));
     }
 
+    public Task<ResultadoOperacion> ValidarDisponibilidadInicio(IReadOnlyList<(Lavado Lavado, IReadOnlyDictionary<int, string>? Seleccion)> entradas) =>
+        _lavadoService.ValidarDisponibilidadInicio(entradas);
+
     public Task CrearLavadosConInicio(IReadOnlyList<(Lavado Lavado, IReadOnlyDictionary<int, string>? Seleccion)> entradas) =>
         _lavadoService.CrearLavadosConInicio(entradas);
 

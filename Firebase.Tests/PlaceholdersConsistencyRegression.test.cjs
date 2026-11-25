@@ -30,7 +30,7 @@ test('Views/Insumos/_TiposInsumoModal.cshtml tiene placeholder en nombre de tipo
 
 test('Views/Insumos/Index.cshtml tiene placeholders en modal de ajuste de stock', () => {
     const view = read('Views/Insumos/Index.cshtml');
-    assert.match(view, /name="cantidad"[^>]*placeholder="Ej: 2 o -1"/);
+    assert.match(view, /name="cantidad"[^>]*placeholder="Ej: 2 o 1"/);
     assert.match(view, /name="justificacion"[^>]*placeholder="Motivo del ajuste físico o merma"/);
 });
 

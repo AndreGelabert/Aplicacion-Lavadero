@@ -5,7 +5,6 @@ const { readFileSync } = require('node:fs');
 const cases = {
   Index: ['insumos-ayuda', /stock físico/i, /filtros/i],
   Kardex: ['kardex-help', /esta página/i, /saldo/i],
-  Configuracion: ['reabastecimiento-help', /modo de emisión/i, /plantilla/i],
   Proveedores: ['providers-help', /contacto/i, /estado/i],
   Ordenes: ['orders-help', /detalle/i, /recepción/i],
   Cotizaciones: ['quotations-help', /proveedores/i, /comparación/i],

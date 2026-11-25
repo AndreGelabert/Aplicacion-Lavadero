@@ -128,9 +128,16 @@ public sealed class InsumoService(
 
     public async Task<HashSet<string>> ObtenerIdsHerramientas()
     {
+        var tiposSnap = await firestore.Collection(TipoInsumoService.Collection).GetSnapshotAsync();
+        var tiposReutilizablesIds = tiposSnap.Documents
+            .Select(d => { var t = d.ConvertTo<TipoInsumo>(); t.Id = d.Id; return t; })
+            .Where(t => t.EsInsumoReutilizable())
+            .Select(t => t.Id)
+            .ToHashSet(StringComparer.Ordinal);
         var insumos = await ObtenerTodos(true);
         return insumos
-            .Where(i => string.Equals(i.Tipo, TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase))
+            .Where(i => (!string.IsNullOrWhiteSpace(i.TipoId) && tiposReutilizablesIds.Contains(i.TipoId)) ||
+                        string.Equals(i.Tipo, TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase))
             .Select(i => i.Id)
             .ToHashSet(StringComparer.Ordinal);
     }
@@ -158,8 +165,23 @@ public sealed class InsumoService(
         insumo.Nombre = (insumo.Nombre ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(insumo.Nombre))
             return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("El nombre del insumo es obligatorio."));
-        if (insumo.StockMinimo < 0 || insumo.CantidadReabastecimiento < 0)
+        if (insumo.StockMinimo <= 0)
+            return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("El stock mínimo debe ser mayor a cero."));
+        if (insumo.StockMaximo < 0 || insumo.CantidadReabastecimiento < 0)
             return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("Los niveles de stock no pueden ser negativos."));
+        if (insumo.StockMaximo > 0 && insumo.StockMaximo <= insumo.StockMinimo)
+            return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("El stock máximo debe ser mayor al stock mínimo."));
+        if (insumo.ReabastecimientoAutomatico && insumo.StockMaximo <= insumo.StockMinimo)
+            return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("El stock máximo debe ser mayor al stock mínimo para el reabastecimiento automático."));
+        if (TipoInsumo.EsUnidadEntera(insumo.UnidadMedida))
+        {
+            if (TipoInsumo.TieneDecimales(insumo.StockMinimo) ||
+                TipoInsumo.TieneDecimales(insumo.StockMaximo) ||
+                TipoInsumo.TieneDecimales(insumo.CantidadReabastecimiento))
+            {
+                return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("Los insumos medidos en unidades no permiten valores decimales en los niveles de stock."));
+            }
+        }
         insumo.ProveedoresIds = (insumo.ProveedoresIds ?? new()).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToList();
         if (insumo.ReabastecimientoAutomatico && insumo.ProveedoresIds.Count == 0)
             return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("Seleccione al menos un proveedor para el reabastecimiento automático."));
@@ -359,6 +381,7 @@ public sealed class InsumoService(
                     UnidadMedida = actual.UnidadMedida,
                     StockActual = actual.StockActual,
                     StockMinimo = insumo.StockMinimo,
+                    StockMaximo = insumo.StockMaximo,
                     CantidadReabastecimiento = insumo.CantidadReabastecimiento,
                     ReabastecimientoAutomatico = insumo.ReabastecimientoAutomatico,
                     ProveedoresIds = insumo.ProveedoresIds,
@@ -384,6 +407,7 @@ public sealed class InsumoService(
                     ["Tipo"] = insumoActualizado.Tipo,
                     ["UnidadMedida"] = insumoActualizado.UnidadMedida,
                     ["StockMinimo"] = DecimalFirestore.ToFirestore(insumoActualizado.StockMinimo),
+                    ["StockMaximo"] = DecimalFirestore.ToFirestore(insumoActualizado.StockMaximo),
                     ["CantidadReabastecimiento"] = DecimalFirestore.ToFirestore(insumoActualizado.CantidadReabastecimiento),
                     ["ReabastecimientoAutomatico"] = insumoActualizado.ReabastecimientoAutomatico,
                     ["ProveedoresIds"] = insumoActualizado.ProveedoresIds
@@ -1058,16 +1082,22 @@ public sealed class StockService(
                 throw new InvalidOperationException("El consumo real requiere una única unidad de receta por producto.");
             var snapshot = await transaction.GetSnapshotAsync(firestore.Collection("insumos").Document(grupo.Key));
             if (!snapshot.Exists) throw new InvalidOperationException("La receta contiene un insumo inexistente.");
+            var insumoPersistido = snapshot.ConvertTo<Insumo>();
             var unidad = items[0].UnidadMedida;
             StockPrecision.ExigirRepresentable(cantidad);
             if (!string.IsNullOrWhiteSpace(unidad))
             {
-                var destino = snapshot.ConvertTo<Insumo>().UnidadMedida;
+                var destino = insumoPersistido.UnidadMedida;
                 var conversion = new ConversionUnidadesService();
                 var convertida = conversion.Convertir(cantidad, unidad, destino);
                 if (conversion.Convertir(convertida, destino, unidad) != cantidad)
                     throw new InvalidOperationException("La conversión del consumo pierde precisión.");
                 cantidad = StockPrecision.ExigirRepresentable(convertida);
+            }
+            if (TipoInsumo.EsUnidadEntera(insumoPersistido.UnidadMedida) || TipoInsumo.EsUnidadEntera(unidad))
+            {
+                if (TipoInsumo.TieneDecimales(cantidad))
+                    throw new InvalidOperationException($"El insumo '{insumoPersistido.Nombre}' medido en unidades no permite consumos decimales.");
             }
             resultado.Add(new ConsumoReceta(grupo.Key, cantidad));
         }
@@ -1079,7 +1109,12 @@ public sealed class StockService(
         if (!string.IsNullOrWhiteSpace(insumo.TipoId))
         {
             var tipo = await transaction.GetSnapshotAsync(firestore.Collection(TipoInsumoService.Collection).Document(insumo.TipoId));
-            if (tipo.Exists) return string.Equals(tipo.ConvertTo<TipoInsumo>().Nombre, TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase);
+            if (tipo.Exists)
+            {
+                var t = tipo.ConvertTo<TipoInsumo>();
+                t.Id = tipo.Id;
+                return t.EsInsumoReutilizable();
+            }
         }
         return string.Equals(insumo.Tipo, TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase);
     }
@@ -1154,6 +1189,199 @@ public sealed class StockService(
             });
         }
         transaction.Create(markerRef, new Dictionary<string, object> { ["Fecha"] = Timestamp.GetCurrentTimestamp() });
+    }
+
+    internal async Task<ResultadoOperacion> ValidarDisponibilidadConReservas(
+        IEnumerable<(IEnumerable<RecetaInsumo> Receta, IReadOnlyDictionary<int, string>? Seleccion)> recetas)
+    {
+        var dosisPorInsumo = new Dictionary<string, decimal>(StringComparer.Ordinal);
+        var snapshotsInsumos = new Dictionary<string, Insumo>(StringComparer.Ordinal);
+
+        foreach (var (receta, seleccion) in recetas)
+        {
+            var lista = (receta ?? Enumerable.Empty<RecetaInsumo>()).ToList();
+            for (var i = 0; i < lista.Count; i++)
+            {
+                var r = lista[i];
+                if (r.DosisTeorica <= 0) continue;
+                var esTipo = string.Equals(r.Modalidad, "Tipo", StringComparison.OrdinalIgnoreCase);
+                var id = r.InsumoId;
+                if (esTipo && seleccion != null && seleccion.TryGetValue(i, out var elegido) && !string.IsNullOrWhiteSpace(elegido))
+                    id = elegido;
+                if (string.IsNullOrWhiteSpace(id)) continue;
+
+                if (!snapshotsInsumos.TryGetValue(id, out var insumo))
+                {
+                    var snap = await firestore.Collection("insumos").Document(id).GetSnapshotAsync();
+                    if (!snap.Exists)
+                        return ResultadoOperacion.CrearError("La receta contiene un insumo inexistente.");
+                    insumo = snap.ConvertTo<Insumo>();
+                    snapshotsInsumos[id] = insumo;
+                }
+
+                var conversion = new ConversionUnidadesService();
+                var dosis = conversion.Convertir(r.DosisTeorica, string.IsNullOrWhiteSpace(r.UnidadMedida) ? insumo.UnidadMedida : r.UnidadMedida, insumo.UnidadMedida);
+                if (dosis <= 0)
+                    return ResultadoOperacion.CrearError("La dosis debe ser mayor a cero.");
+
+                dosisPorInsumo[id] = StockPrecision.Sumar(dosisPorInsumo.GetValueOrDefault(id), dosis);
+            }
+        }
+
+        foreach (var (insumoId, requerido) in dosisPorInsumo)
+        {
+            var insumo = snapshotsInsumos[insumoId];
+            var herramienta = await EsHerramientaSinTransaccion(insumo);
+
+            var contador = await firestore.Collection("reservasHerramientasTotales").Document(insumoId).GetSnapshotAsync();
+            var reservado = contador.Exists ? Convert.ToDecimal(contador.GetValue<double>("Cantidad")) : 0m;
+            if (insumo.StockActual - reservado < requerido)
+            {
+                return ResultadoOperacion.CrearError(herramienta
+                    ? "No hay herramientas suficientes disponibles."
+                    : $"No hay stock suficiente de '{insumo.Nombre}' para iniciar la operación.");
+            }
+        }
+
+        return ResultadoOperacion.CrearExito("Stock suficiente.");
+    }
+
+    private async Task<bool> EsHerramientaSinTransaccion(Insumo insumo)
+    {
+        if (!string.IsNullOrWhiteSpace(insumo.TipoId))
+        {
+            var tipoSnap = await firestore.Collection(TipoInsumoService.Collection).Document(insumo.TipoId).GetSnapshotAsync();
+            if (tipoSnap.Exists)
+            {
+                var t = tipoSnap.ConvertTo<TipoInsumo>();
+                t.Id = tipoSnap.Id;
+                return t.EsInsumoReutilizable();
+            }
+        }
+        return string.Equals(insumo.Tipo, TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal async Task<ResultadoOperacion> ValidarConsumoFinalizacion(
+        string referencia,
+        IEnumerable<RecetaInsumo> receta,
+        string? consumoRealJson,
+        string? justificacionDesvio)
+    {
+        Dictionary<string, decimal>? consumoReal = null;
+        if (!string.IsNullOrWhiteSpace(consumoRealJson))
+        {
+            try
+            {
+                consumoReal = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, decimal>>(consumoRealJson);
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return ResultadoOperacion.CrearError("El formato del consumo real es inválido.");
+            }
+        }
+
+        var items = (receta ?? Enumerable.Empty<RecetaInsumo>()).ToList();
+        if (consumoReal != null && consumoReal.Any(x => items.All(r => r.InsumoId != x.Key) || x.Value < 0))
+            return ResultadoOperacion.CrearError("El consumo real contiene insumos o cantidades inválidas.");
+
+        var markerSnap = await firestore.Collection("consumosEtapa").Document(referencia).GetSnapshotAsync();
+        if (markerSnap.Exists)
+            return ResultadoOperacion.CrearExito("Consumo ya registrado.");
+
+        var snapshotsInsumos = new Dictionary<string, Insumo>(StringComparer.Ordinal);
+        var consumosTeoricos = new Dictionary<string, decimal>(StringComparer.Ordinal);
+        var conversion = new ConversionUnidadesService();
+
+        foreach (var r in items)
+        {
+            if (string.IsNullOrWhiteSpace(r.InsumoId)) continue;
+
+            if (!snapshotsInsumos.TryGetValue(r.InsumoId, out var insumo))
+            {
+                var snap = await firestore.Collection("insumos").Document(r.InsumoId).GetSnapshotAsync();
+                if (!snap.Exists)
+                    return ResultadoOperacion.CrearError("La receta contiene un insumo inexistente.");
+                insumo = snap.ConvertTo<Insumo>();
+                snapshotsInsumos[r.InsumoId] = insumo;
+            }
+
+            if (r.DosisTeorica < 0)
+                return ResultadoOperacion.CrearError("La dosis debe ser mayor a cero.");
+
+            var dosis = r.DosisTeorica;
+            if (!string.IsNullOrWhiteSpace(r.UnidadMedida))
+            {
+                var convertida = conversion.Convertir(dosis, r.UnidadMedida, insumo.UnidadMedida);
+                if (conversion.Convertir(convertida, insumo.UnidadMedida, r.UnidadMedida) != dosis)
+                    return ResultadoOperacion.CrearError("La conversión de la dosis pierde precisión.");
+                dosis = convertida;
+            }
+            if (dosis <= 0)
+                return ResultadoOperacion.CrearError("La dosis debe ser mayor a cero.");
+
+            if (!await EsHerramientaSinTransaccion(insumo))
+                consumosTeoricos[r.InsumoId] = StockPrecision.Sumar(consumosTeoricos.GetValueOrDefault(r.InsumoId), dosis);
+        }
+
+        var hayDesvio = consumoReal != null && items
+            .Where(r => consumosTeoricos.ContainsKey(r.InsumoId))
+            .Any(r => consumoReal.TryGetValue(r.InsumoId, out var real) && real != r.DosisTeorica);
+        if (hayDesvio && string.IsNullOrWhiteSpace(justificacionDesvio))
+            return ResultadoOperacion.CrearError("Debe informar la justificación del desvío.");
+
+        var realesConvertidos = new Dictionary<string, decimal>(StringComparer.Ordinal);
+        if (consumoReal != null)
+        {
+            foreach (var grupo in items.Where(r => !string.IsNullOrWhiteSpace(r.InsumoId)).GroupBy(r => r.InsumoId, StringComparer.Ordinal))
+            {
+                if (!consumoReal.TryGetValue(grupo.Key, out var cantidad)) continue;
+                var grupoItems = grupo.ToList();
+                if (grupoItems.Select(r => r.UnidadMedida).Distinct(StringComparer.OrdinalIgnoreCase).Count() != 1)
+                    return ResultadoOperacion.CrearError("El consumo real requiere una única unidad de receta por producto.");
+
+                var insumo = snapshotsInsumos[grupo.Key];
+                var unidad = grupoItems[0].UnidadMedida;
+                var convertida = cantidad;
+                if (!string.IsNullOrWhiteSpace(unidad))
+                {
+                    convertida = conversion.Convertir(cantidad, unidad, insumo.UnidadMedida);
+                    if (conversion.Convertir(convertida, insumo.UnidadMedida, unidad) != cantidad)
+                        return ResultadoOperacion.CrearError("La conversión del consumo pierde precisión.");
+                }
+
+                if ((TipoInsumo.EsUnidadEntera(insumo.UnidadMedida) || TipoInsumo.EsUnidadEntera(unidad)) &&
+                    TipoInsumo.TieneDecimales(convertida))
+                {
+                    return ResultadoOperacion.CrearError($"El insumo '{insumo.Nombre}' medido en unidades no permite consumos decimales.");
+                }
+
+                realesConvertidos[grupo.Key] = convertida;
+            }
+        }
+
+        foreach (var (insumoId, teorico) in consumosTeoricos)
+        {
+            var cantidadAConsumir = realesConvertidos.TryGetValue(insumoId, out var real) ? real : teorico;
+            if (cantidadAConsumir <= 0) continue;
+
+            var insumo = snapshotsInsumos[insumoId];
+            var clave = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(referencia + "_" + insumoId)));
+            var reserva = await firestore.Collection("reservasHerramientas").Document(clave).GetSnapshotAsync();
+            var contador = await firestore.Collection("reservasHerramientasTotales").Document(insumoId).GetSnapshotAsync();
+            var reservado = contador.Exists ? Convert.ToDecimal(contador.GetValue<double>("Cantidad")) : 0m;
+            var propio = reserva.Exists && !reserva.GetValue<bool>("Liberada")
+                ? Convert.ToDecimal(reserva.GetValue<double>("Cantidad"))
+                : 0m;
+            if (reservado < propio)
+                return ResultadoOperacion.CrearError("El contador de reservas es inconsistente.");
+
+            var saldo = StockPrecision.Restar(insumo.StockActual, cantidadAConsumir);
+            if (saldo < StockPrecision.Restar(reservado, propio))
+                return ResultadoOperacion.CrearError($"Stock insuficiente para el insumo '{insumo.Nombre}'.");
+        }
+
+        return ResultadoOperacion.CrearExito("Consumo válido.");
     }
 
     public async Task<ResultadoOperacion> ValidarDisponibilidad(IEnumerable<RecetaInsumo> receta)
@@ -1247,6 +1475,8 @@ public sealed class StockService(
                 return new ResultadoAuditoriaStock(ResultadoOperacion.CrearError("El insumo no existe."));
 
             var insumo = insumoSnapshot.ConvertTo<Insumo>();
+            if (TipoInsumo.EsUnidadEntera(insumo.UnidadMedida) && TipoInsumo.TieneDecimales(cantidad))
+                return new ResultadoAuditoriaStock(ResultadoOperacion.CrearError("Los insumos medidos en unidades no permiten ajustes con cantidades decimales."));
             var delta = ingreso ? cantidad : -cantidad;
             var saldo = insumo.StockActual + delta;
 
@@ -1287,6 +1517,7 @@ public sealed class StockService(
                 UnidadMedida = insumo.UnidadMedida,
                 StockActual = saldo,
                 StockMinimo = insumo.StockMinimo,
+                StockMaximo = insumo.StockMaximo,
                 CantidadReabastecimiento = insumo.CantidadReabastecimiento,
                 ReabastecimientoAutomatico = insumo.ReabastecimientoAutomatico,
                 ProveedoresIds = insumo.ProveedoresIds,
@@ -1711,7 +1942,7 @@ public sealed class StockService(
                     Estado = "PendienteAprobacion",
                     Notas = "El precio y la disponibilidad requieren confirmación del proveedor.",
                     Items = new() { new OrdenCompraItem { InsumoId = insumo.Id, NombreInsumo = insumo.Nombre,
-                        Cantidad = insumo.CantidadReabastecimiento, PrecioUnitario = antecedente.Item.PrecioUnitario } },
+                        Cantidad = insumo.CalcularCantidadReposicion(), PrecioUnitario = antecedente.Item.PrecioUnitario } },
                     FechaEmision = ahoraUtc
                 };
                 transaction.Create(nueva, orden);
@@ -1739,7 +1970,7 @@ public sealed class StockService(
                     Estado = directiva.ModoEmision == "RequiereAprobacion" ? "PendienteAprobacion" : "Pendiente",
                     Items = new List<OrdenCompraItem>
                     {
-                        new() { InsumoId = insumo.Id, NombreInsumo = insumo.Nombre, Cantidad = insumo.CantidadReabastecimiento }
+                        new() { InsumoId = insumo.Id, NombreInsumo = insumo.Nombre, Cantidad = insumo.CalcularCantidadReposicion() }
                     }
                 };
                 transaction.Create(reference, solicitud);
@@ -1758,10 +1989,13 @@ public sealed class StockService(
                     logger.LogWarning("No se pudo enviar la solicitud automática {SolicitudId}: proveedor sin email.", solicitud.Id);
                     continue;
                 }
-                var contexto = await new ComprasService(firestore).ObtenerContextoEmail(solicitud.Items);
+                var comprasService = new ComprasService(firestore);
+                var contexto = await comprasService.ObtenerContextoEmail(solicitud.Items);
                 var resultado = await emailSender.EnviarAsync(InsumosEmailFormatter.FormatearSolicitud(
                     directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades));
-                if (!resultado.Enviado)
+                if (resultado.Enviado)
+                    await comprasService.MarcarEmailSolicitudEnviado(solicitud.Id);
+                else
                     logger.LogWarning("No se pudo enviar la solicitud automática {SolicitudId}: {Mensaje}", solicitud.Id, resultado.Mensaje);
             }
         }
@@ -2261,6 +2495,101 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
         });
     }
 
+    public sealed record ResultadoAuditoriaSolicitudesGrupo(
+        ResultadoOperacion Resultado,
+        string GrupoId = "",
+        List<string>? SolicitudesAprobadas = null);
+
+    public Task<ResultadoOperacion> AprobarGrupoSolicitudes(string grupoId, ActorAuditoria actor) =>
+        AprobarGrupoSolicitudes(grupoId, actor.UserId, actor.UserEmail);
+
+    public Task<ResultadoAuditoriaSolicitudesGrupo> AprobarGrupoSolicitudesConAuditoria(string grupoId, ActorAuditoria actor) =>
+        AprobarGrupoSolicitudesConAuditoria(grupoId, actor.UserId, actor.UserEmail);
+
+    public Task<ResultadoOperacion> AprobarGrupoSolicitudes(string grupoId) =>
+        AprobarGrupoSolicitudes(grupoId, string.Empty, string.Empty);
+
+    public async Task<ResultadoOperacion> AprobarGrupoSolicitudes(string grupoId, string userId = "", string userEmail = "") =>
+        (await AprobarGrupoSolicitudesConAuditoria(grupoId, userId, userEmail)).Resultado;
+
+    public async Task<ResultadoAuditoriaSolicitudesGrupo> AprobarGrupoSolicitudesConAuditoria(string grupoId, string userId = "", string userEmail = "")
+    {
+        if (string.IsNullOrWhiteSpace(grupoId))
+            return new ResultadoAuditoriaSolicitudesGrupo(ResultadoOperacion.CrearError("El concurso de cotización no existe."));
+
+        return await InsumosTransacciones.EjecutarAsync(firestore, async transaction =>
+        {
+            var query = firestore.Collection("solicitudesCotizacion").WhereEqualTo("GrupoId", grupoId);
+            var snapshot = await transaction.GetSnapshotAsync(query);
+            if (snapshot.Count == 0)
+                return new ResultadoAuditoriaSolicitudesGrupo(ResultadoOperacion.CrearError("El concurso de cotización no existe."));
+
+            var pendientes = new List<(DocumentReference Ref, SolicitudCotizacion Solicitud, string SolId)>();
+            var yaAprobadas = 0;
+
+            foreach (var doc in snapshot.Documents)
+            {
+                var solicitud = doc.ConvertTo<SolicitudCotizacion>();
+                var solId = string.IsNullOrEmpty(solicitud.Id) ? doc.Id : solicitud.Id;
+
+                if (solicitud.Estado == "PendienteAprobacion")
+                {
+                    pendientes.Add((doc.Reference, solicitud, solId));
+                }
+                else if (solicitud.Estado == "Pendiente")
+                {
+                    yaAprobadas++;
+                }
+            }
+
+            if (pendientes.Count == 0)
+            {
+                if (yaAprobadas > 0)
+                    return new ResultadoAuditoriaSolicitudesGrupo(
+                        ResultadoOperacion.CrearExito("El concurso de cotización ya se encuentra aprobado."),
+                        grupoId,
+                        new List<string>());
+
+                return new ResultadoAuditoriaSolicitudesGrupo(
+                    ResultadoOperacion.CrearError("El concurso no tiene solicitudes pendientes de aprobación."),
+                    grupoId);
+            }
+
+            var ahora = DateTime.UtcNow;
+            var timestamp = new DateTime(ahora.Ticks - (ahora.Ticks % TimeSpan.TicksPerMillisecond), DateTimeKind.Utc);
+            var aprobadasIds = new List<string>();
+
+            foreach (var (docRef, solicitud, solId) in pendientes)
+            {
+                var antes = AuditCampos.CapturarSolicitudCotizacion(solicitud);
+                solicitud.Estado = "Pendiente";
+                var despues = AuditCampos.CapturarSolicitudCotizacion(solicitud);
+
+                transaction.Update(docRef, "Estado", "Pendiente");
+
+                RegistrarAuditoriaEnTransaccion(transaction, new AuditLog
+                {
+                    UserId = userId ?? string.Empty,
+                    UserEmail = userEmail ?? string.Empty,
+                    Action = "Aprobación de solicitud de cotización (concurso)",
+                    TargetId = solId,
+                    TargetType = "SolicitudCotizacion",
+                    NombreHistorico = $"Solicitud {solId}",
+                    Antes = antes,
+                    Despues = despues,
+                    Timestamp = timestamp
+                });
+
+                aprobadasIds.Add(solId);
+            }
+
+            return new ResultadoAuditoriaSolicitudesGrupo(
+                ResultadoOperacion.CrearExito($"Concurso de cotización aprobado ({aprobadasIds.Count} solicitudes autorizadas)."),
+                grupoId,
+                aprobadasIds);
+        });
+    }
+
     public async Task<ResultadoOperacion> RegistrarRespuesta(CotizacionRespuesta respuesta, string userId = "", string userEmail = "")
     {
         if (string.IsNullOrWhiteSpace(respuesta.SolicitudId)) return ResultadoOperacion.CrearError("La solicitud de cotización no existe.");
@@ -2342,6 +2671,22 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
             RegistrarAuditoriaEnTransaccion(transaction, new AuditLog { UserId = userId, UserEmail = userEmail, Action = "Emision Solicitud Cotizacion", TargetType = "SolicitudCotizacion", TargetId = grupo, NombreHistorico = $"Grupo {grupo}", Antes = new(), Despues = new() { ["GrupoId"] = grupo, ["Solicitudes"] = System.Text.Json.JsonSerializer.Serialize(solicitudesAuditadas) }, Timestamp = DateTime.UtcNow });
             return ResultadoOperacion.CrearExito("Solicitudes de cotización creadas.");
         });
+    }
+
+    public async Task<ResultadoOperacion> MarcarEmailSolicitudEnviado(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return ResultadoOperacion.CrearError("La solicitud no existe.");
+        var docRef = firestore.Collection("solicitudesCotizacion").Document(id);
+        var snap = await docRef.GetSnapshotAsync();
+        if (!snap.Exists) return ResultadoOperacion.CrearError("La solicitud no existe.");
+
+        var ahora = DateTime.UtcNow;
+        await docRef.UpdateAsync(new Dictionary<string, object>
+        {
+            { "EmailEnviado", true },
+            { "FechaEnvioEmailUtc", ahora }
+        });
+        return ResultadoOperacion.CrearExito("Email registrado como enviado.");
     }
 
     public Task<ResultadoOperacion> CrearSolicitud(SolicitudCotizacion solicitud) =>

@@ -297,6 +297,21 @@ namespace Firebase.Services
         }
 
         // The caller must complete all transaction reads, including these stock reads, before writing.
+        internal Task<ResultadoOperacion> ValidarDisponibilidadInicio(
+            IReadOnlyList<(Lavado Lavado, IReadOnlyDictionary<int, string>? Seleccion)> entradas)
+        {
+            var recetas = entradas
+                .Select(e => (e.Lavado.Servicios.OrderBy(s => s.Orden).FirstOrDefault(), e.Seleccion))
+                .Where(x => x.Item1 != null)
+                .Select(x =>
+                {
+                    var primero = x.Item1!;
+                    var etapa = primero.Etapas.FirstOrDefault();
+                    return ((IEnumerable<RecetaInsumo>)(etapa?.Receta ?? primero.Receta), x.Seleccion);
+                });
+            return _stockService.ValidarDisponibilidadConReservas(recetas);
+        }
+
         internal async Task<List<StockService.RecetaServicio>> PrepararInicioEnTransaccion(
             Transaction transaction, IReadOnlyList<(Lavado Lavado, IReadOnlyDictionary<int, string>? Seleccion)> entradas)
         {
@@ -760,6 +775,31 @@ namespace Firebase.Services
         /// <summary>
         /// Finaliza un servicio específico dentro de un lavado.
         /// </summary>
+        public async Task<ResultadoOperacion> ValidarFinalizacionServicio(string lavadoId, string servicioId, string? consumoRealJson = null, string? justificacionDesvio = null)
+        {
+            var actual = await ObtenerLavado(lavadoId);
+            if (actual == null) return ResultadoOperacion.CrearError("No se encontró el lavado");
+            var seleccionado = actual.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
+            if (seleccionado == null) return ResultadoOperacion.CrearError("No se encontró el servicio en el lavado");
+            if (seleccionado.Estado is "Realizado" or "RealizadoParcialmente") return ResultadoOperacion.CrearExito("El servicio ya estaba finalizado.");
+            if (seleccionado.Etapas.Any()) return ResultadoOperacion.CrearExito("Validación delegada a etapas.");
+            if (seleccionado.Estado != "EnProceso") return ResultadoOperacion.CrearError("El servicio no está en proceso.");
+            return await _stockService.ValidarConsumoFinalizacion($"{lavadoId}_{servicioId}_servicio", seleccionado.Receta, consumoRealJson, justificacionDesvio);
+        }
+
+        public async Task<ResultadoOperacion> ValidarFinalizacionEtapa(string lavadoId, string servicioId, string etapaId, string? consumoRealJson = null, string? justificacionDesvio = null)
+        {
+            var actual = await ObtenerLavado(lavadoId);
+            if (actual == null) return ResultadoOperacion.CrearError("No se encontró el lavado");
+            var servicio = actual.Servicios.FirstOrDefault(s => s.ServicioId == servicioId);
+            if (servicio == null) return ResultadoOperacion.CrearError("No se encontró el servicio en el lavado");
+            var etapa = servicio.Etapas.FirstOrDefault(e => e.EtapaId == etapaId);
+            if (etapa == null) return ResultadoOperacion.CrearError("No se encontró la etapa en el servicio");
+            if (etapa.Estado == "Realizado") return ResultadoOperacion.CrearExito("La etapa ya estaba finalizada.");
+            if (etapa.Estado != "EnProceso") return ResultadoOperacion.CrearError("La etapa no está en proceso.");
+            return await _stockService.ValidarConsumoFinalizacion($"{lavadoId}_{servicioId}_{etapaId}", etapa.Receta, consumoRealJson, justificacionDesvio);
+        }
+
         public async Task FinalizarServicio(string lavadoId, string servicioId, string? consumoRealJson = null, string? justificacionDesvio = null)
         {
             var referencia = _firestore.Collection(COLLECTION_NAME).Document(lavadoId);

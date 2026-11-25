@@ -4,7 +4,7 @@ using Google.Cloud.Firestore;
 
 /// <summary>
 /// Servicio para la gesti�n de servicios del lavadero en Firestore.
-/// Proporciona operaciones CRUD, filtrado, paginaci�n y validaci�n de servicios.
+/// Proporciona operaciones CRUD, filtrado, paginaci�n y validación de servicios.
 /// </summary>
 public class ServicioService
 {
@@ -36,7 +36,7 @@ public class ServicioService
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar (null para solo activos por defecto).</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar (null para todos).</param>
-    /// <param name="tiposVehiculo">Lista de tipos de veh�culo a filtrar (null para todos).</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar (null para todos).</param>
     /// <param name="pageNumber">N�mero de p�gina (1-based).</param>
     /// <param name="pageSize">Cantidad de elementos por p�gina.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
@@ -68,7 +68,7 @@ public class ServicioService
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
-    /// <param name="tiposVehiculo">Lista de tipos de veh�culo a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
     /// <param name="precioDesde">Precio m�nimo a filtrar.</param>
     /// <param name="precioHasta">Precio m�ximo a filtrar.</param>
     /// <param name="pageSize">Cantidad de elementos por p�gina.</param>
@@ -96,7 +96,7 @@ public class ServicioService
     public async Task<Servicio> ObtenerServicio(string id)
     {
         if (string.IsNullOrWhiteSpace(id))
-            throw new ArgumentException("El ID del servicio no puede estar vac�o", nameof(id));
+            throw new ArgumentException("El ID del servicio no puede estar vacío", nameof(id));
 
         var docRef = _firestore.Collection(COLLECTION_NAME).Document(id);
         var snapshot = await docRef.GetSnapshotAsync();
@@ -111,7 +111,7 @@ public class ServicioService
     /// <param name="searchTerm">T�rmino de b�squeda.</param>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
-    /// <param name="tiposVehiculo">Lista de tipos de veh�culo a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
     /// <param name="precioDesde">Precio m�nimo a filtrar.</param>
     /// <param name="precioHasta">Precio m�ximo a filtrar.</param>
     /// <param name="pageNumber">N�mero de p�gina actual.</param>
@@ -149,7 +149,7 @@ public class ServicioService
     /// <param name="searchTerm">T�rmino de b�squeda.</param>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
-    /// <param name="tiposVehiculo">Lista de tipos de veh�culo a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
     /// <param name="precioDesde">Precio m�nimo a filtrar.</param>
     /// <param name="precioHasta">Precio m�ximo a filtrar.</param>
     /// <returns>N�mero total de servicios que coinciden.</returns>
@@ -181,10 +181,10 @@ public class ServicioService
         => await ObtenerServiciosPorCampo("Tipo", tipo);
 
     /// <summary>
-    /// Obtiene todos los servicios para un tipo de veh�culo espec�fico.
+    /// Obtiene todos los servicios para un tipo de vehículo espec�fico.
     /// </summary>
-    /// <param name="tipoVehiculo">Tipo de veh�culo.</param>
-    /// <returns>Lista de servicios para el tipo de veh�culo especificado.</returns>
+    /// <param name="tipoVehiculo">Tipo de vehículo.</param>
+    /// <returns>Lista de servicios para el tipo de vehículo especificado.</returns>
     public async Task<List<Servicio>> ObtenerServiciosPorTipoVehiculo(string tipoVehiculo)
         => await ObtenerServiciosPorCampo("TipoVehiculo", tipoVehiculo);
     #endregion
@@ -204,7 +204,7 @@ public class ServicioService
         if (await ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo))
         {
             throw new ArgumentException(
-                $"Ya existe un servicio con el nombre '{servicio.Nombre}' para veh�culos tipo '{servicio.TipoVehiculo}'");
+                $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'");
         }
 
         ValidarServicio(servicio);
@@ -234,7 +234,7 @@ public class ServicioService
         if (await ExisteServicioConNombreTipoVehiculo(servicio.Nombre, servicio.TipoVehiculo, servicio.Id))
         {
             throw new ArgumentException(
-                $"Ya existe un servicio con el nombre '{servicio.Nombre}' para veh�culos tipo '{servicio.TipoVehiculo}'");
+                $"Ya existe un servicio con el nombre '{servicio.Nombre}' para vehículos tipo '{servicio.TipoVehiculo}'");
         }
 
         ValidarServicio(servicio);
@@ -255,10 +255,10 @@ public class ServicioService
     public async Task CambiarEstadoServicio(string id, string nuevoEstado)
     {
         if (string.IsNullOrWhiteSpace(id))
-            throw new ArgumentException("El ID del servicio no puede estar vac�o", nameof(id));
+            throw new ArgumentException("El ID del servicio no puede estar vacío", nameof(id));
 
         if (string.IsNullOrWhiteSpace(nuevoEstado))
-            throw new ArgumentException("El nuevo estado no puede estar vac�o", nameof(nuevoEstado));
+            throw new ArgumentException("El nuevo estado no puede estar vacío", nameof(nuevoEstado));
 
         var servicioRef = _firestore.Collection(COLLECTION_NAME).Document(id);
         await servicioRef.UpdateAsync("Estado", nuevoEstado);
@@ -268,10 +268,10 @@ public class ServicioService
     #region Operaciones de Verificaci�n
 
     /// <summary>
-    /// Verifica si existe un servicio con el nombre y tipo de veh�culo especificados.
+    /// Verifica si existe un servicio con el nombre y tipo de vehículo especificados.
     /// </summary>
     /// <param name="nombre">Nombre del servicio.</param>
-    /// <param name="tipoVehiculo">Tipo de veh�culo.</param>
+    /// <param name="tipoVehiculo">Tipo de vehículo.</param>
     /// <param name="idActual">ID actual (para excluir en actualizaci�n).</param>
     /// <returns>True si existe.</returns>
     public async Task<bool> ExisteServicioConNombreTipoVehiculo(string nombre, string tipoVehiculo, string idActual = null)
@@ -299,7 +299,7 @@ public class ServicioService
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
-    /// <param name="tiposVehiculo">Lista de tipos de veh�culo a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
     /// <param name="precioDesde">Precio m�nimo a filtrar.</param>
     /// <param name="precioHasta">Precio m�ximo a filtrar.</param>
     /// <param name="sortBy">Campo por el cual ordenar.</param>
@@ -334,7 +334,7 @@ public class ServicioService
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
-    /// <param name="tiposVehiculo">Lista de tipos de veh�culo a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
     /// <param name="precioDesde">Precio m�nimo a filtrar.</param>
     /// <param name="precioHasta">Precio m�ximo a filtrar.</param>
     /// <returns>N�mero total de servicios.</returns>
@@ -391,7 +391,7 @@ public class ServicioService
     private async Task<List<Servicio>> ObtenerServiciosPorCampo(string campo, string valor)
     {
         if (string.IsNullOrWhiteSpace(campo))
-            throw new ArgumentException("El campo no puede estar vac�o", nameof(campo));
+            throw new ArgumentException("El campo no puede estar vacío", nameof(campo));
 
         if (string.IsNullOrWhiteSpace(valor))
             return new List<Servicio>();
@@ -413,7 +413,7 @@ public class ServicioService
     /// Configura la lista de estados por defecto si no se especific� ninguno.
     /// </summary>
     /// <param name="estados">Lista de estados seleccionados por el usuario.</param>
-    /// <returns>Lista con al menos un estado; si estaba vac�a, contiene "Activo".</returns>
+    /// <returns>Lista con al menos un estado; si estaba vacía, contiene "Activo".</returns>
     private static List<string> ConfigurarEstadosDefecto(List<string> estados)
     {
         estados ??= new List<string>();
@@ -450,10 +450,10 @@ public class ServicioService
     }
 
     /// <summary>
-    /// Aplica filtro de tipo de veh�culo (post-proceso).
+    /// Aplica filtro de tipo de vehículo (post-proceso).
     /// </summary>
     /// <param name="servicios">Lista de servicios.</param>
-    /// <param name="tiposVehiculo">Tipos de veh�culo a filtrar.</param>
+    /// <param name="tiposVehiculo">Tipos de vehículo a filtrar.</param>
     /// <returns>Lista filtrada.</returns>
     private static List<Servicio> AplicarFiltroTipoVehiculo(List<Servicio> servicios, List<string> tiposVehiculo)
     {
@@ -776,19 +776,19 @@ public class ServicioService
         var errores = new List<string>();
 
         if (string.IsNullOrWhiteSpace(servicio.Nombre))
-            errores.Add("El nombre del servicio no puede estar vac�o");
+            errores.Add("El nombre del servicio no puede estar vacío");
 
         if (string.IsNullOrWhiteSpace(servicio.Tipo))
-            errores.Add("El tipo de servicio no puede estar vac�o");
+            errores.Add("El tipo de servicio no puede estar vacío");
 
         if (string.IsNullOrWhiteSpace(servicio.TipoVehiculo))
-            errores.Add("El tipo de veh�culo no puede estar vac�o");
+            errores.Add("El tipo de vehículo no puede estar vacío");
 
         if (string.IsNullOrWhiteSpace(servicio.Descripcion))
-            errores.Add("La descripci�n no puede estar vac�a");
+            errores.Add("La descripción no puede estar vacía");
 
         if (!string.IsNullOrWhiteSpace(servicio.Nombre) &&
-            !System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-Z������������\s]+$"))
+            !System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$"))
             errores.Add("El nombre solo puede contener letras y espacios");
 
         if (servicio.Precio < 0)
@@ -804,17 +804,17 @@ public class ServicioService
                 if (etapa == null) continue;
                 if (string.IsNullOrWhiteSpace(etapa.Nombre))
                 {
-                    errores.Add("El nombre de la etapa no puede estar vac�o");
+                    errores.Add("El nombre de la etapa no puede estar vacío");
                     continue;
                 }
 
-                if (!System.Text.RegularExpressions.Regex.IsMatch(etapa.Nombre, @"^[a-zA-Z������������\s]+$"))
+                if (!System.Text.RegularExpressions.Regex.IsMatch(etapa.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$"))
                     errores.Add($"La etapa '{etapa.Nombre}' solo puede contener letras y espacios");
             }
         }
 
         if (errores.Any())
-            throw new ArgumentException($"Errores de validaci�n: {string.Join(", ", errores)}");
+            throw new ArgumentException($"Errores de validación: {string.Join(", ", errores)}");
     }
 
     /// <summary>
@@ -839,7 +839,7 @@ public class ServicioService
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
-    /// <param name="tiposVehiculo">Lista de tipos de veh�culo a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
     /// <returns>Precio m�nimo encontrado o 0 si no hay servicios.</returns>
     public async Task<decimal> ObtenerPrecioMinimo(
         List<string> estados = null,
@@ -864,7 +864,7 @@ public class ServicioService
     /// </summary>
     /// <param name="estados">Lista de estados a filtrar.</param>
     /// <param name="tipos">Lista de tipos de servicio a filtrar.</param>
-    /// <param name="tiposVehiculo">Lista de tipos de veh�culo a filtrar.</param>
+    /// <param name="tiposVehiculo">Lista de tipos de vehículo a filtrar.</param>
     /// <returns>Precio m�ximo encontrado o 0 si no hay servicios.</returns>
     public async Task<decimal> ObtenerPrecioMaximo(
         List<string> estados = null,
@@ -889,7 +889,7 @@ public class ServicioService
     /// </summary>
     private class ServicioConteo
     {
-        /// <summary>Tipo de veh�culo del servicio.</summary>
+        /// <summary>Tipo de vehículo del servicio.</summary>
         public string TipoVehiculo { get; set; }
         /// <summary>Precio del servicio.</summary>
         public decimal Precio { get; set; }

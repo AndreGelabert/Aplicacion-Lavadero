@@ -12,11 +12,20 @@
     const providerOptions = providerDropdown ? [...providerDropdown.querySelectorAll('[data-provider-option]')] : [];
     let selectedProvider = null;
     function closeProviders() { if (!providerDropdown) return; providerDropdown.classList.add('hidden'); providerSearch.setAttribute('aria-expanded', 'false'); }
+    function syncProviders() {
+        if (!providerDropdown) return;
+        const term = (providerSearch?.value || '').trim().toLocaleLowerCase('es');
+        providerOptions.forEach(option => {
+            const isSelected = [...(providerInputs?.children || [])].some(input => input.value === option.dataset.id);
+            const matches = !term || option.dataset.name.toLocaleLowerCase('es').includes(term);
+            option.classList.toggle('hidden', !matches || isSelected);
+            option.hidden = !matches || isSelected;
+        });
+    }
     function filterProviders() {
         if (!providerDropdown || providerSearch.disabled) return;
         selectedProvider = null;
-        const term = providerSearch.value.trim().toLocaleLowerCase('es');
-        providerOptions.forEach(option => { option.classList.toggle('hidden', !option.dataset.name.toLocaleLowerCase('es').includes(term) || [...providerInputs.children].some(input => input.value === option.dataset.id)); });
+        syncProviders();
         providerDropdown.classList.remove('hidden'); providerSearch.setAttribute('aria-expanded', 'true');
     }
     function addProvider(id, name) {
@@ -26,15 +35,26 @@
         const label = document.createElement('span'); label.className = 'flex-1 dark:text-white'; label.textContent = name;
         const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'w-8 h-8 flex items-center justify-center text-red-600 hover:text-red-800'; remove.setAttribute('aria-label', 'Quitar proveedor ' + name);
         remove.innerHTML = '<svg aria-hidden="true" fill="currentColor" class="w-5 h-5" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd"/></svg>';
-        remove.addEventListener('click', () => { if (remove.disabled) return; row.remove(); input.remove(); providerSearch.focus(); });
+        remove.addEventListener('click', () => { if (remove.disabled) return; row.remove(); input.remove(); syncProviders(); closeProviders(); });
         row.append(label, remove); providerList.append(row); providerInputs.append(input);
+        syncProviders();
     }
     providerSearch?.addEventListener('focus', filterProviders);
     providerSearch?.addEventListener('input', filterProviders);
-    providerOptions.forEach(option => option.addEventListener('click', () => { if (option.disabled) return; selectedProvider = option; providerSearch.value = option.dataset.name; closeProviders(); }));
+    providerOptions.forEach(option => option.addEventListener('click', () => {
+        if (option.disabled) return;
+        selectedProvider = option;
+        addProvider(option.dataset.id, option.dataset.name);
+        selectedProvider = null;
+        if (providerSearch) providerSearch.value = '';
+        closeProviders();
+    }));
     inventoryForm?.querySelector('[data-add-provider]')?.addEventListener('click', e => {
         if (e.currentTarget.disabled || !selectedProvider || providerSearch.disabled) return;
-        addProvider(selectedProvider.dataset.id, selectedProvider.dataset.name); selectedProvider = null; providerSearch.value = ''; closeProviders(); providerSearch.focus();
+        addProvider(selectedProvider.dataset.id, selectedProvider.dataset.name);
+        selectedProvider = null;
+        if (providerSearch) providerSearch.value = '';
+        closeProviders();
     });
     if (providerBox) {
         document.addEventListener('click', e => { if (!providerBox.contains(e.target)) closeProviders(); });
@@ -44,6 +64,57 @@
         document.querySelectorAll('#insumosFiltros input[type="checkbox"]').forEach(input => input.checked = input.name === 'estados' && input.value === 'Activo');
         const search = document.getElementById('insumos-search'); if (search) search.value = '';
     });
+
+    function esUnidadEnteraActual() {
+        if (!inventoryForm) return false;
+        const unitSelect = inventoryForm.querySelector ? inventoryForm.querySelector('select[name="UnidadMedida"]') : null;
+        const hiddenUnit = inventoryForm.querySelector ? inventoryForm.querySelector('input[name="UnidadMedida"]') : null;
+        const unitVal = (unitSelect?.value || hiddenUnit?.value || inventoryForm.elements?.UnidadMedida?.value || '').trim().toLowerCase();
+        return ['unidad', 'unidades', 'u'].includes(unitVal);
+    }
+
+    function ajustarPasosSegunUnidad() {
+        if (!inventoryForm || !inventoryForm.elements) return;
+        const esEntero = esUnidadEnteraActual();
+        const step = esEntero ? '1' : '0.01';
+        const minStock = esEntero ? '1' : '0.01';
+        const minMax = esEntero ? '2' : '0.02';
+
+        const minEl = inventoryForm.elements.StockMinimo;
+        const maxEl = inventoryForm.elements.StockMaximo;
+        const repoEl = inventoryForm.elements.CantidadReabastecimiento;
+
+        if (minEl && 'step' in minEl) {
+            minEl.step = step;
+            minEl.min = minStock;
+        }
+        if (maxEl && 'step' in maxEl) {
+            maxEl.step = step;
+            maxEl.min = minMax;
+        }
+        if (repoEl && 'step' in repoEl) {
+            repoEl.step = step;
+            repoEl.min = minStock;
+        }
+    }
+
+    function verificarAlertaBrecha() {
+        const warningEl = document.getElementById('stock-brecha-warning');
+        if (!warningEl || !inventoryForm || !inventoryForm.elements) return;
+        const minEl = inventoryForm.elements.StockMinimo;
+        const maxEl = inventoryForm.elements.StockMaximo;
+        const minVal = parseFloat(minEl?.value);
+        const maxVal = parseFloat(maxEl?.value);
+        if (!isNaN(minVal) && !isNaN(maxVal) && minVal > 0 && maxVal > minVal) {
+            const brecha = maxVal - minVal;
+            const margenMinimo = minVal * 0.15;
+            const esBaja = brecha < margenMinimo;
+            warningEl.classList.toggle('hidden', !esBaja);
+        } else {
+            warningEl.classList.add('hidden');
+        }
+    }
+
     function resetInventory() {
         if (!inventoryForm) return;
         inventoryForm.reset();
@@ -56,19 +127,134 @@
         type.disabled = unit.disabled = false; hiddenType.disabled = hiddenUnit.disabled = true;
         inventoryForm.querySelectorAll('[data-open-tipos], [data-delete-tipo]').forEach(b => b.disabled = false);
         providerList?.replaceChildren(); providerInputs?.replaceChildren(); selectedProvider = null;
-        if (providerSearch) { providerSearch.value = ''; closeProviders(); }
+        if (providerSearch) { providerSearch.value = ''; syncProviders(); closeProviders(); }
         const resetLabel = inventoryForm.querySelector('[data-reset-label]'); if (resetLabel) resetLabel.textContent = 'Limpiar campos';
         inventoryForm.querySelector('[type="submit"]').disabled = inventoryForm.dataset.canCreate !== 'true';
         title.textContent = 'Registrando un Insumo';
+        ajustarPasosSegunUnidad();
+        document.getElementById('stock-brecha-warning')?.classList.add('hidden');
     }
     inventoryForm?.querySelector('[data-reset-insumo]')?.addEventListener('click', resetInventory);
+    const unitSelectEl = inventoryForm?.querySelector ? inventoryForm.querySelector('select[name="UnidadMedida"]') : null;
+    if (unitSelectEl && typeof unitSelectEl.addEventListener === 'function') {
+        unitSelectEl.addEventListener('change', ajustarPasosSegunUnidad);
+    }
+    const tipoSelectEl = inventoryForm?.querySelector ? inventoryForm.querySelector('select[name="TipoId"]') : null;
+    if (tipoSelectEl && typeof tipoSelectEl.addEventListener === 'function') {
+        tipoSelectEl.addEventListener('change', () => setTimeout(ajustarPasosSegunUnidad, 0));
+    }
     if (inventoryForm && inventoryForm.dataset.canCreate !== 'true') resetInventory();
+    if (inventoryForm && inventoryForm.elements) {
+        const minEl = inventoryForm.elements.StockMinimo;
+        const maxEl = inventoryForm.elements.StockMaximo;
+        const repoEl = inventoryForm.elements.CantidadReabastecimiento;
+        if (minEl && maxEl && repoEl && typeof minEl.addEventListener === 'function' && typeof maxEl.addEventListener === 'function' && typeof repoEl.addEventListener === 'function') {
+            function formatVal(num, esEntero) {
+                return esEntero ? Math.round(num).toString() : Number(num.toFixed(2)).toString();
+            }
+
+            maxEl.addEventListener('input', () => {
+                const esEntero = esUnidadEnteraActual();
+                const maxVal = parseFloat(maxEl.value);
+                const minVal = parseFloat(minEl.value) || 0;
+                if (!isNaN(maxVal) && maxVal > minVal) {
+                    repoEl.value = formatVal(maxVal - minVal, esEntero);
+                    if (typeof maxEl.setCustomValidity === 'function') maxEl.setCustomValidity('');
+                } else if (!isNaN(maxVal) && maxVal <= minVal && maxVal > 0) {
+                    if (typeof maxEl.setCustomValidity === 'function') maxEl.setCustomValidity('El stock máximo debe ser mayor al stock mínimo.');
+                }
+                verificarAlertaBrecha();
+            });
+            minEl.addEventListener('input', () => {
+                const esEntero = esUnidadEnteraActual();
+                const minVal = parseFloat(minEl.value) || 0;
+                const maxVal = parseFloat(maxEl.value);
+                const repoVal = parseFloat(repoEl.value);
+
+                if (minVal > 0 && typeof minEl.setCustomValidity === 'function') {
+                    minEl.setCustomValidity('');
+                }
+
+                if (!isNaN(maxVal) && maxVal <= minVal) {
+                    const delta = (!isNaN(repoVal) && repoVal > 0) ? repoVal : (esEntero ? 1 : 1);
+                    maxEl.value = formatVal(minVal + delta, esEntero);
+                    repoEl.value = formatVal(delta, esEntero);
+                    if (typeof maxEl.setCustomValidity === 'function') maxEl.setCustomValidity('');
+                } else if (!isNaN(maxVal) && maxVal > minVal) {
+                    repoEl.value = formatVal(maxVal - minVal, esEntero);
+                    if (typeof maxEl.setCustomValidity === 'function') maxEl.setCustomValidity('');
+                } else if (!isNaN(repoVal) && repoVal > 0) {
+                    maxEl.value = formatVal(minVal + repoVal, esEntero);
+                    if (typeof maxEl.setCustomValidity === 'function') maxEl.setCustomValidity('');
+                }
+                verificarAlertaBrecha();
+            });
+            repoEl.addEventListener('input', () => {
+                const esEntero = esUnidadEnteraActual();
+                const repoVal = parseFloat(repoEl.value);
+                const minVal = parseFloat(minEl.value) || 0;
+                if (!isNaN(repoVal) && repoVal > 0) {
+                    maxEl.value = formatVal(minVal + repoVal, esEntero);
+                    if (typeof maxEl.setCustomValidity === 'function') maxEl.setCustomValidity('');
+                }
+                verificarAlertaBrecha();
+            });
+        }
+    }
+    if (inventoryForm && typeof inventoryForm.addEventListener === 'function') {
+        inventoryForm.addEventListener('submit', e => {
+            const minEl = inventoryForm.elements?.StockMinimo;
+            const maxEl = inventoryForm.elements?.StockMaximo;
+            const repoEl = inventoryForm.elements?.CantidadReabastecimiento;
+            const esEntero = esUnidadEnteraActual();
+
+            const minVal = parseFloat(minEl?.value);
+            const maxVal = parseFloat(maxEl?.value);
+            const repoVal = parseFloat(repoEl?.value);
+
+            if (minEl) {
+                if (isNaN(minVal) || minVal <= 0) {
+                    e.preventDefault();
+                    if (typeof minEl.setCustomValidity === 'function') minEl.setCustomValidity('El stock mínimo debe ser mayor a cero.');
+                    if (typeof minEl.reportValidity === 'function') minEl.reportValidity();
+                    return;
+                } else if (typeof minEl.setCustomValidity === 'function') {
+                    minEl.setCustomValidity('');
+                }
+            }
+
+            if (maxEl) {
+                if (isNaN(maxVal) || maxVal <= minVal) {
+                    e.preventDefault();
+                    if (typeof maxEl.setCustomValidity === 'function') maxEl.setCustomValidity('El stock máximo debe ser mayor al stock mínimo.');
+                    if (typeof maxEl.reportValidity === 'function') maxEl.reportValidity();
+                    return;
+                } else if (typeof maxEl.setCustomValidity === 'function') {
+                    maxEl.setCustomValidity('');
+                }
+            }
+
+            if (esEntero && minEl) {
+                if ((!isNaN(minVal) && minVal % 1 !== 0) || (!isNaN(maxVal) && maxVal % 1 !== 0) || (!isNaN(repoVal) && repoVal % 1 !== 0)) {
+                    e.preventDefault();
+                    if (typeof minEl.setCustomValidity === 'function') minEl.setCustomValidity('Los insumos medidos en unidades no permiten valores decimales.');
+                    if (typeof minEl.reportValidity === 'function') minEl.reportValidity();
+                    return;
+                }
+            }
+        });
+    }
     document.querySelectorAll('[data-edit-insumo]').forEach(button => button.addEventListener('click', () => {
         const record = JSON.parse(button.dataset.record);
         resetInventory();
         inventoryForm.elements.crear.value = 'false'; inventoryForm.elements.Id.value = record.Id;
         inventoryForm.elements.Nombre.value = record.Nombre;
         inventoryForm.elements.StockMinimo.value = record.StockMinimo;
+        if (inventoryForm.elements.StockMaximo) {
+            inventoryForm.elements.StockMaximo.value = record.StockMaximo !== undefined && record.StockMaximo !== null && record.StockMaximo > 0
+                ? record.StockMaximo
+                : (Number(record.StockMinimo || 0) + Number(record.CantidadReabastecimiento || 0));
+        }
         inventoryForm.elements.CantidadReabastecimiento.value = record.CantidadReabastecimiento;
         inventoryForm.elements.ReabastecimientoAutomatico.checked = record.ReabastecimientoAutomatico;
         inventoryForm.elements.Tipo.value = record.Tipo || '';
@@ -85,12 +271,44 @@
         const resetLabel = inventoryForm.querySelector('[data-reset-label]'); if (resetLabel) resetLabel.textContent = 'Cancelar';
         inventoryForm.querySelector('[type="submit"]').disabled = false;
         title.textContent = 'Editando un Insumo';
+        ajustarPasosSegunUnidad();
+        verificarAlertaBrecha();
         if (accordion.classList.contains('hidden')) accordionButton.click();
         inventoryForm.scrollIntoView({ block: 'start' }); inventoryForm.elements.Nombre.focus();
     }));
     let dialogTrigger = null;
     function openDialog(id, trigger) { dialogTrigger = trigger; const modal = document.getElementById(id); modal.classList.remove('hidden'); modal.querySelector('input:not([type="hidden"]), button')?.focus(); }
-    document.querySelectorAll('[data-ajustar-insumo]').forEach(button => button.addEventListener('click', () => { const modal = document.getElementById('insumoAjusteModal'); modal.querySelector('form').reset(); modal.querySelector('[name="insumoId"]').value = button.dataset.id; modal.querySelector('[data-ajuste-unidad]').textContent = `Ingrese una cantidad mayor que cero en ${window.etiquetaUnidadInsumo(button.dataset.unidadAjuste)}.`; openDialog('insumoAjusteModal', button); }));
+    document.querySelectorAll('[data-ajustar-insumo]').forEach(button => button.addEventListener('click', () => {
+        const modal = document.getElementById('insumoAjusteModal');
+        modal.querySelector('form').reset();
+        modal.querySelector('[name="insumoId"]').value = button.dataset.id;
+        const unidadAjuste = (button.dataset.unidadAjuste || '').trim().toLowerCase();
+        const esEntero = ['unidad', 'unidades', 'u'].includes(unidadAjuste);
+        const cantInput = modal.querySelector('[name="cantidad"]');
+        if (cantInput) {
+            cantInput.step = esEntero ? '1' : '0.01';
+            cantInput.min = esEntero ? '1' : '0.01';
+        }
+        modal.querySelector('[data-ajuste-unidad]').textContent = `Ingrese una cantidad mayor que cero en ${window.etiquetaUnidadInsumo(button.dataset.unidadAjuste)}.`;
+        openDialog('insumoAjusteModal', button);
+    }));
+    const ajusteForm = document.getElementById('insumoAjusteModal')?.querySelector('form');
+    if (ajusteForm && typeof ajusteForm.addEventListener === 'function') {
+        ajusteForm.addEventListener('submit', function (e) {
+            const cantInput = this.querySelector('[name="cantidad"]');
+            if (cantInput && cantInput.step === '1') {
+                const val = parseFloat(cantInput.value);
+                if (!isNaN(val) && val % 1 !== 0) {
+                    e.preventDefault();
+                    if (typeof cantInput.setCustomValidity === 'function') cantInput.setCustomValidity('Los insumos medidos en unidades no permiten ajustes decimales.');
+                    if (typeof cantInput.reportValidity === 'function') cantInput.reportValidity();
+                    return;
+                } else if (typeof cantInput.setCustomValidity === 'function') {
+                    cantInput.setCustomValidity('');
+                }
+            }
+        });
+    }
     document.querySelectorAll('[data-estado-insumo]').forEach(button => button.addEventListener('click', () => {
         const modal = document.getElementById('insumoConfirmModal'), deactivate = button.dataset.estado === 'Inactivo';
         modal.querySelector('[name="id"]').value = button.dataset.id; modal.querySelector('[name="estado"]').value = button.dataset.estado;
@@ -190,9 +408,15 @@
             form: { querySelector: () => unit }
         });
         unit.value = selected;
+        const reusableToggle = form.elements.EsReutilizable;
+        if (reusableToggle) {
+            const isUnits = form.elements.Categoria.value === 'Unidades';
+            reusableToggle.disabled = !isUnits;
+            if (!isUnits) reusableToggle.checked = false;
+        }
     }
     form.elements.Categoria.addEventListener('change', () => updateSummaryUnits());
-    function resetForm() { form.reset(); form.elements.crear.value = 'true'; form.elements.Id.value = ''; updateSummaryUnits(); }
+    function resetForm() { form.reset(); form.elements.crear.value = 'true'; form.elements.Id.value = ''; if (form.elements.EsReutilizable) form.elements.EsReutilizable.checked = false; updateSummaryUnits(); }
     updateSummaryUnits();
     typesModal.querySelector('[data-reset-tipo]').addEventListener('click', resetForm);
     function button(label, handler) {
@@ -216,10 +440,10 @@
                 const protectedType = type.esProtegido || type.nombre.toLowerCase() === 'herramienta';
                 hasTool ||= type.nombre.toLowerCase() === 'herramienta';
                 if (type.estado === 'Activo') {
-                    const option = new Option(type.nombre, type.id); option.dataset.categoria = type.categoria; selector.add(option);
+                    const option = new Option(type.nombre, type.id); option.dataset.categoria = type.categoria; option.dataset.reutilizable = String(Boolean(type.esReutilizable || protectedType)); selector.add(option);
                 }
                 const row = document.createElement('tr'); row.className = 'border-b dark:border-gray-700';
-                for (const value of [type.nombre, type.categoria, window.etiquetaUnidadInsumo(type.unidadResumen), type.estado]) {
+                for (const value of [type.nombre, (type.esReutilizable || protectedType) ? `${type.categoria} (Reutilizable)` : type.categoria, window.etiquetaUnidadInsumo(type.unidadResumen), type.estado]) {
                     const cell = document.createElement('td'); cell.className = 'p-2'; cell.textContent = value; row.append(cell);
                 }
                 const actions = document.createElement('td'); actions.className = 'p-2 flex flex-wrap gap-1';
@@ -228,7 +452,9 @@
                     actions.append(button('Editar', () => {
                         form.elements.crear.value = 'false'; form.elements.Id.value = type.id;
                         form.elements.Nombre.value = type.nombre; form.elements.Categoria.value = type.categoria;
-                        updateSummaryUnits(type.unidadResumen); form.elements.Nombre.focus();
+                        updateSummaryUnits(type.unidadResumen);
+                        if (form.elements.EsReutilizable) form.elements.EsReutilizable.checked = Boolean(type.esReutilizable);
+                        form.elements.Nombre.focus();
                     }));
                     actions.append(button(type.estado === 'Activo' ? 'Desactivar' : 'Reactivar', () => mutate(typesModal.dataset.stateUrl, { id: type.id, estado: type.estado === 'Activo' ? 'Inactivo' : 'Activo' })));
                 }

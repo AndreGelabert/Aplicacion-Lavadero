@@ -140,11 +140,12 @@
         const pageSize = 10;
         let page = 1;
         const pages = Math.max(1, Math.ceil(rows.length / pageSize));
-        const nav = document.createElement('nav');
-        nav.className = 'flex flex-col md:flex-row justify-between items-center gap-3 p-4';
-        nav.setAttribute('aria-label', 'Paginación de tabla');
-        const label = document.createElement('span'); label.className = 'text-sm text-gray-500 dark:text-gray-400';
-        const controls = document.createElement('div'); controls.className = 'inline-flex items-stretch -space-x-px';
+        const hasPagination = !(
+            (typeof table.hasAttribute === 'function' && table.hasAttribute('data-no-pagination')) ||
+            (typeof table.getAttribute === 'function' && table.getAttribute('data-no-pagination') !== null) ||
+            Boolean(table.dataset && 'noPagination' in table.dataset)
+        );
+        let nav = null, label = null, previous = null, next = null, numbers = [];
         const arrowClass = 'flex items-center justify-center h-full py-1.5 px-3 bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-700';
         const numberClass = 'flex items-center justify-center text-sm py-2 px-3 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white';
         const activeClass = 'flex items-center justify-center text-sm z-10 py-2 px-3 leading-tight text-primary-600 bg-primary-50 border border-primary-300 dark:border-gray-700 dark:bg-gray-700 dark:text-white';
@@ -154,14 +155,22 @@
             button.innerHTML = `<svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="${path}" clip-rule="evenodd" /></svg>`;
             return button;
         }
-        const previous = arrow('Anterior', 'M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z', 'rounded-l-lg');
-        const next = arrow('Siguiente', 'M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z', 'rounded-r-lg');
-        const numbers = Array.from({ length: pages }, (_, index) => {
-            const button = document.createElement('button'); button.type = 'button'; button.textContent = index + 1;
-            button.addEventListener('click', () => { page = index + 1; renderPage(); }); return button;
-        });
-        controls.append(previous, ...numbers, next); nav.append(label, controls); table.parentElement.after(nav);
+        if (hasPagination) {
+            nav = document.createElement('nav');
+            nav.className = 'flex flex-col md:flex-row justify-between items-center gap-3 p-4';
+            nav.setAttribute('aria-label', 'Paginación de tabla');
+            label = document.createElement('span'); label.className = 'text-sm text-gray-500 dark:text-gray-400';
+            const controls = document.createElement('div'); controls.className = 'inline-flex items-stretch -space-x-px';
+            previous = arrow('Anterior', 'M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z', 'rounded-l-lg');
+            next = arrow('Siguiente', 'M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z', 'rounded-r-lg');
+            numbers = Array.from({ length: pages }, (_, index) => {
+                const button = document.createElement('button'); button.type = 'button'; button.textContent = index + 1;
+                button.addEventListener('click', () => { page = index + 1; renderPage(); }); return button;
+            });
+            controls.append(previous, ...numbers, next); nav.append(label, controls); table.parentElement.after(nav);
+        }
         function renderPage() {
+            if (!hasPagination) return;
             rows.forEach((row, index) => { row.hidden = index < (page - 1) * pageSize || index >= page * pageSize; });
             label.textContent = `Mostrando página ${page} de ${pages}`;
             numbers.forEach((number, index) => {
@@ -186,12 +195,14 @@
                     return (ascending ? 1 : -1) * (Number.isFinite(comparison) ? comparison : 0);
                 });
                 rows.forEach(row => table.tBodies[0].appendChild(row));
-                page = 1; renderPage();
+                if (hasPagination) { page = 1; renderPage(); }
             });
         });
-        previous.addEventListener('click', () => { if (page > 1) { page--; renderPage(); } });
-        next.addEventListener('click', () => { if (page < pages) { page++; renderPage(); } });
-        renderPage();
+        if (hasPagination) {
+            previous.addEventListener('click', () => { if (page > 1) { page--; renderPage(); } });
+            next.addEventListener('click', () => { if (page < pages) { page++; renderPage(); } });
+            renderPage();
+        }
     });
     function removeIcon(button) {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -201,6 +212,17 @@
         path.setAttribute('d', 'M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z');
         svg.append(path); button.append(svg);
     }
+    function setElementHidden(el, hidden) {
+        if (!el) return;
+        el.hidden = hidden;
+        if (typeof el.classList?.toggle === 'function') {
+            el.classList.toggle('hidden', hidden);
+        } else if (hidden) {
+            el.classList?.add?.('hidden');
+        } else {
+            el.classList?.remove?.('hidden');
+        }
+    }
     const supplierPicker = document.getElementById('supplier-picker');
     if (supplierPicker) {
         const search = document.getElementById('supplier-search');
@@ -208,30 +230,74 @@
         const selected = document.getElementById('supplier-selected');
         let choice = null;
         const selectedIds = new Set();
-        function filterSuppliers() {
-            choice = null;
-            dropdown.querySelectorAll('[data-supplier-option]').forEach(option => {
-                option.hidden = !option.dataset.name.toLocaleLowerCase().includes(search.value.toLocaleLowerCase()) || selectedIds.has(option.dataset.id);
+        function syncSuppliers() {
+            const term = (search?.value || '').trim().toLocaleLowerCase();
+            dropdown?.querySelectorAll?.('[data-supplier-option]')?.forEach(option => {
+                const isHidden = (Boolean(term) && !option.dataset.name.toLocaleLowerCase().includes(term)) || selectedIds.has(option.dataset.id);
+                setElementHidden(option, isHidden);
+                option.disabled = selectedIds.has(option.dataset.id);
             });
-            dropdown.classList.remove('hidden');
         }
-        search.addEventListener('focus', filterSuppliers); search.addEventListener('input', filterSuppliers);
-        dropdown.addEventListener('click', event => {
-            const option = event.target.closest('[data-supplier-option]'); if (!option) return;
-            choice = { ...option.dataset }; search.value = choice.name; dropdown.classList.add('hidden');
+        function openSuppliers() {
+            choice = null;
+            syncSuppliers();
+            dropdown?.classList.remove('hidden');
+        }
+        function closeSuppliers() {
+            dropdown?.classList.add('hidden');
+        }
+        function addSupplierChoice(item) {
+            if (!item || !item.id || selectedIds.has(item.id)) return;
+            selectedIds.add(item.id);
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600';
+            const name = document.createElement('span');
+            name.className = 'flex-1 font-medium dark:text-white';
+            name.textContent = item.name;
+            const id = document.createElement('input');
+            id.type = 'hidden';
+            id.name = 'proveedorIds';
+            id.value = item.id;
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'w-8 h-8 rounded-full text-red-600 flex items-center justify-center';
+            removeIcon(remove);
+            remove.setAttribute('aria-label', `Quitar ${item.name}`);
+            const selectedId = item.id;
+            remove.addEventListener('click', () => {
+                selectedIds.delete(selectedId);
+                row.remove();
+                syncSuppliers();
+            });
+            row.append(name, id, remove);
+            selected?.append(row);
+            choice = null;
+            if (search) search.value = '';
+            syncSuppliers();
+            closeSuppliers();
+        }
+        search?.addEventListener('focus', openSuppliers);
+        search?.addEventListener('input', openSuppliers);
+        dropdown?.addEventListener('click', event => {
+            const option = event.target.closest('[data-supplier-option]');
+            if (!option || option.disabled) return;
+            choice = { ...option.dataset };
+            addSupplierChoice(choice);
         });
-        document.getElementById('supplier-add').addEventListener('click', () => {
+        document.getElementById('supplier-add')?.addEventListener('click', () => {
             if (!choice || selectedIds.has(choice.id)) return;
-            selectedIds.add(choice.id);
-            const row = document.createElement('div'); row.className = 'flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600';
-            const name = document.createElement('span'); name.className = 'flex-1 font-medium'; name.textContent = choice.name;
-            const id = document.createElement('input'); id.type = 'hidden'; id.name = 'proveedorIds'; id.value = choice.id;
-            const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'w-8 h-8 rounded-full text-red-600'; removeIcon(remove); remove.setAttribute('aria-label', `Quitar ${choice.name}`); const selectedId = choice.id; remove.addEventListener('click', () => { selectedIds.delete(selectedId); row.remove(); });
-            row.append(name, id, remove); selected.append(row); choice = null; search.value = ''; dropdown.classList.add('hidden');
+            addSupplierChoice(choice);
         });
-        document.addEventListener('click', event => { if (!supplierPicker.contains(event.target)) dropdown.classList.add('hidden'); });
+        document.addEventListener('click', event => {
+            if (!supplierPicker.contains(event.target)) closeSuppliers();
+        });
         document.querySelector('[data-quotation-reset]')?.addEventListener('click', () => {
-            selectedIds.clear(); selected.replaceChildren(); choice = null; search.value = ''; dropdown.classList.add('hidden');
+            selectedIds.clear();
+            selected?.replaceChildren();
+            choice = null;
+            if (search) search.value = '';
+            syncSuppliers();
+            closeSuppliers();
         });
     }
     const picker = document.getElementById('quotation-picker');
@@ -241,8 +307,8 @@
     const list = document.getElementById('quotation-selected');
     const error = document.getElementById('quotation-error');
     const form = picker.closest('form');
-    const fechaPreferida = form.elements.namedItem('fechaEntregaPreferida');
-    const horaPreferida = form.elements.namedItem('horaEntregaPreferida');
+    const fechaPreferida = form?.elements?.namedItem('fechaEntregaPreferida');
+    const horaPreferida = form?.elements?.namedItem('horaEntregaPreferida');
     function actualizarMinimoEntrega() {
         if (!fechaPreferida || !horaPreferida) return;
         const partes = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(Date.now() + 60000)).map(p => [p.type, p.value]));
@@ -255,43 +321,114 @@
     actualizarMinimoEntrega();
     let selectedOption = null;
     const items = [];
-    function filter() {
-        selectedOption = null;
-        dropdown.querySelectorAll('[data-quotation-option]').forEach(option => { option.hidden = !(option.dataset.name + ' ' + (option.dataset.category || '')).toLocaleLowerCase().includes(input.value.toLocaleLowerCase()) || items.some(item => item.id === option.dataset.id); });
-        dropdown.querySelectorAll('[data-quotation-group]').forEach(group => { group.hidden = !Array.from(group.querySelectorAll('[data-quotation-option]')).some(option => !option.hidden); });
-        dropdown.classList.remove('hidden');
-    }
-    input.addEventListener('focus', filter);
-    input.addEventListener('input', filter);
-    document.addEventListener('click', event => {
-        if (!picker.contains(event.target)) dropdown.classList.add('hidden');
-    });
-    dropdown.addEventListener('click', event => {
-        const option = event.target.closest('[data-quotation-option]');
-        if (!option) return;
-        selectedOption = option.dataset; input.value = option.dataset.name; dropdown.classList.add('hidden');
-    });
-    function render() {
-        list.replaceChildren();
-        items.forEach((item, index) => {
-            const row = document.createElement('div'); row.className = 'flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600';
-            const info = document.createElement('div'); info.className = 'flex-1 min-w-0';
-            const name = document.createElement('div'); name.className = 'font-medium dark:text-white'; name.textContent = `${item.name} (${item.unit})`; info.append(name);
-            const id = document.createElement('input'); id.type = 'hidden'; id.name = `items[${index}].InsumoId`; id.value = item.id;
-            const quantity = document.createElement('input'); quantity.type = 'number'; quantity.name = `items[${index}].Cantidad`; quantity.min = '0.0001'; quantity.step = 'any'; quantity.required = true; quantity.value = item.quantity; quantity.setAttribute('aria-label', `Cantidad de ${item.name}`); quantity.className = 'w-24 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2.5 dark:bg-gray-700 dark:text-white'; quantity.addEventListener('input', () => { item.quantity = quantity.value; });
-            const quantityLabel = document.createElement('label'); quantityLabel.className = 'flex items-center gap-2 text-sm'; quantityLabel.textContent = 'Cantidad:'; quantityLabel.append(quantity);
-            const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'w-8 h-8 rounded-full text-red-600'; remove.setAttribute('aria-label', `Quitar ${item.name}`); removeIcon(remove); remove.addEventListener('click', () => { items.splice(index, 1); render(); });
-            row.append(info, id, quantityLabel, remove); list.append(row);
+    function syncQuotationOptions() {
+        const term = (input?.value || '').trim().toLocaleLowerCase();
+        dropdown?.querySelectorAll?.('[data-quotation-option]')?.forEach(option => {
+            const isSelected = items.some(item => item.id === option.dataset.id);
+            const isHidden = (Boolean(term) && !(option.dataset.name + ' ' + (option.dataset.category || '')).toLocaleLowerCase().includes(term)) || isSelected;
+            setElementHidden(option, isHidden);
+            option.disabled = isSelected;
+        });
+        dropdown?.querySelectorAll?.('[data-quotation-group]')?.forEach(group => {
+            if (typeof group.querySelectorAll === 'function') {
+                const allHidden = !Array.from(group.querySelectorAll('[data-quotation-option]')).some(option => !option.hidden);
+                setElementHidden(group, allHidden);
+            }
         });
     }
-    document.getElementById('quotation-add').addEventListener('click', () => {
-        if (!selectedOption || items.some(item => item.id === selectedOption.id)) { error.textContent = 'Seleccione un insumo del listado.'; return; }
-        items.push({ id: selectedOption.id, name: selectedOption.name, unit: selectedOption.unit, quantity: '' }); selectedOption = null; input.value = ''; error.textContent = ''; dropdown.classList.add('hidden'); render();
+    function openQuotationDropdown() {
+        selectedOption = null;
+        syncQuotationOptions();
+        dropdown?.classList.remove('hidden');
+    }
+    function closeQuotationDropdown() {
+        dropdown?.classList.add('hidden');
+    }
+    function addQuotationItem(opt) {
+        if (!opt || !opt.id || items.some(item => item.id === opt.id)) {
+            if (error) error.textContent = 'Seleccione un insumo del listado.';
+            return;
+        }
+        items.push({ id: opt.id, name: opt.name, unit: opt.unit, quantity: '' });
+        selectedOption = null;
+        if (input) input.value = '';
+        if (error) error.textContent = '';
+        render();
+        syncQuotationOptions();
+        closeQuotationDropdown();
+    }
+    input?.addEventListener('focus', openQuotationDropdown);
+    input?.addEventListener('input', openQuotationDropdown);
+    document.addEventListener('click', event => {
+        if (!picker.contains(event.target)) closeQuotationDropdown();
+    });
+    dropdown?.addEventListener('click', event => {
+        const option = event.target.closest('[data-quotation-option]');
+        if (!option || option.disabled) return;
+        selectedOption = option.dataset;
+        addQuotationItem(selectedOption);
+    });
+    function render() {
+        list?.replaceChildren();
+        items.forEach((item, index) => {
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600';
+            const info = document.createElement('div');
+            info.className = 'flex-1 min-w-0';
+            const name = document.createElement('div');
+            name.className = 'font-medium dark:text-white';
+            name.textContent = `${item.name} (${item.unit})`;
+            info.append(name);
+            const id = document.createElement('input');
+            id.type = 'hidden';
+            id.name = `items[${index}].InsumoId`;
+            id.value = item.id;
+            const quantity = document.createElement('input');
+            quantity.type = 'number';
+            quantity.name = `items[${index}].Cantidad`;
+            quantity.min = '0.0001';
+            quantity.step = 'any';
+            quantity.required = true;
+            quantity.value = item.quantity;
+            quantity.setAttribute('aria-label', `Cantidad de ${item.name}`);
+            quantity.className = 'w-24 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2.5 dark:bg-gray-700 dark:text-white';
+            quantity.addEventListener('input', () => { item.quantity = quantity.value; });
+            const quantityLabel = document.createElement('label');
+            quantityLabel.className = 'flex items-center gap-2 text-sm';
+            quantityLabel.textContent = 'Cantidad:';
+            quantityLabel.append(quantity);
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'w-8 h-8 rounded-full text-red-600 flex items-center justify-center';
+            remove.setAttribute('aria-label', `Quitar ${item.name}`);
+            removeIcon(remove);
+            remove.addEventListener('click', () => {
+                items.splice(index, 1);
+                render();
+                syncQuotationOptions();
+            });
+            row.append(info, id, quantityLabel, remove);
+            list?.append(row);
+        });
+    }
+    document.getElementById('quotation-add')?.addEventListener('click', () => {
+        if (!selectedOption || items.some(item => item.id === selectedOption.id)) {
+            if (error) error.textContent = 'Seleccione un insumo del listado.';
+            return;
+        }
+        addQuotationItem(selectedOption);
     });
     document.querySelector('[data-quotation-reset]')?.addEventListener('click', () => {
-        form.reset(); actualizarMinimoEntrega(); items.length = 0; selectedOption = null; error.textContent = ''; dropdown.classList.add('hidden'); render();
+        form.reset();
+        actualizarMinimoEntrega();
+        items.length = 0;
+        selectedOption = null;
+        if (error) error.textContent = '';
+        render();
+        syncQuotationOptions();
+        closeQuotationDropdown();
     });
-    form.addEventListener('submit', event => {
+    form?.addEventListener('submit', event => {
         actualizarMinimoEntrega();
         if (!items.length || !form.querySelector('input[name="proveedorIds"]')) { event.preventDefault(); error.textContent = 'Seleccione al menos un proveedor y un insumo.'; return; }
         if (items.some(item => !item.quantity.trim() || !Number.isFinite(Number(item.quantity)) || Number(item.quantity) < 0.0001)) { event.preventDefault(); error.textContent = 'Ingrese una cantidad válida para cada insumo.'; }

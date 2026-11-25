@@ -145,6 +145,7 @@ public sealed class TipoInsumoService(
                 Categoria = TipoInsumo.Categorias.Unidades,
                 UnidadResumen = TipoInsumo.UnidadHerramienta,
                 EsProtegido = true,
+                EsReutilizable = true,
                 Estado = "Activo"
             };
 
@@ -208,9 +209,17 @@ public sealed class TipoInsumoService(
                 tipo.Id = docRef.Id;
                 tipo.Estado = "Activo";
                 tipo.EsProtegido = string.Equals(tipo.Nombre, TipoInsumo.TipoHerramienta, StringComparison.OrdinalIgnoreCase);
-                if (tipo.EsProtegido && (tipo.Categoria != TipoInsumo.Categorias.Unidades ||
-                    !string.Equals(tipo.UnidadResumen, TipoInsumo.UnidadHerramienta, StringComparison.OrdinalIgnoreCase)))
-                    return new ResultadoAuditoriaTipoInsumo(ResultadoOperacion.CrearError("Herramienta requiere categoría Unidades y unidad resumen unidad."));
+                if (tipo.EsProtegido)
+                {
+                    if (tipo.Categoria != TipoInsumo.Categorias.Unidades ||
+                        !string.Equals(tipo.UnidadResumen, TipoInsumo.UnidadHerramienta, StringComparison.OrdinalIgnoreCase))
+                        return new ResultadoAuditoriaTipoInsumo(ResultadoOperacion.CrearError("Herramienta requiere categoría Unidades y unidad resumen unidad."));
+                    tipo.EsReutilizable = true;
+                }
+                else if (tipo.EsReutilizable && tipo.Categoria != TipoInsumo.Categorias.Unidades)
+                {
+                    return new ResultadoAuditoriaTipoInsumo(ResultadoOperacion.CrearError("Los tipos de insumo reutilizables deben tener categoría Unidades."));
+                }
 
                 var antes = new Dictionary<string, string>();
                 var despues = AuditCampos.CapturarTipoInsumo(tipo);
@@ -255,6 +264,12 @@ public sealed class TipoInsumoService(
 
                     if (!string.Equals(actual.UnidadResumen, tipo.UnidadResumen, StringComparison.OrdinalIgnoreCase))
                         return new ResultadoAuditoriaTipoInsumo(ResultadoOperacion.CrearError("No se puede modificar la unidad protegida del tipo protegido Herramienta."));
+
+                    tipo.EsReutilizable = true;
+                }
+                else if (tipo.EsReutilizable && tipo.Categoria != TipoInsumo.Categorias.Unidades)
+                {
+                    return new ResultadoAuditoriaTipoInsumo(ResultadoOperacion.CrearError("Los tipos de insumo reutilizables deben tener categoría Unidades."));
                 }
 
                 // Unicidad de nombre
@@ -281,6 +296,7 @@ public sealed class TipoInsumoService(
                     Categoria = tipo.Categoria,
                     UnidadResumen = tipo.UnidadResumen,
                     EsProtegido = actual.EsProtegido,
+                    EsReutilizable = tipo.EsReutilizable,
                     Estado = actual.Estado
                 };
 
@@ -300,7 +316,8 @@ public sealed class TipoInsumoService(
                 {
                     ["Nombre"] = tipoActualizado.Nombre,
                     ["Categoria"] = tipoActualizado.Categoria,
-                    ["UnidadResumen"] = tipoActualizado.UnidadResumen
+                    ["UnidadResumen"] = tipoActualizado.UnidadResumen,
+                    ["EsReutilizable"] = tipoActualizado.EsReutilizable
                 });
 
                 RegistrarAuditoriaEnTransaccion(transaction, new AuditLog

@@ -11,7 +11,7 @@ public sealed class ServicioFormService(ServicioService servicios)
     public List<ErrorCampo> Validar(Servicio servicio)
     {
         var errores = new List<ErrorCampo>();
-        if (!string.IsNullOrEmpty(servicio.Nombre) && !System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"))
+        if (!string.IsNullOrEmpty(servicio.Nombre) && !System.Text.RegularExpressions.Regex.IsMatch(servicio.Nombre, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$"))
             errores.Add(new("Nombre", "El nombre solo puede contener letras y espacios."));
         if (servicio.Precio < 0)
             errores.Add(new("Precio", "El precio debe ser igual o mayor a 0."));

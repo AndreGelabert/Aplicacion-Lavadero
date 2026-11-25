@@ -1329,17 +1329,26 @@
         const syncJson = () => {
             const result = {};
             const fields = document.querySelectorAll('.consumo-real-input');
-            fields.forEach(field => result[field.dataset.insumoId] = Number(field.value || 0));
+            fields.forEach(field => {
+                let val = Number(field.value || 0);
+                if (field.dataset.esEntero === 'true' && val % 1 !== 0) {
+                    val = Math.floor(val);
+                    field.value = val;
+                }
+                result[field.dataset.insumoId] = val;
+            });
             if (consumoJson) consumoJson.value = JSON.stringify(result);
             if (justificacion) justificacion.required = Array.from(fields).some(field => Number(field.value || 0) !== Number(field.dataset.teorica));
         };
 
         if (inputs) {
-            inputs.innerHTML = consumibles.map(item =>
-                `<label class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+            inputs.innerHTML = consumibles.map(item => {
+                const esEntero = ['unidad', 'unidades', 'u'].includes((item.UnidadMedida || '').trim().toLowerCase());
+                return `<label class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                     <span>${escapeHtml(item.NombreInsumo || item.InsumoId)} (${escapeHtml(item.UnidadMedida === 'l' ? 'Litro (L)' : item.UnidadMedida || '')})</span>
-                    <input type="number" min="0" step="any" value="${item.DosisTeorica}" data-insumo-id="${escapeHtml(item.InsumoId)}" data-teorica="${item.DosisTeorica}" class="consumo-real-input w-28 rounded-lg border border-gray-300 p-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
-                </label>`).join('');
+                    <input type="number" min="0" step="${esEntero ? '1' : 'any'}" value="${item.DosisTeorica}" data-insumo-id="${escapeHtml(item.InsumoId)}" data-teorica="${item.DosisTeorica}" data-es-entero="${esEntero}" class="consumo-real-input w-28 rounded-lg border border-gray-300 p-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
+                </label>`;
+            }).join('');
             inputs.querySelectorAll('.consumo-real-input').forEach(input => input.addEventListener('input', syncJson));
         }
 
