@@ -91,7 +91,7 @@ public sealed class TipoInsumoService(
         return todos.FirstOrDefault(x => string.Equals(x.Nombre, nomTrim, StringComparison.OrdinalIgnoreCase));
     }
 
-    public async Task<bool> EstaEnUso(string tipoId, string tipoNombre, Transaction? transaction = null)
+    public async Task<bool> EstaEnUso(string tipoId, string tipoNombre, Transaction? transaction = null, bool soloActivos = false)
     {
         IReadOnlyList<DocumentSnapshot> insumosDocs;
         if (transaction != null)
@@ -107,6 +107,13 @@ public sealed class TipoInsumoService(
 
         return insumosDocs.Any(d =>
         {
+            if (soloActivos)
+            {
+                var estado = d.ContainsField("Estado") ? d.GetValue<string>("Estado") : null;
+                if (Firebase.Utils.NombreCatalogoNormalizer.NormalizarEstado(estado) != "Activo")
+                    return false;
+            }
+
             var tipoIdVal = d.ContainsField("TipoId") ? d.GetValue<string>("TipoId") : null;
             if (!string.IsNullOrWhiteSpace(tipoIdVal))
             {
@@ -202,7 +209,7 @@ public sealed class TipoInsumoService(
 
             if (crear)
             {
-                if (existentes.Any(x => string.Equals(x.Nombre, tipo.Nombre, StringComparison.OrdinalIgnoreCase)))
+                if (existentes.Any(x => Firebase.Utils.NombreCatalogoNormalizer.SonEquivalentes(x.Nombre, tipo.Nombre)))
                     return new ResultadoAuditoriaTipoInsumo(ResultadoOperacion.CrearError("Ya existe un tipo de insumo con ese nombre."));
 
                 var docRef = firestore.Collection(Collection).Document();
@@ -273,7 +280,7 @@ public sealed class TipoInsumoService(
                 }
 
                 // Unicidad de nombre
-                if (existentes.Any(x => x.Id != tipo.Id && string.Equals(x.Nombre, tipo.Nombre, StringComparison.OrdinalIgnoreCase)))
+                if (existentes.Any(x => x.Id != tipo.Id && Firebase.Utils.NombreCatalogoNormalizer.SonEquivalentes(x.Nombre, tipo.Nombre)))
                     return new ResultadoAuditoriaTipoInsumo(ResultadoOperacion.CrearError("Ya existe un tipo de insumo con ese nombre."));
 
                 // Verificar si está en uso por insumos existentes
@@ -366,10 +373,10 @@ public sealed class TipoInsumoService(
 
             if (estado == "Inactivo")
             {
-                var enUso = await EstaEnUso(actual.Id, actual.Nombre, transaction);
+                var enUso = await EstaEnUso(actual.Id, actual.Nombre, transaction, soloActivos: true);
                 if (enUso)
                     return new ResultadoAuditoriaTipoInsumo(ResultadoOperacion.CrearError(
-                        "No se puede desactivar el tipo de insumo porque existen insumos asociados a él."));
+                        "No se puede desactivar el tipo de insumo porque existen insumos activos asociados a él."));
             }
 
             if (string.Equals(actual.Estado, estado, StringComparison.OrdinalIgnoreCase))
