@@ -12,17 +12,79 @@ using System.Security.Claims;
 public class TipoDocumentoController : Controller
 {
     private readonly TipoDocumentoService _tipoDocumentoService;
-    private readonly IAuditWriter _auditService;
-    private readonly ClienteService _clienteService;
 
-    public TipoDocumentoController(
-        TipoDocumentoService tipoDocumentoService,
-        IAuditWriter auditService,
-        ClienteService clienteService)
+    public TipoDocumentoController(TipoDocumentoService tipoDocumentoService)
     {
         _tipoDocumentoService = tipoDocumentoService;
-        _auditService = auditService;
-        _clienteService = clienteService;
+    }
+
+    public sealed class TipoDocumentoModalInput
+    {
+        public string? Id { get; set; }
+        public string Nombre { get; set; } = string.Empty;
+        public string Formato { get; set; } = string.Empty;
+    }
+
+    private ActorAuditoria Actor() => new(
+        User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
+        User.FindFirstValue(ClaimTypes.Email) ?? string.Empty);
+
+    [HttpGet]
+    [Permiso("Clientes.Crear", "Clientes.Modificar")]
+    public async Task<IActionResult> ModalDatos() =>
+        Json(await _tipoDocumentoService.ObtenerTodos(incluirInactivos: true));
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Permiso("Clientes.Crear", "Clientes.Modificar")]
+    public async Task<IActionResult> ModalGuardar(TipoDocumentoModalInput input, bool crear)
+    {
+        if (!User.TienePermiso(crear ? "Clientes.Crear" : "Clientes.Modificar")) return Forbid();
+        if (!crear && string.IsNullOrWhiteSpace(input.Id))
+            return BadRequest(new { mensaje = "El tipo de documento no existe." });
+
+        var resultado = await _tipoDocumentoService.GuardarConAuditoria(
+            new TipoDocumento
+            {
+                Id = crear ? string.Empty : input.Id!,
+                Nombre = input.Nombre,
+                Formato = input.Formato
+            },
+            crear,
+            Actor());
+
+        if (!resultado.Resultado.EsExitoso)
+            return BadRequest(new { mensaje = resultado.Resultado.MensajeError });
+
+        var tiposActivos = await _tipoDocumentoService.ObtenerTiposDocumentoCompletos();
+        return Json(new
+        {
+            mensaje = resultado.Resultado.MensajeExito,
+            id = resultado.TipoDocumentoId,
+            tipos = tiposActivos.Select(t => t.Nombre).ToList(),
+            tiposCompletos = tiposActivos
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Permiso("Clientes.Modificar", "Clientes.Eliminar")]
+    public async Task<IActionResult> ModalEstado(string id, string estado)
+    {
+        if (estado != "Activo" && estado != "Inactivo")
+            return BadRequest(new { mensaje = "Estado inválido." });
+
+        var resultado = await _tipoDocumentoService.CambiarEstadoConAuditoria(id, estado, Actor());
+        if (!resultado.Resultado.EsExitoso)
+            return BadRequest(new { mensaje = resultado.Resultado.MensajeError });
+
+        var tiposActivos = await _tipoDocumentoService.ObtenerTiposDocumentoCompletos();
+        return Json(new
+        {
+            mensaje = resultado.Resultado.MensajeExito,
+            tipos = tiposActivos.Select(t => t.Nombre).ToList(),
+            tiposCompletos = tiposActivos
+        });
     }
 
     [HttpPost]
@@ -34,48 +96,25 @@ public class TipoDocumentoController : Controller
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(nombreTipo))
-                {
-                    return Json(new { success = false, message = "El nombre del tipo de documento es obligatorio." });
-                }
+                var resultado = await _tipoDocumentoService.GuardarConAuditoria(
+                    new TipoDocumento
+                    {
+                        Id = string.Empty,
+                        Nombre = nombreTipo ?? string.Empty,
+                        Formato = formato ?? string.Empty
+                    },
+                    crear: true,
+                    Actor());
 
-                if (nombreTipo.Length < 3)
-                {
-                    return Json(new { success = false, message = "El nombre debe tener al menos 3 caracteres." });
-                }
-
-                // ✅ NUEVO: Validar que el formato sea obligatorio
-                if (string.IsNullOrWhiteSpace(formato))
-                {
-                    return Json(new { success = false, message = "El formato del documento es obligatorio." });
-                }
-
-                if (formato.Length < 3)
-                {
-                    return Json(new { success = false, message = "El formato debe tener al menos 3 caracteres." });
-                }
-
-                // ✅ NUEVO: Validar que el formato solo contenga caracteres permitidos
-                if (!System.Text.RegularExpressions.Regex.IsMatch(formato, @"^[nl.\-]{3,}$"))
-                {
-                    return Json(new { success = false, message = "El formato solo puede contener 'n' (números), 'l' (letras), '.' y '-'. Mínimo 3 caracteres." });
-                }
-
-                if (await _tipoDocumentoService.ExisteTipoDocumento(nombreTipo))
-                {
-                    return Json(new { success = false, message = "Ya existe un tipo de documento con el mismo nombre." });
-                }
-
-                var docId = await _tipoDocumentoService.CrearTipoDocumento(nombreTipo, formato);
-                var creado = await _tipoDocumentoService.ObtenerParaAuditoriaPorId(docId);
-                await RegistrarEvento("Creacion de tipo de documento", docId, "TipoDocumento", new(), AuditCampos.CapturarTipoDocumento(creado), creado?.Nombre);
+                if (!resultado.Resultado.EsExitoso)
+                    return Json(new { success = false, message = resultado.Resultado.MensajeError });
 
                 var tiposActualizados = await _tipoDocumentoService.ObtenerTiposDocumentoCompletos();
 
                 return Json(new
                 {
                     success = true,
-                    message = "Tipo de documento creado correctamente.",
+                    message = resultado.Resultado.MensajeExito,
                     tipos = tiposActualizados.Select(t => t.Nombre).ToList(),
                     tiposCompletos = tiposActualizados
                 });
@@ -132,8 +171,8 @@ public class TipoDocumentoController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Permiso("Clientes.Eliminar")]
-    public async Task<IActionResult> EliminarTipoDocumento(string nombreTipo)
+    [Permiso("Clientes.Modificar", "Clientes.Eliminar")]
+    public async Task<IActionResult> DesactivarTipoDocumento(string nombreTipo)
     {
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
@@ -144,22 +183,16 @@ public class TipoDocumentoController : Controller
                     return Json(new { success = false, message = "Debe seleccionar un tipo de documento." });
                 }
 
-                // ✅ NUEVO: Verificar si está en uso antes de eliminar
-                var enUso = await _clienteService.ExisteTipoDocumentoEnUso(nombreTipo);
-                if (enUso)
+                var tipo = await _tipoDocumentoService.ObtenerTipoDocumentoPorNombre(nombreTipo);
+                if (tipo == null)
                 {
-                    return Json(new {
-                        success = false,
-                        message = $"No se puede eliminar el tipo '{nombreTipo}' porque está en uso por uno o más clientes."
-                    });
+                    return Json(new { success = false, message = "El tipo de documento no existe." });
                 }
 
-                var anteriores = (await _tipoDocumentoService.ObtenerParaAuditoria(nombreTipo)).ToDictionary(t => t.Id);
-                var idsEliminados = await _tipoDocumentoService.EliminarTipoDocumento(nombreTipo, anteriores.Keys.ToHashSet());
-                foreach (var id in idsEliminados)
+                var resultado = await _tipoDocumentoService.CambiarEstadoConAuditoria(tipo.Id, "Inactivo", Actor());
+                if (!resultado.Resultado.EsExitoso)
                 {
-                    var anterior = anteriores[id];
-                    await RegistrarEvento("Eliminacion de tipo de documento", id, "TipoDocumento", AuditCampos.CapturarTipoDocumento(anterior), new(), anterior?.Nombre);
+                    return Json(new { success = false, message = resultado.Resultado.MensajeError });
                 }
 
                 var tiposActualizados = await _tipoDocumentoService.ObtenerTiposDocumento();
@@ -167,22 +200,15 @@ public class TipoDocumentoController : Controller
                 return Json(new
                 {
                     success = true,
-                    message = "Tipo de documento eliminado correctamente.",
+                    message = resultado.Resultado.MensajeExito,
                     tipos = tiposActualizados
                 });
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = $"Error al eliminar el tipo de documento: {ex.Message}" });
+                return Json(new { success = false, message = $"Error al desactivar el tipo de documento: {ex.Message}" });
             }
         }
         return BadRequest();
-    }
-
-    private async Task RegistrarEvento(string accion, string targetId, string entidad, Dictionary<string, string> antes, Dictionary<string, string> despues, string nombre)
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var userEmail = User.FindFirstValue(ClaimTypes.Email);
-        await _auditService.LogEvent(userId, userEmail, accion, targetId, entidad, antes, despues, nombre);
     }
 }

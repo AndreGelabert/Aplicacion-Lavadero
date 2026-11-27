@@ -831,10 +831,10 @@
 
             const { ok, data } = await parseJsonSafe(response);
             const success = data?.success ?? ok;
-            const message = data?.message ?? (success ? 'Tipo de servicio eliminado.' : 'No se pudo eliminar el tipo de servicio.');
+            const message = data?.message ?? (success ? 'Tipo de servicio desactivado.' : 'No se pudo desactivar el tipo de servicio.');
 
             if (success) {
-                if (data?.tipos?.length) actualizarDropdownTipos('Tipo', data.tipos);
+                if (Array.isArray(data?.tipos)) actualizarDropdownTipos('Tipo', data.tipos);
                 cerrarModal('eliminarTipoModal');
                 form.reset();
                 showTableMessage('success', message);
@@ -845,7 +845,7 @@
         } catch (error) {
             console.error('Error:', error);
             cerrarModal('eliminarTipoModal');
-            showTableMessage('error', 'Error al eliminar el tipo de servicio.');
+            showTableMessage('error', 'Error al desactivar el tipo de servicio.');
         }
     }
 
@@ -869,10 +869,10 @@
 
             const { ok, data } = await parseJsonSafe(response);
             const success = data?.success ?? ok;
-            const message = data?.message ?? (success ? 'Tipo de vehículo eliminado.' : 'No se pudo eliminar el tipo de vehículo.');
+            const message = data?.message ?? (success ? 'Tipo de vehículo desactivado.' : 'No se pudo desactivar el tipo de vehículo.');
 
             if (success) {
-                if (data?.tipos?.length) actualizarDropdownTipos('TipoVehiculo', data.tipos);
+                if (Array.isArray(data?.tipos)) actualizarDropdownTipos('TipoVehiculo', data.tipos);
                 cerrarModal('eliminarTipoVehiculoModal');
                 form.reset();
                 showTableMessage('success', message);
@@ -883,7 +883,7 @@
         } catch (error) {
             console.error('Error:', error);
             cerrarModal('eliminarTipoVehiculoModal');
-            showTableMessage('error', 'Error al eliminar el tipo de vehículo.');
+            showTableMessage('error', 'Error al desactivar el tipo de vehículo.');
         }
     }
 

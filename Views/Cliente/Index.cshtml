@@ -65,75 +65,11 @@
             </div>
         }
 
-        <!-- Modal de Tipo de Documento -->
-        @if (puedeCrear)
-        {
-        <div id="tipoDocumentoModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
-            <div class="relative p-4 w-full max-w-2xl h-full md:h-auto">
-                <div class="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
-                    <div class="flex justify-between items-center pb-4 mb-4 rounded-t border-b sm:mb-5 dark:border-gray-600">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                            Registrar Tipo de Documento
-                        </h3>
-                        <button type="button" data-modal-hide="tipoDocumentoModal" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white">
-                            <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
-                            <span class="sr-only">Close modal</span>
-                        </button>
-                    </div>
-                    <div id="tipo-documento-modal-messages" class="mb-4"></div>
-                    <form asp-controller="TipoDocumento" asp-action="CrearTipoDocumento" id="formCrearTipoDocumento">
-                        @Html.AntiForgeryToken()
-                        <div class="grid gap-4 mb-4 sm:grid-cols-1">
-                            <div>
-                                <label for="nombreTipoDocumento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre <span class="text-red-600">*</span></label>
-                                <input type="text" name="nombreTipo" id="nombreTipoDocumento" 
-                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
-                                       placeholder="Ej: DNI, Pasaporte, CUIT" 
-                                       minlength="3"
-                                       required>
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 caracteres</p>
-                            </div>
-                            <div>
-                                <label for="formatoTipoDocumento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Formato del número
-                                    <span class="text-red-600">*</span>
-                                </label>
-                                <input type="text" name="formato" id="formatoTipoDocumento" 
-                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
-                                       placeholder="Ej: nn.nnn.nnn o lllnnnnnn" 
-                                       minlength="3"
-                                       pattern="^[nNlL.\-]+$"
-                                       title="Solo se permiten: n (número), l (letra), punto (.) y guión (-)"
-                                       required>
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    Usa <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded font-semibold">n</code> para números y 
-                                    <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded font-semibold">l</code> para letras. 
-                                    Puedes usar <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">.</code> y <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">-</code> como separadores.
-                                    Mínimo 3 caracteres. Ejemplos: <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">nn.nnn.nnn</code> (DNI), <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">lllnnnnnn</code> (Pasaporte)
-                                </p>
-                            </div>
-                        </div>
-                        <div class="flex justify-end gap-2">
-                            <button type="submit" class="text-white inline-flex items-center bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-1">
-                                    <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
-                                </svg>
-                                Registrar
-                            </button>
-                            <button type="button" data-modal-hide="tipoDocumentoModal" onclick="closeTipoDocumentoModal()" class="text-white inline-flex items-center bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-1">
-                                    <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
-                                </svg>
-                                Cancelar
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-        }
+        <!-- Modal ABM de Tipo de Documento -->
+        @await Html.PartialAsync("_TipoDocumentoModal")
 
-        <!-- Modal de Eliminar Tipo de Documento -->
-        @if (puedeEliminar)
+        <!-- Modal de Desactivar Tipo de Documento (inline) -->
+        @if (puedeEliminar || puedeModificar)
         {
         <div id="eliminarTipoDocumentoModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
             <div class="relative p-4 w-full max-w-md h-full md:h-auto">
@@ -147,13 +83,13 @@
                             <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path>
                         </svg>
                     </div>
-                    <p class="mb-4 text-gray-500 dark:text-gray-300">¿Está seguro de eliminar el tipo de documento seleccionado?</p>
+                    <p class="mb-4 text-gray-500 dark:text-gray-300">¿Está seguro de desactivar el tipo de documento seleccionado?</p>
                     <div class="flex justify-center items-center space-x-4">
                         <button type="button" data-modal-hide="eliminarTipoDocumentoModal" class="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-primary-300 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600">
                             No, cancelar
                         </button>
                         <button type="button" onclick="confirmarEliminarTipoDocumento()" class="py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900">
-                            Sí, eliminar
+                            Sí, desactivar
                         </button>
                     </div>
                 </div>
@@ -161,62 +97,8 @@
         </div>
         }
 
-        <!-- Modal de Tipo de Vehículo -->
-        @if (puedeCrearTipoVehiculo)
-        {
-        <div id="tipoVehiculoModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[60] flex justify-center items-center w-full md:inset-0 h-modal md:h-full">
-            <div class="relative p-4 w-full max-w-2xl h-full md:h-auto">
-                <div class="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
-                    <div class="flex justify-between items-center pb-4 mb-4 rounded-t border-b sm:mb-5 dark:border-gray-600">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                            Registrar Tipo de Vehículo
-                        </h3>
-                        <button type="button" data-modal-hide="tipoVehiculoModal" onclick="closeTipoVehiculoModal()" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white">
-                            <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
-                            <span class="sr-only">Cerrar modal</span>
-                        </button>
-                    </div>
-                    <div id="tipo-vehiculo-modal-messages" class="mb-4"></div>
-                    <form asp-controller="Servicio" asp-action="CrearTipoVehiculo" id="formCrearTipoVehiculo">
-                        @Html.AntiForgeryToken()
-                        <div class="grid gap-4 mb-4 sm:grid-cols-1">
-                            <div>
-                                <label for="nombreTipoVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nombre <span class="text-red-600">*</span></label>
-                                <input type="text" name="nombreTipo" id="nombreTipoVehiculo" 
-                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
-                                       placeholder="Ej: Auto, Camioneta, Moto" 
-                                       minlength="3"
-                                       required>
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 caracteres</p>
-                            </div>
-                            <div>
-                                <label for="formatoPatenteVehiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Formato de Patente (opcional)</label>
-                                <input type="text" name="formatoPatente" id="formatoPatenteVehiculo" 
-                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" 
-                                       placeholder="Ej: llnnnll|lllnnn">
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    Usa <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">l</code> para letras y 
-                                    <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">n</code> para números. 
-                                    Separa formatos múltiples con <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">|</code>
-                                </p>
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    Ejemplo: <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">llnnnll|lllnnn</code> para autos argentinos (AB123CD o ABC123)
-                                </p>
-                            </div>
-                        </div>
-                        <div class="flex justify-end gap-2">
-                            <button type="submit" class="text-white inline-flex items-center bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
-                                Registrar
-                            </button>
-                            <button type="button" data-modal-hide="tipoVehiculoModal" onclick="closeTipoVehiculoModal()" class="text-white inline-flex items-center bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900 font-medium rounded-lg text-sm px-2 py-1 text-center">
-                                Cancelar
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-        }
+        <!-- Modal ABM de Tipo de Vehículo -->
+        @await Html.PartialAsync("_TipoVehiculoModal")
 
         @if (User.TienePermiso("Clientes.Consultar"))
         {
@@ -337,6 +219,43 @@
     </div>
 </section>
 <script src="~/js/form-validation.js" asp-append-version="true"></script>
+<script src="~/js/tipos-catalogo-modal.js" asp-append-version="true"></script>
 <script src="~/js/vehiculo-api.js" asp-append-version="true"></script>
 <script src="~/js/cliente.js" asp-append-version="true"></script>
 <script src="~/js/cliente-validation-integration.js" asp-append-version="true"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.initTipoCatalogoModal) {
+        window.initTipoCatalogoModal({
+            modalId: 'tipoDocumentoModal',
+            formId: 'tipoDocumentoAbmForm',
+            messageId: 'tiposDocumentoMensaje',
+            tableId: 'tiposDocumentoTabla',
+            selectSelectors: ['#TipoDocumento', 'select[name="TipoDocumento"]'],
+            columns: [{ field: 'nombre' }, { field: 'formato' }],
+            fillForm: (form, item) => {
+                form.elements.Nombre.value = item.nombre || item.Nombre || '';
+                form.elements.Formato.value = item.formato || item.Formato || '';
+            }
+        });
+        window.initTipoCatalogoModal({
+            modalId: 'tipoVehiculoModal',
+            formId: 'tipoVehiculoAbmForm',
+            messageId: 'tiposVehiculoMensaje',
+            tableId: 'tiposVehiculoTabla',
+            selectSelectors: ['#TipoVehiculo', 'select[name="TipoVehiculo"]', 'select[name$=".TipoVehiculo"]', '.vehiculo-tipo-select'],
+            columns: [
+                { field: 'nombre' },
+                { field: 'formatoPatente' },
+                { field: 'cantidadEmpleadosRequeridos' }
+            ],
+            fillForm: (form, item) => {
+                form.elements.Nombre.value = item.nombre || item.Nombre || '';
+                form.elements.FormatoPatente.value = item.formatoPatente || item.FormatoPatente || '';
+                form.elements.CantidadEmpleadosRequeridos.value = item.cantidadEmpleadosRequeridos || item.CantidadEmpleadosRequeridos || 1;
+            },
+            onReset: (form) => { form.elements.CantidadEmpleadosRequeridos.value = 1; }
+        });
+    }
+});
+</script>

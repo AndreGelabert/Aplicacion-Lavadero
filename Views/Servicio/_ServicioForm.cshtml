@@ -5,9 +5,9 @@
     string submitText = edit ? "Guardar" : "Registrar";
     string clearText = edit ? "Cancelar" : "Limpiar Campos";
     var puedeCrearTipoServicio = User.TienePermiso("Servicios.Crear");
-    var puedeEliminarTipoServicio = User.TienePermiso("Servicios.Eliminar");
+    var puedeEliminarTipoServicio = User.TieneAlgunPermiso("Servicios.Modificar", "Servicios.Eliminar");
     var puedeCrearTipoVehiculo = User.TieneAlgunPermiso("Servicios.Crear", "Vehiculos.Crear");
-    var puedeEliminarTipoVehiculo = User.TieneAlgunPermiso("Servicios.Eliminar", "Vehiculos.Eliminar");
+    var puedeEliminarTipoVehiculo = User.TieneAlgunPermiso("Servicios.Modificar", "Servicios.Eliminar", "Vehiculos.Modificar", "Vehiculos.Eliminar");
     var tiposReceta = (ViewBag.TiposInsumoDisponibles as List<Firebase.Models.TipoInsumo>) ?? new List<Firebase.Models.TipoInsumo>();
     // The service creates random IDs; legacy Herramienta records can lack EsProtegido.
     var tiposHerramientaIds = tiposReceta.Where(t => t.EsInsumoReutilizable()).Select(t => t.Id).ToArray();
