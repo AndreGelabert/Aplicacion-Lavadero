@@ -24,7 +24,7 @@ public class AuditServiceCaptureTests
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, "actor"), new Claim(ClaimTypes.Email, "actor@example.invalid") }, "test")) };
         if (ajax) context.Request.Headers["X-Requested-With"] = "XMLHttpRequest";
         var service = new ServicioService(db);
-        var controller = new ServicioController(service, new AuditService(db), new TipoServicioService(db), new TipoVehiculoService(db), new VehiculoService(db), new Firebase.Services.ServicioQueryService(service), new Firebase.Services.ServicioLifecycleService(service, new PaqueteServicioService(db, service, cache)), new Firebase.Services.ServicioFormService(service), new Firebase.Services.ServicioTypeService(service, new TipoServicioService(db), new TipoVehiculoService(db), new VehiculoService(db))) { ControllerContext = new ControllerContext { HttpContext = context } };
+        var controller = new ServicioController(service, new AuditService(db), new TipoServicioService(db), new TipoVehiculoService(db), new VehiculoService(db), new Firebase.Services.ServicioQueryService(service), new Firebase.Services.ServicioLifecycleService(service, new PaqueteServicioService(db, service, cache)), new Firebase.Services.ServicioFormService(service), new Firebase.Services.ServicioTypeService(new TipoServicioService(db), new TipoVehiculoService(db))) { ControllerContext = new ControllerContext { HttpContext = context } };
         controller.TempData = new TempDataDictionary(context, new TempProvider());
         return controller;
     }
@@ -87,15 +87,21 @@ public class AuditServiceCaptureTests
         Assert.False(Success(await ajax.CrearTipoVehiculo("Auto", "bad", 2))); await Events(db);
         Assert.True(Success(await ajax.CrearTipoVehiculo("Auto", "lllnnn", 2)));
         var first = Assert.Single((await db.Collection("tiposVehiculos").GetSnapshotAsync()).Documents);
-        await db.Collection("tiposVehiculos").Document("duplicate").SetAsync(new Dictionary<string,object> { ["Nombre"] = "Auto", ["FormatoPatente"] = "nnn", ["CantidadEmpleadosRequeridos"] = 3 });
-        var one = new Dictionary<string,string> { ["Nombre"] = "Auto", ["FormatoPatente"] = "lllnnn", ["CantidadEmpleadosRequeridos"] = "2" };
-        var two = new Dictionary<string,string> { ["Nombre"] = "Auto", ["FormatoPatente"] = "nnn", ["CantidadEmpleadosRequeridos"] = "3" };
+        var activeVeh = new Dictionary<string,string> { ["Nombre"] = "Auto", ["FormatoPatente"] = "lllnnn", ["CantidadEmpleadosRequeridos"] = "2", ["Estado"] = "Activo" };
+        var inactiveVeh = new Dictionary<string,string> { ["Nombre"] = "Auto", ["FormatoPatente"] = "lllnnn", ["CantidadEmpleadosRequeridos"] = "2", ["Estado"] = "Inactivo" };
         Assert.False(Success(await ajax.CrearTipoVehiculo("Auto", "nnn", 1)));
-        await Events(db, ("Creacion de tipo de vehiculo", first.Id, "TipoVehiculo", "Auto", new(), one));
-        Assert.IsType<RedirectToActionResult>(await fallback.EliminarTipoVehiculo("Auto")); Assert.Empty((await db.Collection("tiposVehiculos").GetSnapshotAsync()).Documents);
+        await Events(db, ("Creacion de tipo de vehiculo", first.Id, "TipoVehiculo", "Auto", new(), activeVeh));
+        Assert.IsType<RedirectToActionResult>(await fallback.DesactivarTipoVehiculo("Auto"));
+        Assert.Empty(await new TipoVehiculoService(db).ObtenerTiposVehiculos());
         Assert.True(Success(await ajax.CrearTipoServicio("Exterior"))); var type = Assert.Single((await db.Collection("tiposServicio").GetSnapshotAsync()).Documents);
-        Assert.True(Success(await ajax.EliminarTipoServicio("Exterior"))); Assert.Empty((await db.Collection("tiposServicio").GetSnapshotAsync()).Documents);
-        var name = new Dictionary<string,string> { ["Nombre"] = "Exterior" };
-        await Events(db, ("Creacion de tipo de vehiculo", first.Id, "TipoVehiculo", "Auto", new(), one), ("Eliminacion de tipo de vehiculo", first.Id, "TipoVehiculo", "Auto", one, new()), ("Eliminacion de tipo de vehiculo", "duplicate", "TipoVehiculo", "Auto", two, new()), ("Creacion de tipo de servicio", type.Id, "TipoServicio", "Exterior", new(), name), ("Eliminacion de tipo de servicio", type.Id, "TipoServicio", "Exterior", name, new()));
+        Assert.True(Success(await ajax.DesactivarTipoServicio("Exterior")));
+        Assert.Empty(await new TipoServicioService(db).ObtenerTiposServicio());
+        var activeSrv = new Dictionary<string,string> { ["Nombre"] = "Exterior", ["Estado"] = "Activo" };
+        var inactiveSrv = new Dictionary<string,string> { ["Nombre"] = "Exterior", ["Estado"] = "Inactivo" };
+        await Events(db,
+            ("Creacion de tipo de vehiculo", first.Id, "TipoVehiculo", "Auto", new(), activeVeh),
+            ("Desactivacion de tipo de vehiculo", first.Id, "TipoVehiculo", "Auto", activeVeh, inactiveVeh),
+            ("Creacion de tipo de servicio", type.Id, "TipoServicio", "Exterior", new(), activeSrv),
+            ("Desactivacion de tipo de servicio", type.Id, "TipoServicio", "Exterior", activeSrv, inactiveSrv));
     }
 }
