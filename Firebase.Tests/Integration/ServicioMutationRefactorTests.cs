@@ -46,7 +46,7 @@ public class ServicioMutationRefactorTests
         var controller = new ServicioController(services, audit, new TipoServicioService(db), new TipoVehiculoService(db),
             new VehiculoService(db), new ServicioQueryService(services),
             new ServicioLifecycleService(services, new PaqueteServicioService(db, services, cache)), new ServicioFormService(services),
-            new ServicioTypeService(services, new TipoServicioService(db), new TipoVehiculoService(db), new VehiculoService(db)))
+            new ServicioTypeService(new TipoServicioService(db), new TipoVehiculoService(db)))
         { ControllerContext = new ControllerContext { HttpContext = context } };
         controller.TempData = new TempDataDictionary(context, new TempProvider());
         return controller;
@@ -144,19 +144,19 @@ public class ServicioMutationRefactorTests
         var services = new ServicioService(db); var input = Service(); await services.CrearServicio(input);
         var ajax = Controller(db, cache, audit);
 
-        JsonFailure(await ajax.CrearTipoServicio("Exterior"), "Ya existe un tipo de servicio con el mismo nombre.");
-        JsonFailure(await ajax.CrearTipoVehiculo("Moto", "bad", 1), "El formato solo puede contener 'n' (números), 'l' (letras), '.' '-' y '|'. Mínimo 3 caracteres.");
+        JsonFailure(await ajax.CrearTipoServicio("Exterior"), "Ya existe un tipo de servicio con ese nombre.");
+        JsonFailure(await ajax.CrearTipoVehiculo("Moto", "bad", 1), "El formato solo puede contener 'n' (números), 'l' (letras), '.', '-' y '|'. Mínimo 3 caracteres.");
         JsonFailure(await ajax.CrearTipoVehiculo("Moto", "nnn", 11), "La cantidad de empleados debe estar entre 1 y 10.");
-        JsonFailure(await ajax.EliminarTipoServicio("Exterior"), "No se puede eliminar el tipo de servicio porque hay servicios que lo utilizan.");
-        JsonFailure(await ajax.EliminarTipoVehiculo("Auto"), "No se puede eliminar el tipo 'Auto' porque hay servicios que lo utilizan.");
+        JsonFailure(await ajax.DesactivarTipoServicio("Exterior"), "No se puede desactivar el tipo de servicio porque está en uso por servicios activos.");
+        JsonFailure(await ajax.DesactivarTipoVehiculo("Auto"), "No se puede desactivar el tipo de vehículo porque está en uso por servicios, paquetes o vehículos activos.");
         Assert.Empty(ajax.TempData);
 
         var fallback = Controller(db, cache, audit, false);
         Assert.Equal("Index", Assert.IsType<RedirectToActionResult>(await fallback.CrearTipoServicio("Exterior")).ActionName);
-        Assert.Equal("Ya existe un TipoServicio con el mismo nombre.", fallback.TempData["Error"]);
+        Assert.Equal("Ya existe un tipo de servicio con ese nombre.", fallback.TempData["Error"]);
         fallback.TempData.Clear();
-        Assert.Equal("Index", Assert.IsType<RedirectToActionResult>(await fallback.EliminarTipoVehiculo("Auto")).ActionName);
-        Assert.Equal("No se puede eliminar TipoVehiculo porque hay servicios que lo utilizan.", fallback.TempData["Error"]);
+        Assert.Equal("Index", Assert.IsType<RedirectToActionResult>(await fallback.DesactivarTipoVehiculo("Auto")).ActionName);
+        Assert.Equal("No se puede desactivar el tipo de vehículo porque está en uso por servicios, paquetes o vehículos activos.", fallback.TempData["Error"]);
         Assert.Equal(new[] { "Exterior" }, await types.ObtenerTiposServicio());
         var vehicle = Assert.Single(await vehicles.ObtenerTiposVehiculosCompletos());
         Assert.Equal("Auto", vehicle.Nombre); Assert.Equal("lllnnn", vehicle.FormatoPatente); Assert.Equal(2, vehicle.CantidadEmpleadosRequeridos);

@@ -215,15 +215,23 @@ public static class AuditCampos
         };
     }
 
+    public static Dictionary<string, string> CapturarTipoServicio(TipoServicio? tipo) => tipo == null ? new() : new()
+    {
+        ["Nombre"] = tipo.Nombre ?? "",
+        ["Estado"] = string.IsNullOrWhiteSpace(tipo.Estado) ? "Activo" : tipo.Estado
+    };
+
     public static Dictionary<string, string> CapturarTipoDocumento(TipoDocumento tipo) => tipo == null ? new() : new()
     {
-        ["Nombre"] = tipo.Nombre ?? "", ["Formato"] = tipo.Formato ?? ""
+        ["Nombre"] = tipo.Nombre ?? "", ["Formato"] = tipo.Formato ?? "",
+        ["Estado"] = string.IsNullOrWhiteSpace(tipo.Estado) ? "Activo" : tipo.Estado
     };
 
     public static Dictionary<string, string> CapturarTipoVehiculo(TipoVehiculo tipo) => tipo == null ? new() : new()
     {
         ["Nombre"] = tipo.Nombre ?? "", ["FormatoPatente"] = tipo.FormatoPatente ?? "",
-        ["CantidadEmpleadosRequeridos"] = tipo.CantidadEmpleadosRequeridos.ToString()
+        ["CantidadEmpleadosRequeridos"] = tipo.CantidadEmpleadosRequeridos.ToString(),
+        ["Estado"] = string.IsNullOrWhiteSpace(tipo.Estado) ? "Activo" : tipo.Estado
     };
 
     /// <summary>Captura los campos auditables de un Proveedor.</summary>

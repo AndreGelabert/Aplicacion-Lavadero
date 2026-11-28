@@ -93,20 +93,20 @@ public class AuditCatalogueCaptureTests
     }
 
     [LocalFirestoreFact]
-    public async Task DocumentCreateDeleteAndRejectedInputCaptureEachId()
+    public async Task DocumentCreateDeactivateAndRejectedInputCaptureEachId()
     {
-        var db = Db(); var service = new TipoDocumentoService(db); var controller = new TipoDocumentoController(service, new AuditService(db), new ClienteService(db)); Setup(controller, true);
+        var db = Db(); var service = new TipoDocumentoService(db); var controller = new TipoDocumentoController(service); Setup(controller, true);
         Assert.False(Success(await controller.CrearTipoDocumento("DNI", "bad")));
         Assert.Empty((await db.Collection("tiposDocumento").GetSnapshotAsync()).Documents); await Events(db);
         Assert.True(Success(await controller.CrearTipoDocumento("DNI", "nnn")));
         var first = Assert.Single((await db.Collection("tiposDocumento").GetSnapshotAsync()).Documents);
-        await db.Collection("tiposDocumento").Document("duplicate").SetAsync(new Dictionary<string,object> { ["Nombre"] = "DNI", ["Formato"] = "lll" });
-        var one = new Dictionary<string,string> { ["Nombre"] = "DNI", ["Formato"] = "nnn" };
-        var two = new Dictionary<string,string> { ["Nombre"] = "DNI", ["Formato"] = "lll" };
+        var active = new Dictionary<string,string> { ["Nombre"] = "DNI", ["Formato"] = "nnn", ["Estado"] = "Activo" };
+        var inactive = new Dictionary<string,string> { ["Nombre"] = "DNI", ["Formato"] = "nnn", ["Estado"] = "Inactivo" };
         Assert.False(Success(await controller.CrearTipoDocumento("DNI", "nnn")));
-        await Events(db, ("Creacion de tipo de documento", first.Id, "TipoDocumento", "DNI", new(), one));
-        Assert.True(Success(await controller.EliminarTipoDocumento("DNI")));
-        Assert.Empty((await db.Collection("tiposDocumento").GetSnapshotAsync()).Documents);
-        await Events(db, ("Creacion de tipo de documento", first.Id, "TipoDocumento", "DNI", new(), one), ("Eliminacion de tipo de documento", first.Id, "TipoDocumento", "DNI", one, new()), ("Eliminacion de tipo de documento", "duplicate", "TipoDocumento", "DNI", two, new()));
+        await Events(db, ("Creacion de tipo de documento", first.Id, "TipoDocumento", "DNI", new(), active));
+        Assert.True(Success(await controller.DesactivarTipoDocumento("DNI")));
+        Assert.Empty(await service.ObtenerTiposDocumento());
+        Assert.Single(await service.ObtenerTodos(incluirInactivos: true));
+        await Events(db, ("Creacion de tipo de documento", first.Id, "TipoDocumento", "DNI", new(), active), ("Desactivacion de tipo de documento", first.Id, "TipoDocumento", "DNI", active, inactive));
     }
 }

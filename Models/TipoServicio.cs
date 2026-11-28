@@ -35,5 +35,11 @@ namespace Firebase.Models
         [Required(ErrorMessage = "El nombre del tipo de servicio es obligatorio")]
         [MinLength(3, ErrorMessage = "El nombre debe tener al menos 3 caracteres")]
         public required string Nombre { get; set; }
+
+        /// <summary>
+        /// Estado lógico del tipo de servicio ("Activo" o "Inactivo").
+        /// </summary>
+        [FirestoreProperty]
+        public string Estado { get; set; } = "Activo";
     }
 }

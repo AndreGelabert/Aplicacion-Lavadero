@@ -5,7 +5,7 @@
     string submitText = edit ? "Guardar" : "Registrar";
     string clearText = edit ? "Cancelar" : "Limpiar Campos";
     var puedeCrearTipoDocumento = User.TienePermiso("Clientes.Crear");
-    var puedeEliminarTipoDocumento = User.TienePermiso("Clientes.Eliminar");
+    var puedeEliminarTipoDocumento = User.TieneAlgunPermiso("Clientes.Modificar", "Clientes.Eliminar");
     var puedeCrearVehiculo = User.TienePermiso("Vehiculos.Crear");
     var puedeGestionarVehiculos = puedeCrearVehiculo;
     var prefiereWhatsApp = Model?.NotificarPorWhatsApp == true;

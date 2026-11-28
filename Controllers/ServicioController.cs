@@ -262,6 +262,58 @@ public class ServicioController : Controller
 
     #region Gestión de Tipos (Servicio y Vehículo)
 
+    public sealed class TipoServicioModalInput
+    {
+        public string? Id { get; set; }
+        public string Nombre { get; set; } = string.Empty;
+    }
+
+    private ActorAuditoria ActorActual() => new(
+        User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
+        User.FindFirstValue(ClaimTypes.Email) ?? string.Empty);
+
+    [HttpGet]
+    [Permiso("Servicios.Crear", "Servicios.Modificar")]
+    public async Task<IActionResult> ModalDatosTipoServicio() =>
+        Json(await _tipoServicioService.ObtenerTodos(incluirInactivos: true));
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Permiso("Servicios.Crear", "Servicios.Modificar")]
+    public async Task<IActionResult> ModalGuardarTipoServicio(TipoServicioModalInput input, bool crear)
+    {
+        if (!User.TienePermiso(crear ? "Servicios.Crear" : "Servicios.Modificar")) return Forbid();
+        if (!crear && string.IsNullOrWhiteSpace(input.Id))
+            return BadRequest(new { mensaje = "El tipo de servicio no existe." });
+
+        var resultado = await _tipoServicioService.GuardarConAuditoria(
+            new TipoServicio { Id = crear ? string.Empty : input.Id!, Nombre = input.Nombre },
+            crear,
+            ActorActual());
+
+        if (!resultado.Resultado.EsExitoso)
+            return BadRequest(new { mensaje = resultado.Resultado.MensajeError });
+
+        var tiposActivos = await _tipoServicioService.ObtenerTiposServicio();
+        return Json(new { mensaje = resultado.Resultado.MensajeExito, id = resultado.TipoServicioId, tipos = tiposActivos });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Permiso("Servicios.Modificar", "Servicios.Eliminar")]
+    public async Task<IActionResult> ModalEstadoTipoServicio(string id, string estado)
+    {
+        if (estado != "Activo" && estado != "Inactivo")
+            return BadRequest(new { mensaje = "Estado inválido." });
+
+        var resultado = await _tipoServicioService.CambiarEstadoConAuditoria(id, estado, ActorActual());
+        if (!resultado.Resultado.EsExitoso)
+            return BadRequest(new { mensaje = resultado.Resultado.MensajeError });
+
+        var tiposActivos = await _tipoServicioService.ObtenerTiposServicio();
+        return Json(new { mensaje = resultado.Resultado.MensajeExito, tipos = tiposActivos });
+    }
+
     /// <summary>
     /// Crear nuevo tipo de servicio con respuesta AJAX (incluye fallback).
     /// </summary>
@@ -274,11 +326,9 @@ public class ServicioController : Controller
         {
             try
             {
-                var resultado = await _types.CrearServicioAjax(nombreTipo);
+                var resultado = await _types.CrearServicioAjax(nombreTipo, ActorActual());
                 if (resultado.Error != null)
                     return Json(new { success = false, message = resultado.Error });
-                var docId = resultado.Id!;
-                await RegistrarCreacionTipo("Creacion de tipo de servicio", docId, "TipoServicio");
 
                 var tiposActualizados = await _tipoServicioService.ObtenerTiposServicio();
 
@@ -296,49 +346,53 @@ public class ServicioController : Controller
         }
 
         // Fallback (mantener por si se usa fuera de AJAX)
-        return await ResponderCreacionTipo(await _types.CrearServicioFallback(nombreTipo),
-            "TipoServicio", "Creacion de tipo de servicio");
+        var fallback = await _types.CrearServicioFallback(nombreTipo, ActorActual());
+        if (fallback.Error != null)
+        {
+            TempData["Error"] = fallback.Error;
+        }
+        else if (fallback.Id != null)
+        {
+            TempData["Success"] = "Tipo de servicio creado correctamente.";
+        }
+        return RedirectToAction(nameof(Index));
     }
 
     /// <summary>
-    /// Eliminar tipo de servicio con respuesta AJAX (incluye fallback).
+    /// Desactivar tipo de servicio inline (borrado lógico) con respuesta AJAX.
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Permiso("Servicios.Eliminar")]
-    public async Task<IActionResult> EliminarTipoServicio(string nombreTipo)
+    [Permiso("Servicios.Modificar", "Servicios.Eliminar")]
+    public async Task<IActionResult> DesactivarTipoServicio(string nombreTipo)
     {
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
             try
             {
-                var resultado = await _types.EliminarServicioAjax(nombreTipo);
+                var resultado = await _types.DesactivarServicioAjax(nombreTipo, ActorActual());
                 if (resultado.Error != null)
                     return Json(new { success = false, message = resultado.Error });
-                var idsEliminados = resultado.Ids!;
-                foreach (var id in idsEliminados)
-                {
-                    await RegistrarEvento("Eliminacion de tipo de servicio", id, "TipoServicio", new() { ["Nombre"] = nombreTipo }, new(), nombreTipo);
-                }
 
                 var tiposActualizados = await _tipoServicioService.ObtenerTiposServicio();
 
                 return Json(new
                 {
                     success = true,
-                    message = "Tipo de servicio eliminado correctamente.",
+                    message = "Tipo de servicio desactivado correctamente.",
                     tipos = tiposActualizados
                 });
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = $"Error al eliminar el tipo de servicio: {ex.Message}" });
+                return Json(new { success = false, message = $"Error al desactivar el tipo de servicio: {ex.Message}" });
             }
         }
 
-        // Fallback
-        return await ResponderEliminacionTipo(await _types.EliminarServicioFallback(nombreTipo),
-            nombreTipo, "TipoServicio", "Eliminacion de tipo de servicio");
+        var fallback = await _types.DesactivarServicioFallback(nombreTipo, ActorActual());
+        if (fallback.Error != null) TempData["Error"] = fallback.Error;
+        else if (fallback.Id != null) TempData["Success"] = "Tipo de servicio desactivado correctamente.";
+        return RedirectToAction(nameof(Index));
     }
 
     /// <summary>
@@ -352,11 +406,9 @@ public class ServicioController : Controller
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
             try {
-                var resultado = await _types.CrearVehiculoAjax(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos);
+                var resultado = await _types.CrearVehiculoAjax(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos, ActorActual());
                 if (resultado.Error != null)
                     return Json(new { success = false, message = resultado.Error });
-                var vehDocId = resultado.Id!;
-                await RegistrarCreacionTipo("Creacion de tipo de vehiculo", vehDocId, "TipoVehiculo");
 
                 var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculosCompletos();
 
@@ -381,8 +433,10 @@ public class ServicioController : Controller
         }
 
         // Fallback
-        return await ResponderCreacionTipo(await _types.CrearVehiculoFallback(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos),
-            "TipoVehiculo", "Creacion de tipo de vehiculo");
+        var fallback = await _types.CrearVehiculoFallback(nombreTipo, formatoPatente, cantidadEmpleadosRequeridos, ActorActual());
+        if (fallback.Error != null) TempData["Error"] = fallback.Error;
+        else if (fallback.Id != null) TempData["Success"] = "Tipo de vehículo creado correctamente.";
+        return RedirectToAction(nameof(Index));
     }
 
     /// <summary>
@@ -428,45 +482,40 @@ public class ServicioController : Controller
     }
 
     /// <summary>
-    /// Eliminar tipo de vehículo con respuesta AJAX (incluye fallback).
+    /// Desactivar tipo de vehículo inline (borrado lógico) con respuesta AJAX.
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Permiso("Servicios.Eliminar", "Vehiculos.Eliminar")]
-    public async Task<IActionResult> EliminarTipoVehiculo(string nombreTipo)
+    [Permiso("Servicios.Modificar", "Servicios.Eliminar", "Vehiculos.Modificar", "Vehiculos.Eliminar")]
+    public async Task<IActionResult> DesactivarTipoVehiculo(string nombreTipo)
     {
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
             try
             {
-                var resultado = await _types.EliminarVehiculoAjax(nombreTipo);
+                var resultado = await _types.DesactivarVehiculoAjax(nombreTipo, ActorActual());
                 if (resultado.Error != null)
                     return Json(new { success = false, message = resultado.Error });
-                var capturas = resultado.Capturas!;
-                var vehIdsEliminados = resultado.Ids!;
-                foreach (var id in vehIdsEliminados)
-                {
-                    await RegistrarEliminacionTipoVehiculo(id, capturas);
-                }
 
                 var tiposActualizados = await _tipoVehiculoService.ObtenerTiposVehiculos();
 
                 return Json(new
                 {
                     success = true,
-                    message = "Tipo de vehículo eliminado correctamente.",
+                    message = "Tipo de vehículo desactivado correctamente.",
                     tipos = tiposActualizados
                 });
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = $"Error al eliminar el tipo de vehículo: {ex.Message}" });
+                return Json(new { success = false, message = $"Error al desactivar el tipo de vehículo: {ex.Message}" });
             }
         }
 
-        // Fallback
-        return await ResponderEliminacionTipo(await _types.EliminarVehiculoFallback(nombreTipo),
-            nombreTipo, "TipoVehiculo", "Eliminacion de tipo de vehiculo");
+        var fallback = await _types.DesactivarVehiculoFallback(nombreTipo, ActorActual());
+        if (fallback.Error != null) TempData["Error"] = fallback.Error;
+        else if (fallback.Id != null) TempData["Success"] = "Tipo de vehículo desactivado correctamente.";
+        return RedirectToAction(nameof(Index));
     }
     #endregion
 
@@ -911,37 +960,6 @@ public class ServicioController : Controller
     }
 
     public sealed record InsumoRecetaOpcion(string Id, string Nombre, string UnidadMedida, string Tipo = "");
-
-    private async Task<IActionResult> ResponderCreacionTipo(ServicioTypeService.Creacion resultado, string entidad, string accionAuditoria)
-    {
-        if (resultado.Error != null)
-            TempData["Error"] = resultado.Error;
-        else if (resultado.Id != null)
-        {
-            await RegistrarCreacionTipo(accionAuditoria, resultado.Id, entidad);
-            TempData["Success"] = $"{entidad} creado correctamente.";
-        }
-        return RedirectToAction("Index");
-    }
-
-    private async Task<IActionResult> ResponderEliminacionTipo(ServicioTypeService.Eliminacion resultado,
-        string nombreTipo, string entidad, string accionAuditoria)
-    {
-        if (resultado.Error != null)
-            TempData["Error"] = resultado.Error;
-        else if (resultado.Ids != null)
-        {
-            foreach (var id in resultado.Ids)
-            {
-                if (entidad == "TipoVehiculo")
-                    await RegistrarEliminacionTipoVehiculo(id, resultado.Capturas!);
-                else
-                    await RegistrarEvento(accionAuditoria, id, entidad, new() { ["Nombre"] = nombreTipo }, new(), nombreTipo);
-            }
-            TempData["Success"] = $"{entidad} eliminado correctamente.";
-        }
-        return RedirectToAction("Index");
-    }
     #endregion
 }
 

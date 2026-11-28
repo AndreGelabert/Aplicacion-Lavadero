@@ -2699,15 +2699,6 @@
         }
 
         try {
-            // Verificar si está en uso
-            const checkResponse = await window.Peticiones.enviar(`/TipoDocumento/VerificarEnUso?nombre=${encodeURIComponent(tipoSeleccionado)}`);
-            const checkData = await checkResponse.json();
-
-            if (checkData.enUso) {
-                cerrarModal('eliminarTipoDocumentoModal');
-                showFormMessage('error', `No se puede eliminar el tipo de documento "${tipoSeleccionado}" porque está siendo usado por ${checkData.cantidad} cliente(s).`);
-                return;
-            }
             const formData = new FormData();
             formData.append('nombreTipo', tipoSeleccionado);
 
@@ -2717,7 +2708,7 @@
                 formData.append('__RequestVerificationToken', tokenInput.value);
             }
 
-            const response = await window.Peticiones.enviar('/TipoDocumento/EliminarTipoDocumento', {
+            const response = await window.Peticiones.enviar('/TipoDocumento/DesactivarTipoDocumento', {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 body: formData
@@ -2725,12 +2716,12 @@
 
             const { ok, data } = await parseJsonSafe(response);
             const success = data?.success ?? ok;
-            const message = data?.message ?? (success ? 'Tipo de documento eliminado correctamente.' : 'No se pudo eliminar el tipo de documento.');
+            const message = data?.message ?? (success ? 'Tipo de documento desactivado correctamente.' : 'No se pudo desactivar el tipo de documento.');
 
             cerrarModal('eliminarTipoDocumentoModal');
 
             if (success) {
-                if (data?.tipos) {
+                if (Array.isArray(data?.tipos)) {
                     actualizarDropdownTipos('TipoDocumento', data.tipos, null);
                 }
                 showFormMessage('success', message);
@@ -2740,7 +2731,7 @@
         } catch (error) {
             console.error('Error:', error);
             cerrarModal('eliminarTipoDocumentoModal');
-            showFormMessage('error', 'Error al eliminar el tipo de documento.');
+            showFormMessage('error', 'Error al desactivar el tipo de documento.');
         }
     };
 

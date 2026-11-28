@@ -41,6 +41,12 @@ namespace Firebase.Models
         public required string Formato { get; set; }
 
         /// <summary>
+        /// Estado lógico del tipo de documento ("Activo" o "Inactivo").
+        /// </summary>
+        [FirestoreProperty]
+        public string Estado { get; set; } = "Activo";
+
+        /// <summary>
         /// Convierte el formato simplificado a una expresión regular válida.
         /// 'n' se convierte a [0-9] para representar un dígito.
         /// 'l' se convierte a [A-Za-z] para representar una letra.

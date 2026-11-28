@@ -64,6 +64,12 @@ namespace Firebase.Models
         public int CantidadEmpleadosRequeridos { get; set; } = 1;
 
         /// <summary>
+        /// Estado lógico del tipo de vehículo ("Activo" o "Inactivo").
+        /// </summary>
+        [FirestoreProperty]
+        public string Estado { get; set; } = "Activo";
+
+        /// <summary>
         /// Convierte el formato simplificado a una expresión regular válida.
         /// 'l' se convierte a [A-Za-z] para letras.
         /// 'n' se convierte a [0-9] para dígitos.
