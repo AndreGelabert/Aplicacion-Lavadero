@@ -818,4 +818,57 @@ public sealed class InsumoCatalogIntegrationTests
             await app.StopAsync();
         }
     }
+
+    [LocalFirestoreFact]
+    public async Task CambiarEstado_InsumoUsadoEnTurnoPendiente_RechazaDesactivacionYPermiteAlCancelar()
+    {
+        var db = Db();
+        var servicio = new InsumoService(db);
+
+        await db.Collection("insumos").Document("ins-turno").SetAsync(new Insumo
+        {
+            Id = "ins-turno",
+            Nombre = "Shampoo Turno",
+            Tipo = "Quimico",
+            UnidadMedida = "ml",
+            Estado = "Activo",
+            StockActual = 100m
+        });
+
+        await db.Collection("turnos").Document("tur-pendiente").SetAsync(new Turno
+        {
+            Id = "tur-pendiente",
+            ClienteId = "cli-1",
+            Estado = "Pendiente",
+            InicioUtc = DateTime.UtcNow.AddHours(2),
+            FinUtc = DateTime.UtcNow.AddHours(3),
+            RecetaOperativa = new RecetaOperativaTurno
+            {
+                Version = 1,
+                Servicios =
+                {
+                    new ServicioOperativoTurno
+                    {
+                        ServicioId = "srv-1",
+                        Nombre = "Lavado",
+                        Receta =
+                        {
+                            new RecetaInsumo { InsumoId = "ins-turno", DosisTeorica = 10m, UnidadMedida = "ml" }
+                        }
+                    }
+                }
+            }
+        });
+
+        var bloqueo = await servicio.CambiarEstado("ins-turno", "Inactivo", "u1");
+        Assert.False(bloqueo.EsExitoso);
+        Assert.Equal("No se puede desactivar el insumo porque está siendo utilizado por un turno pendiente.", bloqueo.MensajeError);
+        Assert.Equal("Activo", (await servicio.Obtener("ins-turno"))!.Estado);
+
+        await db.Collection("turnos").Document("tur-pendiente").UpdateAsync("Estado", "Cancelado");
+
+        var permitido = await servicio.CambiarEstado("ins-turno", "Inactivo", "u1");
+        Assert.True(permitido.EsExitoso);
+        Assert.Equal("Inactivo", (await servicio.Obtener("ins-turno"))!.Estado);
+    }
 }

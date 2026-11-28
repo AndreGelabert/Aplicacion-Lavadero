@@ -478,6 +478,9 @@ public sealed class InsumoService(
                 if (await EstaUsadoEnLavadoActivo(id, transaction))
                     return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("No se puede desactivar el insumo porque está siendo utilizado por un lavado en ejecución."));
 
+                if (await EstaUsadoEnTurnoPendiente(id, transaction))
+                    return new ResultadoAuditoriaInsumo(ResultadoOperacion.CrearError("No se puede desactivar el insumo porque está siendo utilizado por un turno pendiente."));
+
                 var ordenes = await transaction.GetSnapshotAsync(firestore.Collection("ordenesCompra"));
                 var solicitudes = await transaction.GetSnapshotAsync(firestore.Collection("solicitudesCotizacion").WhereEqualTo("Estado", "Pendiente"));
 
@@ -532,6 +535,47 @@ public sealed class InsumoService(
             if (datos.TryGetValue("Servicios", out var servicios) && ContieneInsumoEnServicios(servicios, insumoId))
                 return true;
         }
+        return false;
+    }
+
+    public async Task<bool> EstaUsadoEnTurnoPendiente(string insumoId, Transaction? transaction = null)
+    {
+        var query = firestore.Collection("turnos").WhereEqualTo("Estado", "Pendiente");
+        var snapshot = transaction != null
+            ? await transaction.GetSnapshotAsync(query)
+            : await query.GetSnapshotAsync();
+
+        foreach (var documento in snapshot.Documents)
+        {
+            var datos = documento.ToDictionary();
+            if (datos.TryGetValue("RecetaOperativa", out var recetaObj) &&
+                recetaObj is IDictionary<string, object> recetaOperativa &&
+                recetaOperativa.TryGetValue("Servicios", out var serviciosObj) &&
+                serviciosObj is IEnumerable<object> servicios)
+            {
+                foreach (var elemento in servicios)
+                {
+                    if (elemento is not IDictionary<string, object> servicio)
+                        continue;
+
+                    if (ContieneInsumoEnReceta(servicio, "Receta", insumoId) ||
+                        ContieneInsumoEnReceta(servicio, "Etapas", insumoId))
+                        return true;
+                }
+            }
+
+            if (datos.TryGetValue("InsumosForecast", out var forecastObj) &&
+                forecastObj is IEnumerable<object> forecast)
+            {
+                foreach (var elemento in forecast)
+                {
+                    if (elemento is IDictionary<string, object> item &&
+                        string.Equals(ObtenerTexto(item, "InsumoId"), insumoId, StringComparison.Ordinal))
+                        return true;
+                }
+            }
+        }
+
         return false;
     }
 
