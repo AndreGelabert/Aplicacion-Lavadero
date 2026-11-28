@@ -38,3 +38,14 @@ test('Vista pública de proveedor y su JS usan fragmento, Trusted Types sin inne
   assert.match(js, /\/api\/cotizacion-proveedor\/responder/);
   assert.match(js, /Precio unitario equivalente:/);
 });
+
+test('Solicitud manual en Cotizaciones muestra stock máximo junto a cantidad y aviso no bloqueante', () => {
+  const view = fs.readFileSync('Views/Insumos/Cotizaciones.cshtml', 'utf8');
+  assert.match(view, /data-quotation-option[^>]*data-stock-actual=/);
+  assert.match(view, /data-quotation-option[^>]*data-stock-max=/);
+
+  const js = fs.readFileSync('wwwroot/js/insumos-secondary.js', 'utf8');
+  assert.match(js, /Stock máx:/);
+  assert.match(js, /data-stock-max-warning/);
+  assert.match(js, /superás el stock máximo/);
+});

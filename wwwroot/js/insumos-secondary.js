@@ -344,12 +344,20 @@
     function closeQuotationDropdown() {
         dropdown?.classList.add('hidden');
     }
+    const nfStock = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
     function addQuotationItem(opt) {
         if (!opt || !opt.id || items.some(item => item.id === opt.id)) {
             if (error) error.textContent = 'Seleccione un insumo del listado.';
             return;
         }
-        items.push({ id: opt.id, name: opt.name, unit: opt.unit, quantity: '' });
+        items.push({
+            id: opt.id,
+            name: opt.name,
+            unit: opt.unit,
+            stockActual: Number(opt.stockActual),
+            stockMax: Number(opt.stockMax),
+            quantity: ''
+        });
         selectedOption = null;
         if (input) input.value = '';
         if (error) error.textContent = '';
@@ -378,7 +386,10 @@
             const name = document.createElement('div');
             name.className = 'font-medium dark:text-white';
             name.textContent = `${item.name} (${item.unit})`;
-            info.append(name);
+            const warning = document.createElement('p');
+            warning.className = 'hidden mt-1 text-xs text-amber-600 dark:text-amber-400 font-medium';
+            warning.setAttribute('data-stock-max-warning', '');
+            info.append(name, warning);
             const id = document.createElement('input');
             id.type = 'hidden';
             id.name = `items[${index}].InsumoId`;
@@ -392,11 +403,33 @@
             quantity.value = item.quantity;
             quantity.setAttribute('aria-label', `Cantidad de ${item.name}`);
             quantity.className = 'w-24 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2.5 dark:bg-gray-700 dark:text-white';
-            quantity.addEventListener('input', () => { item.quantity = quantity.value; });
+            function updateMaxWarning() {
+                const qty = Number(String(quantity.value ?? '').replace(',', '.'));
+                const hasMax = Number.isFinite(item.stockMax) && item.stockMax > 0;
+                const actual = Number.isFinite(item.stockActual) ? item.stockActual : 0;
+                if (hasMax && Number.isFinite(qty) && qty > 0 && (actual + qty) > item.stockMax) {
+                    warning.textContent = `Aviso: superás el stock máximo (${nfStock.format(item.stockMax)} ${item.unit}; stock actual: ${nfStock.format(actual)} ${item.unit}).`;
+                    warning.classList.remove('hidden');
+                } else {
+                    warning.textContent = '';
+                    warning.classList.add('hidden');
+                }
+            }
+            quantity.addEventListener('input', () => {
+                item.quantity = quantity.value;
+                updateMaxWarning();
+            });
+            updateMaxWarning();
             const quantityLabel = document.createElement('label');
             quantityLabel.className = 'flex items-center gap-2 text-sm';
             quantityLabel.textContent = 'Cantidad:';
             quantityLabel.append(quantity);
+            if (Number.isFinite(item.stockMax) && item.stockMax > 0) {
+                const maxHint = document.createElement('span');
+                maxHint.className = 'text-xs text-gray-500 dark:text-gray-400';
+                maxHint.textContent = `Stock máx: ${nfStock.format(item.stockMax)} ${item.unit}`;
+                quantityLabel.append(maxHint);
+            }
             const remove = document.createElement('button');
             remove.type = 'button';
             remove.className = 'w-8 h-8 rounded-full text-red-600 flex items-center justify-center';
