@@ -9,8 +9,8 @@ public static class InsumosEmailFormatter
 {
     private static readonly CultureInfo Cultura = CultureInfo.GetCultureInfo("es-AR");
     private static readonly string[] Campos = { "proveedor", "contacto_proveedor", "comprador", "ubicacion", "notas", "items", "total", "plazo_entrega", "fecha_entrega", "hora_entrega", "link_respuesta" };
-    public const string CuerpoCotizacionDefault = "Solicitamos cotización para los siguientes insumos:\n{items}\nPor favor indique precio, disponibilidad y plazo de entrega.\nNotas: {notas}\nProveedor: {proveedor}\nContacto del proveedor: {contacto_proveedor}\nComprador: {comprador}\nUbicación: {ubicacion}\nFecha preferida de entrega: {fecha_entrega}\nHora preferida de entrega: {hora_entrega}\nLa fecha y hora son preferidas y están sujetas a confirmación del proveedor.";
-    public const string CuerpoOrdenDefault = "Orden de compra:\n{items}\nTotal: {total}\nNotas: {notas}\nProveedor: {proveedor}\nContacto del proveedor: {contacto_proveedor}\nComprador: {comprador}\nUbicación: {ubicacion}\nPlazo de entrega: {plazo_entrega}";
+    public const string CuerpoCotizacionDefault = "Hola,\n\nDesde {comprador}, ubicado en {ubicacion}, nos contactamos para solicitarte una cotización de los siguientes insumos:\n\n{items}\n\nPor favor, indícanos precio, disponibilidad y plazo de entrega.\n\nFecha y hora preferida de entrega: {fecha_entrega} a las {hora_entrega} hs (sujetas a confirmación).\nObservaciones: {notas}\n\n¡Muchas gracias!\n{comprador}";
+    public const string CuerpoOrdenDefault = "Hola,\n\nDesde {comprador}, ubicado en {ubicacion}, te confirmamos la siguiente orden de compra:\n\n{items}\n\nTotal estimado: {total}\nPlazo de entrega acordado: {plazo_entrega}\nObservaciones: {notas}\n\n¡Muchas gracias!\n{comprador}";
 
     public static bool PlantillaValida(string? valor, bool asunto)
     {
@@ -49,7 +49,7 @@ public static class InsumosEmailFormatter
         {
             var cuerpoEfectivo = string.IsNullOrWhiteSpace(directiva.CuerpoCotizacion) ? CuerpoCotizacionDefault : directiva.CuerpoCotizacion;
             if (!cuerpoEfectivo.Contains("{link_respuesta}", StringComparison.Ordinal))
-                mensaje = mensaje with { Html = mensaje.Html + $"<p>Puede cargar su cotización directamente desde el siguiente enlace:<br>{enlaceHtml}</p>" };
+                mensaje = mensaje with { Html = mensaje.Html + $"<p style=\"margin:16px 0 0 0;\">Podés cargar tu cotización directamente desde el siguiente enlace:<br><strong>{enlaceHtml}</strong></p>" };
         }
         return mensaje;
     }
@@ -68,8 +68,11 @@ public static class InsumosEmailFormatter
         var subject = PlantillaValida(asunto, true) ? Sustituir(asunto, datos, false) : asunto.Replace('\r', ' ').Replace('\n', ' ');
         if (subject.Contains('\r') || subject.Contains('\n'))
             throw new InvalidOperationException("El asunto generado no puede contener saltos de línea.");
-        var html = Sustituir(WebUtility.HtmlEncode(cuerpo), datos, true).Replace("\r\n", "\n").Replace("\n", "<br>");
-        return new EmailMessage(email, subject, "<p>" + html + "</p>");
+        var cuerpoNormalizado = WebUtility.HtmlEncode(cuerpo).Replace("\r\n", "\n");
+        var parrafos = cuerpoNormalizado.Split("\n\n", StringSplitOptions.None)
+            .Select(p => "<p style=\"margin:0 0 12px 0;\">" + Sustituir(p, datos, true).Replace("\n", "<br>") + "</p>");
+        var html = "<div style=\"font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1e293b;line-height:1.5;\">" + string.Join("", parrafos) + "</div>";
+        return new EmailMessage(email, subject, html);
     }
 
     private static string Sustituir(string plantilla, Dictionary<string, string> datos, bool html)
@@ -83,12 +86,16 @@ public static class InsumosEmailFormatter
     {
         var lista = items.ToList();
         string Texto(string? s) => string.IsNullOrWhiteSpace(s) ? "No informado" : s;
-        var detalle = string.Join("<br>", lista.Select(i =>
+        var detalleItems = string.Join("", lista.Select(i =>
         {
             var unidad = unidades != null && unidades.TryGetValue(i.InsumoId, out var u) ? Texto(u) : "No informado";
-            var linea = $"{WebUtility.HtmlEncode(i.NombreInsumo)} — Cantidad: {i.Cantidad.ToString("N2", Cultura)}; Unidad: {WebUtility.HtmlEncode(unidad)}";
-            return precios ? linea + $"; Precio unitario: $ {i.PrecioUnitario.ToString("N2", Cultura)}; Importe: $ {(i.Cantidad * i.PrecioUnitario).ToString("N2", Cultura)}" : linea;
+            var linea = $"<strong>{WebUtility.HtmlEncode(i.NombreInsumo)}</strong> — Cantidad: {i.Cantidad.ToString("N2", Cultura)} ({WebUtility.HtmlEncode(unidad)})";
+            var texto = precios ? linea + $" — Precio unitario: $ {i.PrecioUnitario.ToString("N2", Cultura)} — Importe: <strong>$ {(i.Cantidad * i.PrecioUnitario).ToString("N2", Cultura)}</strong>" : linea;
+            return $"<li style=\"margin-bottom:4px;\">{texto}</li>";
         }));
+        var detalle = lista.Count == 0
+            ? "No informado"
+            : $"<ul style=\"margin:8px 0;padding-left:20px;\">{detalleItems}</ul>";
         return new() { ["proveedor"] = Texto(proveedor.RazonSocial), ["contacto_proveedor"] = Texto(proveedor.Contacto),
             ["comprador"] = Texto(comprador?.NombreLavadero), ["ubicacion"] = Texto(comprador?.Ubicacion), ["notas"] = Texto(notas),
             ["items"] = detalle, ["total"] = precios ? "$ " + lista.Sum(i => i.Cantidad * i.PrecioUnitario).ToString("N2", Cultura) : "No informado",

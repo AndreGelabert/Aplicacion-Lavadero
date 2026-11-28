@@ -14,14 +14,15 @@ public sealed class InsumosEmailFormattingIntegrationTests
     public async Task OrdenConSeisInsumosIncluyeImportesYDatosDesconocidosSinInventarlos()
     {
         var proveedor = new Proveedor { RazonSocial = "Proveedor <script>", Contacto = "Ana & Cía", EmailOrdenes = "proveedor@example.invalid" };
-        var orden = new OrdenCompra { Items = new()
+        var comprador = new Configuracion { NombreLavadero = "Lavadero <script>", Ubicacion = "Av. & 123" };
+        var orden = new OrdenCompra { Notas = "Entrega & <urgente>", Items = new()
         {
             Item("[PRUEBA] Shampoo", 20, 1000), Item("[PRUEBA] Desengrasante", 10, 2000),
             Item("[PRUEBA] Limpiavidrios", 5, 1000), Item("[PRUEBA] Interior", 5, 800),
             Item("[PRUEBA] Neumaticos", 3, 500), Item("[PRUEBA] Microfibras", 12, 2500)
         } };
         var sender = new FakeSender();
-        var message = InsumosEmailFormatter.FormatearOrden(new DirectivaReabastecimiento(), orden, proveedor, null, null);
+        var message = InsumosEmailFormatter.FormatearOrden(new DirectivaReabastecimiento(), orden, proveedor, comprador, null);
         await sender.EnviarAsync(message);
 
         var sent = Assert.Single(sender.Messages);
@@ -32,10 +33,17 @@ public sealed class InsumosEmailFormattingIntegrationTests
         Assert.Contains("20.000,00", sent.Html);
         Assert.Contains("80.500,00", sent.Html);
         Assert.Contains("No informado", sent.Html);
-        Assert.Contains("Proveedor &lt;script&gt;", sent.Html);
-        Assert.Contains("Ana & Cía", WebUtility.HtmlDecode(sent.Html));
-        Assert.Contains("Ana &amp; C", sent.Html);
+        Assert.Contains("Lavadero &lt;script&gt;", sent.Html);
+        Assert.Contains("Av. &amp; 123", sent.Html);
+        Assert.Contains("Entrega &amp; &lt;urgente&gt;", sent.Html);
+        Assert.DoesNotContain("Proveedor &lt;script&gt;", sent.Html);
+        Assert.DoesNotContain("Ana &amp; C", sent.Html);
         Assert.DoesNotContain("<script>", sent.Html);
+
+        var custom = InsumosEmailFormatter.FormatearOrden(new DirectivaReabastecimiento { CuerpoOrden = "{proveedor} - {contacto_proveedor}" }, orden, proveedor, comprador, null);
+        Assert.Contains("Proveedor &lt;script&gt;", custom.Html);
+        Assert.Contains("Ana & Cía", WebUtility.HtmlDecode(custom.Html));
+        Assert.DoesNotContain("<script>", custom.Html);
     }
 
     [Fact]
