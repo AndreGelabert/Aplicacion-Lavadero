@@ -408,7 +408,7 @@
                 const hasMax = Number.isFinite(item.stockMax) && item.stockMax > 0;
                 const actual = Number.isFinite(item.stockActual) ? item.stockActual : 0;
                 if (hasMax && Number.isFinite(qty) && qty > 0 && (actual + qty) > item.stockMax) {
-                    warning.textContent = `Aviso: superás el stock máximo (${nfStock.format(item.stockMax)} ${item.unit}; stock actual: ${nfStock.format(actual)} ${item.unit}).`;
+                    warning.textContent = 'Aviso: con esta cantidad se supera el stock máximo.';
                     warning.classList.remove('hidden');
                 } else {
                     warning.textContent = '';
@@ -424,12 +424,13 @@
             quantityLabel.className = 'flex items-center gap-2 text-sm';
             quantityLabel.textContent = 'Cantidad:';
             quantityLabel.append(quantity);
-            if (Number.isFinite(item.stockMax) && item.stockMax > 0) {
-                const maxHint = document.createElement('span');
-                maxHint.className = 'text-xs text-gray-500 dark:text-gray-400';
-                maxHint.textContent = `Stock máx: ${nfStock.format(item.stockMax)} ${item.unit}`;
-                quantityLabel.append(maxHint);
-            }
+            const actual = Number.isFinite(item.stockActual) ? item.stockActual : 0;
+            const stockHint = document.createElement('span');
+            stockHint.className = 'text-xs text-gray-500 dark:text-gray-400';
+            stockHint.textContent = Number.isFinite(item.stockMax) && item.stockMax > 0
+                ? `Stock actual: ${nfStock.format(actual)} ${item.unit} · Stock máx: ${nfStock.format(item.stockMax)} ${item.unit}`
+                : `Stock actual: ${nfStock.format(actual)} ${item.unit}`;
+            quantityLabel.append(stockHint);
             const remove = document.createElement('button');
             remove.type = 'button';
             remove.className = 'w-8 h-8 rounded-full text-red-600 flex items-center justify-center';

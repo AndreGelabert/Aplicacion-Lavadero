@@ -45,7 +45,8 @@ test('Solicitud manual en Cotizaciones muestra stock máximo junto a cantidad y 
   assert.match(view, /data-quotation-option[^>]*data-stock-max=/);
 
   const js = fs.readFileSync('wwwroot/js/insumos-secondary.js', 'utf8');
+  assert.match(js, /Stock actual:/);
   assert.match(js, /Stock máx:/);
   assert.match(js, /data-stock-max-warning/);
-  assert.match(js, /superás el stock máximo/);
+  assert.match(js, /se supera el stock máximo/);
 });
