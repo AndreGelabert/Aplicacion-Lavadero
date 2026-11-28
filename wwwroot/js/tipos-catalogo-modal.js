@@ -231,7 +231,20 @@
                 setMessage('', false);
                 hideModalElement(modal);
             }
+        }, true);
+
+        const observer = new MutationObserver(() => {
+            const isHidden = modal.classList.contains('hidden');
+            if (!isHidden && modal.dataset.wasOpen !== 'true') {
+                modal.dataset.wasOpen = 'true';
+                resetForm();
+                setMessage('', false);
+                refresh();
+            } else if (isHidden) {
+                modal.dataset.wasOpen = 'false';
+            }
         });
+        observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
 
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
