@@ -433,4 +433,49 @@
         if (!items.length || !form.querySelector('input[name="proveedorIds"]')) { event.preventDefault(); error.textContent = 'Seleccione al menos un proveedor y un insumo.'; return; }
         if (items.some(item => !item.quantity.trim() || !Number.isFinite(Number(item.quantity)) || Number(item.quantity) < 0.0001)) { event.preventDefault(); error.textContent = 'Ingrese una cantidad válida para cada insumo.'; }
     });
+
+    const nf2 = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const nfUnit = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    function parseDecimal(raw) {
+        const text = String(raw ?? '').trim();
+        if (!text) return NaN;
+        const normalized = text.includes(',') && text.includes('.')
+            ? text.replace(/\./g, '').replace(',', '.')
+            : text.replace(',', '.');
+        const value = Number(normalized);
+        return Number.isFinite(value) && value >= 0 ? value : NaN;
+    }
+    function updateQuoteResponsePreview(quoteForm) {
+        let total = 0;
+        let hasAny = false;
+        quoteForm.querySelectorAll('[data-quote-item]').forEach(row => {
+            const price = parseDecimal(row.querySelector('[data-quote-price]')?.value);
+            const mode = row.querySelector('[data-quote-price-mode]')?.value || 'Unitario';
+            const qty = Number(row.dataset.quantity);
+            const unit = row.dataset.unit || 'unidad';
+            const preview = row.querySelector('[data-quote-preview]');
+            if (!Number.isFinite(price) || !Number.isFinite(qty) || qty <= 0) {
+                if (preview) preview.textContent = '';
+                return;
+            }
+            hasAny = true;
+            if (mode === 'Final') {
+                const unitPrice = price / qty;
+                total += price;
+                if (preview) preview.textContent = `Precio unitario equivalente: $ ${nfUnit.format(unitPrice)} / ${unit} — Subtotal: $ ${nf2.format(price)}`;
+            } else {
+                const subtotal = price * qty;
+                total += subtotal;
+                if (preview) preview.textContent = `Subtotal estimado (${nf2.format(qty)} ${unit}): $ ${nf2.format(subtotal)}`;
+            }
+        });
+        const totalEl = quoteForm.querySelector('[data-quote-total]');
+        if (totalEl) totalEl.textContent = hasAny ? `Total estimado: $ ${nf2.format(total)}` : '';
+    }
+    function handleQuotePreview(event) {
+        const quoteForm = event.target?.closest?.('[data-quote-response-form]');
+        if (quoteForm) updateQuoteResponsePreview(quoteForm);
+    }
+    document.addEventListener('input', handleQuotePreview);
+    document.addEventListener('change', handleQuotePreview);
 })();

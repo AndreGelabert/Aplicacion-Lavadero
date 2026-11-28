@@ -16,7 +16,8 @@ public sealed class InsumosController(
     IAuditWriter audit,
     IEmailSender emailSender,
     ConfiguracionService configuracion,
-    TipoInsumoService? tipos = null) : Controller
+    TipoInsumoService? tipos = null,
+    CotizacionProveedorLinkService? linkProveedor = null) : Controller
 {
     [HttpGet]
     [Permiso("Insumos.Consultar", "Insumos.Crear")]
@@ -338,7 +339,10 @@ public sealed class InsumosController(
 
         var directiva = await compras.ObtenerDirectiva();
         var contexto = await compras.ObtenerContextoEmail(solicitud.Items);
-        var resultado = await emailSender.EnviarAsync(InsumosEmailFormatter.FormatearSolicitud(directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades));
+        var link = linkProveedor != null && solicitud.Estado == "Pendiente"
+            ? await linkProveedor.CrearLinkAsync(solicitud.Id)
+            : null;
+        var resultado = await emailSender.EnviarAsync(InsumosEmailFormatter.FormatearSolicitud(directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades, link));
         if (resultado.Enviado)
         {
             await compras.MarcarEmailSolicitudEnviado(id);
@@ -356,55 +360,43 @@ public sealed class InsumosController(
         var directiva = await compras.ObtenerDirectiva();
         var itemsValidos = (items ?? new()).Where(x => x.Cantidad > 0 && !string.IsNullOrWhiteSpace(x.InsumoId)).ToList();
         var contexto = await compras.ObtenerContextoEmail(itemsValidos);
-        var itemsCorreo = new List<OrdenCompraItem>();
-        foreach (var item in itemsValidos)
-        {
-            var insumo = await insumos.Obtener(item.InsumoId);
-            itemsCorreo.Add(new OrdenCompraItem { InsumoId = item.InsumoId, NombreInsumo = insumo?.Nombre ?? item.NombreInsumo, Cantidad = item.Cantidad });
-        }
-        var preparados = new List<(string Id, Proveedor? Proveedor, EmailMessage? Mensaje)>();
+        var proveedoresPorId = new Dictionary<string, Proveedor?>(StringComparer.Ordinal);
         foreach (var id in (proveedorIds ?? new()).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal))
         {
             var proveedor = await proveedores.Obtener(id);
+            proveedoresPorId[id] = proveedor;
             if (proveedor == null || string.IsNullOrWhiteSpace(proveedor.EmailOrdenes))
-            {
-                preparados.Add((id, proveedor, null));
                 continue;
-            }
             try
             {
-                var solicitud = new SolicitudCotizacion { Items = itemsCorreo, Notas = notas ?? string.Empty, FechaEntregaPreferidaUtc = preferenciaUtc };
-                preparados.Add((id, proveedor, InsumosEmailFormatter.FormatearSolicitud(directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades)));
+                InsumosEmailFormatter.ValidarAsuntoSolicitud(directiva, proveedor, contexto.Configuracion);
             }
             catch (InvalidOperationException ex)
             {
                 return BadRequest(ex.Message);
             }
         }
-        var resultado = await compras.CrearSolicitudes(proveedorIds, items, notas, User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty, User.FindFirstValue(ClaimTypes.Email) ?? string.Empty, preferenciaUtc);
+        var creacion = await compras.CrearSolicitudesConDetalle(proveedorIds ?? new(), items ?? new(), notas, User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty, User.FindFirstValue(ClaimTypes.Email) ?? string.Empty, preferenciaUtc);
+        var resultado = creacion.Resultado;
         if (!resultado.EsExitoso)
         {
             TempData["Error"] = resultado.MensajeError;
             return RedirectToAction(nameof(Cotizaciones));
         }
         var fallidos = new List<string>();
-        var enviadosProveedorIds = new List<string>();
-        foreach (var preparado in preparados)
+        foreach (var solicitud in creacion.Solicitudes ?? new List<SolicitudCotizacion>())
         {
-            if (preparado.Mensaje == null) { fallidos.Add(preparado.Id); continue; }
-            var envio = await emailSender.EnviarAsync(preparado.Mensaje);
-            if (!envio.Enviado) fallidos.Add(preparado.Proveedor!.RazonSocial);
-            else enviadosProveedorIds.Add(preparado.Id);
-        }
-        if (enviadosProveedorIds.Count > 0)
-        {
-            var recientes = (await compras.ObtenerSolicitudes())
-                .Where(s => s.Fecha >= DateTime.UtcNow.AddMinutes(-5) && enviadosProveedorIds.Contains(s.ProveedorId))
-                .ToList();
-            foreach (var r in recientes)
+            var proveedor = proveedoresPorId.GetValueOrDefault(solicitud.ProveedorId);
+            if (proveedor == null || string.IsNullOrWhiteSpace(proveedor.EmailOrdenes))
             {
-                await compras.MarcarEmailSolicitudEnviado(r.Id);
+                fallidos.Add(solicitud.ProveedorId);
+                continue;
             }
+            var link = linkProveedor != null ? await linkProveedor.CrearLinkAsync(solicitud.Id) : null;
+            var mensaje = InsumosEmailFormatter.FormatearSolicitud(directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades, link);
+            var envio = await emailSender.EnviarAsync(mensaje);
+            if (!envio.Enviado) fallidos.Add(proveedor.RazonSocial);
+            else await compras.MarcarEmailSolicitudEnviado(solicitud.Id);
         }
         if (fallidos.Count > 0) TempData["Error"] = "Solicitudes creadas, pero no se pudo enviar el correo a: " + string.Join(", ", fallidos);
         else TempData["Success"] = resultado.MensajeExito;

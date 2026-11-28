@@ -1162,4 +1162,34 @@ public sealed class ComprasWorkflowIntegrationTests
         var auditorias = (await db.Collection("registros_auditoria").WhereEqualTo("TargetId", solicitud.Id).GetSnapshotAsync()).Documents;
         Assert.Single(auditorias);
     }
+
+    [LocalFirestoreFact]
+    public async Task QuoteRespuestaPrecioFinalNormalizaComparacionYOrdenCompra()
+    {
+        var db = await PrepararCotizacionRed();
+        var compras = new ComprasService(db);
+        Assert.True((await compras.CrearSolicitudes(new() { "p" }, new() { new() { InsumoId = "i", Cantidad = 1000m } }, null)).EsExitoso);
+        var solicitud = Assert.Single(await compras.ObtenerSolicitudes());
+
+        var respuesta = new CotizacionRespuesta
+        {
+            SolicitudId = solicitud.Id,
+            PlazoEntrega = "3",
+            Items = new()
+            {
+                new OrdenCompraItem { InsumoId = "i", PrecioUnitario = 15000m, TipoPrecio = "Final", Disponible = true }
+            }
+        };
+        Assert.True((await compras.RegistrarRespuesta(respuesta)).EsExitoso);
+
+        var comparacion = Assert.Single(await compras.ObtenerComparacion(solicitud.GrupoId));
+        Assert.Equal(15000m, comparacion.Total);
+        Assert.NotNull(comparacion.Respuesta);
+        Assert.Equal(15m, Assert.Single(comparacion.Respuesta!.Items).PrecioUnitario);
+
+        Assert.True((await compras.Adjudicar(solicitud.Id, null, TransporteAceptado())).EsExitoso);
+        var orden = Assert.Single(await compras.ObtenerOrdenes());
+        Assert.Equal(15m, Assert.Single(orden.Items).PrecioUnitario);
+        Assert.Equal(1000m, Assert.Single(orden.Items).Cantidad);
+    }
 }

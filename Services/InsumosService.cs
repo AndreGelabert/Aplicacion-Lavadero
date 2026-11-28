@@ -880,7 +880,8 @@ public sealed class StockService(
     IEmailSender emailSender,
     ProveedorService proveedores,
     ILogger<StockService> logger,
-    IInterceptorAuditoriaCompras? interceptor = null)
+    IInterceptorAuditoriaCompras? interceptor = null,
+    CotizacionProveedorLinkService? linkProveedor = null)
 {
     private static readonly DecimalConverter DecimalFirestore = new();
 
@@ -2035,8 +2036,9 @@ public sealed class StockService(
                 }
                 var comprasService = new ComprasService(firestore);
                 var contexto = await comprasService.ObtenerContextoEmail(solicitud.Items);
+                var link = linkProveedor != null ? await linkProveedor.CrearLinkAsync(solicitud.Id) : null;
                 var resultado = await emailSender.EnviarAsync(InsumosEmailFormatter.FormatearSolicitud(
-                    directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades));
+                    directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades, link));
                 if (resultado.Enviado)
                     await comprasService.MarcarEmailSolicitudEnviado(solicitud.Id);
                 else
@@ -2634,6 +2636,54 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
         });
     }
 
+    public static bool NormalizarPrecioUnitario(decimal precioIngresado, decimal cantidad, string? tipoPrecio, out decimal precioUnitario)
+    {
+        precioUnitario = 0m;
+        if (precioIngresado < 0m) return false;
+        if (string.IsNullOrWhiteSpace(tipoPrecio) || string.Equals(tipoPrecio, "Unitario", StringComparison.OrdinalIgnoreCase))
+        {
+            precioUnitario = precioIngresado;
+            return true;
+        }
+        if (!string.Equals(tipoPrecio, "Final", StringComparison.OrdinalIgnoreCase) || cantidad <= 0m)
+            return false;
+        try
+        {
+            var calculado = precioIngresado / cantidad;
+            var comoDouble = Convert.ToDouble(calculado);
+            if (!double.IsFinite(comoDouble)) return false;
+            precioUnitario = calculado;
+            return true;
+        }
+        catch (OverflowException)
+        {
+            return false;
+        }
+    }
+
+    internal static ResultadoOperacion ValidarYNormalizarRespuesta(SolicitudCotizacion datos, CotizacionRespuesta respuesta)
+    {
+        if (!int.TryParse(respuesta.PlazoEntrega, out var plazo) || plazo < 0 ||
+            respuesta.Items == null || respuesta.Items.Count != datos.Items.Count ||
+            respuesta.Items.Select(x => x.InsumoId).Distinct(StringComparer.Ordinal).Count() != datos.Items.Count ||
+            datos.Items.Any(x => !respuesta.Items.Any(y => y.InsumoId == x.InsumoId)))
+        {
+            return ResultadoOperacion.CrearError("Ingrese precios y plazo de entrega válidos para todos los ítems.");
+        }
+
+        foreach (var item in respuesta.Items)
+        {
+            var original = datos.Items.Single(x => x.InsumoId == item.InsumoId);
+            if (!NormalizarPrecioUnitario(item.PrecioUnitario, original.Cantidad, item.TipoPrecio, out var precioUnitario))
+                return ResultadoOperacion.CrearError("Ingrese precios y plazo de entrega válidos para todos los ítems.");
+            item.PrecioUnitario = precioUnitario;
+            item.NombreInsumo = original.NombreInsumo;
+            item.Cantidad = original.Cantidad;
+        }
+
+        return ResultadoOperacion.CrearExito(string.Empty);
+    }
+
     public async Task<ResultadoOperacion> RegistrarRespuesta(CotizacionRespuesta respuesta, string userId = "", string userEmail = "")
     {
         if (string.IsNullOrWhiteSpace(respuesta.SolicitudId)) return ResultadoOperacion.CrearError("La solicitud de cotización no existe.");
@@ -2645,14 +2695,8 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
             if (!solicitud.Exists) return ResultadoOperacion.CrearError("La solicitud de cotización no existe.");
             var datos = solicitud.ConvertTo<SolicitudCotizacion>();
             if (datos.Estado != "Pendiente") return ResultadoOperacion.CrearError("La solicitud ya no está pendiente.");
-            if (!int.TryParse(respuesta.PlazoEntrega, out var plazo) || plazo < 0 || respuesta.Items == null || respuesta.Items.Count != datos.Items.Count || respuesta.Items.Any(x => x.PrecioUnitario < 0) || respuesta.Items.Select(x => x.InsumoId).Distinct(StringComparer.Ordinal).Count() != datos.Items.Count || datos.Items.Any(x => !respuesta.Items.Any(y => y.InsumoId == x.InsumoId)))
-                return ResultadoOperacion.CrearError("Ingrese precios y plazo de entrega válidos para todos los ítems.");
-            foreach (var item in respuesta.Items)
-            {
-                var original = datos.Items.Single(x => x.InsumoId == item.InsumoId);
-                item.NombreInsumo = original.NombreInsumo;
-                item.Cantidad = original.Cantidad;
-            }
+            var validacion = ValidarYNormalizarRespuesta(datos, respuesta);
+            if (!validacion.EsExitoso) return validacion;
             var anteriores = await transaction.GetSnapshotAsync(firestore.Collection("cotizacionesRespuestas").WhereEqualTo("SolicitudId", respuesta.SolicitudId));
             if (anteriores.Count > 0) return ResultadoOperacion.CrearError("La solicitud ya tiene una respuesta registrada.");
             respuesta.Id = reference.Id;
@@ -2665,16 +2709,24 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
         });
     }
 
-    public async Task<ResultadoOperacion> CrearSolicitudes(List<string> proveedorIds, List<OrdenCompraItem> items, string? notas, string userId = "", string userEmail = "", DateTime? fechaEntregaPreferidaUtc = null)
+    public sealed record ResultadoCreacionSolicitudes(
+        ResultadoOperacion Resultado,
+        string GrupoId = "",
+        List<SolicitudCotizacion>? Solicitudes = null);
+
+    public async Task<ResultadoOperacion> CrearSolicitudes(List<string> proveedorIds, List<OrdenCompraItem> items, string? notas, string userId = "", string userEmail = "", DateTime? fechaEntregaPreferidaUtc = null) =>
+        (await CrearSolicitudesConDetalle(proveedorIds, items, notas, userId, userEmail, fechaEntregaPreferidaUtc)).Resultado;
+
+    public async Task<ResultadoCreacionSolicitudes> CrearSolicitudesConDetalle(List<string> proveedorIds, List<OrdenCompraItem> items, string? notas, string userId = "", string userEmail = "", DateTime? fechaEntregaPreferidaUtc = null)
     {
         if (fechaEntregaPreferidaUtc.HasValue && (fechaEntregaPreferidaUtc.Value.Kind != DateTimeKind.Utc || fechaEntregaPreferidaUtc.Value < AhoraUtc))
-            return ResultadoOperacion.CrearError("La fecha y hora preferidas no pueden ser anteriores al momento actual.");
+            return new ResultadoCreacionSolicitudes(ResultadoOperacion.CrearError("La fecha y hora preferidas no pueden ser anteriores al momento actual."));
         proveedorIds = (proveedorIds ?? new()).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.Ordinal).ToList();
         items ??= new();
-        if (items.Any(x => x.Cantidad < 0)) return ResultadoOperacion.CrearError("Seleccione proveedores e insumos válidos con cantidades mayores a cero.");
+        if (items.Any(x => x.Cantidad < 0)) return new ResultadoCreacionSolicitudes(ResultadoOperacion.CrearError("Seleccione proveedores e insumos válidos con cantidades mayores a cero."));
         items = items.Where(x => !string.IsNullOrWhiteSpace(x.InsumoId) && x.Cantidad > 0).ToList();
         if (proveedorIds.Count == 0 || items.Count == 0 || items.Select(x => x.InsumoId).Distinct(StringComparer.Ordinal).Count() != items.Count)
-            return ResultadoOperacion.CrearError("Seleccione proveedores e insumos válidos con cantidades mayores a cero.");
+            return new ResultadoCreacionSolicitudes(ResultadoOperacion.CrearError("Seleccione proveedores e insumos válidos con cantidades mayores a cero."));
         var grupo = Guid.NewGuid().ToString("N");
         return await InsumosTransacciones.EjecutarAsync(firestore, async transaction =>
         {
@@ -2689,13 +2741,13 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
             {
                 var proveedor = snaps[firestore.Collection("proveedores").Document(id).Path];
                 if (!proveedor.Exists || proveedor.ConvertTo<Proveedor>().Estado != "Activo")
-                    return ResultadoOperacion.CrearError("Seleccione proveedores activos.");
+                    return new ResultadoCreacionSolicitudes(ResultadoOperacion.CrearError("Seleccione proveedores activos."));
             }
             foreach (var item in items)
             {
                 var snap = snaps[firestore.Collection("insumos").Document(item.InsumoId).Path];
                 if (!snap.Exists || snap.ConvertTo<Insumo>().Estado != "Activo")
-                    return ResultadoOperacion.CrearError("Seleccione insumos activos.");
+                    return new ResultadoCreacionSolicitudes(ResultadoOperacion.CrearError("Seleccione insumos activos."));
                 item.NombreInsumo = snap.ConvertTo<Insumo>().Nombre;
             }
             foreach (var item in items.OrderBy(i => i.InsumoId, StringComparer.Ordinal))
@@ -2703,17 +2755,19 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
             foreach (var id in proveedorIds.OrderBy(id => id, StringComparer.Ordinal))
                 transaction.Update(firestore.Collection("proveedores").Document(id), "Estado", "Activo");
             var solicitudesAuditadas = new List<Dictionary<string, string>>();
+            var creadas = new List<SolicitudCotizacion>();
             foreach (var id in proveedorIds)
             {
                 var reference = firestore.Collection("solicitudesCotizacion").Document();
                 var solicitud = new SolicitudCotizacion { Id = reference.Id, GrupoId = grupo, ProveedorId = id, Items = items, Notas = notas ?? string.Empty, FechaEntregaPreferidaUtc = fechaEntregaPreferidaUtc };
                 transaction.Create(reference, solicitud);
+                creadas.Add(solicitud);
                 var captura = AuditCampos.CapturarSolicitudCotizacion(solicitud);
                 captura["Id"] = solicitud.Id;
                 solicitudesAuditadas.Add(captura);
             }
             RegistrarAuditoriaEnTransaccion(transaction, new AuditLog { UserId = userId, UserEmail = userEmail, Action = "Emision Solicitud Cotizacion", TargetType = "SolicitudCotizacion", TargetId = grupo, NombreHistorico = $"Grupo {grupo}", Antes = new(), Despues = new() { ["GrupoId"] = grupo, ["Solicitudes"] = System.Text.Json.JsonSerializer.Serialize(solicitudesAuditadas) }, Timestamp = DateTime.UtcNow });
-            return ResultadoOperacion.CrearExito("Solicitudes de cotización creadas.");
+            return new ResultadoCreacionSolicitudes(ResultadoOperacion.CrearExito("Solicitudes de cotización creadas."), grupo, creadas);
         });
     }
 
