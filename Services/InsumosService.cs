@@ -880,7 +880,8 @@ public sealed class StockService(
     IEmailSender emailSender,
     ProveedorService proveedores,
     ILogger<StockService> logger,
-    IInterceptorAuditoriaCompras? interceptor = null)
+    IInterceptorAuditoriaCompras? interceptor = null,
+    CotizacionProveedorLinkService? linkProveedor = null)
 {
     private static readonly DecimalConverter DecimalFirestore = new();
 
@@ -2035,8 +2036,9 @@ public sealed class StockService(
                 }
                 var comprasService = new ComprasService(firestore);
                 var contexto = await comprasService.ObtenerContextoEmail(solicitud.Items);
+                var link = linkProveedor != null ? await linkProveedor.CrearLinkAsync(solicitud.Id) : null;
                 var resultado = await emailSender.EnviarAsync(InsumosEmailFormatter.FormatearSolicitud(
-                    directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades));
+                    directiva, solicitud, proveedor, contexto.Configuracion, contexto.Unidades, link));
                 if (resultado.Enviado)
                     await comprasService.MarcarEmailSolicitudEnviado(solicitud.Id);
                 else
@@ -2707,16 +2709,24 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
         });
     }
 
-    public async Task<ResultadoOperacion> CrearSolicitudes(List<string> proveedorIds, List<OrdenCompraItem> items, string? notas, string userId = "", string userEmail = "", DateTime? fechaEntregaPreferidaUtc = null)
+    public sealed record ResultadoCreacionSolicitudes(
+        ResultadoOperacion Resultado,
+        string GrupoId = "",
+        List<SolicitudCotizacion>? Solicitudes = null);
+
+    public async Task<ResultadoOperacion> CrearSolicitudes(List<string> proveedorIds, List<OrdenCompraItem> items, string? notas, string userId = "", string userEmail = "", DateTime? fechaEntregaPreferidaUtc = null) =>
+        (await CrearSolicitudesConDetalle(proveedorIds, items, notas, userId, userEmail, fechaEntregaPreferidaUtc)).Resultado;
+
+    public async Task<ResultadoCreacionSolicitudes> CrearSolicitudesConDetalle(List<string> proveedorIds, List<OrdenCompraItem> items, string? notas, string userId = "", string userEmail = "", DateTime? fechaEntregaPreferidaUtc = null)
     {
         if (fechaEntregaPreferidaUtc.HasValue && (fechaEntregaPreferidaUtc.Value.Kind != DateTimeKind.Utc || fechaEntregaPreferidaUtc.Value < AhoraUtc))
-            return ResultadoOperacion.CrearError("La fecha y hora preferidas no pueden ser anteriores al momento actual.");
+            return new ResultadoCreacionSolicitudes(ResultadoOperacion.CrearError("La fecha y hora preferidas no pueden ser anteriores al momento actual."));
         proveedorIds = (proveedorIds ?? new()).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.Ordinal).ToList();
         items ??= new();
-        if (items.Any(x => x.Cantidad < 0)) return ResultadoOperacion.CrearError("Seleccione proveedores e insumos válidos con cantidades mayores a cero.");
+        if (items.Any(x => x.Cantidad < 0)) return new ResultadoCreacionSolicitudes(ResultadoOperacion.CrearError("Seleccione proveedores e insumos válidos con cantidades mayores a cero."));
         items = items.Where(x => !string.IsNullOrWhiteSpace(x.InsumoId) && x.Cantidad > 0).ToList();
         if (proveedorIds.Count == 0 || items.Count == 0 || items.Select(x => x.InsumoId).Distinct(StringComparer.Ordinal).Count() != items.Count)
-            return ResultadoOperacion.CrearError("Seleccione proveedores e insumos válidos con cantidades mayores a cero.");
+            return new ResultadoCreacionSolicitudes(ResultadoOperacion.CrearError("Seleccione proveedores e insumos válidos con cantidades mayores a cero."));
         var grupo = Guid.NewGuid().ToString("N");
         return await InsumosTransacciones.EjecutarAsync(firestore, async transaction =>
         {
@@ -2731,13 +2741,13 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
             {
                 var proveedor = snaps[firestore.Collection("proveedores").Document(id).Path];
                 if (!proveedor.Exists || proveedor.ConvertTo<Proveedor>().Estado != "Activo")
-                    return ResultadoOperacion.CrearError("Seleccione proveedores activos.");
+                    return new ResultadoCreacionSolicitudes(ResultadoOperacion.CrearError("Seleccione proveedores activos."));
             }
             foreach (var item in items)
             {
                 var snap = snaps[firestore.Collection("insumos").Document(item.InsumoId).Path];
                 if (!snap.Exists || snap.ConvertTo<Insumo>().Estado != "Activo")
-                    return ResultadoOperacion.CrearError("Seleccione insumos activos.");
+                    return new ResultadoCreacionSolicitudes(ResultadoOperacion.CrearError("Seleccione insumos activos."));
                 item.NombreInsumo = snap.ConvertTo<Insumo>().Nombre;
             }
             foreach (var item in items.OrderBy(i => i.InsumoId, StringComparer.Ordinal))
@@ -2745,17 +2755,19 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
             foreach (var id in proveedorIds.OrderBy(id => id, StringComparer.Ordinal))
                 transaction.Update(firestore.Collection("proveedores").Document(id), "Estado", "Activo");
             var solicitudesAuditadas = new List<Dictionary<string, string>>();
+            var creadas = new List<SolicitudCotizacion>();
             foreach (var id in proveedorIds)
             {
                 var reference = firestore.Collection("solicitudesCotizacion").Document();
                 var solicitud = new SolicitudCotizacion { Id = reference.Id, GrupoId = grupo, ProveedorId = id, Items = items, Notas = notas ?? string.Empty, FechaEntregaPreferidaUtc = fechaEntregaPreferidaUtc };
                 transaction.Create(reference, solicitud);
+                creadas.Add(solicitud);
                 var captura = AuditCampos.CapturarSolicitudCotizacion(solicitud);
                 captura["Id"] = solicitud.Id;
                 solicitudesAuditadas.Add(captura);
             }
             RegistrarAuditoriaEnTransaccion(transaction, new AuditLog { UserId = userId, UserEmail = userEmail, Action = "Emision Solicitud Cotizacion", TargetType = "SolicitudCotizacion", TargetId = grupo, NombreHistorico = $"Grupo {grupo}", Antes = new(), Despues = new() { ["GrupoId"] = grupo, ["Solicitudes"] = System.Text.Json.JsonSerializer.Serialize(solicitudesAuditadas) }, Timestamp = DateTime.UtcNow });
-            return ResultadoOperacion.CrearExito("Solicitudes de cotización creadas.");
+            return new ResultadoCreacionSolicitudes(ResultadoOperacion.CrearExito("Solicitudes de cotización creadas."), grupo, creadas);
         });
     }
 

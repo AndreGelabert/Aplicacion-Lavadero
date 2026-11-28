@@ -231,6 +231,8 @@ builder.Services.AddScoped<Firebase.Services.TipoInsumoService>();
 builder.Services.AddScoped<Firebase.Services.ProveedorService>();
 builder.Services.AddScoped<Firebase.Services.StockService>();
 builder.Services.AddScoped<Firebase.Services.ComprasService>();
+builder.Services.AddScoped<Firebase.Services.CotizacionProveedorCapability>();
+builder.Services.AddScoped<Firebase.Services.CotizacionProveedorLinkService>();
 builder.Services.AddHttpClient<Firebase.Services.AuthenticationService>();
 builder.Services.AddScoped<Firebase.Services.AuthenticationService>();
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Resend"));
