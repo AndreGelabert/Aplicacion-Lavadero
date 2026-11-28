@@ -98,6 +98,7 @@ public sealed class OrdenCompraItem
     [FirestoreProperty(ConverterType = typeof(DecimalConverter))] public decimal CantidadRecibida { get; set; }
     [FirestoreProperty(ConverterType = typeof(DecimalConverter))] public decimal PrecioUnitario { get; set; }
     [FirestoreProperty] public bool Disponible { get; set; } = true;
+    public string TipoPrecio { get; set; } = "Unitario";
 }
 
 [FirestoreData]

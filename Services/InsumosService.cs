@@ -2634,6 +2634,54 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
         });
     }
 
+    public static bool NormalizarPrecioUnitario(decimal precioIngresado, decimal cantidad, string? tipoPrecio, out decimal precioUnitario)
+    {
+        precioUnitario = 0m;
+        if (precioIngresado < 0m) return false;
+        if (string.IsNullOrWhiteSpace(tipoPrecio) || string.Equals(tipoPrecio, "Unitario", StringComparison.OrdinalIgnoreCase))
+        {
+            precioUnitario = precioIngresado;
+            return true;
+        }
+        if (!string.Equals(tipoPrecio, "Final", StringComparison.OrdinalIgnoreCase) || cantidad <= 0m)
+            return false;
+        try
+        {
+            var calculado = precioIngresado / cantidad;
+            var comoDouble = Convert.ToDouble(calculado);
+            if (!double.IsFinite(comoDouble)) return false;
+            precioUnitario = calculado;
+            return true;
+        }
+        catch (OverflowException)
+        {
+            return false;
+        }
+    }
+
+    internal static ResultadoOperacion ValidarYNormalizarRespuesta(SolicitudCotizacion datos, CotizacionRespuesta respuesta)
+    {
+        if (!int.TryParse(respuesta.PlazoEntrega, out var plazo) || plazo < 0 ||
+            respuesta.Items == null || respuesta.Items.Count != datos.Items.Count ||
+            respuesta.Items.Select(x => x.InsumoId).Distinct(StringComparer.Ordinal).Count() != datos.Items.Count ||
+            datos.Items.Any(x => !respuesta.Items.Any(y => y.InsumoId == x.InsumoId)))
+        {
+            return ResultadoOperacion.CrearError("Ingrese precios y plazo de entrega válidos para todos los ítems.");
+        }
+
+        foreach (var item in respuesta.Items)
+        {
+            var original = datos.Items.Single(x => x.InsumoId == item.InsumoId);
+            if (!NormalizarPrecioUnitario(item.PrecioUnitario, original.Cantidad, item.TipoPrecio, out var precioUnitario))
+                return ResultadoOperacion.CrearError("Ingrese precios y plazo de entrega válidos para todos los ítems.");
+            item.PrecioUnitario = precioUnitario;
+            item.NombreInsumo = original.NombreInsumo;
+            item.Cantidad = original.Cantidad;
+        }
+
+        return ResultadoOperacion.CrearExito(string.Empty);
+    }
+
     public async Task<ResultadoOperacion> RegistrarRespuesta(CotizacionRespuesta respuesta, string userId = "", string userEmail = "")
     {
         if (string.IsNullOrWhiteSpace(respuesta.SolicitudId)) return ResultadoOperacion.CrearError("La solicitud de cotización no existe.");
@@ -2645,14 +2693,8 @@ public sealed class ComprasService(FirestoreDb firestore, IInterceptorAuditoriaC
             if (!solicitud.Exists) return ResultadoOperacion.CrearError("La solicitud de cotización no existe.");
             var datos = solicitud.ConvertTo<SolicitudCotizacion>();
             if (datos.Estado != "Pendiente") return ResultadoOperacion.CrearError("La solicitud ya no está pendiente.");
-            if (!int.TryParse(respuesta.PlazoEntrega, out var plazo) || plazo < 0 || respuesta.Items == null || respuesta.Items.Count != datos.Items.Count || respuesta.Items.Any(x => x.PrecioUnitario < 0) || respuesta.Items.Select(x => x.InsumoId).Distinct(StringComparer.Ordinal).Count() != datos.Items.Count || datos.Items.Any(x => !respuesta.Items.Any(y => y.InsumoId == x.InsumoId)))
-                return ResultadoOperacion.CrearError("Ingrese precios y plazo de entrega válidos para todos los ítems.");
-            foreach (var item in respuesta.Items)
-            {
-                var original = datos.Items.Single(x => x.InsumoId == item.InsumoId);
-                item.NombreInsumo = original.NombreInsumo;
-                item.Cantidad = original.Cantidad;
-            }
+            var validacion = ValidarYNormalizarRespuesta(datos, respuesta);
+            if (!validacion.EsExitoso) return validacion;
             var anteriores = await transaction.GetSnapshotAsync(firestore.Collection("cotizacionesRespuestas").WhereEqualTo("SolicitudId", respuesta.SolicitudId));
             if (anteriores.Count > 0) return ResultadoOperacion.CrearError("La solicitud ya tiene una respuesta registrada.");
             respuesta.Id = reference.Id;
