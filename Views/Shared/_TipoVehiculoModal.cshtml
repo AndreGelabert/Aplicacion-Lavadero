@@ -33,30 +33,46 @@
                     <input type="text" name="Nombre" id="nombreTipoVehiculo"
                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                            placeholder="Ej: Automóvil, Camioneta" minlength="3" required />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Mínimo 3 caracteres.</p>
                 </div>
                 <div>
                     <label for="formatoPatenteAbm" class="block mb-1 text-sm font-medium text-gray-900 dark:text-white">Formato de Patente <span class="text-red-600">*</span></label>
                     <input type="text" name="FormatoPatente" id="formatoPatenteAbm"
                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                           placeholder="Ej: llnnnll|lllnnn" minlength="3" pattern="^[nNlL.\-|]+$" required />
+                           placeholder="Ej: llnnnll|lllnnn" minlength="3" pattern="^[nNlL.\-|]+$"
+                           title="Solo se permiten: n (número), l (letra), punto (.), guión (-) y barra vertical (|)" required />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Usa <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded font-semibold">n</code> para números y
+                        <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded font-semibold">l</code> para letras.
+                        Puedes usar <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">.</code> y <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">-</code> como separadores.
+                        Separa múltiples formatos con <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">|</code>. Mínimo 3 caracteres.
+                    </p>
                 </div>
                 <div>
                     <label for="cantidadEmpleadosAbm" class="block mb-1 text-sm font-medium text-gray-900 dark:text-white">Empleados Requeridos <span class="text-red-600">*</span></label>
                     <input type="number" name="CantidadEmpleadosRequeridos" id="cantidadEmpleadosAbm"
                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                            min="1" max="10" value="1" required />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Cantidad de empleados asignados automáticamente por lavado (entre 1 y 10).
+                    </p>
                 </div>
                 <div class="flex justify-end gap-2 sm:col-span-2">
-                    <button type="submit" class="app-button app-button--success">Guardar tipo</button>
-                    <button type="button" data-reset-tipo class="app-button app-button--secondary">Limpiar</button>
-                    <button type="button" data-modal-hide="tipoVehiculoModal" class="app-button app-button--danger">Cancelar</button>
+                    <button type="submit" class="app-button app-button--success">
+                        <svg viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8" aria-hidden="true"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" /></svg>
+                        Guardar tipo
+                    </button>
+                    <button type="button" data-modal-hide="tipoVehiculoModal" class="app-button app-button--danger">
+                        <svg viewBox="0 0 24 24" fill="currentColor" class="w-10 h-8" aria-hidden="true"><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" /></svg>
+                        Cancelar
+                    </button>
                 </div>
             </form>
             }
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto w-full">
                 <table class="w-full text-sm text-left dark:text-gray-200">
                     <thead class="bg-gray-50 dark:bg-gray-700">
-                        <tr><th class="px-3 py-2">Nombre</th><th class="px-3 py-2">Formato</th><th class="px-3 py-2">Empleados</th><th class="px-3 py-2">Estado</th><th class="px-3 py-2">Acciones</th></tr>
+                        <tr><th class="px-3 py-2 w-full">Nombre</th><th class="px-3 py-2 whitespace-nowrap">Formato</th><th class="px-3 py-2 whitespace-nowrap">Empleados</th><th class="px-3 py-2 whitespace-nowrap">Estado</th><th class="px-3 py-2 whitespace-nowrap">Acciones</th></tr>
                     </thead>
                     <tbody id="tiposVehiculoTabla"></tbody>
                 </table>

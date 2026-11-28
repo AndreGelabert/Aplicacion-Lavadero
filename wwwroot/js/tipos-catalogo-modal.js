@@ -34,6 +34,52 @@
         });
     }
 
+    function renderEmptyStateRow(colSpan, emptyTitle, emptyDetail) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = colSpan;
+        td.className = 'p-0';
+        const wrapper = document.createElement('div');
+        wrapper.setAttribute('data-table-empty-state', '');
+        wrapper.className = 'flex flex-col items-center bg-white dark:bg-gray-800 px-4 py-8 text-center text-gray-500 dark:text-gray-400';
+        wrapper.innerHTML = `<svg class="w-16 h-16 mb-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`;
+        const pTitle = document.createElement('p');
+        pTitle.className = 'text-lg font-medium';
+        pTitle.textContent = emptyTitle || 'No hay tipos registrados';
+        wrapper.appendChild(pTitle);
+        if (emptyDetail) {
+            const pDetail = document.createElement('p');
+            pDetail.className = 'text-sm';
+            pDetail.textContent = emptyDetail;
+            wrapper.appendChild(pDetail);
+        }
+        td.appendChild(wrapper);
+        tr.appendChild(td);
+        return tr;
+    }
+
+    function hideModalElement(modal) {
+        if (!modal) return;
+        const id = modal.id;
+        try {
+            const fbInstance = window.FlowbiteInstances?.getInstance?.('Modal', id)
+                || (typeof window.Modal?.getInstance === 'function' ? window.Modal.getInstance(modal) : null);
+            if (fbInstance && typeof fbInstance.hide === 'function') {
+                fbInstance.hide();
+            }
+        } catch (_) {
+            // Fallback manual hide below
+        }
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        modal.setAttribute('aria-hidden', 'true');
+        const anyOpenModal = document.querySelector('[role="dialog"]:not(.hidden), .fixed[aria-modal="true"]:not(.hidden)');
+        if (!anyOpenModal) {
+            document.querySelectorAll('[modal-backdrop]').forEach(el => el.remove());
+            document.body.classList.remove('overflow-hidden');
+        }
+    }
+
     window.initTipoCatalogoModal = function (config) {
         const modal = document.getElementById(config.modalId);
         if (!modal || modal.dataset.abmInitialized === 'true') return;
@@ -51,7 +97,9 @@
         function setMessage(text, isError) {
             if (!message) return;
             message.textContent = text || '';
-            message.className = `mb-3 text-sm ${isError ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`;
+            message.className = text
+                ? `mb-3 text-sm ${isError ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`
+                : 'mb-3 text-sm dark:text-white';
         }
 
         function resetForm() {
@@ -64,13 +112,11 @@
         function renderRows(items) {
             table.replaceChildren();
             if (!Array.isArray(items) || items.length === 0) {
-                const empty = document.createElement('tr');
-                const td = document.createElement('td');
-                td.colSpan = config.columns.length + 2;
-                td.className = 'px-3 py-3 text-center text-gray-500 dark:text-gray-400';
-                td.textContent = 'No hay tipos registrados.';
-                empty.appendChild(td);
-                table.appendChild(empty);
+                table.appendChild(renderEmptyStateRow(
+                    config.columns.length + 2,
+                    config.emptyTitle || 'No hay tipos registrados',
+                    config.emptyDetail || 'Creá uno nuevo desde el formulario superior.'
+                ));
                 return;
             }
 
@@ -78,15 +124,15 @@
                 const tr = document.createElement('tr');
                 tr.className = 'border-b dark:border-gray-700';
 
-                config.columns.forEach(col => {
+                config.columns.forEach((col, idx) => {
                     const td = document.createElement('td');
-                    td.className = 'px-3 py-2';
+                    td.className = idx === 0 ? 'px-3 py-2 w-full' : 'px-3 py-2 whitespace-nowrap';
                     td.textContent = col.render ? col.render(item) : (item[col.field] ?? '');
                     tr.appendChild(td);
                 });
 
                 const estadoTd = document.createElement('td');
-                estadoTd.className = 'px-3 py-2';
+                estadoTd.className = 'px-3 py-2 whitespace-nowrap';
                 const estado = item.estado || item.Estado || 'Activo';
                 const badge = document.createElement('span');
                 badge.className = estado === 'Activo'
@@ -97,7 +143,7 @@
                 tr.appendChild(estadoTd);
 
                 const actionsTd = document.createElement('td');
-                actionsTd.className = 'px-3 py-2 flex gap-1.5';
+                actionsTd.className = 'px-3 py-2 flex gap-1.5 whitespace-nowrap';
                 if (canEdit) {
                     actionsTd.appendChild(createActionButton('Editar', () => {
                         if (form.elements.crear) form.elements.crear.value = 'false';
@@ -169,16 +215,30 @@
             if (typeof config.onUpdated === 'function') config.onUpdated(data);
         });
 
-        modal.querySelector('[data-reset-tipo]')?.addEventListener('click', () => {
-            resetForm();
-            setMessage('', false);
-        });
-
-        document.querySelectorAll(`[data-modal-toggle="${config.modalId}"], [data-modal-target="${config.modalId}"]`)
-            .forEach(trigger => trigger.addEventListener('click', () => {
+        document.addEventListener('click', e => {
+            const openTrigger = e.target.closest(`[data-modal-toggle="${config.modalId}"], [data-modal-target="${config.modalId}"]`);
+            if (openTrigger && !openTrigger.closest(`#${config.modalId}`)) {
                 resetForm();
                 setMessage('', false);
                 refresh();
-            }));
+                return;
+            }
+
+            const closeTrigger = e.target.closest(`[data-modal-hide="${config.modalId}"]`);
+            if (closeTrigger) {
+                e.preventDefault();
+                resetForm();
+                setMessage('', false);
+                hideModalElement(modal);
+            }
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                resetForm();
+                setMessage('', false);
+                hideModalElement(modal);
+            }
+        });
     };
 })();

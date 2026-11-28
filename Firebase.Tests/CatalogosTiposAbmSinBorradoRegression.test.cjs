@@ -35,7 +35,11 @@ test('Las vistas y JS inline usan desactivación lógica en lugar de borrado fí
     assert.match(clienteJs, /\/TipoDocumento\/DesactivarTipoDocumento/);
 });
 
-test('Los modales parciales de TipoServicio, TipoVehiculo y TipoDocumento exponen endpoints ABM', () => {
+test('Los modales parciales de TipoServicio, TipoVehiculo y TipoDocumento exponen endpoints ABM, iconos y descripciones sin botón Limpiar', () => {
+    const js = read('wwwroot/js/tipos-catalogo-modal.js');
+    assert.match(js, /data-table-empty-state/);
+    assert.match(js, /data-modal-hide=/);
+
     for (const file of [
         'Views/Shared/_TipoServicioModal.cshtml',
         'Views/Shared/_TipoVehiculoModal.cshtml',
@@ -46,5 +50,15 @@ test('Los modales parciales de TipoServicio, TipoVehiculo y TipoDocumento expone
         assert.match(html, /data-save-url="/);
         assert.match(html, /data-state-url="/);
         assert.match(html, /<tbody id="tipos/);
+        assert.doesNotMatch(html, /data-reset-tipo/);
+        assert.match(html, /<svg[^>]*>.*<\/svg>\s*Guardar tipo/s);
+        assert.match(html, /<svg[^>]*>.*<\/svg>\s*Cancelar/s);
     }
+
+    const vehiculoModal = read('Views/Shared/_TipoVehiculoModal.cshtml');
+    const documentoModal = read('Views/Shared/_TipoDocumentoModal.cshtml');
+    assert.match(vehiculoModal, /para números/);
+    assert.match(vehiculoModal, /para letras/);
+    assert.match(documentoModal, /para números/);
+    assert.match(documentoModal, /para letras/);
 });
