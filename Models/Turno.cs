@@ -20,6 +20,8 @@ public class Turno
     [FirestoreProperty] public string ClaveIdempotencia { get; set; } = string.Empty;
     [FirestoreProperty, System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? CuponId { get; set; }
+    [FirestoreProperty, System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public DateTime? FechaCreacionUtc { get; set; }
     [FirestoreProperty] public DateTime InicioUtc { get; set; }
     [FirestoreProperty] public DateTime FinUtc { get; set; }
     [FirestoreProperty] public bool AceptaAdelanto { get; set; }
@@ -46,6 +48,7 @@ public class Turno
         if (string.IsNullOrWhiteSpace(Estado)) errores.Add(nameof(Estado));
         if (string.IsNullOrWhiteSpace(Origen)) errores.Add(nameof(Origen));
         if (string.IsNullOrWhiteSpace(ClaveIdempotencia)) errores.Add(nameof(ClaveIdempotencia));
+        if (FechaCreacionUtc.HasValue && (FechaCreacionUtc.Value == default || FechaCreacionUtc.Value.Kind != DateTimeKind.Utc)) errores.Add(nameof(FechaCreacionUtc));
         if (InicioUtc == default || InicioUtc.Kind != DateTimeKind.Utc) errores.Add(nameof(InicioUtc));
         if (FinUtc == default || FinUtc.Kind != DateTimeKind.Utc || FinUtc <= InicioUtc) errores.Add(nameof(FinUtc));
         if (Vehiculos == null || Vehiculos.Count != 1) errores.Add(nameof(Vehiculos));

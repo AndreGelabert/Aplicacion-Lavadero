@@ -120,6 +120,7 @@ internal sealed class TurnoService(FirestoreDb db)
                     Descuento = rebuild && current.CuponId != null ? current.Descuento : request.Descuento };
                 var validated = await LeerSnapshot(tx, snapshotRequest, request.Servicios.ToArray(), forecast: rebuild);
                 validated.CuponId = current.CuponId;
+                validated.FechaCreacionUtc = current.FechaCreacionUtc;
                 candidate = rebuild ? validated : current;
             }
             else candidate = current;
@@ -387,6 +388,8 @@ internal sealed class TurnoService(FirestoreDb db)
             var percentage = couponRef == null ? 0m : (decimal)await TurnoCuponRedemption.Preparar(tx, couponRef, frozen.ClienteId, false);
             var candidate = await LeerSnapshot(tx, frozen with { Descuento = couponRef == null ? frozen.Descuento : percentage }, frozen.Servicios.ToArray(), forecast: true);
             candidate.CuponId = frozen.CuponId;
+            var ahoraUtc = DateTime.UtcNow;
+            candidate.FechaCreacionUtc = new DateTime(ahoraUtc.Ticks - (ahoraUtc.Ticks % TimeSpan.TicksPerMillisecond), DateTimeKind.Utc);
             var openings = ObtenerAperturas(config, candidate.InicioUtc, out var anchor);
             await ValidarLavadosIniciados(tx, started.Documents);
             var intervals = reservations.Documents.Concat(started.Documents).Select(doc =>

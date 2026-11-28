@@ -142,4 +142,25 @@ public class TurnoModelTests
         Assert.Equal(first, turno.Validar());
         Assert.Equal(-1, turno.Vehiculos[0].Servicios[0].TiempoEstimado);
     }
+
+    [Fact]
+    public void FechaCreacionUtcAcceptsNullOrUtcRejectsInvalidAndOmitsNullInJson()
+    {
+        var turno = Valid();
+        Assert.Null(turno.FechaCreacionUtc);
+        Assert.Empty(turno.Validar());
+        Assert.DoesNotContain("FechaCreacionUtc", System.Text.Json.JsonSerializer.Serialize(turno));
+
+        turno.FechaCreacionUtc = new DateTime(2029, 12, 31, 15, 0, 0, DateTimeKind.Utc);
+        Assert.Empty(turno.Validar());
+
+        turno.FechaCreacionUtc = default(DateTime);
+        Assert.Contains(nameof(Turno.FechaCreacionUtc), turno.Validar());
+
+        turno.FechaCreacionUtc = DateTime.SpecifyKind(new DateTime(2029, 12, 31, 15, 0, 0), DateTimeKind.Local);
+        Assert.Contains(nameof(Turno.FechaCreacionUtc), turno.Validar());
+
+        turno.FechaCreacionUtc = DateTime.SpecifyKind(new DateTime(2029, 12, 31, 15, 0, 0), DateTimeKind.Unspecified);
+        Assert.Contains(nameof(Turno.FechaCreacionUtc), turno.Validar());
+    }
 }

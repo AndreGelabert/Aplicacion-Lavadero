@@ -22,8 +22,14 @@ public class TurnoEditIntegrationTests
         var service = new TurnoService(db);
         var request = new TurnoService.SnapshotRequest("id", "c", "v", "Web", "create", start, false, [new("s", null)]);
         Assert.True(await service.Reservar(request));
-        Assert.True(await service.Editar(new(request with { Servicios = [new("s2", null)] }, "rebuild")));
+        var created = (await db.Collection("turnos").Document("id").GetSnapshotAsync()).ConvertTo<Turno>();
+        Assert.NotNull(created.FechaCreacionUtc);
+        Assert.Equal(DateTimeKind.Utc, created.FechaCreacionUtc!.Value.Kind);
+        var rebuildEdit = new TurnoService.EditRequest(request with { Servicios = [new("s2", null)] }, "rebuild");
+        Assert.True(await service.Editar(rebuildEdit));
+        Assert.True(await service.Editar(rebuildEdit));
         var edited = (await db.Collection("turnos").Document("id").GetSnapshotAsync()).ConvertTo<Turno>();
+        Assert.Equal(created.FechaCreacionUtc, edited.FechaCreacionUtc);
         Assert.Equal(200m, edited.PrecioAcordado);
         Assert.Equal("s2", Assert.Single(edited.Vehiculos[0].Servicios).ServicioId);
         Assert.Equal(start.AddMinutes(45), edited.FinUtc);

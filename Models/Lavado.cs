@@ -26,6 +26,12 @@ namespace Firebase.Models
         public required string Id { get; set; }
 
         /// <summary>
+        /// ID del turno del cual proviene este lavado (null si fue creado sin turno previo).
+        /// </summary>
+        [FirestoreProperty]
+        public string? TurnoId { get; set; }
+
+        /// <summary>
         /// Estado del lavado: Pendiente, EnProceso, Realizado, RealizadoParcialmente, Cancelado.
         /// </summary>
         [FirestoreProperty]

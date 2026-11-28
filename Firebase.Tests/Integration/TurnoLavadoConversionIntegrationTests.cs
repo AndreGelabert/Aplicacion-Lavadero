@@ -140,6 +140,7 @@ public class TurnoLavadoConversionIntegrationTests
         var wash = Assert.Single(washes.Documents);
         Assert.Equal(ids[0], wash.Id);
         Assert.Equal("turno", wash.GetValue<string>("TurnoId"));
+        Assert.Equal("turno", (await service.ObtenerLavado(wash.Id))!.TurnoId);
         Assert.Equal("EnProceso", wash.GetValue<string>("Estado"));
         var turno = await db.Collection("turnos").Document("turno").GetSnapshotAsync();
         Assert.Equal("EnProceso", turno.GetValue<string>("Estado"));
@@ -194,6 +195,7 @@ public class TurnoLavadoConversionIntegrationTests
         {
             Assert.Equal(ordinario.Id, wash.Id);
             Assert.False(wash.ContainsField("TurnoId"));
+            Assert.Null((await service.ObtenerLavado(wash.Id))!.TurnoId);
             Assert.Equal("Pendiente", savedTurno.GetValue<string>("Estado"));
             Assert.False(savedTurno.ContainsField("LavadoId"));
         }
@@ -323,11 +325,37 @@ public class TurnoLavadoConversionIntegrationTests
         Assert.Equal("EnProceso", converted.GetValue<string>("Estado"));
         Assert.Equal(72d, created.GetValue<double>("Precio"));
         var mapped = (await washes.ObtenerLavado(id))!;
+        Assert.Equal("turno", mapped.TurnoId);
         Assert.Equal("Congelado", mapped.Servicios[0].ServicioNombre);
         Assert.Equal("EnProceso", mapped.Servicios[0].Estado);
         Assert.Equal(new[] { "empleado" }, mapped.EmpleadosAsignadosIds);
         Assert.Equal(id, await washes.ConvertirTurnoEnLavado("turno", null));
         Assert.Equal(created.UpdateTime, (await wash.GetSnapshotAsync()).UpdateTime);
         Assert.Equal(converted.UpdateTime, (await appointment.GetSnapshotAsync()).UpdateTime);
+    }
+
+    [LocalFirestoreFact]
+    public async Task ObtenerLavadoMapeaTurnoIdYNullParaLavadoSinTurno()
+    {
+        var db = Db();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var washes = Service(db, cache);
+
+        await db.Collection("lavados").Document("sin-turno").SetAsync(new Dictionary<string, object>
+        {
+            ["Estado"] = "Pendiente",
+            ["ClienteId"] = "c1",
+            ["VehiculoId"] = "v1"
+        });
+        await db.Collection("lavados").Document("con-turno").SetAsync(new Dictionary<string, object>
+        {
+            ["Estado"] = "Pendiente",
+            ["ClienteId"] = "c1",
+            ["VehiculoId"] = "v1",
+            ["TurnoId"] = "turno-123"
+        });
+
+        Assert.Null((await washes.ObtenerLavado("sin-turno"))!.TurnoId);
+        Assert.Equal("turno-123", (await washes.ObtenerLavado("con-turno"))!.TurnoId);
     }
 }

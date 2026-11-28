@@ -246,6 +246,7 @@ namespace Firebase.Services
                     EmpleadosAsignadosIds = assigned.ToList(), EmpleadosAsignadosNombres = empNames,
                     TiempoEstimado = turno.Vehiculos[0].Servicios.Sum(x => x.TiempoEstimado),
                     FechaCreacion = now, TiempoInicio = now, Pago = new PagoLavado(), Notas = turno.Notas,
+                    TurnoId = turnoId,
                     ClienteTrajoId = turno.ClienteTrajoId, ClienteTrajoNombre = trajoNombre,
                     ClienteRetiraId = turno.ClienteRetiraId, ClienteRetiraNombre = retiraNombre };
                 ValidarLavado(lavado);
@@ -1843,6 +1844,9 @@ namespace Firebase.Services
             var lavado = new Lavado
             {
                 Id = documento.Id,
+                TurnoId = documento.ContainsField("TurnoId") && documento.TryGetValue<string>("TurnoId", out var turnoIdValor) && !string.IsNullOrWhiteSpace(turnoIdValor)
+                    ? turnoIdValor
+                    : null,
                 Estado = documento.GetValue<string>("Estado") ?? "Pendiente",
                 ClienteId = documento.GetValue<string>("ClienteId") ?? string.Empty,
                 ClienteNombre = documento.ContainsField("ClienteNombre") ? documento.GetValue<string>("ClienteNombre") : null,
